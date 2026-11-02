@@ -139,3 +139,28 @@ Template:
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## 2026-11-02 — RFC proposal: declarative lifecycle state machine
+
+- Branch: `rfc/0002-lifecycle-state-machine`
+- Scope: documentation only (`docs/rfcs/0002-lifecycle-state-machine.md` plus the
+  worklog and validation entries); no source, schema, test or ADR change.
+- Steps: derived the legal status edges from the lifecycle diagram
+  (`docs/task-contract.md:179-192`), the cancellation rules (`:154-159`), the restart
+  rule (`:202-204`) and the code that implements them (`src/tasks.mjs:278-289`,
+  `src/service.mjs:266-297`); specified a per-status transition table checked at the
+  store mutation boundary (`updateTask` plus the direct `writeTask` in `reconcile`);
+  specified the single `validateTransition` entry point RFC-0001's checker must gain,
+  with a status-keyed dispatch table instead of `if`/`then` or `oneOf`; mapped the
+  table to the 13 M2b acceptance tests; recorded five diagram-versus-code gaps as open
+  questions instead of resolving them.
+- Files: `docs/rfcs/0002-lifecycle-state-machine.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → 83 passed, 0 failed (unchanged; no code touched). The
+  sibling RFC-0001 branch was read via `git show rfc/0001-contract-schemas:...` to align
+  the subset table, error format and adoption path; the referenced
+  `docs/rfcs/0001-contract-schemas.md` ships in that sibling PR and is not on this
+  branch.
+- Follow-up: RFC-0001 review, then RFC-0002 adoption step 1 (shadow table and
+  `validateTransition`), then step 2 (store guard). Rows 1, 4, 5, 6, 7 and 10-11 have
+  no producer until the executor adapter and maintainer reconciliation exist.

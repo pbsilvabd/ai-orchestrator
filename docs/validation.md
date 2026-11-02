@@ -192,3 +192,33 @@ MCP gate status remains unresolved: this review observed one failed probe (`warm
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## RFC-0002 lifecycle state machine proposal — 2026-11-02
+
+Documentation only: `docs/rfcs/0002-lifecycle-state-machine.md` was added with no
+source, schema, test or configuration change. Nothing that the suite exercises was
+modified.
+
+```sh
+node --test
+```
+
+Result: 83 passed, 0 failed. The branch is `3f30114` plus documentation, so this count
+is the unchanged baseline of the merge commit rather than a new result: the proposal
+did not alter runtime behaviour.
+
+Evidence gathering, not execution: `git show rfc/0001-contract-schemas:docs/rfcs/0001-contract-schemas.md`
+and `git show rfc/0001-contract-schemas:src/contracts/validate.mjs` were read to confirm
+the subset table, the `{ ok, errors: [{ path, message }] }` error format, the
+non-empty-`enum` rule and the three-step adoption path that RFC-0002 extends. Those
+files ship in the sibling RFC-0001 PR and do not exist on this branch, so nothing from
+RFC-0001 was executed here.
+
+Every `file:line` claim in the RFC was re-read against `src/tasks.mjs`,
+`src/service.mjs` and `docs/task-contract.md` on this branch, including the four status
+writes that exist today (`src/tasks.mjs:199`, `src/tasks.mjs:281`, `src/service.mjs:277`,
+`src/service.mjs:290`).
+
+Not rerun: `node examples/fallback-demo.mjs`, the OpenCode smoke test, the MCP
+capability gate and any executor or live-client acceptance. The M2b gate remains
+inconsistent and is not claimed as fixed. No paid provider or credential was used.
