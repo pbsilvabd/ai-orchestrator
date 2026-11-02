@@ -22,7 +22,7 @@ const root = mkdtempSync(join(tmpdir(), 'orchestrator-mcp-gate-'));
 const work = join(root, 'work'); mkdirSync(work);
 const mcpLog = join(root, 'mcp.jsonl');
 const mcpCalls = join(root, 'calls.jsonl');
-const password = 'gate-local-password';
+const password = process.env.OPENCODE_GATE_PASSWORD ?? 'gate-local-password';
 
 const env = {};
 for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC'])
