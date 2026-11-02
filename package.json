@@ -1,0 +1,12 @@
+{
+  "name": "ai-orchestrator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "engines": { "node": ">=24 <25" },
+  "scripts": {
+    "test": "node --test",
+    "demo": "node examples/fallback-demo.mjs"
+  }
+}
