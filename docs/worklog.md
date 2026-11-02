@@ -142,3 +142,11 @@ Template:
 - Limitation: real `opencode-integration` evidence requires pinned binary outside repo (see `integration/README.md`); adapter reports `limitation` explicitly rather than inventing success.
 - Follow-up: run adapter against real OpenCode 2.2.5 binary in isolated worktree (M2b step 5/6 when binary available); no automatic merge, no routing, no memory added.
 - PR: https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-executor-adapter
+
+## 2026-11-02 — M2b step 5: client integration harness (PR feat/m2b-client-integration)
+- Branch: `feat/m2b-client-integration`
+- Scope: code + integration harness
+- Steps: created `integration/client-integration.mjs` (submit, poll, result, advisory cancel through service) and `test/client-integration.test.mjs`.
+- Validation: harness builds; full integration requires pinned binary (see integration/README.md). No mock-only claim.
+- Follow-up: M2b step 6 — acceptance run with real binary.
+- PR: https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-client-integration
