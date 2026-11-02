@@ -5,8 +5,9 @@ documentation: the normative [task contract](task-contract.md) and
 [ADR-007](adr/007-task-contract.md) fix the operations, lifecycle, ownership, limits,
 artifacts, the first transport and the reuse decision. M2b step 1 (MCP capability
 gate) passed on 2026-11-02. M2b step 2 (durable task store and idempotency index)
-is complete. There is no task service, transport adapter or
-self-development use yet.
+is complete, and M2b step 3 (task service surface: the four operations with strict
+validation, ownership, allowlist clamping, limits and sanitized errors) is complete
+as of 2026-11-02. There is no transport adapter or self-development use yet.
 
 ## Next action (M2b step 3: service surface)
 
@@ -18,8 +19,10 @@ self-development use yet.
    atomic records, client-scoped idempotency and startup reconciliation.
 3. Implement the service surface: the four operations (`submit_task`,
    `get_task_status`, `get_task_result`, `cancel_task`) with strict validation,
-   ownership, allowlist clamping, limits and sanitized errors.
+   ownership, allowlist clamping, limits and sanitized errors. **Complete
+   2026-11-02** (`src/service.mjs` over the store from `src/tasks.mjs`).
 4. Follow with one executor adapter (OpenCode CLI in an isolated worktree).
+   **Next action.**
 
 Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
 HTTP fallback is not selected; change transport only through a new ADR-007 amendment.

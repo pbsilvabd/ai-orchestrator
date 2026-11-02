@@ -145,3 +145,24 @@ in progress, not complete.
 from `mock/local`. The gate harness is not part of `node --test` because it requires
 the pinned binary; it must be run explicitly as documented in
 [integration](../integration/README.md).
+
+## M2b step 3: task service surface
+
+Executed on 2026-11-02 on Windows, Node.js v24.22.1 (fnm-managed install).
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Result: 72 tests passed, 0 failed; the demo printed the expected 429 from `mock/preferred`
+followed by 200 from `mock/local`.
+
+Scope of evidence: `src/service.mjs` implements the four operations from
+[task-contract.md](task-contract.md) over the store from `src/tasks.mjs` (`submit_task`,
+`get_task_status`, `get_task_result`, `cancel_task`) with strict validation, ownership,
+allowlist clamping, limits and sanitized errors. The new tests are in
+`test/task-service.test.mjs` (task store suite unchanged). This increment is unit
+evidence only; the MCP transport adapter, the executor adapter and the OpenCode
+integration were not rerun. The M2b step 1 capability gate transcript remains valid for
+the transport layer, and no mock-only run is claimed as task evidence.

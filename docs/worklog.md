@@ -90,3 +90,33 @@ Template:
   200. The gate is not part of `node --test` because it needs the external binary.
 - Follow-up: M2b step 2, the task store (`AI_ORCHESTRATOR_HOME`, atomic JSON,
   idempotency index, startup reconciliation) with duplication/crash/restart tests.
+
+## 2026-11-02 — M2b step 3: task service surface
+
+- Branch: `feat/m2b-task-store`
+- Scope: code and tests.
+- Steps:
+  1. Added `src/service.mjs`, the transport-neutral service surface over
+     `openTaskStore` from `src/tasks.mjs`.
+  2. `submit_task` validates strictly (unknown/missing fields, objective 1..4000,
+     acceptance criteria 1..20, repository shape, path inside configured writable
+     roots, branch format), checks authorization subsets against the configured
+     allowlist and task limits against configured budgets, then persists and returns
+     `{ schemaVersion, taskId, status, acceptedAt, idempotentReplay }`.
+  3. `get_task_status` returns the status view with attempts, cancel, progress and
+     `resultAvailable`, plus the block section only when blocked; ownership is checked
+     against the service client.
+  4. `get_task_result` returns terminal artifacts, caps the diff at 1 MiB with an
+     explicit truncation flag, caps logs at 256 KiB, reports limitations for unverified
+     success or missing failed artifacts, keeps cost unknown and marks the result
+     sanitized.
+  5. `cancel_task` handles queued -> cancelled (effect `not_started`), running ->
+     blocked with `cancelled-uncertain` (effect `requested`) and terminal tasks
+     (effect `already_terminal`).
+  6. Store errors are mapped to `ServiceError` preserving the contract code and the
+     OS error code; unexpected failures map to `internal` without details.
+- Files: `src/service.mjs`, `test/task-service.test.mjs`.
+- Validation: `node --test` → 72 passed, 0 failed (9 new service tests); `node
+  examples/fallback-demo.mjs` → 429 then 200.
+- Follow-up: M2b step 4, the executor adapter (one OpenCode CLI subprocess in an
+  isolated worktree and branch, collecting diff, changed files and test evidence).

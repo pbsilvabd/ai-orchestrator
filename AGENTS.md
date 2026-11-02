@@ -7,11 +7,13 @@ Read, in order: this file, [docs/handoff.md](docs/handoff.md),
 the ADRs referenced by the current milestone. Check `git log` and the remote before
 editing; another agent may have moved the repository since the handoff was written.
 
-Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a
-complete, M2b step 1 (MCP capability gate) passed. M2b step 2, the task store, is
-next. The gate confirmed OpenCode 2.2.5 discovery, cataloguing and one call over
-revision `2026-07-28` via local stdio; see
-[ADR-007](docs/adr/007-task-contract.md) and [validation](docs/validation.md).
+Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a complete,
+M2b step 1 (MCP capability gate) passed, M2b step 2 (task store) complete and M2b
+step 3 (task service surface) complete as of 2026-11-02. The gate confirmed OpenCode
+2.2.5 discovery, cataloguing and one call over revision `2026-07-28` via local stdio; see
+[ADR-007](docs/adr/007-task-contract.md) and [validation](docs/validation.md). The four
+task operations now live in `src/service.mjs` over the store from `src/tasks.mjs`; the
+executor adapter is still pending.
 
 ## Toolchain
 
