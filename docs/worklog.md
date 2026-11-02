@@ -140,6 +140,33 @@ Template:
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
 
+## 2026-11-02 — Docs (outside milestones): core rules summary and reading order
+
+- Branch: `docs/core-rules-distillation`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Distilled the rules already stated in the normative documents into
+     `docs/core-rules.md`, marked non-normative, with a link to its source on every rule
+     and a conflict rule that the normative document wins.
+  2. Made it the first mandatory read in `AGENTS.md` and added the Definition of Done
+     and `CONTRIBUTING.md` to the ordered list; the current-state text is unchanged.
+  3. Commits: `chore: ignore local worktrees directory` (`.gitignore` only) and
+     `docs: add core rules summary and fix required reading order`
+     (`docs/core-rules.md`, `AGENTS.md` plus this work log entry and the validation
+     entry; the second commit also carried both doc-duty files).
+- Files: `docs/core-rules.md` (new), `AGENTS.md`, `.gitignore`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200. The MCP gate and OpenCode smoke integration were not rerun.
+- Follow-up: open the PR; keep `docs/core-rules.md` in sync when a normative rule
+  changes.
+- Review fix round in the same entry: the permission rule now cites the roadmap line that
+  owns it; the invented term "scale" was removed from `docs/core-rules.md` and
+  `AGENTS.md`; the dependency rule keeps the CONTRIBUTING qualifier; the allowlist and
+  uncertain-outcome rules are paraphrased instead of copied verbatim; the handoff duty
+  states "when the next action changes"; and the page is 70 lines. The second commit is
+  recorded accurately above: it also carried this entry and the validation entry.
+
 ## 2026-11-02 — M2b storage decision proposal: evolve task store to SQLite (ADR-009)
 
 - Branch: `docs/m2b-sqlite-task-store`
@@ -165,6 +192,8 @@ Template:
   4. Cross-linked ADR-008's revisit triggers, added a roadmap note and a risk row;
      `task-contract.md`, `README.md` and `docs/requirements.md` stay untouched on
      purpose (checked, not changed).
+  5. Sync with main after #10 merged (handoff/roadmap resolved in favor of main's
+     current state; ADR proposal notes preserved in docs/adr/009).
 - Files: `docs/adr/009-task-store-sqlite.md`, `docs/adr/008-task-store.md`,
   `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`.
 - Validation: `node --test` → 83 passed, 0 failed;

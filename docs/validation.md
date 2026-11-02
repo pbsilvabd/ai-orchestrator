@@ -193,6 +193,48 @@ MCP gate status remains unresolved: this review observed one failed probe (`warm
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
 
+## Core rules summary and reading order — 2026-11-02
+
+Docs-only change on branch `docs/core-rules-distillation`; commands run from the worktree
+on macOS. Recorded environment: Node.js v24.11.1, which is not the pinned 24.22.1
+toolchain (`fnm` is not installed on this machine) but is inside `engines: >=24 <25`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Result: 83 tests passed, 0 failed, 0 skipped; the demo printed 429 from `mock/preferred`
+followed by 200 from `mock/local`.
+
+Scope of evidence: unit suite and demo only. `integration/mcp-gate.mjs` and
+`integration/opencode-smoke.mjs` were not rerun; the MCP gate instability recorded above
+remains unresolved, and no validation claim beyond the two commands is made.
+
+## Core rules review fix round — 2026-11-02
+
+Documentation only again: `docs/core-rules.md`, `AGENTS.md`, `docs/worklog.md` and this
+file; no source, contract or test change. Commands run from the worktree on macOS:
+
+```sh
+node --version
+node --test
+node examples/fallback-demo.mjs
+```
+
+Environment: Node.js v24.11.1, reported by `node --version`. The pinned 24.22.1 toolchain
+is still unavailable on this machine (`fnm` is not installed, and the other interpreter on
+PATH is v26.12.1, outside `engines: >=24 <25`), so the version here is within the engines
+range but is not the pinned toolchain.
+
+Result: 83 tests passed, 0 failed, 0 cancelled, 0 skipped; the demo printed 429 from
+`mock/preferred` followed by 200 from `mock/local`.
+
+Scope of evidence: unit suite and demo only. `integration/mcp-gate.mjs`,
+`integration/opencode-smoke.mjs` and any executor or live-client acceptance were not
+rerun; the MCP gate instability recorded above remains unresolved. No paid provider or
+credential was used.
+
 ## M2b storage evolution proposal — preliminary node:sqlite evidence (ADR-009)
 
 Documentation-only decision increment: [ADR-009](adr/009-task-store-sqlite.md)
