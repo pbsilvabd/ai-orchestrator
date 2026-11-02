@@ -46,12 +46,18 @@ operationId e attemptId. `success` e `failure` exigem o dispatch original retorn
 por `select`, não apenas o modelo. Não reconstruir sua identidade a partir do
 estado atual quando um callback chegar. Checkpoints versão 1 são rejeitados e
 exigem reconciliação manual, sem migração automática de operações pendentes.
-Isso protege contra eventos atrasados, mas ainda não contra dois escritores
-concorrentes ou perda de persistência: ledger e lock continuam pendentes.
+Para persistência/exclusão entre processos, use `openSession(directory, sessionId)`
+de `src/ledger.mjs`. O handle oferece `select(models, options)`, `success(dispatch)`,
+`failure(dispatch, error, options)`, `nextOperation()`, `snapshot()` e `close()`.
+Mantenha-o aberto durante a chamada e feche em finally. Só chame o provedor depois
+que select retornar action=dispatch: o checkpoint já estará gravado. Erros de
+persistência invalidam o handle. Leia [ADR-004](docs/adr/004-local-ledger.md).
 
-O checkpoint do teste demonstra serialização e leitura em outro processo, não
-durabilidade de produção, lock entre processos ou retomada de uma sessão OpenCode.
-Histórico pertence ao host e não é reescrito pela política.
+Os testes incluem checkpoint e lock entre processos locais, mas não retomada de
+sessão OpenCode ou durabilidade sob queda de energia. Histórico pertence ao host.
+Use diretório local confiável, com escritores cooperativos; NFS/SMB e diretórios
+controlados por terceiros não são suportados. Locks após crash exigem reconciliação
+manual; não são removidos automaticamente.
 
 ## Plano de desenvolvimento
 
@@ -62,7 +68,7 @@ executor próprio. Consulte o [roadmap](docs/roadmap.md) e a
 
 ## Próximas etapas
 
-1. Ledger operacional, concorrência, correlação de tentativas e cancelamento.
+1. Cancelamento e orçamento temporal sobre o ledger/correlação implementados.
 2. Adaptador OpenCode 2.2.5 e teste end-to-end com falhas, ferramentas e reinício real.
 3. Primeiro uso no próprio repositório com modelos explicitamente autorizados.
 4. Memória com ai-memory, roteamento por capacidade/custo e multiagentes em etapas.

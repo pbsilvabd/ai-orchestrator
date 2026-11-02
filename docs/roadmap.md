@@ -26,7 +26,7 @@ O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 | --- | --- | --- |
 | M0 — Base verificável | Concluído | Política, auditoria fixada, ADR e suíte local sem APIs |
 | M1a — Fronteira HTTP | Concluído neste incremento | Retry-After normalizado, casos inválidos bloqueados, 429/503→B e auth/efeitos→stop em loopback |
-| M1b — Segurança operacional | Em andamento: sucesso explícito e correlação de tentativa concluídos | Ledger atômico, lock por sessão, cancelamento e orçamento temporal pendentes; crash/concorrência a comprovar |
+| M1b — Segurança operacional | Em andamento: sucesso, correlação, checkpoint e lock local concluídos | Cancelamento e orçamento temporal pendentes; crash/concorrência local testados, limites no ADR-004 |
 | M2 — Bootstrap no OpenCode 2.2.5 | Planejado; depende M1b | Adaptador mínimo, endpoint simulado, contexto/permissões preservados e cinco cenários de aceitação no host real |
 | M3 — Primeiro uso no próprio projeto | Objetivo prioritário; depende M2 | Uma tarefa pequena real, dois modelos autorizados configurados, branch, diff, testes e relatório; revisão humana antes do merge |
 | M4 — Memória e continuidade | Planejado; depende M3 | ai-memory avaliado/integrado; nova sessão recupera decisão e pendência sem confundir memória com estado de execução |
@@ -39,8 +39,8 @@ Concluído é sempre no escopo da linha: M1a não comprova M2. Ver
 ## Próximo ciclo implementável: M1b
 
 1. Concluído: identidade de operação/tentativa e eventos de sucesso/falha; rejeição de eventos atrasados.
-2. Persistir estado antes do dispatch, com atualização atômica e lock de escritor único.
-3. Provar bloqueio após crash, arquivo corrompido, lock concorrente e evento duplicado.
+2. Concluído localmente: persistir antes do dispatch, atualização atômica e lock de escritor único.
+3. Concluído em testes locais: bloqueio após crash, corrupção, lock concorrente e evento duplicado.
 4. Acrescentar timeout/cancelamento sem assumir que interromper a conexão desfez efeitos.
 5. Escrever ADR do adaptador e só então ligar os hooks públicos do OpenCode fixado.
 
@@ -75,3 +75,13 @@ permissão permanente concedida ao futuro runtime.
 
 Atualizar este documento a cada marco junto com a evidência de validação.
 Ponto de retomada de baixo custo: [handoff](handoff.md).
+
+## Referência para reutilização: ia-hands-on-agents
+
+Avaliar [repositório de Yuri Oliveira](https://github.com/yurioliveira3/ia-hands-on-agents)
+em M3/M5: laço de agente/MCP, avaliações, medição de tokens e roteamento por confiança
+na Demo 3. Inspeção preliminar documental; nenhum código/dependência incorporado.
+Antes de reutilizar: fixar SHA, conferir licença/atribuição dos arquivos, dependências,
+custo e compatibilidade com OpenCode 2.2.5. Medir no nosso conjunto de tarefas;
+resultados didáticos não substituem testes operacionais. Priorizar reutilização
+onde adequada, sem trocar agora a arquitetura.

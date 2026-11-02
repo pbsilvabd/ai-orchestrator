@@ -7,7 +7,7 @@ node --test
 node examples/fallback-demo.mjs
 ```
 
-Resultado atual: 31 testes aprovados, 0 falhas (23 de política + 8 HTTP).
+Resultado atual: 37 testes aprovados, 0 falhas (23 de política + 8 HTTP + 6 ledger).
 Demo: 429 em mock/preferred seguido de 200 em mock/local com sessionId demo-session.
 Sem chamadas a provedores externos; testes HTTP usam exclusivamente 127.0.0.1.
 
@@ -26,7 +26,10 @@ incorreto, nova operação somente após sucesso e checkpoint legado conservador
 Demo atualizada para registrar sucesso. Validado em Node 24.22.1 no Windows.
 Correlação acrescentada: resultado atrasado do mesmo modelo em outra operação,
 IDs incorretos, falha duplicada e identidade serializada. Estado v1 rejeitado sem
-migração automática. Ledger/lock permanecem pendentes; ver handoff.md.
+migração automática. Ledger local acrescentado: exclusão entre processos,
+crash sem close, reabertura pending, corrupção, rename falho e persistência de
+resultados. Processos filhos têm timeout de 5 segundos. Não validado sob queda
+de energia, filesystem de rede ou host OpenCode; ver handoff.md.
 
 DoD desta mudança: comportamento testado, documentação/roadmap/ADR atualizados,
 sem dependências novas nem credenciais. M2/M3 não estão concluídos; não houve

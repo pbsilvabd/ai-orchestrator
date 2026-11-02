@@ -25,6 +25,12 @@ function validate(state, models, now, maxAttempts) {
     throw new TypeError('Invalid limits');
 }
 
+export function validateState(state) {
+  validate(state, ['validation-only'], 0, 2);
+  if (typeof state.completed !== 'boolean' || (state.pending && !state.attempts.length))
+    throw new TypeError('Invalid state');
+}
+
 // Call before dispatch and persist returned state BEFORE any provider/tool call.
 // Models are the explicitly authorized ordered allowlist, not discovered models.
 export function select(state, models, { now, maxAttempts = 2 } = {}) {

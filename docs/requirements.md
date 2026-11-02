@@ -9,8 +9,8 @@
 
 ## Entrega 1: integração OpenCode (pendente)
 
-Subetapa M1a concluída: normalização HTTP/Retry-After e testes loopback. Ledger,
-locks e correlação permanecem pendentes em M1b. Consulte [roadmap](roadmap.md) e
+Subetapa M1a concluída: normalização HTTP/Retry-After e testes loopback. M1b inclui
+correlação, checkpoint e lock local; faltam cancelamento/orçamento. Consulte [roadmap](roadmap.md) e
 [Definition of Done](definition-of-done.md); o destino prioritário é usar o projeto
 para executar uma tarefa real no próprio repositório (M3).
 
