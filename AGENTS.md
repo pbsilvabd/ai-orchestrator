@@ -46,6 +46,8 @@ executor adapter is still pending.
   contract change together.
 - Keep evidence levels separate (unit, local HTTP, OpenCode integration, use on this
   project). Mocks never satisfy an integration gate.
+- Templates for every recurring artifact live in docs/templates/: copy the matching
+  template, follow its placeholders, and never invent a new format.
 
 ## Runtime state
 
