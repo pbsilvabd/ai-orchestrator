@@ -139,3 +139,41 @@ Template:
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## 2026-11-02 — M2b storage decision proposal: evolve task store to SQLite (ADR-009)
+
+- Branch: `docs/m2b-sqlite-task-store`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Rebased the earlier "SQLite before JSON" RFC onto the changed repository: step
+     2 (`src/tasks.mjs`) and step 3 (`src/service.mjs`) landed while it was planned,
+     so it now enters as an evolution decision — ADR-009, status proposed, anchored
+     on ADR-008's own revisit triggers (step 3 cross-process needs; step 4
+     artifacts) rather than a before-implementation choice.
+  2. Ran preliminary, non-gating `node:sqlite` probes (exports and bundled SQLite
+     3.50.4, CHECK constraints, RAISE(ABORT) transition trigger, conditional-update
+     CAS, `BEGIN IMMEDIATE` + UNIQUE idempotency, seeded `EXPLAIN QUERY PLAN`
+     including the partial-index predicate trap) and recorded them in validation
+     with their limits.
+  3. Wrote ADR-009: keep the `openTaskStore` primitives and swap the engine —
+     transactional record+idempotency commit, trigger-guarded lifecycle including
+     the `queued → blocked` restart transition, forward-only fail-closed migrations
+     with checksums, WAL/`synchronous=FULL` durability, `quick_check` startup,
+     all-or-nothing maintainer-run JSON→SQLite import (frozen legacy files, no
+     replay, no rederivation), measurement-first index policy and a storage
+     capability gate as implementation step 0.
+  4. Cross-linked ADR-008's revisit triggers, added a roadmap note and a risk row;
+     `task-contract.md`, `README.md` and `docs/requirements.md` stay untouched on
+     purpose (checked, not changed).
+- Files: `docs/adr/009-task-store-sqlite.md`, `docs/adr/008-task-store.md`,
+  `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test` → 83 passed, 0 failed;
+  `node examples/fallback-demo.mjs` → 429 then 200; Markdown link check → 21 files,
+  78 relative links, 0 broken, fences balanced (macOS, Node v24.11.1; the pinned
+  24.22.1 was not available in this environment and the discrepancy is recorded in
+  validation as the ADR-009 gate step 1). Integration transports and the MCP gate
+  were not rerun; MCP instability remains the handoff next action and is untouched
+  by this proposal.
+- Follow-up: the maintainer decides ADR-009 with this PR's merge. If accepted:
+  storage capability gate first, implementation after the M2b acceptance run,
+  contract/code/tests change together then.

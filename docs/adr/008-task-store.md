@@ -67,3 +67,8 @@ Revisit when: the service surface (step 3) needs cross-process exclusion; M2b ca
 task artifacts (step 4) that need `artifacts/`; a second client or remote access
 requires authentication of `clientId`; or retention needs a configurable per-task
 override.
+
+Open proposal: [ADR-009](009-task-store-sqlite.md) (proposed, 2026-11-02) evaluates
+evolving this store to SQLite via the bundled `node:sqlite` module after the M2b
+acceptance run, citing the step 3/4 triggers above. Its decision is made with that
+proposal's merge; any implementation first passes its own storage capability gate.

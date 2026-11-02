@@ -30,7 +30,10 @@ the first client and record the reuse/build decision. The MCP capability gate ha
 recorded pass and one later failure on 2026-11-02; discovery, cataloguing and a call
 over revision `2026-07-28` were observed, but the gate is not consistently validated.
 M2b implementation started at the task store. The task store (step 2) is complete;
-service-surface fixes passed independent local review. There is no MCP/API endpoint, worker adapter,
+service-surface fixes passed independent local review. A storage-evolution proposal
+ ([ADR-009](adr/009-task-store-sqlite.md), proposed) is open for decision: SQLite via
+`node:sqlite` after the M2b acceptance run; it never blocks the executor adapter.
+There is no MCP/API endpoint, worker adapter,
 integrated fallback, semantic memory or completed self-development workflow yet.
 
 The existing runner executes an operation; it is not a durable task scheduler.
@@ -124,6 +127,7 @@ future workers to merge autonomously.
 | Duplicate work or uncertain side effects | Stable task identity, persisted lifecycle and conservative reconciliation |
 | Concurrent repository edits | Fixed base/runtime and isolated workspace per task; bounded concurrency later |
 | Unavailable free models or unknown costs | Simulation first, explicit provider authorization and reported limits |
+| Experimental `node:sqlite` core module in the proposed store | Storage capability gate before implementation; narrow primitive seam; pinned Node; ADR revisit triggers |
 | Sensitive artifacts or remote access | Task ownership, scoped artifact access and sanitized reports |
 
 Evaluate [Yuri Oliveira's repository](https://github.com/yurioliveira3/ia-hands-on-agents)

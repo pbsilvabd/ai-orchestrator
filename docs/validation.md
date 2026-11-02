@@ -192,3 +192,65 @@ MCP gate status remains unresolved: this review observed one failed probe (`warm
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## M2b storage evolution proposal — preliminary node:sqlite evidence (ADR-009)
+
+Documentation-only decision increment: [ADR-009](adr/009-task-store-sqlite.md)
+proposes evolving the task store to SQLite through the bundled `node:sqlite` module
+after the M2b acceptance run. Everything recorded here is preliminary and
+non-gating; the storage capability gate defined in ADR-009 is the required
+implementation evidence. This increment does not touch transport, executor or any
+contract/code behavior; `task-contract.md` is intentionally unchanged (code, tests
+and contract change together at implementation).
+
+Probes ran in memory with `node -e` (no files created or modified) on macOS
+(darwin), reporting Node v24.11.1. The documented toolchain claims 24.22.1 via fnm;
+fnm was not available in this environment's shell, so the pinned-versus-reported
+version discrepancy remains unverified and is listed as ADR-009 gate step 1. Probe
+results:
+
+- `require('node:sqlite')` exports `DatabaseSync`, `StatementSync`, `Session`,
+  `constants` and `backup`; the bundled SQLite reports 3.50.4; an
+  `ExperimentalWarning` ("SQLite is an experimental feature and might change at any
+  time") is printed to stderr on import.
+- CHECK constraints reject out-of-range status values and accept valid ones.
+- A `BEFORE UPDATE` guard trigger with `RAISE(ABORT, 'illegal_task_transition')`
+  rejects illegal transitions and permits the legal ones.
+- A conditional update `UPDATE ... WHERE id = ? AND status = ?` returns
+  `changes: 1` on the first hit and `changes: 0` on a stale repeat; `changes` is a
+  number, not a BigInt, in this Node build.
+- `BEGIN IMMEDIATE` with `UNIQUE(client_id, idempotency_key)` inserts once and
+  rejects the duplicate key.
+- With 20,000 seeded task rows plus 60,000 seeded events and `ANALYZE`,
+  `EXPLAIN QUERY PLAN` showed: a partial index with predicate
+  `status IN ('queued','running')` is used by a query written in that same `IN`
+  form but not by `status = 'running'` (that query scans); a per-status partial
+  index is used by the single-status query; `task_events(task_id, seq)` serves the
+  per-task events query. An earlier empty-table probe had shown a misleading
+  `SCAN` even for a usable index; seeded data plus `ANALYZE` is the basis for any
+  index conclusion.
+- `PRAGMA optimize` runs and returns no rows in this build (kept as the maintenance
+  hook in ADR-009's measurement protocol).
+
+Not exercised: file-backed WAL databases, durability, process kill/crash
+scenarios, actual migration runs, `quick_check` corruption behavior and Windows
+locking. Those are the storage capability gate's subject, not this documentation
+increment.
+
+For the documentation-only change itself, the standard local checks were rerun in
+the same environment (macOS, Node v24.11.1; the pinned 24.22.1 was unavailable):
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+node <local helper>/check-links.mjs .
+```
+
+The helper is a temporary, uncommitted link-and-fence checker used only for this
+run; its method matches the local Markdown link checks recorded in earlier
+documentation increments. Results: 83 tests passed, 0 failed; the demo printed 429
+from `mock/preferred` followed by 200 from `mock/local`; the link check covered 21
+files with 78 relative links, 0 broken targets and balanced code fences. The MCP
+capability gate, the OpenCode smoke test and the (future) storage capability gate
+were not rerun; the records earlier in this file remain the historical evidence
+for their scopes.
