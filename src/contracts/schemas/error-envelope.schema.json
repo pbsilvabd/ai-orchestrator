@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Declarative form of the error envelope from docs/task-contract.md#errors, derived from src/service.mjs errorEnvelope (lines 63-66) and the ERROR_CODES literal (lines 21-22). Messages are free of private data by contract, which a schema cannot prove; the checker only enforces shape and the code enum. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
   "meta": {
     "title": "error-envelope",

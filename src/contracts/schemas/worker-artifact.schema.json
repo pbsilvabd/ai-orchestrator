@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Declarative form of the record fields a worker/executor reports. Derived from src/service.mjs getTaskResult consumption (lines 192-263) and the attempt checks in src/tasks.mjs validateTask (lines 366-378). There is no runtime producer yet: this is the shape the future executor adapter must write into a task record before getTaskResult reads it, NOT a get_task_result envelope (no taskId, status, schemaVersion or sanitized flag). It is deliberately stricter than today's runtime tolerance in three ways: unknown keys are rejected, testRuns[].exitCode is required as evidence, and attempts[].outcome must be a non-empty string when present. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
   "meta": {
     "title": "worker-artifact",

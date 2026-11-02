@@ -63,9 +63,11 @@ contract shapes, with a **dependency-free checker** in `src/contracts/`.
   Root rules and [ADR-007](../adr/007-task-contract.md), which forbids a third-party
   runtime dependency for the contract/service layer).
 - `src/contracts/schemas/*.schema.json` hold the shapes: `task-submit-request`,
-  `worker-artifact`, `task-record` and `error-envelope`. Each file carries a `meta`
-  block (`title`, `source`) recording the `file:line` it was derived from; the checker
-  treats `meta` as an annotation, exactly like `description`.
+  `worker-artifact`, `task-record` and `error-envelope`. Each file declares its dialect
+  with `$schema` so it stays a valid JSON Schema document that editors can assist, and
+  carries a `meta` block (`title`, `source`) recording the `file:line` it was derived
+  from; the checker treats `$schema` and `meta` as annotations, exactly like
+  `description`.
 - `test/contracts.test.mjs` is the immediate guard: it exercises every supported
   keyword and asserts the enums in the schemas equal the runtime literals
   (`TASK_STATUSES`, the `STATUSES` and `SCHEMA_VERSION` literals in `src/tasks.mjs`,
@@ -103,6 +105,7 @@ else, so the whitelist is closed rather than open to unknown annotations.
 | `description` | annotation, ignored |
 | `meta` | project convention: `{ title, source }` annotation at the schema root, ignored |
 | `$comment` | annotation, ignored; schema files use it for provenance notes tools may strip |
+| `$schema` | dialect declaration, ignored; accepted so the files remain valid JSON Schema documents and editors offer intellisense |
 
 Behaviour rules:
 
@@ -140,7 +143,9 @@ a run reported without one (`src/service.mjs:192-199`,
 `test/task-service.test.mjs:53-56`) and reports that as a limitation. `task-record` is
 stricter than `validateTask` at three points: unknown keys rejected, `taskId` checked
 against the runtime identifier pattern (UUIDv4 remains a submit-time rule), and
-`attempts[].outcome` non-empty when present.
+`attempts[].outcome` non-empty when present. It also permits an optional `branch`
+string, which `src/service.mjs:207` reads from the record and no runtime writer sets
+today.
 
 ## Few-shots
 

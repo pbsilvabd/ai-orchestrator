@@ -213,3 +213,21 @@ Template:
   `node examples/fallback-demo.mjs` → expected 429 then 200; every schema file passes
   `assertSchema` via the directory walk test.
 - Follow-up: adoption steps 2-3 in the RFC.
+
+## 2026-11-02 — RFC-0001 re-review fixes: record branch and dialect declaration
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal and test-only skeleton; no runtime wiring.
+- Steps: corrected the `task-record` `$comment` to three deliberate strictness points
+  including non-empty `attempts[].outcome`; added optional `branch`
+  (`["string", "null"]`) to `task-record` because `src/service.mjs:207` reads it from
+  the record even though no runtime writer sets it; added `$schema` to the closed
+  keyword whitelist as an ignored string annotation and declared
+  `https://json-schema.org/draft/2020-12/schema` in all four schema files, with the RFC
+  table and checker header updated.
+- Files: `src/contracts/schemas/*.schema.json`, `src/contracts/validate.mjs`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 106 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  expected 429 then 200.
+- Follow-up: adoption steps 2-3 in the RFC.

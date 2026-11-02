@@ -1,4 +1,5 @@
 {
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$comment": "Declarative form of the submit_task request contract. Derived from src/service.mjs validateSubmitRequest (lines 302-392) and docs/task-contract.md#submit_task. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
   "meta": {
     "title": "task-submit-request",

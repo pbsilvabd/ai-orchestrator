@@ -19,6 +19,8 @@
 //   meta                  project annotation block ({ title, source }), ignored
 //   $comment              annotation, ignored (JSON/YAML schema files use it for
 //                         provenance notes that tools may strip)
+//   $schema               dialect declaration, ignored; accepted so the files remain
+//                         valid JSON Schema documents and editors can offer intellisense
 //
 // Deliberately NOT implemented: oneOf/anyOf/allOf, if/then/else, $ref/definitions,
 // const, minimum/maximum/exclusiveMinimum, format, patternProperties, dependencies.
@@ -62,7 +64,7 @@ const TYPE_NAMES = Object.keys(TYPE_CHECKS);
 const KEYWORDS = new Set([
   'type', 'properties', 'required', 'additionalProperties', 'enum', 'pattern',
   'minLength', 'maxLength', 'minItems', 'maxItems', 'items', 'description', 'meta',
-  '$comment',
+  '$comment', '$schema',
 ]);
 const isObject = TYPE_CHECKS.object;
 
@@ -127,7 +129,7 @@ function walkSchema(schema, path) {
 
   declaredTypes(schema, path);
 
-  for (const annotation of ['description', '$comment']) {
+  for (const annotation of ['description', '$comment', '$schema']) {
     if (schema[annotation] !== undefined && typeof schema[annotation] !== 'string') {
       throw schemaError(path, `${annotation} must be a string`);
     }

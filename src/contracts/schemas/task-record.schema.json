@@ -1,5 +1,6 @@
 {
-  "$comment": "Declarative form of the persisted task record. Mirrors the current checks in src/tasks.mjs validateTask (lines 348-409) and the shape written by createTask (lines 192-208). It is deliberately stricter than today's validateTask at two points, as the adoption target: unknown object keys are rejected, and the taskId pattern is the runtime identifier pattern (UUIDv4 is a submit-time product rule, not a store check). Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Declarative form of the persisted task record. Mirrors the current checks in src/tasks.mjs validateTask (lines 348-409), the shape written by createTask (lines 192-208) and the artifact fields updateTask may add (src/service.mjs:192-224). It is deliberately stricter than today's validateTask at three points, as the adoption target: unknown object keys are rejected, the taskId pattern is the runtime identifier pattern (UUIDv4 is a submit-time product rule, not a store check), and attempts[].outcome must be a non-empty string when present (the store never checks it). The record may also carry branch, which src/service.mjs:207 reads and no runtime writer sets today. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
   "meta": {
     "title": "task-record",
     "source": "src/tasks.mjs:348-409"
@@ -190,6 +191,10 @@
       }
     },
     "baseCommit": {
+      "type": ["string", "null"]
+    },
+    "branch": {
+      "description": "Optional branch recorded by an executor; src/service.mjs:207 reads it and no runtime writer sets it today.",
       "type": ["string", "null"]
     },
     "headCommit": {

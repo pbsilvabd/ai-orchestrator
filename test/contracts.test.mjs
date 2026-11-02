@@ -83,6 +83,7 @@ test('validate accepts a value for every supported keyword', () => {
     ['patterns', { type: 'string', pattern: '^[A-Za-z0-9._:-]{1,128}$' }, 'goal-1'],
     ['strict objects with no extras', { type: 'object', additionalProperties: false, properties: { a: { type: 'string' } } }, { a: 'x' }],
     ['annotations are ignored', { type: 'string', description: 'ignored', meta: { title: 'x', source: 'y' } }, 'x'],
+    ['dialect declarations are ignored', { $schema: 'https://json-schema.org/draft/2020-12/schema', type: 'string' }, 'x'],
   ];
   for (const [name, schema, value] of cases) {
     const result = validate(schema, value);
@@ -221,6 +222,7 @@ test('validate throws on malformed schema nodes instead of accepting them', () =
   assert.throws(() => validate({ type: 'object', required: 'a' }, {}), /required must be an array of strings/);
   assert.throws(() => validate({ type: 'object', properties: [] }, {}), /properties must be an object/);
   assert.throws(() => validate({ type: 'object', $comment: 1 }, {}), /\$comment must be a string/);
+  assert.throws(() => validate({ type: 'string', $schema: 1 }, 'x'), /\$schema must be a string/);
 });
 
 test('every shipped schema passes the strict keyword whitelist walk', () => {
@@ -229,6 +231,7 @@ test('every shipped schema passes the strict keyword whitelist walk', () => {
   assert.ok(files.length >= 4, `expected the shipped schemas, found ${JSON.stringify(files)}`);
   for (const file of files) {
     const schema = JSON.parse(readFileSync(join(directory, file), 'utf8'));
+    assert.equal(schema.$schema, 'https://json-schema.org/draft/2020-12/schema', `${file} declares its dialect`);
     assert.doesNotThrow(() => assertSchema(schema), `${file} must pass assertSchema`);
   }
 });

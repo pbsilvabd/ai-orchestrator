@@ -251,3 +251,25 @@ Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-ga
 (the MCP capability gate remains inconsistent and unresolved), the Windows-only
 toolchain statement, and any live executor or transport use. No paid provider, network
 call or credential was used.
+
+## RFC-0001 re-review fixes — 2026-11-02
+
+Branch `rfc/0001-contract-schemas`. Test-only skeleton; no runtime module imports
+`src/contracts/`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Results: `node --test` → 106 passed, 0 failed (no new test cases; assertions added to
+the existing keyword and directory-walk tests); the demo printed the expected 429 from
+`mock/preferred` followed by 200 from `mock/local`. Coverage added: `$schema` is
+accepted as an ignored string annotation and rejected when it is not a string, every
+shipped schema file declares its dialect, and `task-record` accepts an optional
+`branch` string or null. Few-shot outputs in RFC-0001 were regenerated and unchanged.
+
+Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-gate.mjs`
+(the MCP capability gate remains inconsistent and unresolved), the Windows-only
+toolchain statement, and any live executor or transport use. No paid provider, network
+call or credential was used.
