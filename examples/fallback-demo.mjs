@@ -12,10 +12,10 @@ for (;;) {
   }
   console.log(JSON.stringify({ sessionId: state.sessionId, model: choice.model, status: responses[choice.model] }));
   if (responses[choice.model] === 200) {
-    state = success(state, choice.model);
+    state = success(state, choice);
     break;
   }
-  const result = failure(state, choice.model, {
+  const result = failure(state, choice, {
     status: responses[choice.model], responseStarted: false, effects: 'none',
   }, { now: 0 });
   state = result.state;

@@ -39,11 +39,15 @@ São respostas em memória, não servidores HTTP ou modelos reais.
 `src/policy.mjs` decide; não executa ferramentas, timers, HTTP ou persistência.
 O consumidor deve persistir o estado de dispatch antes da chamada. `wait` é uma
 decisão com horário, não um agendador. O chamador confiável confirma o resultado
-com `success(state, model)`; somente então `nextOperation(state)` é permitido.
+com `success(state, dispatch)`; somente então `nextOperation(state)` é permitido.
 O antigo argumento `previousCompleted: true` não libera dispatch pendente.
-Checkpoints sem o campo aditivo `completed` são tratados como não concluídos.
-Ainda não há correlação por ID de tentativa: eventos assíncronos atrasados do
-mesmo modelo exigem a próxima etapa antes de integrar um executor.
+Estado versão 2: cada operação recebe um UUID; cada dispatch inclui sessionId,
+operationId e attemptId. `success` e `failure` exigem o dispatch original retornado
+por `select`, não apenas o modelo. Não reconstruir sua identidade a partir do
+estado atual quando um callback chegar. Checkpoints versão 1 são rejeitados e
+exigem reconciliação manual, sem migração automática de operações pendentes.
+Isso protege contra eventos atrasados, mas ainda não contra dois escritores
+concorrentes ou perda de persistência: ledger e lock continuam pendentes.
 
 O checkpoint do teste demonstra serialização e leitura em outro processo, não
 durabilidade de produção, lock entre processos ou retomada de uma sessão OpenCode.

@@ -27,7 +27,7 @@ test('HTTP status does not imply safety; error body and headers are not forwarde
   const response = new Response('private error payload', { status: 429, headers: { authorization: 'private' } });
   const normalized = httpFailure(response, { now: 0 });
   const choice = select(createState('s'), ['mock/a'], { now: 0 });
-  assert.equal(failure(choice.state, choice.model, normalized, { now: 0 }).reason, 'unsafe-replay');
+  assert.equal(failure(choice.state, choice, normalized, { now: 0 }).reason, 'unsafe-replay');
   assert.equal(JSON.stringify(normalized).includes('private'), false);
   assert.throws(() => httpFailure(new Response(), { now: 0 }));
 });
@@ -56,7 +56,7 @@ for (const scenario of [
     const normalized = httpFailure(response, {
       now: 0, responseStarted: false, effects: scenario.effects ?? 'none',
     }); // Safety is known from the controlled fixture, never inferred from 429.
-    const result = failure(a.state, a.model, normalized, { now: 0 });
+    const result = failure(a.state, a, normalized, { now: 0 });
     assert.equal(result.action, scenario.expected);
     if (result.action === 'fallback') {
       assert.equal(result.state.cooldowns['mock/a'], 120_000);

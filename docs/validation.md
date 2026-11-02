@@ -7,7 +7,7 @@ node --test
 node examples/fallback-demo.mjs
 ```
 
-Resultado atual: 29 testes aprovados, 0 falhas (21 de política + 8 HTTP).
+Resultado atual: 31 testes aprovados, 0 falhas (23 de política + 8 HTTP).
 Demo: 429 em mock/preferred seguido de 200 em mock/local com sessionId demo-session.
 Sem chamadas a provedores externos; testes HTTP usam exclusivamente 127.0.0.1.
 
@@ -24,7 +24,9 @@ O contrato foi comparado à RFC 9110; datas obsoletas ainda são rejeitadas.
 Incremento M1b parcial: sucesso explícito, bloqueio de conclusão duplicada/modelo
 incorreto, nova operação somente após sucesso e checkpoint legado conservador.
 Demo atualizada para registrar sucesso. Validado em Node 24.22.1 no Windows.
-Sem correlação assíncrona por ID ainda; ver handoff.md para a próxima entrega.
+Correlação acrescentada: resultado atrasado do mesmo modelo em outra operação,
+IDs incorretos, falha duplicada e identidade serializada. Estado v1 rejeitado sem
+migração automática. Ledger/lock permanecem pendentes; ver handoff.md.
 
 DoD desta mudança: comportamento testado, documentação/roadmap/ADR atualizados,
 sem dependências novas nem credenciais. M2/M3 não estão concluídos; não houve

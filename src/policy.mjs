@@ -1,15 +1,16 @@
-// Pure reference policy. No network, tools, credentials or OpenCode hooks.
+import { randomUUID } from 'node:crypto';
+// No network, tools, credentials or OpenCode hooks.
 const TRANSIENT = new Set([429, 500, 502, 503, 504]);
 const id = value => typeof value === 'string' && /^[a-zA-Z0-9_./:-]{1,128}$/.test(value);
 const time = value => Number.isSafeInteger(value) && value >= 0;
 
 export function createState(sessionId) {
   if (!id(sessionId)) throw new TypeError('Invalid session ID');
-  return { version: 1, sessionId, attempts: [], cooldowns: {}, blocked: false, pending: false, completed: false };
+  return { version: 2, sessionId, operationId: randomUUID(), attempts: [], cooldowns: {}, blocked: false, pending: false, completed: false };
 }
 
 function validate(state, models, now, maxAttempts) {
-  if (state?.version !== 1 || !id(state.sessionId) ||
+  if (state?.version !== 2 || !id(state.sessionId) || !id(state.operationId) ||
       !Array.isArray(state.attempts) || !state.attempts.every(id) ||
       new Set(state.attempts).size !== state.attempts.length ||
       !state.cooldowns || typeof state.cooldowns !== 'object' || Array.isArray(state.cooldowns) ||
@@ -40,17 +41,25 @@ export function select(state, models, { now, maxAttempts = 2 } = {}) {
     action: 'wait', until: Math.min(...remaining.map(model => state.cooldowns[model])), state,
   };
   return {
-    action: 'dispatch', model,
+    action: 'dispatch', model, sessionId: state.sessionId, operationId: state.operationId,
+    attemptId: `${state.operationId}:${state.attempts.length + 1}`,
     state: { ...state, attempts: [...state.attempts, model], pending: true },
   };
 }
 
 // Adapter must supply structured metadata. Never infer safety from error text.
 // Unknown/partial response or possible tool effects always require manual reconciliation.
-export function failure(state, model, error, { now, cooldownMs = 60_000 } = {}) {
+function matchDispatch(state, dispatch) {
+  if (!dispatch || dispatch.sessionId !== state.sessionId || dispatch.operationId !== state.operationId ||
+      dispatch.attemptId !== `${state.operationId}:${state.attempts.length}` ||
+      dispatch.model !== state.attempts.at(-1) || state.blocked || !state.pending)
+    throw new TypeError('Result must match the current dispatch');
+}
+
+export function failure(state, dispatch, error, { now, cooldownMs = 60_000 } = {}) {
+  const model = dispatch?.model;
   validate(state, [model], now, 2);
-  if (state.blocked || !state.pending || state.attempts.at(-1) !== model)
-    throw new TypeError('Failure must match the current dispatch');
+  matchDispatch(state, dispatch);
   if (!time(cooldownMs) || !time(now + cooldownMs)) throw new TypeError('Invalid cooldown');
   const stop = reason => ({ action: 'stop', reason, state: { ...state, blocked: true } });
   if (!error || error.responseStarted !== false || error.effects !== 'none') return stop('unsafe-replay');
@@ -66,11 +75,10 @@ export function failure(state, model, error, { now, cooldownMs = 60_000 } = {}) 
   };
 }
 
-// Trusted caller confirms completion; no asynchronous event correlation yet.
-export function success(state, model) {
-  validate(state, [model], 0, 2);
-  if (state.blocked || !state.pending || state.attempts.at(-1) !== model)
-    throw new TypeError('Success must match the current dispatch');
+// Return the original dispatch identity, never reconstruct it from current state.
+export function success(state, dispatch) {
+  validate(state, [dispatch?.model], 0, 2);
+  matchDispatch(state, dispatch);
   return { ...state, pending: false, completed: true };
 }
 
@@ -79,5 +87,5 @@ export function nextOperation(state) {
   validate(state, ['validation-only'], 0, 2);
   if (state.completed !== true || state.pending || state.blocked)
     throw new Error('Previous operation is not safely complete');
-  return { ...state, attempts: [], pending: false, completed: false };
+  return { ...state, operationId: randomUUID(), attempts: [], pending: false, completed: false };
 }

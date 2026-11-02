@@ -26,7 +26,7 @@ O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 | --- | --- | --- |
 | M0 — Base verificável | Concluído | Política, auditoria fixada, ADR e suíte local sem APIs |
 | M1a — Fronteira HTTP | Concluído neste incremento | Retry-After normalizado, casos inválidos bloqueados, 429/503→B e auth/efeitos→stop em loopback |
-| M1b — Segurança operacional | Em andamento: sucesso explícito; demais itens pendentes | Ledger atômico, lock por sessão, correlação de tentativa, cancelamento e orçamento temporal; crash/concorrência comprovados por testes |
+| M1b — Segurança operacional | Em andamento: sucesso explícito e correlação de tentativa concluídos | Ledger atômico, lock por sessão, cancelamento e orçamento temporal pendentes; crash/concorrência a comprovar |
 | M2 — Bootstrap no OpenCode 2.2.5 | Planejado; depende M1b | Adaptador mínimo, endpoint simulado, contexto/permissões preservados e cinco cenários de aceitação no host real |
 | M3 — Primeiro uso no próprio projeto | Objetivo prioritário; depende M2 | Uma tarefa pequena real, dois modelos autorizados configurados, branch, diff, testes e relatório; revisão humana antes do merge |
 | M4 — Memória e continuidade | Planejado; depende M3 | ai-memory avaliado/integrado; nova sessão recupera decisão e pendência sem confundir memória com estado de execução |
@@ -38,7 +38,7 @@ Concluído é sempre no escopo da linha: M1a não comprova M2. Ver
 
 ## Próximo ciclo implementável: M1b
 
-1. Definir identidade de operação/tentativa e eventos de sucesso/falha; rejeitar eventos atrasados.
+1. Concluído: identidade de operação/tentativa e eventos de sucesso/falha; rejeição de eventos atrasados.
 2. Persistir estado antes do dispatch, com atualização atômica e lock de escritor único.
 3. Provar bloqueio após crash, arquivo corrompido, lock concorrente e evento duplicado.
 4. Acrescentar timeout/cancelamento sem assumir que interromper a conexão desfez efeitos.
