@@ -26,7 +26,7 @@ O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 | --- | --- | --- |
 | M0 — Base verificável | Concluído | Política, auditoria fixada, ADR e suíte local sem APIs |
 | M1a — Fronteira HTTP | Concluído neste incremento | Retry-After normalizado, casos inválidos bloqueados, 429/503→B e auth/efeitos→stop em loopback |
-| M1b — Segurança operacional | Próximo | Ledger atômico, lock por sessão, correlação de tentativa, cancelamento e orçamento temporal; crash/concorrência comprovados por testes |
+| M1b — Segurança operacional | Em andamento: sucesso explícito; demais itens pendentes | Ledger atômico, lock por sessão, correlação de tentativa, cancelamento e orçamento temporal; crash/concorrência comprovados por testes |
 | M2 — Bootstrap no OpenCode 2.2.5 | Planejado; depende M1b | Adaptador mínimo, endpoint simulado, contexto/permissões preservados e cinco cenários de aceitação no host real |
 | M3 — Primeiro uso no próprio projeto | Objetivo prioritário; depende M2 | Uma tarefa pequena real, dois modelos autorizados configurados, branch, diff, testes e relatório; revisão humana antes do merge |
 | M4 — Memória e continuidade | Planejado; depende M3 | ai-memory avaliado/integrado; nova sessão recupera decisão e pendência sem confundir memória com estado de execução |
@@ -74,3 +74,4 @@ permissão permanente concedida ao futuro runtime.
 | Privacidade/custo | Allowlist por tarefa e métricas sem conteúdo sensível; não habilitar faturamento implicitamente |
 
 Atualizar este documento a cada marco junto com a evidência de validação.
+Ponto de retomada de baixo custo: [handoff](handoff.md).

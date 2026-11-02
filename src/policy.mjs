@@ -5,7 +5,7 @@ const time = value => Number.isSafeInteger(value) && value >= 0;
 
 export function createState(sessionId) {
   if (!id(sessionId)) throw new TypeError('Invalid session ID');
-  return { version: 1, sessionId, attempts: [], cooldowns: {}, blocked: false, pending: false };
+  return { version: 1, sessionId, attempts: [], cooldowns: {}, blocked: false, pending: false, completed: false };
 }
 
 function validate(state, models, now, maxAttempts) {
@@ -14,7 +14,10 @@ function validate(state, models, now, maxAttempts) {
       new Set(state.attempts).size !== state.attempts.length ||
       !state.cooldowns || typeof state.cooldowns !== 'object' || Array.isArray(state.cooldowns) ||
       !Object.entries(state.cooldowns).every(([key, value]) => id(key) && time(value)) ||
-      typeof state.blocked !== 'boolean' || typeof state.pending !== 'boolean') throw new TypeError('Invalid state');
+      typeof state.blocked !== 'boolean' || typeof state.pending !== 'boolean' ||
+      (state.completed !== undefined && typeof state.completed !== 'boolean') ||
+      (state.completed === true && (state.pending || state.blocked || !state.attempts.length)))
+    throw new TypeError('Invalid state');
   if (!Array.isArray(models) || models.length === 0 || !models.every(id) ||
       new Set(models).size !== models.length) throw new TypeError('Invalid authorized models');
   if (!time(now) || !Number.isSafeInteger(maxAttempts) || maxAttempts < 1 || maxAttempts > 20)
@@ -26,6 +29,7 @@ function validate(state, models, now, maxAttempts) {
 export function select(state, models, { now, maxAttempts = 2 } = {}) {
   validate(state, models, now, maxAttempts);
   if (state.blocked) return { action: 'stop', reason: 'blocked', state };
+  if (state.completed) return { action: 'stop', reason: 'completed', state };
   if (state.pending) return { action: 'stop', reason: 'in-flight-or-unknown', state };
   if (state.attempts.length >= maxAttempts)
     return { action: 'stop', reason: 'attempt-limit', state };
@@ -62,9 +66,18 @@ export function failure(state, model, error, { now, cooldownMs = 60_000 } = {}) 
   };
 }
 
-// Only after the owner reconciles/completes the previous operation. Never on restart alone.
-export function nextOperation(state, { previousCompleted = false } = {}) {
+// Trusted caller confirms completion; no asynchronous event correlation yet.
+export function success(state, model) {
+  validate(state, [model], 0, 2);
+  if (state.blocked || !state.pending || state.attempts.at(-1) !== model)
+    throw new TypeError('Success must match the current dispatch');
+  return { ...state, pending: false, completed: true };
+}
+
+// A caller-supplied boolean can no longer bypass pending/unknown dispatches.
+export function nextOperation(state) {
   validate(state, ['validation-only'], 0, 2);
-  if (!previousCompleted || state.blocked) throw new Error('Previous operation is not safely complete');
-  return { ...state, attempts: [], pending: false };
+  if (state.completed !== true || state.pending || state.blocked)
+    throw new Error('Previous operation is not safely complete');
+  return { ...state, attempts: [], pending: false, completed: false };
 }

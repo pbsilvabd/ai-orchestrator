@@ -38,8 +38,12 @@ São respostas em memória, não servidores HTTP ou modelos reais.
 
 `src/policy.mjs` decide; não executa ferramentas, timers, HTTP ou persistência.
 O consumidor deve persistir o estado de dispatch antes da chamada. `wait` é uma
-decisão com horário, não um agendador. `nextOperation(previousCompleted: true)`
-é uma afirmação confiável do chamador, nunca uma inferência feita a partir de erro.
+decisão com horário, não um agendador. O chamador confiável confirma o resultado
+com `success(state, model)`; somente então `nextOperation(state)` é permitido.
+O antigo argumento `previousCompleted: true` não libera dispatch pendente.
+Checkpoints sem o campo aditivo `completed` são tratados como não concluídos.
+Ainda não há correlação por ID de tentativa: eventos assíncronos atrasados do
+mesmo modelo exigem a próxima etapa antes de integrar um executor.
 
 O checkpoint do teste demonstra serialização e leitura em outro processo, não
 durabilidade de produção, lock entre processos ou retomada de uma sessão OpenCode.

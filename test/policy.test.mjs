@@ -4,7 +4,7 @@ import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { createState, select, failure, nextOperation } from '../src/policy.mjs';
+import { createState, select, failure, success, nextOperation } from '../src/policy.mjs';
 
 const models = ['mock/a', 'mock/b'];
 const safe = { status: 429, responseStarted: false, effects: 'none' };
@@ -69,7 +69,7 @@ test('preferred returns only in a new completed operation after cooldown/Retry-A
   const a = first();
   const failed = failure(a.state, a.model, { ...safe, retryAfterMs: 120_000 }, { now: 0 });
   const b = select(failed.state, models, { now: 0 });
-  const fresh = nextOperation(b.state, { previousCompleted: true });
+  const fresh = nextOperation(success(b.state, b.model));
   assert.equal(select(fresh, models, { now: 119_999 }).model, 'mock/b');
   assert.equal(select(fresh, models, { now: 120_000 }).model, 'mock/a');
   assert.throws(() => nextOperation(b.state));
@@ -105,4 +105,35 @@ test('restart during dispatch blocks all replay until explicit reconciliation', 
   const restored = JSON.parse(JSON.stringify(first().state));
   assert.equal(select(restored, models, { now: 999_999 }).reason, 'in-flight-or-unknown');
   assert.throws(() => nextOperation(restored));
+  assert.throws(() => nextOperation(restored, { previousCompleted: true }));
+});
+
+test('success closes dispatch without mutation and prevents more calls in the same operation', () => {
+  const a = first();
+  const snapshot = JSON.stringify(a.state);
+  const done = success(a.state, a.model);
+  assert.equal(JSON.stringify(a.state), snapshot);
+  assert.equal(done.pending, false);
+  assert.equal(select(done, models, { now: 0 }).reason, 'completed');
+  assert.throws(() => success(done, a.model));
+  assert.throws(() => failure(done, a.model, safe, { now: 0 }));
+  const fresh = nextOperation(JSON.parse(JSON.stringify(done)));
+  assert.equal(fresh.sessionId, a.state.sessionId);
+  assert.equal(select(fresh, models, { now: 0 }).model, 'mock/a');
+});
+
+test('success rejects wrong model, initial state and blocked dispatch', () => {
+  const a = first();
+  assert.throws(() => success(a.state, 'mock/b'));
+  assert.throws(() => success(createState('s'), 'mock/a'));
+  const blocked = failure(a.state, a.model, { status: 429 }, { now: 0 }).state;
+  assert.throws(() => success(blocked, a.model));
+  assert.throws(() => select({ ...a.state, completed: true }, models, { now: 0 }));
+});
+
+test('legacy checkpoint without completed remains unconfirmed', () => {
+  const legacy = first().state;
+  delete legacy.completed;
+  assert.throws(() => nextOperation(legacy, { previousCompleted: true }));
+  assert.equal(select(legacy, models, { now: 0 }).reason, 'in-flight-or-unknown');
 });
