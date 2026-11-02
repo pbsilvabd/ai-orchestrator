@@ -300,6 +300,8 @@ test('worker artifact schema accepts complete evidence and rejects unvalidated f
 
 test('task record schema accepts a persisted record and rejects drift', () => {
   assert.deepEqual(validate(recordSchema, taskRecord()), { ok: true });
+  assert.deepEqual(validate(recordSchema, taskRecord({ branch: 'task/head-x' })), { ok: true });
+  assert.deepEqual(validate(recordSchema, taskRecord({ branch: null })), { ok: true });
 
   const cases = [
     ['unknown status', taskRecord({ status: 'paused' }), 'status'],
@@ -307,6 +309,7 @@ test('task record schema accepts a persisted record and rejects drift', () => {
     ['bad payload hash', taskRecord({ payloadHash: 'nope' }), 'payloadHash'],
     ['block reason missing', taskRecord({ block: { requiresReconciliation: true } }), 'block.reason'],
     ['unknown record field', taskRecord({ replay: true }), 'replay'],
+    ['non-string branch', taskRecord({ branch: 7 }), 'branch'],
   ];
   for (const [name, value, path] of cases) {
     const result = validate(recordSchema, value);
