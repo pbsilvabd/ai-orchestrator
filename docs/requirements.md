@@ -8,19 +8,22 @@ end-to-end acceptance workload is development of this repository, with human rev
 OpenCode is the initial executor candidate, not a required supervising client.
 See [ADR-006](adr/006-worker-service.md).
 
-## Delegation MVP (M2a/M2b, pending)
+## Delegation MVP (M2a complete; M2b next)
 
-Specify and implement submit/status/result/cancel operations for one supported
-client and one worker. Task submission returns an ID; work continues between polls.
-Define persistent lifecycle and result retrieval, duplicate-request handling,
-task ownership, authorized actions/models, budgets and uncertain-outcome recovery.
-Cancellation must not claim effects were undone. Real client integration and
-self-development evidence are required; mocks alone are insufficient.
+M2a fixed the contract in [task-contract.md](task-contract.md) and the decisions in
+[ADR-007](adr/007-task-contract.md): MCP over stdio (revision `2026-07-28`) with
+OpenCode 2.2.5 as the first supported client, behind a capability gate, and a
+loopback HTTP fallback for the transport adapter only.
 
-MCP is the preferred interface to evaluate; an API is an alternative. Client and
-transport selection remain pending. Remote access requires an explicit
-authenticated deployment design. No universal web compatibility or continuous
-background LLM supervision is promised.
+M2b must implement submit/status/result/cancel for one worker. Task submission
+returns a stable ID; work continues between polls. Persistent lifecycle, result
+retrieval, duplicate-request handling, task ownership, authorized actions/models,
+budgets, cancellation without claims of reverted effects, and uncertain-outcome
+recovery are specified and must be tested. Real client integration is required;
+mock-only evidence does not satisfy M2b.
+
+Remote access requires an explicit authenticated deployment design and remains out of
+scope. No universal web compatibility or continuous background supervision is promised.
 
 ## Delivery 0: scaffold (current)
 
@@ -50,7 +53,7 @@ boundaries, reject incompatible capabilities and persist before dispatch. It mus
 handle duplicate callbacks, concurrency, expiration and cancellation. The current
 policy assumes a single trusted caller and prevalidated compatible models.
 
-## Outside the immediate contract increment (M2a)
+## Outside the immediate delivery (M2b)
 
 Real providers, OAuth, paid APIs, automatic discovery, multi-agent execution,
 intelligent classification, semantic memory, UI, same-model retries with backoff,

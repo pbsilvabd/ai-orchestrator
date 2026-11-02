@@ -1,47 +1,75 @@
 # Continuation point — 2026-11-02
 
-M0/M1a/M1b are complete within the local scope of the ADRs. The runner in
-src/runner.mjs combines ledger/fallback/cancellation and a per-invocation budget.
-M2 began with a passing real smoke test (session/context/explicit switch/deny-write).
-There is no fallback adapter or self-development use yet. Read
-[roadmap](roadmap.md) and [Definition of Done](definition-of-done.md).
+M0/M1a/M1b are complete within the local scope of the ADRs. M2a is complete as
+documentation: the normative [task contract](task-contract.md) and
+[ADR-007](adr/007-task-contract.md) fix the operations, lifecycle, ownership, limits,
+artifacts, the first transport and the reuse decision. M2b is next. There is no task
+service, transport adapter or self-development use yet.
 
-Run `node --test` and `node examples/fallback-demo.mjs` (Node 24).
-No dependency installation or credentials are required. GitHub:
-pbsilvabd/ai-orchestrator, branch main. Use remote HEAD as the reference and check
-for changes before editing.
+## Next action (M2b step 1: capability gate)
 
-Next increment is M2a, not immediate fallback adapter coding. Read
-[ADR-006](adr/006-worker-service.md): the accepted objective is a worker service
-for a supervising primary LLM. Specify submit/status/result/cancel, task identity,
-ownership, lifecycle, duplicate handling, limits and artifacts. Evaluate reuse,
-choose one client/transport and record the decision before implementing M2b.
-The primary end-to-end test is a delegated task that develops this repository.
-M3 can use one worker/model with fallback disabled; M2c covers safe fallback later.
+1. Configure a local stdio MCP server in the pinned OpenCode 2.2.5 host and prove
+   `initialize`, `tools/list` and one `tools/call` returning a structured JSON result.
+2. Record the transcript and outcome in [validation](validation.md). If the gate
+   fails, switch only the transport adapter to the loopback HTTP fallback and amend
+   ADR-007 before writing service code.
+3. Only after the gate: task store (`AI_ORCHESTRATOR_HOME`, atomic JSON, idempotency
+   index, startup reconciliation), the four operations with strict validation, and one
+   executor adapter (OpenCode CLI in an isolated worktree).
 
-The existing smoke harness remains useful for the executor. For M2c, inject a
-controlled 429 and establish safe effect boundaries; do not resubmit a failed
-prompt using another run. SDK retry changes retry/delay, not the readonly model.
-Read ADR-004/005. Close child.stdin because run waits for EOF. Keep the ledger
-handle open during calls, dispatch only after persistence, never auto-remove locks
-and keep uncertain pending state blocked. A task lifecycle is not yet implemented.
+Do not implement the task service or executor before step 2 is recorded. Do not add
+routing, memory, remote access, fallback or automatic merge in M2b.
 
-Current API: createState(sessionId), select(state, models, options),
-success(state, dispatch), failure(state, dispatch, error, options), nextOperation(state).
-Dispatch is the original object from select: carry its IDs into callbacks. State
-version 1 is not accepted. Never silently migrate old events/checkpoints.
+## Contract rules that must not drift
 
-43 local tests and the real smoke test passed. The official 2.2.5 binary was
-downloaded and its hash verified; it is outside the repository at
-../.audit/bin/opencode-2.2.5/opencode.exe.
-Command: `node integration/opencode-smoke.mjs /absolute/path/opencode.exe`.
-Ledger: src/ledger.mjs; runner: src/runner.mjs. There is no event authentication,
-exactly-once guarantee or power-loss guarantee. Yuri's reference is recorded in
-the roadmap for M3/M5; nothing has been imported.
+- Persist the task before any worker starts; a persistence failure accepts no task.
+- Same idempotency key and payload returns the same task ID; a different payload is a
+  conflict. No silent duplicate work.
+- `blocked` is terminal until a human reconciles it; nothing resumes automatically
+  after a restart, and a persisted dispatch is never replayed.
+- Cancellation is a request. `executionStopped` is `unknown` after abort/crash and
+  `effectsReverted` stays `false`.
+- Task text and artifacts never grant permissions; authorization is clamped to the
+  configured allowlist.
+- Success claims need a recorded command and exit code; otherwise report a limitation.
+- Result and status access are owner-only; `clientId` comes from configuration.
 
-Do not enable audited plugins automatically. Keep synced sources/ files read-only.
-Never publish credentials or treat mocks as proof of OpenCode integration.
-Priority destination: M3, the first real task in this repository.
+## Run and validate
 
-Documentation is now maintained in English. The README includes the target
-architecture diagram; its planned components are not implemented features.
+`node --test` and `node examples/fallback-demo.mjs` (Node 24.22.1, via fnm). No
+dependency installation or credentials are required. Tests must use temporary state
+directories, never the developer's real `AI_ORCHESTRATOR_HOME`.
+
+The real smoke harness remains useful as the executor reference:
+`node integration/opencode-smoke.mjs <absolute-path-to-opencode.exe>`. The verified
+2.2.5 binary lives outside the repository (see integration/README.md).
+
+## Existing API (reuse, do not bypass)
+
+`createState(sessionId)`, `select(state, models, options)`, `success(state, dispatch)`,
+`failure(state, dispatch, error, options)`, `nextOperation(state)` in
+`src/policy.mjs`. `openSession(directory, sessionId)` in `src/ledger.mjs` provides the
+exclusive lock and atomic checkpoint. `runOperation` in `src/runner.mjs` adds
+cancellation and the per-invocation budget (ADR-005). Dispatch identity is the original
+object from `select`; never rebuild it from current state. State version 1 is rejected
+without migration.
+
+The smoke test proved session/context continuity, explicit model switching and denied
+writes against the pinned host. SDK retry changes retry/delay, not the readonly model.
+Close `child.stdin` because the run waits for EOF. Abort does not undo effects.
+Locks left by a crash require manual reconciliation and are never removed automatically.
+
+There is no event authentication, exactly-once guarantee or power-loss guarantee.
+Ledger scope is a trusted local directory with cooperative writers; network
+filesystems are unsupported.
+
+## Workflow
+
+Work on a branch, open a PR and never force push. Every change appends an entry to
+[worklog](worklog.md), updates [roadmap](roadmap.md) and this handoff when the next
+action changes, and records commands/results in [validation](validation.md). Decisions
+and dependency changes need an ADR amendment. Documentation is maintained in English.
+
+Evidence levels stay separate: unit, local HTTP, OpenCode integration and use on this
+project. Mocks do not satisfy an integration gate, and direct edits in a development
+chat do not count as M3.

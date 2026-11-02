@@ -64,6 +64,12 @@ including loopback HTTP transport. **This is not an installed plugin or an
 integrated OpenCode MVP.** No AI calls, keys, provider accounts or paid APIs are
 required for these tests.
 
+M2a is complete as a specification: the normative [task contract](docs/task-contract.md)
+and [ADR-007](docs/adr/007-task-contract.md) define the four task operations,
+lifecycle, ownership, limits and artifacts, select MCP over stdio with OpenCode 2.2.5
+as the first client behind a capability gate, and record the pinned reuse/build
+decision. No task endpoint, transport or executor adapter exists yet.
+
 A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
 and a simulated local provider. It validates session continuity, context, explicit
 model switching and denied writes. It is not the fallback adapter.
@@ -139,8 +145,8 @@ for status, dependencies and acceptance gates.
 
 ## Next steps
 
-1. Specify the task contract and evaluate reuse; record the M2a decision.
-2. Connect one compatible primary client to one worker (M2b).
+1. Run the MCP capability gate against the pinned host (M2b step 1).
+2. Implement the task store, the four operations and one executor adapter (M2b).
 3. Complete a real self-development task with a diff, tests and human review (M3).
 4. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.
 
@@ -150,5 +156,6 @@ rejected. This is not a complete HTTP parser. Replay safety must come from the
 host; a 429 status alone does not prove absence of effects. Private bodies and
 headers are not copied.
 
-See [requirements](docs/requirements.md), [ADR-001](docs/adr/001-composition.md),
-[validation](docs/validation.md) and [contributing](CONTRIBUTING.md).
+See [requirements](docs/requirements.md), [task contract](docs/task-contract.md),
+[ADR-001](docs/adr/001-composition.md), [validation](docs/validation.md) and
+[contributing](CONTRIBUTING.md).
