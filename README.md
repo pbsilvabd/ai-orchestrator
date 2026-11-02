@@ -9,6 +9,10 @@ demo com dois provedores simulados e testes locais, incluindo transporte HTTP em
 loopback, sem dependências. **Não é um plugin instalado nem um MVP integrado ao OpenCode.**
 Nenhuma chamada de IA, chave, conta de provedor ou API paga é necessária.
 
+Há também um [smoke test com OpenCode real](integration/README.md), executado
+separadamente com binário 2.2.5. Valida sessão, contexto, troca explícita de modelo
+e escrita negada usando provider local simulado. Não é ainda o adaptador de fallback.
+
 Referência avaliada: OpenCode **2.2.5**, commit
 `9bbb8ce18c80f099e0e448775f59d965ead40a21`. Os plugins candidatos permanecem
 desativados até passarem pelos critérios da [auditoria](docs/plugin-audit.md).

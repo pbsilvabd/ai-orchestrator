@@ -15,9 +15,9 @@ O sistema deve conseguir melhorar a si mesmo sem conceder a si próprio permiss�
 ## Onde estamos
 
 Política pura com allowlist, cooldown, limite de tentativas e bloqueio de replay
-incerto; demo em memória; auditoria estática de dois plugins; checkpoint sintético.
-Neste incremento: normalização HTTP e testes reais de transporte em loopback.
-Ainda não existe executor, adaptador OpenCode, memória integrada ou ciclo autônomo.
+incerto; demo em memória; auditoria estática de dois plugins; ledger e runner local.
+Smoke test do OpenCode real passou com sessão/contexto, troca explícita de modelo
+e escrita negada. Ainda falta adaptador de fallback, memória integrada e ciclo autônomo.
 O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 
 ## Marcos
@@ -27,7 +27,7 @@ O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 | M0 — Base verificável | Concluído | Política, auditoria fixada, ADR e suíte local sem APIs |
 | M1a — Fronteira HTTP | Concluído neste incremento | Retry-After normalizado, casos inválidos bloqueados, 429/503→B e auth/efeitos→stop em loopback |
 | M1b — Segurança operacional | Concluído no escopo local | Runner com cancelamento/orçamento, checkpoint, lock e correlação testados; limites nos ADR-004/005 |
-| M2 — Bootstrap no OpenCode 2.2.5 | Planejado; depende M1b | Adaptador mínimo, endpoint simulado, contexto/permissões preservados e cinco cenários de aceitação no host real |
+| M2 — Bootstrap no OpenCode 2.2.5 | Em andamento: smoke real aprovado | Faltam adaptador de fallback e cinco cenários de falha no host real; sessão/contexto/troca explícita/deny-write validados |
 | M3 — Primeiro uso no próprio projeto | Objetivo prioritário; depende M2 | Uma tarefa pequena real, dois modelos autorizados configurados, branch, diff, testes e relatório; revisão humana antes do merge |
 | M4 — Memória e continuidade | Planejado; depende M3 | ai-memory avaliado/integrado; nova sessão recupera decisão e pendência sem confundir memória com estado de execução |
 | M5 — Roteamento por capacidade/custo | Planejado; depende M3 | Catálogo separado de autorização, compatibilidade de ferramentas/contexto, métricas e limites medidos contra baseline |
@@ -36,7 +36,7 @@ O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 Concluído é sempre no escopo da linha: M1a não comprova M2. Ver
 [Definition of Done](definition-of-done.md) para gates comuns e de release.
 
-## Próximo ciclo implementável: M1b
+## Base concluída: M1b; próximo ciclo: M2
 
 1. Concluído: identidade de operação/tentativa e eventos de sucesso/falha; rejeição de eventos atrasados.
 2. Concluído localmente: persistir antes do dispatch, atualização atômica e lock de escritor único.
