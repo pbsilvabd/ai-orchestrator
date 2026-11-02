@@ -1,13 +1,16 @@
-# Contribuir
+# Contributing
 
-Use Node.js 24 e execute `node --test` antes de abrir um PR. Mantenha o projeto
-sem dependências enquanto a implementação não as justificar. Não instale plugins
-automaticamente nem adicione credenciais, payloads privados ou logs de provedores.
+Use Node.js 24 and run `node --test` before opening a PR. Keep the project free of
+dependencies until the implementation justifies them. Do not install plugins
+automatically or add credentials, private payloads or provider logs.
 
-Mudanças no contrato de fallback exigem testes de segurança observável e atualização
-do ADR. Diferencie simulação, inspeção estática e integração executada. Preserve a
-licença existente e use branches/PRs sem force push.
+Write documentation, comments and user-facing messages in English. Preserve API
+identifiers, commands and proper names when translating existing material.
 
-Confira a [Definition of Done](docs/definition-of-done.md) e atualize o
-[roadmap](docs/roadmap.md) ao concluir um marco. Commits diretos na main requerem
-autorização do mantenedor; esta sessão recebeu essa autorização.
+Fallback contract changes require observable safety tests and an updated ADR.
+Distinguish simulation, static inspection and executed integration. Preserve the
+existing license and use branches/PRs without force pushes.
+
+Check the [Definition of Done](docs/definition-of-done.md) and update the
+[roadmap](docs/roadmap.md) when completing a milestone. Direct main commits require
+maintainer authorization; this development session has that authorization.

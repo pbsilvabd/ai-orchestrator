@@ -1,8 +1,9 @@
 # AI Orchestrator
 
-- Referência de integração: OpenCode 2.2.5; leia docs/plugin-audit.md antes de habilitar plugins.
-- Execute `node --test` e a demo ao alterar a política.
-- Sem chamadas pagas ou credenciais nos fontes, testes e logs.
-- Nunca trate resultado incerto de ferramenta como seguro para replay.
-- Mantenha mudanças pequenas, documentadas, em branches; não force push.
-- Não declare integração validada com base apenas nos mocks.
+- Integration reference: OpenCode 2.2.5; read docs/plugin-audit.md before enabling plugins.
+- Run `node --test` and the demo when changing the policy.
+- No paid calls or credentials in source files, tests or logs.
+- Never treat an uncertain tool outcome as safe to replay.
+- Keep changes small and documented. Use branches by default; direct main commits require maintainer authorization. Never force push.
+- Do not claim validated integration based only on mocks.
+- Write documentation, comments and user-facing repository messages in English.

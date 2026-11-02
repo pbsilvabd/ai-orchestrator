@@ -1,35 +1,35 @@
-# ADR-001 — Composição e política verificável antes da integração
+# ADR-001 — Composition and a verifiable policy before integration
 
-Data: 2026-11-02. Status: adotada para o scaffold.
+Date: 2026-11-02. Status: accepted for the scaffold.
 
-## Contexto
+## Context
 
-O projeto pretende reutilizar OpenCode, plugins e ai-memory. A inspeção dos plugins
-encontrou comportamentos incompatíveis com nossa política conservadora (auth como
-fallback, conversão de partes e replay). Compatibilidade declarada não comprova
-segurança sob efeitos colaterais ou reinício.
+The project intends to reuse OpenCode, plugins and ai-memory. Plugin inspection
+found behaviors incompatible with our conservative policy: authentication fallback,
+message-part conversion and replay. Declared compatibility does not establish
+safety around side effects or restarts.
 
-## Decisão
+## Decision
 
-Fixar OpenCode 2.2.5 como referência de contrato. Não modificar seu core nem ativar
-plugins automaticamente. Entregar uma política pura em JavaScript ESM e uma suíte
-Node sem bibliotecas externas, como especificação executável para o futuro adaptador.
-Não construir proxy, router de produção, multiagentes ou memória neste incremento.
+Pin OpenCode 2.2.5 as the contract reference. Do not modify its core or enable
+plugins automatically. Deliver a pure JavaScript ESM policy and a Node suite
+without external libraries as an executable specification for the future adapter.
+Do not build a proxy, production router, multi-agent system or memory in this increment.
 
-Fallback é limitado a modelos autorizados, sem retries no mesmo modelo nesta fase.
-Isso elimina loops e backoff ativo do escopo inicial; cooldown e Retry-After são
-representados como timestamps. Cotas sem reset conhecido exigem intervenção.
-Não degradar silenciosamente partes de mensagem para obter sucesso.
+Fallback is limited to authorized models, without retries on the same model at
+this stage. This excludes loops and active backoff from the initial scope;
+cooldown and Retry-After are represented as timestamps. Quotas without known reset
+times require intervention. Never silently degrade message parts to obtain success.
 
-Estado operacional é distinto de memória semântica. Um dispatch persistido ainda
-pendente após crash exige reconciliação. Nenhuma promessa de exactly-once é feita.
-ai-memory permanece candidato futuro; não é dependência instalada nem substituto
-para ledger operacional e controle de concorrência.
+Operational state is distinct from semantic memory. A persisted dispatch still
+pending after a crash requires reconciliation. There is no exactly-once promise.
+ai-memory remains a future candidate, not an installed dependency or a replacement
+for an operational ledger and concurrency control.
 
-## Consequências
+## Consequences
 
-Testes são baratos e reproduzíveis, mas não aprovam nenhum plugin nem demonstram
-continuidade real no OpenCode. Há manutenção de uma pequena especificação própria;
-ela só deve virar código de integração onde os componentes existentes forem insuficientes.
-Antes de produção: persistência atômica, locks, validação de capacidades/mensagens,
-orçamento temporal, cancelamento e prova de segurança de replay.
+Tests are inexpensive and reproducible, but approve no plugin and do not
+demonstrate real OpenCode continuity. A small project-specific specification must
+be maintained; it should become integration code only where existing components
+are insufficient. Production requires atomic persistence, locks, capability/message
+validation, time budgets, cancellation and evidence of replay safety.

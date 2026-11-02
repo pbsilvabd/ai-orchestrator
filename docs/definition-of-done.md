@@ -1,50 +1,50 @@
 # Definition of Done
 
-## Uma mudança está concluída quando
+## A change is complete when
 
-- [ ] Problema, escopo e critério observável estão descritos no commit/PR/documentação.
-- [ ] Implementação permanece dentro do marco; limitações e trabalho restante são explícitos.
-- [ ] Testes de comportamento e falha relevantes passam; regressões da suíte completa passam.
-- [ ] Comandos, ambiente e resultados constam em docs/validation.md.
-- [ ] Sem APIs pagas obrigatórias, credenciais ou dados privados em fontes/logs/fixtures.
-- [ ] Falhas desconhecidas não autorizam replay; auth/permissões não são contornadas.
-- [ ] README, requisitos e roadmap refletem o resultado; decisões arquiteturais têm ADR quando necessário.
-- [ ] Diff revisto, licença preservada, commit publicado e estado remoto verificado; sem force push.
+- [ ] The problem, scope and observable acceptance criterion are documented in the commit/PR/documentation.
+- [ ] Implementation stays within its milestone; limitations and remaining work are explicit.
+- [ ] Relevant behavior/failure tests and full-suite regression checks pass.
+- [ ] Commands, environment and results are recorded in docs/validation.md.
+- [ ] No mandatory paid APIs, credentials or private data appear in sources/logs/fixtures.
+- [ ] Unknown failures never authorize replay; authentication and permissions are not bypassed.
+- [ ] README, requirements and roadmap reflect the result; architectural decisions have ADRs when needed.
+- [ ] The diff is reviewed, license preserved, commit published and remote state verified; no force push.
 
-Commit direto na main pode ser usado quando autorizado pelo mantenedor, como neste
-ciclo. Isso não dispensa testes/revisão nem altera as permissões do futuro agente.
+Direct main commits may be used when authorized by the maintainer, as in this
+cycle. This does not waive tests/review or change the future agent's permissions.
 
-## Níveis de evidência
+## Evidence levels
 
-| Nível | O que comprova | O que não comprova |
+| Level | Demonstrates | Does not demonstrate |
 | --- | --- | --- |
-| Unitário | Decisão da política e normalização de entradas | Host, rede, persistência de produção |
-| HTTP local | Headers/status reais e seleção com fixture controlada | Ferramentas ou sessões reais OpenCode |
-| Integração OpenCode | Hooks, fila, contexto, permissões e falhas no host fixado | Qualidade/custo de modelo real |
-| Uso no próprio projeto | Tarefa real produz diff e evidências sob supervisão | Autonomia irrestrita ou segurança universal |
+| Unit | Policy decisions and input normalization | Host, network, production persistence |
+| Local HTTP | Real headers/status and selection with controlled fixtures | Real OpenCode tools or sessions |
+| OpenCode integration | Hooks, queue, context, permissions and failures in the pinned host | Real model quality/cost |
+| Use on this project | A real task produces a diff and evidence under supervision | Unrestricted autonomy or universal safety |
 
-## MVP integrado pronto (M2)
+## Integrated MVP ready (M2)
 
-- [ ] Instalação e execução reproduzíveis com OpenCode 2.2.5 fixado.
-- [ ] 429 antes da resposta troca A→B sem perder contexto/permissões.
-- [ ] Dois modelos falhando terminam dentro dos limites.
-- [ ] Reinício preserva histórico e bloqueia dispatch cujo resultado é incerto.
-- [ ] Falha após escrita/efeito externo não repete a ação.
-- [ ] Retorno a A só em nova operação segura após cooldown.
-- [ ] Auth, capacidade incompatível, cancelamento, eventos duplicados e concorrência têm testes.
+- [ ] Reproducible installation and execution with pinned OpenCode 2.2.5.
+- [ ] A 429 before a response switches A to B without losing context/permissions.
+- [ ] Two failing models terminate within the limits.
+- [ ] Restart preserves history and blocks dispatches with uncertain outcomes.
+- [ ] Failure after a write/external effect does not repeat the action.
+- [ ] Return to A happens only in a new safe operation after cooldown.
+- [ ] Authentication, incompatible capabilities, cancellation, duplicate events and concurrency have tests.
 
-## Primeiro uso no próprio projeto pronto (M3)
+## First use on this project ready (M3)
 
-- [ ] Uma tarefa do backlog foi executada pelo projeto sobre OpenCode, não apenas por este chat.
-- [ ] Provedores autorizados e runtime/versionamento registrados, sem divulgar credenciais.
-- [ ] Mudanças isoladas em branch, base registrada e diff limitado à tarefa.
-- [ ] Testes executados pelo fluxo, resultados verificáveis e revisão humana concluída.
-- [ ] Relatório contém tentativas, falhas, arquivos e custo conhecido (ou explicitamente desconhecido).
-- [ ] Há procedimento de recuperação e nenhuma elevação de permissão pelo agente.
+- [ ] The project executed a backlog task through OpenCode, rather than only through this chat.
+- [ ] Authorized providers and runtime/version details are recorded without disclosing credentials.
+- [ ] Changes are isolated on a branch, with a recorded base and a task-scoped diff.
+- [ ] The workflow ran tests, results are verifiable and human review is complete.
+- [ ] The report includes attempts, failures, files and known (or explicitly unknown) costs.
+- [ ] A recovery procedure exists and the agent did not elevate its permissions.
 
-## Release pública pronta
+## Public release ready
 
-M3 demonstrado, instalação limpa reproduzida, documentação de limites e privacidade,
-licença/dependências auditadas e smoke test por plataforma declarada. Tornar o
-repositório público e habilitar provedores são decisões explícitas do mantenedor.
-Nenhuma versão estável será anunciada somente porque os testes unitários passam.
+M3 demonstrated, clean installation reproduced, limitations/privacy documented,
+license/dependencies audited and smoke tests passed on each declared platform.
+Making the repository public and enabling providers are explicit maintainer
+decisions. Passing unit tests alone is not enough to announce a stable release.

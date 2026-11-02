@@ -1,54 +1,67 @@
-# Validação reproduzível
+# Reproducible validation
 
-Executado em 2026-11-02 no Windows, Node.js v24.22.1:
+Executed on 2026-11-02 on Windows, Node.js v24.22.1:
 
 ```sh
 node --test
 node examples/fallback-demo.mjs
 ```
 
-Resultado atual: 43 testes aprovados, 0 falhas (23 política + 8 HTTP + 6 ledger + 6 runner).
-Adicional: smoke real OpenCode 2.2.5 aprovado; executar separadamente conforme
-[integração](../integration/README.md). Dois prompts na mesma sessão, contexto
-preservado, troca explícita de modelo e write negado sem arquivo criado.
-Demo: 429 em mock/preferred seguido de 200 em mock/local com sessionId demo-session.
-Sem chamadas a provedores externos; testes HTTP usam exclusivamente 127.0.0.1.
+Current result: 43 tests passed, 0 failures (23 policy + 8 HTTP + 6 ledger + 6 runner).
+Additionally, the real OpenCode 2.2.5 smoke test passed; run it separately as
+described in [integration](../integration/README.md). Two prompts in the same
+session preserved context, explicitly switched models and denied a write without
+creating the file. Demo: 429 from mock/preferred followed by 200 from mock/local
+with sessionId demo-session. No external provider calls; HTTP tests use only 127.0.0.1.
 
-A suíte cobre limites, allowlist, erros fatais, metadados ausentes, cooldown,
-Retry-After normalizado, timeout seguro, bloqueio após efeito e checkpoint lido
-por novo processo. Não dorme nem depende de relógio real: timestamps são injetados.
-Arquivos temporários são criados pelo próprio teste e removidos no finally.
-Exceção ao relógio injetado: teste do runner usa deadline real de 100 ms e limite
-externo de teste de 3 s; não exige latência exata.
+The suite covers limits, allowlists, fatal errors, missing metadata, cooldown,
+normalized Retry-After, safe timeout, blocking after effects and checkpoints read
+by a new process. Policy timestamps are injected, without sleeping or depending
+on a real clock. Tests create temporary files and remove them in finally.
+Exception: the runner test uses a real 100 ms deadline and a 3 s outer test limit;
+it does not assert exact latency.
 
-Incremento M1a: segundos/data canônica, header ausente, passado, inválido e overflow;
-loopback 429/503→B e 401/header inválido/efeitos possíveis→stop. Servidor usa porta
-efêmera, timeout de teste/chamada e fechamento no finally. Payloads não são logados.
-O contrato foi comparado à RFC 9110; datas obsoletas ainda são rejeitadas.
+M1a: seconds/canonical dates, absent/past/invalid/overflow headers; loopback
+429/503 to B and 401/invalid headers/possible effects to stop. The server uses an
+ephemeral port, test/call timeouts and cleanup in finally. Payloads are not logged.
+The contract was compared with RFC 9110; obsolete dates remain rejected.
 
-Incremento M1b parcial: sucesso explícito, bloqueio de conclusão duplicada/modelo
-incorreto, nova operação somente após sucesso e checkpoint legado conservador.
-Demo atualizada para registrar sucesso. Validado em Node 24.22.1 no Windows.
-Correlação acrescentada: resultado atrasado do mesmo modelo em outra operação,
-IDs incorretos, falha duplicada e identidade serializada. Estado v1 rejeitado sem
-migração automática. Ledger local acrescentado: exclusão entre processos,
-crash sem close, reabertura pending, corrupção, rename falho e persistência de
-resultados. Processos filhos têm timeout de 5 segundos. Não validado sob queda
-de energia, filesystem de rede ou host OpenCode; ver handoff.md.
+M1b: explicit success, duplicate completion/wrong-model blocking, new operations
+only after success and conservative legacy checkpoint handling. The demo records
+success. Correlation covers stale results from the same model in another operation,
+incorrect IDs, duplicate failures and serialized identity. State v1 is rejected
+without automatic migration. Local ledger tests cover interprocess exclusion,
+crash without close, reopening pending state, corruption, failed rename and result
+persistence. Child processes have 5-second timeouts. Power loss, network
+filesystems and the ledger inside OpenCode have not been validated; see
+[handoff](handoff.md).
 
-Runner: fallback, sucesso persistido, pré-cancelamento, cancelamento em voo,
-resposta/rejeição tardia, provedor que ignora abort, erro desconhecido, resposta
-malformada e limite de tentativas. Abort não comprova término de trabalho externo.
+Runner coverage: fallback, persisted success, precancellation, in-flight cancellation,
+late responses/rejections, providers ignoring abort, unknown errors, malformed
+responses and attempt limits. Abort does not establish that external work stopped.
 
-DoD desta mudança: comportamento testado, documentação/roadmap/ADR atualizados,
-sem dependências novas nem credenciais. M2/M3 não estão concluídos; não houve
-execução de tarefa pelo próprio AI Orchestrator.
+Behavior is tested, documentation/roadmap/ADRs are updated, and no dependencies or
+credentials were added. M2/M3 remain incomplete; AI Orchestrator has not executed
+a task to develop itself.
 
-Limitações: testes do ledger/runner usam fixtures. O smoke usa host/ferramentas reais
-e modelo simulado, comprovando contexto entre processos CLI, não recuperação de
-uma operação em voo. Fallback automático no host, exactly-once e suíte upstream
-não foram validados. M2 permanece em andamento.
+Limitations: ledger/runner tests use fixtures. The smoke test uses real host/tools
+with a simulated model, proving context across CLI processes rather than recovery
+of an in-flight operation. Automatic host fallback, exactly-once execution and
+upstream suites have not been validated. M2 remains in progress.
 
-Não foi adicionado workflow remoto nesta etapa: os comandos acima bastam e não
-exigem runner, instalação de pacote ou serviço de IA. CI pode ser acrescentado
-quando a integração tiver seu ambiente fixado.
+No remote workflow was added at this stage: the commands above suffice without a
+CI runner, package installation or AI service. CI can follow once the integration
+environment is pinned.
+
+## English documentation update
+
+All maintained Markdown documentation is now in English, including ADRs, the audit,
+roadmap, handoff and integration instructions. The README diagram describes the
+target architecture and explicitly separates implemented, in-progress and planned
+components. This update does not change executable behavior or complete M2/M3.
+
+Validation for this documentation update: reran `node --test` (43 passed, 0 failed)
+and `node examples/fallback-demo.mjs` (expected 429 then 200); checked all 21 local
+Markdown links and preserved existing source URLs. The real host smoke test was
+not rerun for this documentation-only change. Mermaid source was reviewed; visual
+rendering was not tested.

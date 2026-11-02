@@ -1,21 +1,22 @@
-# ADR-003 — Identidade de dispatch e estado versão 2
+# ADR-003 — Dispatch identity and state version 2
 
-Data: 2026-11-02. Status: adotada.
+Date: 2026-11-02. Status: accepted.
 
-Confirmar somente modelo/pending permite que o resultado atrasado de uma operação
-anterior finalize uma nova operação com o mesmo modelo. Cada operação agora recebe
-UUID criado pelo runtime Node; cada tentativa recebe operationId mais ordinal.
-O dispatch também carrega sessionId e model. success/failure verificam todos os
-campos contra o estado atual antes de alterar qualquer coisa.
+Checking only model/pending lets a stale result from a previous operation complete
+a new operation using the same model. Each operation now receives a UUID generated
+by the Node runtime; each attempt receives operationId plus an ordinal. Dispatch
+also carries sessionId and model. success/failure check all fields against current
+state before changing anything.
 
-O consumidor deve transportar a identidade do dispatch original junto à chamada.
-Reconstruí-la no callback com o estado atual anula a proteção. Identidade é
-correlação, não autenticação: o consumidor continua sendo confiável.
+The consumer must carry the original dispatch identity with the call.
+Reconstructing it from current state inside a callback defeats the protection.
+Identity provides correlation, not authentication: the consumer remains trusted.
 
-Estado versão 2 rejeita checkpoints v1. Como não há runtime instalado nem dados de
-produção conhecidos, não introduzimos migração automática que possa liberar uma
-operação antiga incerta. Reconciliação de checkpoints antigos é manual.
+State version 2 rejects v1 checkpoints. With no installed runtime or known
+production data, we do not introduce automatic migration that might unlock an
+uncertain old operation. Legacy checkpoints require manual reconciliation.
 
-Essas transições não garantem exclusão mútua: dois escritores que usam a mesma
-cópia podem aceitar o mesmo evento. Ledger atômico e lock são o próximo gate,
-antes de conectar callbacks reais do OpenCode. Nenhuma garantia exactly-once.
+These transitions do not guarantee mutual exclusion: two writers using the same
+copy could accept the same event. An atomic ledger and lock are the next gate
+before connecting real OpenCode callbacks (subsequently covered by ADR-004).
+There is no exactly-once guarantee.

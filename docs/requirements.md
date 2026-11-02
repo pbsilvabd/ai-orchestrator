@@ -1,36 +1,36 @@
-# Escopo e critérios de aceitação
+# Scope and acceptance criteria
 
-## Entrega 0: scaffold (atual)
+## Delivery 0: scaffold (current)
 
-- Política pura, allowlist explícita, limite de tentativas e cooldown.
-- Bloqueio conservador para auth, cota desconhecida, resposta parcial e efeitos.
-- Testes com dados sintéticos, checkpoint em arquivo e novo processo.
-- Auditoria de fontes fixados e ADR; nenhum plugin ativado ou credencial versionada.
+- Pure policy, explicit allowlist, attempt limit and cooldown.
+- Conservative blocking for authentication, unknown quotas, partial responses and effects.
+- Tests using synthetic data, file checkpoints and new processes.
+- Audit of pinned sources and ADRs; no enabled plugins or committed credentials.
 
-## Entrega 1: integração OpenCode (pendente)
+## Delivery 1: OpenCode integration (pending)
 
-Subetapa M1a concluída: normalização HTTP/Retry-After e testes loopback. M1b inclui
-correlação, checkpoint, lock e runner com cancelamento/orçamento local. Consulte [roadmap](roadmap.md) e
-[Definition of Done](definition-of-done.md); o destino prioritário é usar o projeto
-para executar uma tarefa real no próprio repositório (M3).
+M1a is complete: HTTP/Retry-After normalization and loopback tests. M1b includes
+correlation, checkpoints, locking and a runner with local cancellation/budget.
+See the [roadmap](roadmap.md) and [Definition of Done](definition-of-done.md).
+The priority destination is a real task executed by the project in its own repository (M3).
 
-| Cenário | Critério no host real |
+| Scenario | Acceptance criterion in the real host |
 | --- | --- |
-| 429 antes da resposta | B assume na mesma sessão, com contexto e permissões íntegros |
-| A e B falham | Termina sem loop ou tentativas além do orçamento |
-| Reinício | Histórico preservado; dispatch incerto bloqueado |
-| Falha após escrita | Nenhum replay automático da ação |
-| A se recupera | Volta apenas em nova operação segura, após cooldown |
+| 429 before a response | B takes over in the same session, preserving context and permissions |
+| A and B fail | Stops without loops or attempts beyond the budget |
+| Restart | History preserved; uncertain dispatch blocked |
+| Failure after a write | No automatic replay of the action |
+| A recovers | Returns only in a new safe operation, after cooldown |
 
-Usar endpoint local de falhas e ferramentas de teste, sem esgotar cotas reais.
-O adaptador deve usar a normalização Retry-After (segundos/data HTTP), observar fronteiras de
-efeitos, rejeitar capacidades incompatíveis e persistir antes do dispatch. Deve
-tratar callbacks duplicados, concorrência, expiração e cancelamento. A política
-atual presume um único chamador confiável e modelos compatíveis pré-validados.
+Use a local failure endpoint and test tools instead of exhausting real quotas.
+The adapter must normalize Retry-After (seconds/HTTP date), observe effect
+boundaries, reject incompatible capabilities and persist before dispatch. It must
+handle duplicate callbacks, concurrency, expiration and cancellation. The current
+policy assumes a single trusted caller and prevalidated compatible models.
 
-## Fora deste incremento
+## Outside this increment
 
-Provedores reais, OAuth, APIs pagas, descoberta automática, execução multiagente,
-classificação inteligente, memória semântica, UI, retry com backoff no mesmo modelo
-e publicação do repositório privado. Não usar assinaturas como API genérica nem
-alternar contas para contornar limites.
+Real providers, OAuth, paid APIs, automatic discovery, multi-agent execution,
+intelligent classification, semantic memory, UI, same-model retries with backoff,
+and publishing the private repository. Do not treat subscriptions as generic APIs
+or switch accounts to bypass limits.

@@ -1,54 +1,55 @@
-# Smoke test com OpenCode real
+# Real OpenCode smoke test
 
-Executar separadamente dos testes locais, com Node 24 e binário oficial fixado:
+Run separately from local tests, using Node 24 and a pinned official binary:
 
 ```sh
-node integration/opencode-smoke.mjs /caminho/absoluto/opencode.exe
+node integration/opencode-smoke.mjs /absolute/path/opencode.exe
 ```
 
-Validado no Windows x64 com OpenCode 2.2.5 em 2026-11-02. Binário não é instalado
-globalmente nem versionado neste repositório. Obter na
-[release oficial](https://github.com/anomalyco/opencode/releases/tag/v2.2.5).
-ZIP usado: `opencode-windows-x64.zip` (121962397 bytes).
-SHA-256 verificado contra o digest publicado na release:
+Validated on Windows x64 with OpenCode 2.2.5 on 2026-11-02. The binary is neither
+installed globally nor committed to this repository. Obtain it from the
+[official release](https://github.com/anomalyco/opencode/releases/tag/v2.2.5).
+ZIP used: `opencode-windows-x64.zip` (121962397 bytes).
+SHA-256 verified against the published release digest:
 `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8`.
 
-O script verifica a versão, mas não baixa nem valida o hash do executável recebido;
-o chamador deve fornecer um binário confiável. Demais plataformas não foram validadas.
+The script checks the version, but does not download or verify the supplied
+executable's hash; the caller must supply a trusted binary. Other platforms have
+not been validated.
 
-## O que executa
+## What it runs
 
-1. Cria diretório temporário, configuração/data/cache isolados e servidor em 127.0.0.1.
-2. Usa provider OpenAI-compatible embutido, catálogo vazio e credencial fictícia.
-3. Executa `run --standalone --format json` com um marcador de contexto.
-4. Abre outro processo usando a mesma sessão e outro modelo simulado.
-5. Confere os dois marcadores e a resposta anterior no payload recebido pelo provider.
-6. Emite uma chamada `write` pelo modelo simulado, com todas as ferramentas negadas.
-7. Confere rejeição na saída e inexistência do arquivo alvo.
+1. Creates a temporary directory, isolated configuration/data/cache and a server on 127.0.0.1.
+2. Uses the built-in OpenAI-compatible provider, an empty catalog and a fake credential.
+3. Executes `run --standalone --format json` with a context marker.
+4. Starts another process with the same session and a different simulated model.
+5. Checks both markers and the previous response in the payload received by the provider.
+6. Emits a `write` call from the simulated model with all tools denied.
+7. Verifies rejection in the output and absence of the target file.
 
-Resultado observado: dois prompts, quatro requests (incluindo trabalho auxiliar
-do host), mesma sessão, contexto preservado, troca explícita de modelo e escrita
-negada. A contagem de requests é informativa; não é critério de aceitação.
+Observed result: two prompts, four requests (including auxiliary host work), the
+same session, preserved context, explicit model switching and denied writes.
+Request count is informational, not an acceptance criterion.
 
-## Limites e encerramento
+## Limits and shutdown
 
-Não há modelo real, chamada paga ou integração do runner neste teste. Não demonstra
-fallback automático, segurança de replay, retomada de tarefa em voo ou todo o M2.
-A permissão testada é deny-all; não comprova todas as políticas de ferramentas.
-Não instala plugins comunitários nem usa credenciais/configuração pessoais. O
-isolamento é de configuração/processo; não é um firewall de saída.
+This test has no real model, paid call or runner integration. It does not establish
+automatic fallback, replay safety, in-flight recovery or completion of M2.
+The tested permission policy is deny-all; it does not validate every tool policy.
+It installs no community plugins and uses no personal credentials/configuration.
+Isolation covers configuration/processes; it is not an outbound firewall.
 
-Cada comando tem timeout de 45 segundos. No Windows o timeout encerra a árvore
-do processo criado pelo teste. Diretório temporário é removido ao finalizar;
-falha de limpeza informa o caminho para diagnóstico, sem mascarar o erro original.
+Each command has a 45-second timeout. On Windows, timeout terminates the process
+tree created by the test. Temporary directories are removed on completion;
+cleanup failures report the path for diagnosis without masking the original error.
 
-Correção importante: stdin do CLI precisa ser fechado. O código de `run` lê até
-EOF antes de enviar o prompt, mesmo quando a mensagem foi passada como argumento.
-O timeout inicial era causado pelo harness, não foi comprovado defeito do servidor.
+Harness fix: CLI stdin must be closed. The run implementation reads until EOF
+before submitting the prompt, even when the message is supplied as an argument.
+The initial timeout came from the harness; a server defect was not established.
 
-Contratos examinados no commit OpenCode `9bbb8ce18c80f099e0e448775f59d965ead40a21`:
+Contracts inspected at OpenCode commit `9bbb8ce18c80f099e0e448775f59d965ead40a21`:
 `packages/cli/src/run/run.ts`, `packages/plugin/src/promise/session.ts`,
 `packages/schema/src/config/provider.ts`, `packages/schema/src/permission.ts`,
-`packages/core/src/tool/plugin/write.ts`. O hook retry permite decidir retry/delay;
-modelo readonly não é um mecanismo de troca atômica. Não implementar fallback
-repetindo `run`/prompt sem validar a fronteira de efeitos.
+`packages/core/src/tool/plugin/write.ts`. The retry hook controls retry/delay;
+the readonly model is not an atomic switching mechanism. Do not implement fallback
+by repeating run/prompt without validating the effect boundary.

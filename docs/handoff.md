@@ -1,34 +1,42 @@
-# Ponto de retomada — 2026-11-02
+# Continuation point — 2026-11-02
 
-M0/M1a/M1b concluídos no escopo local dos ADRs. Runner em src/runner.mjs combina
-ledger/fallback/cancelamento/orçamento por invocação. M2 começou com smoke real
-aprovado (sessão/contexto/troca explícita/deny-write). Ainda não há adaptador de fallback nem uso do projeto
-para desenvolver a si mesmo. Leia roadmap.md e definition-of-done.md.
+M0/M1a/M1b are complete within the local scope of the ADRs. The runner in
+src/runner.mjs combines ledger/fallback/cancellation and a per-invocation budget.
+M2 began with a passing real smoke test (session/context/explicit switch/deny-write).
+There is no fallback adapter or self-development use yet. Read
+[roadmap](roadmap.md) and [Definition of Done](definition-of-done.md).
 
-Executar: `node --test` e `node examples/fallback-demo.mjs` (Node 24).
-Sem instalação de dependências ou credenciais. GitHub: pbsilvabd/ai-orchestrator,
-branch main. Use o HEAD remoto como referência, verificando mudanças antes de editar.
+Run `node --test` and `node examples/fallback-demo.mjs` (Node 24).
+No dependency installation or credentials are required. GitHub:
+pbsilvabd/ai-orchestrator, branch main. Use remote HEAD as the reference and check
+for changes before editing.
 
-Próximo incremento: M2, adaptador de fallback sem repetir prompts. O harness em
-integration/opencode-smoke.mjs já inicializa o host e provider local; leia
-integration/README.md. Expandir com falha 429 controlada e eventos/hooks, estabelecendo
-fronteira segura antes de trocar modelo. Não usar outro `run` para reenviar prompt
-falho. SDK retry só altera retry/delay, não o modelo readonly. Leia ADR-004/005.
-Bug do harness resolvido: fechar child.stdin; run aguarda EOF antes do prompt.
-Manter handle aberto durante a chamada; executar somente após select retornar
-dispatch. Não remover locks automaticamente. Pending após crash continua bloqueado.
+Next increment: M2, a fallback adapter without repeating prompts. The harness in
+integration/opencode-smoke.mjs already starts the host and local provider; read
+[integration instructions](../integration/README.md). Extend it with a controlled
+429 and events/hooks, establishing a safe boundary before switching models. Do not
+use another `run` to resubmit a failed prompt. SDK retry changes only retry/delay,
+not the readonly model. Read ADR-004/005. The harness bug is fixed: close child.stdin,
+because run waits for EOF before submitting the prompt. Keep the ledger handle
+open during the call; execute only after select returns dispatch. Never remove
+locks automatically. Pending state after a crash remains blocked.
 
-API atual: createState(sessionId), select(state, models, options),
+Current API: createState(sessionId), select(state, models, options),
 success(state, dispatch), failure(state, dispatch, error, options), nextOperation(state).
-Dispatch é o objeto original de select: transportar seus IDs no callback. Estado
-versão 1 não é aceito. Não migrar silenciosamente eventos/checkpoints antigos.
-43 testes locais e smoke real aprovados. Binário oficial 2.2.5 baixado e hash
-verificado, mantido fora do repo em ../.audit/bin/opencode-2.2.5/opencode.exe.
-Comando: node integration/opencode-smoke.mjs /caminho/absoluto/opencode.exe.
-Ledger em src/ledger.mjs; runner em src/runner.mjs. Não há
-autenticação de eventos nem garantia exactly-once/queda de energia. Referência
-do Yuri registrada no roadmap para M3/M5; nada importado ainda.
+Dispatch is the original object from select: carry its IDs into callbacks. State
+version 1 is not accepted. Never silently migrate old events/checkpoints.
 
-Não ativar plugins auditados automaticamente. Manter fontes sincronizadas em
-sources/ somente leitura. Nunca publicar credenciais ou tratar mocks como prova
-de integração OpenCode. Objetivo prioritário: M3, primeira tarefa real no próprio repo.
+43 local tests and the real smoke test passed. The official 2.2.5 binary was
+downloaded and its hash verified; it is outside the repository at
+../.audit/bin/opencode-2.2.5/opencode.exe.
+Command: `node integration/opencode-smoke.mjs /absolute/path/opencode.exe`.
+Ledger: src/ledger.mjs; runner: src/runner.mjs. There is no event authentication,
+exactly-once guarantee or power-loss guarantee. Yuri's reference is recorded in
+the roadmap for M3/M5; nothing has been imported.
+
+Do not enable audited plugins automatically. Keep synced sources/ files read-only.
+Never publish credentials or treat mocks as proof of OpenCode integration.
+Priority destination: M3, the first real task in this repository.
+
+Documentation is now maintained in English. The README includes the target
+architecture diagram; its planned components are not implemented features.

@@ -1,16 +1,16 @@
-# ADR-002 — Separar HTTP de segurança de replay
+# ADR-002 — Separate HTTP from replay safety
 
-Data: 2026-11-02. Status: adotada para M1a.
+Date: 2026-11-02. Status: accepted for M1a.
 
-Normalizar status e Retry-After em um módulo puro separado da política. Segundos
-inteiros e IMF-fixdate canônico são aceitos; header ausente usa zero (a política
-ainda aplica cooldown). Valor inválido/overflow bloqueia fallback, sem truncar um
-prazo longo para retentar cedo demais. Formatos de data obsoletos são rejeitados
-nesta etapa; não declaramos conformidade completa de parser HTTP.
+Normalize status and Retry-After in a pure module separate from the policy.
+Integer seconds and canonical IMF-fixdate are accepted; an absent header uses zero
+(the policy still applies cooldown). Invalid values/overflow block fallback rather
+than truncating a long delay and retrying too early. Obsolete date formats are
+rejected at this stage; we do not claim complete HTTP parser compliance.
 
-Referência: [RFC 9110, seção 10.2.3](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3).
+Reference: [RFC 9110, section 10.2.3](https://www.rfc-editor.org/rfc/rfc9110.html#section-10.2.3).
 
-O normalizador nunca deduz ausência de efeitos de um código HTTP. O host deve
-fornecer metadados de segurança; omissão bloqueia replay. Não encaminhar corpo,
-URLs ou headers arbitrários ao estado/log. Testes de transporte usam somente
-127.0.0.1 e fixtures sem ferramentas, portanto não aprovam o adaptador OpenCode.
+The normalizer never infers absence of effects from an HTTP code. The host must
+supply safety metadata; omission blocks replay. Do not forward bodies, URLs or
+arbitrary headers into state/logs. Transport tests use only 127.0.0.1 and fixtures
+without tools, so they do not validate the OpenCode adapter.

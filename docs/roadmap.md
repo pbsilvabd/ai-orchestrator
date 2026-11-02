@@ -1,87 +1,89 @@
-# Roadmap — desenvolver o AI Orchestrator usando o próprio projeto
+# Roadmap — developing AI Orchestrator using itself
 
-Atualizado em 2026-11-02. A ordem abaixo é por dependências e evidência, sem datas
-prometidas antes de validar a integração. Responsável inicial: mantenedor com
-assistência de agentes; aprovação de efeitos externos continua com o mantenedor.
+Updated 2026-11-02. Ordering follows dependencies and evidence; dates are not
+promised before integration is validated. Initial owner: the maintainer assisted
+by agents. Approval of external effects remains with the maintainer.
 
-## Destino
+## Destination
 
-Usar AI Orchestrator sobre OpenCode para selecionar uma tarefa do seu próprio
-backlog, executar mudanças em branch isolada, testar, revisar e entregar um diff
-com evidências. Alternar apenas entre modelos autorizados quando seguro; preservar
-histórico e decisões entre sessões; minimizar custo sem contornar limites.
-O sistema deve conseguir melhorar a si mesmo sem conceder a si próprio permissões.
+Use AI Orchestrator on OpenCode to select a task from its own backlog, make changes
+on an isolated branch, test, review and deliver a diff with evidence. Switch only
+between authorized models when safe; preserve history and decisions across
+sessions; minimize costs without bypassing limits. The system should improve
+itself without granting itself permissions.
 
-## Onde estamos
+## Where we are
 
-Política pura com allowlist, cooldown, limite de tentativas e bloqueio de replay
-incerto; demo em memória; auditoria estática de dois plugins; ledger e runner local.
-Smoke test do OpenCode real passou com sessão/contexto, troca explícita de modelo
-e escrita negada. Ainda falta adaptador de fallback, memória integrada e ciclo autônomo.
-O projeto ainda NÃO foi usado para desenvolver a si mesmo.
+Pure policy with allowlist, cooldown, attempt limits and uncertain-replay blocking;
+in-memory demo; static audit of two plugins; local ledger and runner. A real
+OpenCode smoke test passed for session/context, explicit model switching and
+denied writes. The fallback adapter, integrated memory and autonomous task cycle
+are still missing. The project has NOT yet been used to develop itself.
 
-## Marcos
+## Milestones
 
-| Marco | Estado | Entrega e critério de saída |
+| Milestone | Status | Delivery and exit criterion |
 | --- | --- | --- |
-| M0 — Base verificável | Concluído | Política, auditoria fixada, ADR e suíte local sem APIs |
-| M1a — Fronteira HTTP | Concluído neste incremento | Retry-After normalizado, casos inválidos bloqueados, 429/503→B e auth/efeitos→stop em loopback |
-| M1b — Segurança operacional | Concluído no escopo local | Runner com cancelamento/orçamento, checkpoint, lock e correlação testados; limites nos ADR-004/005 |
-| M2 — Bootstrap no OpenCode 2.2.5 | Em andamento: smoke real aprovado | Faltam adaptador de fallback e cinco cenários de falha no host real; sessão/contexto/troca explícita/deny-write validados |
-| M3 — Primeiro uso no próprio projeto | Objetivo prioritário; depende M2 | Uma tarefa pequena real, dois modelos autorizados configurados, branch, diff, testes e relatório; revisão humana antes do merge |
-| M4 — Memória e continuidade | Planejado; depende M3 | ai-memory avaliado/integrado; nova sessão recupera decisão e pendência sem confundir memória com estado de execução |
-| M5 — Roteamento por capacidade/custo | Planejado; depende M3 | Catálogo separado de autorização, compatibilidade de ferramentas/contexto, métricas e limites medidos contra baseline |
-| M6 — Multiagentes e release pública | Futuro; depende M4/M5 | Delegação limitada, revisão cruzada, orçamento global, documentação de instalação e release reproduzível |
+| M0 — Verifiable foundation | Complete | Policy, pinned audit, ADR and local suite without APIs |
+| M1a — HTTP boundary | Complete | Normalized Retry-After, invalid cases blocked, loopback 429/503 to B and auth/effects to stop |
+| M1b — Operational safety | Complete within local scope | Tested runner cancellation/budget, checkpoint, lock and correlation; limits in ADR-004/005 |
+| M2 — OpenCode 2.2.5 bootstrap | In progress: real smoke passed | Fallback adapter and five host failure scenarios remain; session/context/explicit switching/deny-write validated |
+| M3 — First use on this project | Priority; depends on M2 | One small real task, two configured authorized models, branch, diff, tests and report; human review before merge |
+| M4 — Memory and continuity | Planned; depends on M3 | Evaluate/integrate ai-memory; a new session retrieves decisions and pending work without confusing memory with execution state |
+| M5 — Capability/cost routing | Planned; depends on M3 | Catalog separate from authorization, tool/context compatibility, metrics and limits measured against a baseline |
+| M6 — Multi-agent work and public release | Future; depends on M4/M5 | Bounded delegation, cross-review, global budget, installation docs and reproducible release |
 
-Concluído é sempre no escopo da linha: M1a não comprova M2. Ver
-[Definition of Done](definition-of-done.md) para gates comuns e de release.
+Complete always means within the row's scope: M1a does not establish M2.
+See the [Definition of Done](definition-of-done.md) for common and release gates.
 
-## Base concluída: M1b; próximo ciclo: M2
+## Completed foundation: M1b; next cycle: M2
 
-1. Concluído: identidade de operação/tentativa e eventos de sucesso/falha; rejeição de eventos atrasados.
-2. Concluído localmente: persistir antes do dispatch, atualização atômica e lock de escritor único.
-3. Concluído em testes locais: bloqueio após crash, corrupção, lock concorrente e evento duplicado.
-4. Concluído localmente: timeout/cancelamento sem presumir reversão de efeitos; orçamento por invocação.
-5. Escrever ADR do adaptador e só então ligar os hooks públicos do OpenCode fixado.
+1. Complete: operation/attempt identity and success/failure events; stale events rejected.
+2. Locally complete: persistence before dispatch, atomic updates and a single-writer lock.
+3. Complete in local tests: blocking after crashes, corruption, concurrent locks and duplicate events.
+4. Locally complete: timeout/cancellation without assuming effects are undone; per-invocation budget.
+5. Write the adapter ADR before connecting public hooks in the pinned OpenCode version.
 
-## Experimento de bootstrap M2 → M3
+## M2 to M3 bootstrap experiment
 
-- Selecionar uma tarefa de baixo impacto (ex.: acrescentar fixture e teste de regressão).
-- Rodar primeiro com provedor simulado no OpenCode; testar falha injetada 429.
-- Configurar modelos local/gratuito/assinatura apenas com autorização e disponibilidade verificadas.
-- Rodar o mesmo fluxo com modelo real, orçamento limitado e sem credenciais no repositório.
-- Registrar task ID, base/head, modelo escolhido, tentativas, comandos e resultados sanitizados.
-- Critério de sucesso: diff útil revisado, testes aprovados, nenhuma alteração fora do escopo,
-  sessão recuperável e nenhum efeito duplicado. Falha deve encerrar com estado explicável.
-- Primeiro uso NÃO se considera concluído por executar testes diretamente neste chat.
+- Select a low-impact task, such as adding a fixture and regression test.
+- First run with a simulated provider in OpenCode and inject a 429 failure.
+- Configure local/free/subscription models only after verifying authorization and availability.
+- Run the same workflow with a real model, bounded budget and no repository credentials.
+- Record task ID, base/head, chosen model, attempts, commands and sanitized results.
+- Success means a useful reviewed diff, passing tests, no out-of-scope changes, a recoverable session and no duplicated effects. Failure must leave an explainable state.
+- Running tests directly in this chat does NOT count as the project's first self-development task.
 
-## Limites para autoaperfeiçoamento
+## Limits on self-improvement
 
-Agentes podem propor mudanças de código e políticas, mas não alterar sua própria
-allowlist, orçamento, credenciais ou permissões durante a execução. Uma mudança
-nesses controles exige revisão fora da execução afetada. Merge autônomo fica fora
-do primeiro uso; a autorização do mantenedor para commits desta sessão não é uma
-permissão permanente concedida ao futuro runtime.
+Agents may propose code and policy changes, but cannot change their own allowlist,
+budget, credentials or permissions during execution. Such changes require review
+outside the affected run. Autonomous merge is outside the first-use scope;
+maintainer authorization for commits in this session is not permanent permission
+for the future runtime.
 
-## Riscos e decisões pendentes
+## Risks and pending decisions
 
-| Risco/decisão | Resposta antes de avançar |
+| Risk/decision | Response before proceeding |
 | --- | --- |
-| SDK/plugins incompatíveis ou replay inseguro | Teste no host fixado; adaptar só o necessário, sem ativação automática |
-| Provedor gratuito indisponível | Simulador obrigatório; fallback local depende de hardware e modelo disponíveis |
-| Mudanças simultâneas no próprio código | Branch/base imutável por tarefa e runtime fixado durante execução |
-| Testes aprovam a implementação errada | Casos de aceitação observáveis e revisão humana do diff |
-| Privacidade/custo | Allowlist por tarefa e métricas sem conteúdo sensível; não habilitar faturamento implicitamente |
+| Incompatible SDK/plugins or unsafe replay | Test the pinned host; adapt only what is needed, without automatic activation |
+| Free provider unavailable | Require a simulator; local fallback depends on available hardware and models |
+| Concurrent changes to its own code | Fix the branch/base per task and runtime during execution |
+| Tests approve the wrong implementation | Observable acceptance cases and human diff review |
+| Privacy/cost | Per-task allowlist and metrics without sensitive content; no implicit billing activation |
 
-Atualizar este documento a cada marco junto com a evidência de validação.
-Ponto de retomada de baixo custo: [handoff](handoff.md).
+Update this document with validation evidence at each milestone.
+Low-cost continuation point: [handoff](handoff.md).
 
-## Referência para reutilização: ia-hands-on-agents
+## Reuse reference: ia-hands-on-agents
 
-Avaliar [repositório de Yuri Oliveira](https://github.com/yurioliveira3/ia-hands-on-agents)
-em M3/M5: laço de agente/MCP, avaliações, medição de tokens e roteamento por confiança
-na Demo 3. Inspeção preliminar documental; nenhum código/dependência incorporado.
-Antes de reutilizar: fixar SHA, conferir licença/atribuição dos arquivos, dependências,
-custo e compatibilidade com OpenCode 2.2.5. Medir no nosso conjunto de tarefas;
-resultados didáticos não substituem testes operacionais. Priorizar reutilização
-onde adequada, sem trocar agora a arquitetura.
+Evaluate [Yuri Oliveira's repository](https://github.com/yurioliveira3/ia-hands-on-agents)
+in M3/M5: agent loop/MCP, evaluations, token measurement and confidence routing in
+Demo 3. Preliminary documentation inspection only; no code/dependency imported.
+Before reuse, pin a SHA and check file licenses/attribution, dependencies, cost and
+OpenCode 2.2.5 compatibility. Measure on our task set; educational results do not
+replace operational tests. Favor reuse where appropriate without changing the
+architecture now.
+
+For M4, evaluate [ai-memory](https://github.com/akitaonrails/ai-memory) rather than
+recreating its semantic memory features.

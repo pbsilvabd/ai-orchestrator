@@ -1,31 +1,32 @@
-# ADR-005 — Executor com orçamento temporal e cancelamento conservador
+# ADR-005 — Runner with a time budget and conservative cancellation
 
-Data: 2026-11-02. Status: adotada para execução local.
+Date: 2026-11-02. Status: accepted for local execution.
 
-runOperation abre um ledger e executa uma operação com limite de tentativas e um
-único orçamento temporal por invocação, medido por relógio monotônico. Não reinicia
-o orçamento a cada fallback. Não abre automaticamente uma nova operação concluída.
-Uma decisão wait é devolvida ao chamador, sem dormir nem retentar o mesmo modelo.
+runOperation opens a ledger and executes one operation with an attempt limit and
+a single per-invocation time budget measured by a monotonic clock. Fallback does
+not reset the budget. It does not automatically start a new operation after
+completion. A wait decision is returned to the caller without sleeping or retrying
+the same model.
 
-O adaptador recebe cópia do dispatch e AbortSignal; retorna {ok:true,value} ou
-{ok:false,error}, com metadados estruturados de segurança. Ele é confiável e deve
-preservar contexto/permissões; o runner não deduz segurança de um status HTTP.
-Exceptions/respostas inválidas interrompem como resultado incerto, sem logar
-mensagem privada. A identidade interna não é exposta para mutação pelo adaptador.
+The adapter receives a dispatch copy and AbortSignal; it returns {ok:true,value}
+or {ok:false,error} with structured safety metadata. It is trusted and must
+preserve context/permissions; the runner never infers safety from HTTP status.
+Exceptions/invalid responses stop as uncertain outcomes without logging private
+messages. The internal identity is not exposed for mutation by the adapter.
 
-Cancelamento antes do dispatch não chama provedor. Depois de persistir dispatch,
-cancelamento/deadline persistem blocked antes de liberar o lock. Abort é apenas
-pedido: não desfaz efeitos nem prova que o provedor parou. Respostas/rejeições
-tardias são consumidas e não alteram o ledger. Reabrir a sessão bloqueada não
-autoriza fallback ou nova operação.
+Cancellation before dispatch does not call the provider. After dispatch is
+persisted, cancellation/deadline persist blocked state before releasing the lock.
+Abort is only a request: it neither undoes effects nor proves the provider stopped.
+Late responses/rejections are consumed without altering the ledger. Reopening
+the blocked session does not authorize fallback or a new operation.
 
-Limites: temporizadores JavaScript não interrompem código síncrono bloqueante,
-processos externos ou filesystem lento. Verificamos deadline novamente após a
-resposta; não oferecemos tempo real estrito. Trabalho externo que ignora abort
-pode continuar, exigindo reconciliação. O orçamento não é persistido entre
-invocações; não há agendador de retomada, limite financeiro ou isolamento de processo.
-Não usar um loop externo de retomadas como forma de contornar orçamento.
+Limits: JavaScript timers cannot interrupt blocking synchronous code, external
+processes or slow filesystems. The deadline is checked again after a response;
+strict real-time execution is not promised. External work ignoring abort may
+continue and require reconciliation. Budgets are not persisted between invocations;
+there is no resume scheduler, financial limit or process isolation. Do not use an
+outer resume loop to bypass the budget.
 
-M1b está validado no escopo local documentado. M2 ainda exige testes reais dos
-hooks/fila/permissões e contexto no OpenCode 2.2.5; não basta conectar invoke a
-uma API de modelo e declarar integração concluída.
+M1b is validated within its documented local scope. M2 still requires real tests
+of hooks/queues/permissions and context in OpenCode 2.2.5; connecting invoke to a
+model API alone does not complete integration.

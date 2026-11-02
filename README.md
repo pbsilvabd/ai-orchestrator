@@ -1,94 +1,147 @@
 # AI Orchestrator
 
-Scaffold incremental de orquestração sobre OpenCode. Licença MIT.
+An incremental orchestration framework built around OpenCode. MIT licensed.
 
-## Estado desta entrega
+## Purpose and target architecture
 
-Implementado: política pura de fallback, normalização de falhas HTTP/Retry-After,
-demo com dois provedores simulados e testes locais, incluindo transporte HTTP em
-loopback, sem dependências. **Não é um plugin instalado nem um MVP integrado ao OpenCode.**
-Nenhuma chamada de IA, chave, conta de provedor ou API paga é necessária.
+The goal is to use authorized free models, supported subscriptions and local models
+to code, research, investigate errors and complete tasks with controlled costs.
+OpenCode supplies the execution environment; this project adds conservative fallback,
+recoverable operational state and, later, persistent knowledge and task coordination.
+The first practical goal is **developing this repository using the project itself**:
+select a backlog task, produce a scoped change, run tests and submit evidence for
+human review.
 
-Há também um [smoke test com OpenCode real](integration/README.md), executado
-separadamente com binário 2.2.5. Valida sessão, contexto, troca explícita de modelo
-e escrita negada usando provider local simulado. Não é ainda o adaptador de fallback.
+The diagram describes the **target architecture**, not an already integrated system.
+Green components work locally or have passed the stated host smoke test; yellow is
+in progress; dashed components are planned. The local core is not yet connected to
+OpenCode through a fallback adapter.
 
-Referência avaliada: OpenCode **2.2.5**, commit
-`9bbb8ce18c80f099e0e448775f59d965ead40a21`. Os plugins candidatos permanecem
-desativados até passarem pelos critérios da [auditoria](docs/plugin-audit.md).
+```mermaid
+flowchart TD
+    User["User: coding, research, debugging"] --> Tasks["Task planner and backlog"]
+    Tasks --> Controls["Authorization, permissions and budgets"]
+    Controls --> Host["OpenCode 2.2.5: sessions and tools<br/>Host smoke test passed"]
+    Host <--> Adapter["OpenCode fallback adapter<br/>In progress"]
+    Adapter <--> Core["Local runner, fallback policy and ledger<br/>Implemented and tested"]
+    Core --> Router["Capability and cost routing"]
+    Router --> Models["Authorized models<br/>Free, supported subscriptions, local"]
+    Models --> Adapter
+    Host --> Tools["Files, Git, tests and MCP tools"]
+    Tools --> Review["Validation, evidence and human review"]
+    Review --> Changes["Reviewed commits and pull requests"]
+    Changes --> Repo["AI Orchestrator repository"]
+    Repo --> Tasks
+    Host <--> Memory["ai-memory: decisions and knowledge"]
+    Tasks <--> Memory
+    Core --> Metrics["Usage, cost and reliability metrics"]
+    Metrics --> Router
+    classDef current fill:#e6f4ea,stroke:#237a3b,color:#111;
+    classDef progress fill:#fff4ce,stroke:#9c6500,color:#111;
+    classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5,color:#111;
+    class Host,Core current;
+    class Adapter progress;
+    class Tasks,Controls,Router,Models,Tools,Review,Changes,Repo,Memory,Metrics planned;
+```
 
-## Executar
+Planned tool and review nodes describe the integrated workflow; the underlying
+OpenCode tools already exist. Operational checkpoints track dispatch outcomes;
+semantic memory stores knowledge and must never authorize replay. Future agents
+may propose improvements, but cannot grant themselves permissions or bypass quotas.
 
-Use Node.js 24 (validado com 24.22.1), na raiz do repositório:
+## Current status
+
+Implemented: pure fallback policy, HTTP/Retry-After normalization, local checkpoint
+ledger, operation runner, an in-memory demo and dependency-free local tests,
+including loopback HTTP transport. **This is not an installed plugin or an
+integrated OpenCode MVP.** No AI calls, keys, provider accounts or paid APIs are
+required for these tests.
+
+A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
+and a simulated local provider. It validates session continuity, context, explicit
+model switching and denied writes. It is not the fallback adapter.
+
+Evaluated reference: OpenCode **2.2.5**, commit
+`9bbb8ce18c80f099e0e448775f59d965ead40a21`. Candidate plugins remain disabled
+until they meet the [audit criteria](docs/plugin-audit.md).
+
+## Run
+
+Use Node.js 24 (validated with 24.22.1) from the repository root:
 
 ```sh
 node --test
 node examples/fallback-demo.mjs
 ```
 
-Não é necessário executar npm install. A demo produz dois registros: modelo
-`mock/preferred` responde 429 e `mock/local` responde 200 na mesma sessão.
-São respostas em memória, não servidores HTTP ou modelos reais.
+No npm install is required. The demo produces two records: `mock/preferred`
+returns 429 and `mock/local` returns 200 in the same session. These are in-memory
+responses, not HTTP servers or real models.
 
-## Política mínima
+## Minimal policy
 
-- Lista ordenada e explícita de modelos autorizados; nenhum catálogo é habilitado automaticamente.
-- Cada modelo é tentado no máximo uma vez por operação; limite padrão de duas tentativas.
-- 429/500/502/503/504 e timeout permitem fallback somente antes de resposta e sem efeitos possíveis.
-- 401/403, entrada inválida, cota de duração desconhecida e metadados ausentes interrompem.
-- Cooldown respeita o maior valor entre o padrão e Retry-After normalizado em milissegundos.
-- Reinício com dispatch pendente bloqueia continuação automática.
-- Retorno ao preferencial apenas em nova operação explicitamente concluída/reconciliada.
+- An explicit, ordered allowlist of authorized models; no catalog is enabled automatically.
+- Each model is attempted at most once per operation; the default limit is two attempts.
+- 429/500/502/503/504 and timeouts allow fallback only before a response and without possible effects.
+- 401/403, invalid input, quotas with unknown reset times and missing metadata stop execution.
+- Cooldown respects the greater of the default and normalized Retry-After in milliseconds.
+- Restarting with a pending dispatch blocks automatic continuation.
+- Returning to the preferred model requires a new operation after explicit completion/reconciliation.
 
-`src/policy.mjs` decide; não executa ferramentas, timers, HTTP ou persistência.
-O consumidor deve persistir o estado de dispatch antes da chamada. `wait` é uma
-decisão com horário, não um agendador. O chamador confiável confirma o resultado
-com `success(state, dispatch)`; somente então `nextOperation(state)` é permitido.
-O antigo argumento `previousCompleted: true` não libera dispatch pendente.
-Estado versão 2: cada operação recebe um UUID; cada dispatch inclui sessionId,
-operationId e attemptId. `success` e `failure` exigem o dispatch original retornado
-por `select`, não apenas o modelo. Não reconstruir sua identidade a partir do
-estado atual quando um callback chegar. Checkpoints versão 1 são rejeitados e
-exigem reconciliação manual, sem migração automática de operações pendentes.
-Para persistência/exclusão entre processos, use `openSession(directory, sessionId)`
-de `src/ledger.mjs`. O handle oferece `select(models, options)`, `success(dispatch)`,
-`failure(dispatch, error, options)`, `nextOperation()`, `snapshot()` e `close()`.
-Mantenha-o aberto durante a chamada e feche em finally. Só chame o provedor depois
-que select retornar action=dispatch: o checkpoint já estará gravado. Erros de
-persistência invalidam o handle. Leia [ADR-004](docs/adr/004-local-ledger.md).
+`src/policy.mjs` makes decisions; it does not run tools, timers, HTTP or persistence.
+The consumer must persist dispatch state before calling a provider. `wait` is a
+decision with a timestamp, not a scheduler. The trusted caller confirms the result
+using `success(state, dispatch)`; only then is `nextOperation(state)` allowed.
+The old `previousCompleted: true` argument does not unlock a pending dispatch.
 
-Os testes incluem checkpoint e lock entre processos locais, mas não retomada de
-sessão OpenCode ou durabilidade sob queda de energia. Histórico pertence ao host.
-Use diretório local confiável, com escritores cooperativos; NFS/SMB e diretórios
-controlados por terceiros não são suportados. Locks após crash exigem reconciliação
-manual; não são removidos automaticamente.
+State version 2 assigns a UUID to each operation. Dispatches carry sessionId,
+operationId and attemptId. `success` and `failure` require the original dispatch
+returned by `select`, not just its model. Never reconstruct its identity from
+current state when a callback arrives. Version 1 checkpoints are rejected and
+require manual reconciliation; pending operations are not migrated automatically.
 
-## Plano de desenvolvimento
+For persistence and exclusion between processes, use
+`openSession(directory, sessionId)` from `src/ledger.mjs`. Its handle provides
+`select(models, options)`, `success(dispatch)`,
+`failure(dispatch, error, options)`, `nextOperation()`, `snapshot()` and `close()`.
+Keep it open during the call and close it in finally. Call the provider only after
+select returns action=dispatch: the checkpoint has then been written. Persistence
+errors invalidate the handle. See [ADR-004](docs/adr/004-local-ledger.md).
 
-`runOperation` em `src/runner.mjs` combina ledger, fallback, cancelamento e limite
-de duração. Recebe directory, sessionId, models, invoke, budgetMs (padrão 30000),
-maxAttempts (padrão 2) e signal opcional. O adaptador invoke recebe dispatch/signal
-e retorna `{ok:true,value}` ou `{ok:false,error}`. Nenhum adaptador OpenCode está
-instalado ainda. Veja [ADR-005](docs/adr/005-operation-runner.md) para limites:
-abort não desfaz efeitos, o prazo não interrompe código síncrono e não é persistido
-entre invocações. Após cancelamento em voo, a sessão exige reconciliação.
+Tests cover local checkpoints and interprocess locks, not OpenCode session recovery
+or power-loss durability. The host owns message history. Use a trusted local
+directory with cooperative writers; NFS/SMB and third-party-controlled directories
+are unsupported. Locks left after crashes require manual reconciliation and are
+never removed automatically.
 
-O objetivo prioritário é **desenvolver este projeto usando ele mesmo**, com uma
-primeira tarefa real em branch isolada e revisão humana. O projeto ainda não tem
-executor próprio. Consulte o [roadmap](docs/roadmap.md) e a
-[Definition of Done](docs/definition-of-done.md) para estado, dependências e gates.
+## Operation runner and development plan
 
-## Próximas etapas
+`runOperation` in `src/runner.mjs` combines the ledger, fallback, cancellation and
+a duration budget. It accepts directory, sessionId, models, invoke, budgetMs
+(default 30000), maxAttempts (default 2) and an optional signal. The invoke adapter
+receives dispatch/signal and returns `{ok:true,value}` or `{ok:false,error}`.
+No OpenCode adapter is installed yet. See [ADR-005](docs/adr/005-operation-runner.md):
+abort does not undo effects, deadlines cannot interrupt synchronous code, and
+budgets are not persisted between invocations. In-flight cancellation requires
+session reconciliation.
 
-1. Validar o contrato do adaptador OpenCode sobre o runner local implementado.
-2. Adaptador OpenCode 2.2.5 e teste end-to-end com falhas, ferramentas e reinício real.
-3. Primeiro uso no próprio repositório com modelos explicitamente autorizados.
-4. Memória com ai-memory, roteamento por capacidade/custo e multiagentes em etapas.
+The project has a local runner but **no integrated self-development workflow yet**.
+The first real task will use an isolated branch and human review. See the
+[roadmap](docs/roadmap.md) and [Definition of Done](docs/definition-of-done.md)
+for status, dependencies and acceptance gates.
 
-`src/http-failure.mjs` aceita Retry-After em segundos inteiros ou IMF-fixdate canônico.
-Valores inválidos, overflow e formatos antigos são rejeitados conservadoramente.
-Não é um parser HTTP completo. A segurança de repetir deve vir do host; um status
-429 sozinho não comprova ausência de efeitos. Corpos/headers privados não são copiados.
+## Next steps
 
-Veja [requisitos](docs/requirements.md), [ADR-001](docs/adr/001-composition.md),
-[validação](docs/validation.md) e [contribuição](CONTRIBUTING.md).
+1. Validate the OpenCode adapter contract against the implemented local runner.
+2. Build the OpenCode 2.2.5 adapter and end-to-end tests with failures, tools and real restarts.
+3. Complete the first task in this repository using explicitly authorized models.
+4. Add ai-memory integration, capability/cost routing and bounded multi-agent work incrementally.
+
+`src/http-failure.mjs` accepts Retry-After as integer seconds or canonical
+IMF-fixdate. Invalid values, overflow and obsolete formats are conservatively
+rejected. This is not a complete HTTP parser. Replay safety must come from the
+host; a 429 status alone does not prove absence of effects. Private bodies and
+headers are not copied.
+
+See [requirements](docs/requirements.md), [ADR-001](docs/adr/001-composition.md),
+[validation](docs/validation.md) and [contributing](CONTRIBUTING.md).
