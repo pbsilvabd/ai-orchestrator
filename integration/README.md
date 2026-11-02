@@ -1,4 +1,57 @@
-# Real OpenCode smoke test
+# Real OpenCode integration tests
+
+Run separately from local tests, using Node 24 and a pinned official binary.
+
+## MCP capability gate
+
+```sh
+node integration/mcp-gate.mjs /absolute/path/opencode.exe
+```
+
+Passing run on 2026-11-02 (Windows x64, Node.js v24.22.1, OpenCode 2.2.5)
+printed:
+
+```json
+{"version":"2.2.5","protocol":"2026-07-28","server":"local stdio","transport":"codemode execute","discovered":true,"catalogued":true,"called":true,"resultInContext":true,"legacyHandshake":false,"providerRequests":5}
+```
+
+`providerRequests` is informational; it includes auxiliary host work.
+
+The harness:
+
+1. Creates an isolated temporary config/data/state tree and a loopback fixture
+   provider, mirroring the smoke test.
+2. Adds one `type: "local"` MCP server that runs `integration/mcp-fixture.mjs` with
+   `protocol: "2026-07-28"`.
+3. Starts `opencode serve` and sends one warm-up prompt so the Location boots and
+   connects the server.
+4. Waits for the host log `message="mcp connected" server=orchestrator tools=1`
+   before sending the probe prompt. OpenCode connects MCP servers asynchronously and
+   the CLI snapshots the tool registry before connection, so a single `run` can miss
+   the tool. The warm-up mirrors a user message sent after the app has settled.
+5. Drives the default Code Mode path: the fixture model calls `execute` with
+   `tools.orchestrator.probe_echo({ message: 'GATE_FIXTURE' })`.
+6. Asserts discovery (`server/discover`), `tools/list`, one `tools/call`, the
+   `probe:GATE_FIXTURE` result reaching model context and the absence of the legacy
+   `initialize` handshake. It also checks that every request carries
+   `_meta["io.modelcontextprotocol/protocolVersion"] = "2026-07-28"`.
+
+`integration/mcp-fixture.mjs` is a minimal stateless MCP server: it logs JSONL to
+`MCP_FIXTURE_LOG`, records calls to `MCP_FIXTURE_CALLS`, and returns `ttlMs` and
+`cacheScope` from `tools/list`. It is not the task service and implements no
+operation from the contract.
+
+Set `MCP_GATE_DEBUG=1` to print host/probe output, the provider request log and the
+MCP transcript, and to keep the temporary directory for diagnosis. Without it the
+harness removes the directory and reports a cleanup failure instead of hiding the
+original error.
+
+Limits: the gate proves that the pinned host can connect, list and call one local
+stdio MCP tool over revision `2026-07-28` with Code Mode routing. It does not
+validate the task contract, lifecycle, durability, ownership or the executor
+adapter. A future protocol revision or a different host is not covered.
+
+## Session/model smoke test
 
 Run separately from local tests, using Node 24 and a pinned official binary:
 

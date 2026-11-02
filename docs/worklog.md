@@ -44,3 +44,29 @@ Template:
 - Validation: `node --test` → 43 passed, 0 failed; `node examples/fallback-demo.mjs`
   → 429 then 200; local Markdown links checked. Runtime integration was not rerun.
 - Follow-up: M2b step 1, the MCP capability gate against the pinned host.
+
+## 2026-11-02 — M2b step 1: MCP capability gate passed
+
+- Branch: `feat/m2b-mcp-gate`
+- Scope: tests (opt-in integration harness) and docs; no service or executor code.
+- Steps:
+  1. Compared the MCP revision `2026-07-28` stateless flow (`server/discover`,
+     per-request `_meta` protocol version, no `initialize`) with the pinned host.
+  2. Wrote `integration/mcp-fixture.mjs`, a minimal stateless local stdio server with
+     one `probe_echo` tool, JSONL transcript and `ttlMs`/`cacheScope` in `tools/list`.
+  3. Wrote `integration/mcp-gate.mjs`: isolated temp tree, loopback fixture provider,
+     `opencode serve`, warm-up prompt, wait for `mcp connected`, Code Mode `execute`
+     probe, transcript and context assertions.
+  4. Diagnosed two harness defects (no wait for async connect; log line on stderr)
+     and corrected them; the host behaved correctly throughout.
+  5. Recorded the passing transcript and its limits in validation, amended ADR-007
+     and updated roadmap, handoff and integration instructions.
+- Files: `integration/mcp-gate.mjs`, `integration/mcp-fixture.mjs`,
+  `integration/README.md`, `docs/adr/007-task-contract.md`, `docs/validation.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `AGENTS.md`.
+- Validation: `node integration/mcp-gate.mjs <pinned opencode.exe>` →
+  `{"version":"2.2.5","protocol":"2026-07-28","transport":"codemode execute","discovered":true,"catalogued":true,"called":true,"resultInContext":true,"legacyHandshake":false}`;
+  `node --test` → 43 passed, 0 failed; `node examples/fallback-demo.mjs` → 429 then
+  200. The gate is not part of `node --test` because it needs the external binary.
+- Follow-up: M2b step 2, the task store (`AI_ORCHESTRATOR_HOME`, atomic JSON,
+  idempotency index, startup reconciliation) with duplication/crash/restart tests.

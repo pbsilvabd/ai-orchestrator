@@ -8,9 +8,10 @@ the ADRs referenced by the current milestone. Check `git log` and the remote bef
 editing; another agent may have moved the repository since the handoff was written.
 
 Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a
-complete, M2b next. M2b starts with the MCP capability gate in
-[ADR-007](docs/adr/007-task-contract.md). Do not implement the task service, the
-executor adapter or any transport before that gate is recorded.
+complete, M2b step 1 (MCP capability gate) passed. M2b step 2, the task store, is
+next. The gate confirmed OpenCode 2.2.5 discovery, cataloguing and one call over
+revision `2026-07-28` via local stdio; see
+[ADR-007](docs/adr/007-task-contract.md) and [validation](docs/validation.md).
 
 ## Toolchain
 
