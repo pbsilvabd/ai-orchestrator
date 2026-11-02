@@ -192,3 +192,35 @@ MCP gate status remains unresolved: this review observed one failed probe (`warm
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## Docs: uniform templates for recurring artifacts — 2026-11-02
+
+Executed on macOS arm64, Node.js v24.22.1 (worktree `.worktrees/templates`).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full local suite regression after a documentation-only change | 83 tests passed, 0 failed, 0 skipped, 0 cancelled | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo still prints the expected two responses | 429 from `mock/preferred`, then 200 from `mock/local`, sessionId `demo-session` | 0 |
+| `git diff --check` | No whitespace errors in the new Markdown | no output | 0 |
+| `python3` link script over `docs/templates/*.md` | Every relative Markdown link outside the example fences resolves | 5 files checked, 0 broken links | 0 |
+
+Result: the full suite reports 83 passed and 0 failed, the demo prints 429 from
+`mock/preferred` followed by 200 from `mock/local`, and neither the whitespace check nor
+the relative-link check reports an error in the new template files.
+
+Evidence level: unit — the suite and the demo exercise policy, ledger, runner, task store
+and service behavior in this checkout; they confirm that a documentation-only change left
+executable behavior unchanged. No host, network or persistence evidence is added here.
+
+Not rerun: `node integration/opencode-smoke.mjs` (needs the pinned OpenCode 2.2.5 binary
+outside the repository; documentation does not affect it); `node integration/mcp-gate.mjs`
+(same reason, and the gate outcome remains unresolved); live task transport and executor
+integration (no executor adapter exists yet); automated Markdown link checking (this
+repository ships no link-checker script, so the links were checked with an ad-hoc
+script and reviewed by inspection).
+
+Claim: This entry supports that the templates change leaves the local suite and the
+fallback demo unchanged, based on `node --test` and `node examples/fallback-demo.mjs`.
+It does not support any OpenCode integration, MCP transport or task-execution claim,
+which requires the pinned binary outside the repository.
