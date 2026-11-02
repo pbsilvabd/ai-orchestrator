@@ -26,11 +26,12 @@ normalization, ledger, runner and 43 local tests. The real OpenCode smoke passed
 for context/session continuity, explicit model switching and denied writes.
 M2a is complete as documentation: the normative [task contract](task-contract.md)
 and [ADR-007](adr/007-task-contract.md) select MCP over stdio with OpenCode 2.2.5 as
-the first client and record the reuse/build decision. The MCP capability gate passed
-on 2026-11-02 (discovery, cataloguing and one call over revision `2026-07-28`), so
-M2b implementation starts at the task store. There is no task service, MCP/API
-endpoint, worker adapter, integrated fallback, semantic memory or completed
-self-development workflow.
+the first client and record the reuse/build decision. The MCP capability gate has one
+recorded pass and one later failure on 2026-11-02; discovery, cataloguing and a call
+over revision `2026-07-28` were observed, but the gate is not consistently validated.
+M2b implementation started at the task store. The task store (step 2) is complete;
+service-surface fixes passed independent local review. There is no MCP/API endpoint, worker adapter,
+integrated fallback, semantic memory or completed self-development workflow yet.
 
 The existing runner executes an operation; it is not a durable task scheduler.
 Its budget is per invocation, and its ledger does not persist task artifacts or
@@ -44,7 +45,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; step 1 of 6 (gate) complete | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; step 3 of 6 locally validated; MCP gate stability unresolved | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Primary acceptance target; depends on M2b | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -62,14 +63,17 @@ See [Definition of Done](definition-of-done.md).
 The normative contract is [task-contract.md](task-contract.md); these steps implement
 it and nothing beyond it.
 
-1. **Capability gate — complete (2026-11-02).** OpenCode 2.2.5 discovered,
-   catalogued and called one local stdio MCP tool over revision `2026-07-28`; the
-   transcript is recorded in [validation](validation.md). MCP stays the first
-   transport; the HTTP fallback is not selected.
+1. **Capability gate — inconsistent (2026-11-02).** One OpenCode 2.2.5 run passed and
+   another failed during the probe; discovery/cataloguing/call were observed, but the
+   root cause is unresolved. See [validation](validation.md). Do not rely on this as a
+   consistently passing CI gate. MCP remains the selected first transport pending
+   diagnosis; the HTTP fallback is not selected.
 2. **Task store.** JSON records with atomic writes, an idempotency index and startup
-   reconciliation; tests for duplication, crash and restart behavior.
+   reconciliation; tests for duplication, crash and restart behavior. **Complete
+   (2026-11-02).**
 3. **Service surface.** The four operations with strict validation, ownership,
-   allowlist clamping, limits and sanitized errors.
+   allowlist clamping, limits and sanitized errors. **Fixes locally validated (2026-11-02):**
+   83 suite tests and nine review reproductions passed.
 4. **Executor adapter.** One OpenCode CLI subprocess in an isolated worktree and
    branch, collecting diff, changed files and test evidence; cancellation is advisory.
 5. **Client integration.** One real submission, poll and result retrieval through the

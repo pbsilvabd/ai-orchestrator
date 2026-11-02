@@ -1,6 +1,7 @@
 # Task contract (M2a)
 
-Date: 2026-11-02. Status: specified, not implemented. Decisions: [ADR-007](adr/007-task-contract.md).
+Date: 2026-11-02. Status: normative for M2b; service implementation is under review.
+Decisions: [ADR-007](adr/007-task-contract.md), [ADR-008](adr/008-task-store.md).
 
 This is the normative contract for the first worker service. Implementation is M2b.
 Where this document and code disagree, the document is wrong until this document is
@@ -39,7 +40,13 @@ text content block, and error objects set `isError: true`.
   never derived from content.
 - Timestamps are epoch milliseconds (UTC), injected by the caller in tests.
 - No long polling in M2b; the client polls `get_task_status`.
-- Logs and errors never contain prompts, credentials, headers or absolute home paths.
+- Errors never echo request values, prompts, credentials, headers or absolute home paths.
+- At ingestion, the service rejects request text containing recognizable Bearer/Basic
+  credentials or values following `authorization`, `api_key`, `access_token`,
+  `refresh_token` or `client_secret` labels. It does not mutate the request. At artifact
+  return, it redacts those patterns from text fields. `sanitized: true` means this
+  bounded pattern policy was applied; it is not a guarantee that arbitrary sensitive
+  data is detected. The executor must still avoid emitting secrets.
 
 ## Operations
 
@@ -55,7 +62,7 @@ text content block, and error objects set `isError: true`.
   authorization: {
     models: ["provider/model"],               // subset of the configured allowlist
     tools: ["read", "edit", "bash"],          // subset of the configured allowlist
-    writablePaths: ["src/**", "test/**"]      // subset of the configured roots
+    writablePaths: ["src/**", "test/**"]      // globs relative to repository.path
   },
   limits: { maxAttempts: 2, budgetMs: 600000, maxOutputBytes: 1048576 },
   clientSessionId: "optional-correlation"      // not an authority
@@ -68,7 +75,11 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
 - Same `idempotencyKey` and same canonical payload returns the original `taskId` with
   `idempotentReplay: true` and starts no additional work.
 - Same key with a different payload returns `idempotency_conflict` and changes nothing.
-- `path` must resolve inside a configured root; `baseRef` must resolve to a commit;
+- `path` must resolve inside a configured root; relative writable globs resolve from
+  `repository.path`, and their static roots must remain within a configured root.
+  Absolute writable paths remain accepted only when inside both the repository and a
+  configured root.
+  `baseRef` must resolve to a commit;
   `branch` must not already exist unless this task created it.
 - `authorization` is clamped to the configured allowlist; exceeding it is rejected
   with `authorization_denied`, never silently narrowed.
@@ -126,7 +137,10 @@ Result:
   `limitations`.
 - A success claim without a recorded test command and exit code is reported as a
   limitation, not as verified evidence.
-- Diff is capped at 1 MiB and logs at 256 KiB; truncation is flagged, never silent.
+- Diff is capped at 1 MiB and log tails at 256 KiB. The task's `maxOutputBytes` is a
+  combined UTF-8 byte budget for diff first, then logs in test-run order. Logs retain
+  their tail. `diffTruncated`, per-run `outputTruncated` and `logsTruncated` indicate
+  truncation; UTF-8 sequences are never cut mid-character.
 
 ### cancel_task
 
@@ -225,7 +239,10 @@ These tests must exist and pass before M2b is claimed:
 9. Unauthorized client, model, tool, path or budget is rejected without side effects.
 10. A non-owner read or cancel returns `not_owner`.
 11. Oversized diff and log are truncated with explicit flags.
-12. Fixture secrets in task text, environment and logs never reach records or errors.
+12. Fixture secrets matching the documented patterns in requests are rejected before
+    persistence and in returned text artifacts are redacted; errors never echo request
+    values. This pattern policy does not inspect arbitrary binary artifacts or prove
+    complete secret detection.
 13. One real client run through the transport returns a result; mock-only runs are
     labelled as mock in the evidence.
 

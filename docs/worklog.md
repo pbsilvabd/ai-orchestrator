@@ -43,7 +43,27 @@ Template:
   `docs/definition-of-done.md`, `docs/validation.md`, `docs/handoff.md`.
 - Validation: `node --test` → 43 passed, 0 failed; `node examples/fallback-demo.mjs`
   → 429 then 200; local Markdown links checked. Runtime integration was not rerun.
-- Follow-up: M2b step 1, the MCP capability gate against the pinned host.
+## 2026-11-02 — M2b step 2: durable task store and idempotency index
+
+- Branch: `feat/m2b-task-store`
+- Scope: code and tests.
+- Steps:
+  1. Defined `src/tasks.mjs` as a primitive record store with `createTask`, `readTask`,
+     `updateTask`, `listTasks`, `reconcile` and `prune`.
+  2. Implemented atomic writes via the exclusive temp file/fsync/rename pattern from
+     ADR-004.
+  3. Implemented an idempotency index based on `clientId` and canonical payload hash
+     (sorted keys, no whitespace, skipping `clientSessionId`).
+  4. Integrated startup reconciliation: `running` or `dispatched` tasks become `blocked`
+     on restart; missing index entries are repaired from records.
+  5. Added `test/task-store.test.mjs` covering idempotency, reconciliation, cross-process
+     visibility, persistence failures and pruning.
+  6. Recorded decision in ADR-008.
+- Files: `src/tasks.mjs`, `test/task-store.test.mjs`, `docs/adr/008-task-store.md`.
+- Validation: `node --test test/task-store.test.mjs` → 15 passed, 0 failed;
+  `node --test` (full suite) → 63 passed, 0 failed.
+- Follow-up: M2b step 3, the service surface (four operations with strict validation,
+  ownership and allowlist clamping).
 
 ## 2026-11-02 — M2b step 1: MCP capability gate passed
 
@@ -70,3 +90,52 @@ Template:
   200. The gate is not part of `node --test` because it needs the external binary.
 - Follow-up: M2b step 2, the task store (`AI_ORCHESTRATOR_HOME`, atomic JSON,
   idempotency index, startup reconciliation) with duplication/crash/restart tests.
+
+## 2026-11-02 — M2b step 3: task service surface
+
+- Branch: `feat/m2b-task-store`
+- Scope: code and tests.
+- Steps:
+  1. Added `src/service.mjs`, the transport-neutral service surface over
+     `openTaskStore` from `src/tasks.mjs`.
+  2. `submit_task` validates strictly (unknown/missing fields, objective 1..4000,
+     acceptance criteria 1..20, repository shape, path inside configured writable
+     roots, branch format), checks authorization subsets against the configured
+     allowlist and task limits against configured budgets, then persists and returns
+     `{ schemaVersion, taskId, status, acceptedAt, idempotentReplay }`.
+  3. `get_task_status` returns the status view with attempts, cancel, progress and
+     `resultAvailable`, plus the block section only when blocked; ownership is checked
+     against the service client.
+  4. `get_task_result` returns terminal artifacts, caps the diff at 1 MiB with an
+     explicit truncation flag, caps logs at 256 KiB, reports limitations for unverified
+     success or missing failed artifacts, keeps cost unknown and marks the result
+     sanitized.
+  5. `cancel_task` handles queued -> cancelled (effect `not_started`), running ->
+     blocked with `cancelled-uncertain` (effect `requested`) and terminal tasks
+     (effect `already_terminal`).
+  6. Store errors are mapped to `ServiceError` preserving the contract code and the
+     OS error code; unexpected failures map to `internal` without details.
+- Files: `src/service.mjs`, `test/task-service.test.mjs`.
+- Validation: `node --test` → 72 passed, 0 failed (9 new service tests); `node
+  examples/fallback-demo.mjs` → 429 then 200.
+- Follow-up: M2b step 4, the executor adapter (one OpenCode CLI subprocess in an
+  isolated worktree and branch, collecting diff, changed files and test evidence).
+
+## 2026-11-02 — M2b step 3: service boundary corrections for PR review
+
+- Branch: `feat/m2b-task-store` (review snapshot only; no commit or remote update)
+- Scope: code, tests and docs.
+- Steps: bound submissions to configured identity; initialize through one startup reconciliation and fail closed on conflicting indexes before mutating tasks; reject credential-shaped request text without mutating caller data; redact matching patterns in result text; resolve writable patterns from repository root and enforce repository/configured-root boundaries; enforce UTF-8 diff and combined output/log budgets with truncation flags; reject unknown operation fields; map cancel persistence errors; repair negative tests to submit request objects.
+- Files: `src/service.mjs`, `src/tasks.mjs`, `test/task-service.test.mjs`, `docs/task-contract.md`, `docs/adr/008-task-store.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/validation.md`.
+- Validation: `node --test` → 82 passed, 0 failed; `node --test ../../reviews/pr-4-review.test.mjs` → 9 passed, 0 failed; `node examples/fallback-demo.mjs` → expected 429 then 200.
+- Follow-up: maintainer review before publishing/merging. MCP gate remains inconsistent; this change did not rerun or fix it.
+
+## Independent final review — 2026-11-02
+
+- Branch: `feat/m2b-task-store`; local corrections accepted for publication and merge.
+- Final review preserves existing truncation flags, requires a test command for
+  success evidence, and marks uncertain cancellation/restart stop state unknown.
+- Independent checks: full suite 83 passed, external reproductions 9 passed,
+  demo 429 then 200. Regression cases are covered in the versioned service suite.
+- Full M2b remains incomplete. Resolve MCP gate instability before relying on it
+  for executor/client integration. No live executor acceptance is claimed.

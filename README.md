@@ -68,7 +68,9 @@ M2a is complete as a specification: the normative [task contract](docs/task-cont
 and [ADR-007](docs/adr/007-task-contract.md) define the four task operations,
 lifecycle, ownership, limits and artifacts, select MCP over stdio with OpenCode 2.2.5
 as the first client behind a capability gate, and record the pinned reuse/build
-decision. No task endpoint, transport or executor adapter exists yet.
+decision. As of 2026-11-02 the task store (`src/tasks.mjs`) and the task service
+surface (`src/service.mjs`) are implemented; no task endpoint, transport or executor
+adapter exists yet.
 
 A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
 and a simulated local provider. It validates session continuity, context, explicit

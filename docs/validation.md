@@ -145,3 +145,50 @@ in progress, not complete.
 from `mock/local`. The gate harness is not part of `node --test` because it requires
 the pinned binary; it must be run explicitly as documented in
 [integration](../integration/README.md).
+
+## M2b step 3: task service surface
+
+Executed on 2026-11-02 on Windows, Node.js v24.22.1 (fnm-managed install).
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Result: 72 tests passed, 0 failed; the demo printed the expected 429 from `mock/preferred`
+followed by 200 from `mock/local`.
+
+Scope of evidence: `src/service.mjs` implements the four operations from
+[task-contract.md](task-contract.md) over the store from `src/tasks.mjs` (`submit_task`,
+`get_task_status`, `get_task_result`, `cancel_task`) with strict validation, ownership,
+allowlist clamping, limits and sanitized errors. The new tests are in
+`test/task-service.test.mjs` (task store suite unchanged). This increment is unit
+evidence only; the MCP transport adapter, the executor adapter and the OpenCode
+integration were not rerun. The M2b step 1 capability gate transcript remains valid for
+the transport layer, and no mock-only run is claimed as task evidence.
+
+## M2b step 3 review corrections — 2026-11-02
+
+The PR #4 service implementation was corrected in the `b5aa3e2cf20051321ca51617899c6ca2cf0202fd` snapshot; no remote branch, commit or merge was changed.
+
+```sh
+node --test
+node --test ../../reviews/pr-4-review.test.mjs
+node examples/fallback-demo.mjs
+```
+
+Results: full suite 82 passed, 0 failed; review reproductions 9 passed, 0 failed; demo printed 429 from `mock/preferred`, then 200 from `mock/local`. Added coverage includes configured `clientId`, startup repair/blocking and conflict fail-closed behavior, duplicate records without indexes, sensitive input rejection without request mutation, UTF-8 and combined output/log limits, relative path resolution, unknown operation fields and cancel persistence errors. All tests use temporary directories and synthetic values.
+
+The service rejects request fields containing the documented credential-shaped patterns before persistence. Artifact text applies the same bounded redaction patterns; `sanitized: true` describes that policy only and does not claim comprehensive secret discovery. Writable paths are checked against both the task repository and configured roots. Startup reconciliation runs once at service construction; an index conflict prevents service creation and does not change active task records. Multiple service processes are still outside the store's single-process contract.
+
+MCP gate status remains unresolved: this review observed one failed probe (`warm-up-ok` returned instead of `gate-ok`) and a later pass with `MCP_GATE_DEBUG=1` over the same pinned host. The root cause was not established. The gate was not rerun for these service changes and is not claimed as fixed or stable. OpenCode smoke and live task transport/executor integration were not rerun; no paid API or credentials were used.
+
+## Independent final review — 2026-11-02
+
+- Branch: `feat/m2b-task-store`; local corrections accepted for publication and merge.
+- Final review preserves existing truncation flags, requires a test command for
+  success evidence, and marks uncertain cancellation/restart stop state unknown.
+- Independent checks: full suite 83 passed, external reproductions 9 passed,
+  demo 429 then 200. Regression cases are covered in the versioned service suite.
+- Full M2b remains incomplete. Resolve MCP gate instability before relying on it
+  for executor/client integration. No live executor acceptance is claimed.
