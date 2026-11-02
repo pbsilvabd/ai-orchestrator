@@ -170,9 +170,41 @@ Template:
   `docs/templates/handoff-update-template.md`, `AGENTS.md`, `docs/worklog.md`,
   `docs/validation.md`.
 - Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
-  429 then 200; `git diff --check` → no output; relative Markdown links in the new
-  files checked by script → 0 broken. The OpenCode smoke and MCP capability gate were
-  not rerun, and no automated link checker exists in this repository.
+  429 then 200; `git diff --check` → no output; relative Markdown links checked with a
+  one-off, unversioned script → 0 broken. The OpenCode smoke and MCP capability gate were
+  not rerun.
 - Follow-up: publish this branch for review as the templates PR and use the templates
   for the next change. No milestone step moved and no ADR was needed, because this adds
   documentation tooling only.
+
+## 2026-11-02 — Docs: align templates with repository practice and mark new elements
+
+- Branch: `docs/templates-uniformity`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Corrected the README trigger statement: worklog and validation on every change, ADR
+     only for a decision, dependency or trust boundary, handoff only when the next action
+     moves; added the copy procedure and the format-versus-substance rule.
+  2. Conformed the ADR template to the eight real ADRs: lowercase `accepted` plus a
+     semicolon-separated qualifier, no invented status vocabulary, `Decided by` and the
+     `Alternatives considered`/`Related documents` sections flagged as new, amendment rules
+     reconciled with `AGENTS.md`.
+  3. Replaced the ADR example that claimed to be a compressed ADR-008 with an explicitly
+     fictional ADR, so it can no longer be read as history.
+  4. Rewrote the handoff template: seven parts instead of a wrong count of six, no claim
+     that the file names the maintainer, and examples that reproduce the copied-unchanged
+     sections verbatim, including owner-only access and the M3 rule.
+  5. Corrected the worklog and validation templates: two heading and Steps forms that exist
+     in the file, scope values and wrap width as observed, the validation format declared as
+     new rather than established, one heading date rule, and the broken table cell.
+  6. Removed the round-1 validation contradiction between a listed link-check command and a
+     not-rerun line that called the same check skipped.
+- Files: `docs/templates/README.md`, `docs/templates/adr-template.md`,
+  `docs/templates/worklog-entry-template.md`,
+  `docs/templates/validation-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200; `git diff --check` → no output. The OpenCode smoke and MCP capability gate
+  were not rerun.
+- Follow-up: publish the branch for the next review round; apply the templates to the next
+  change. No milestone step moved.
