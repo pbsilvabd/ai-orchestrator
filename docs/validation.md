@@ -222,3 +222,30 @@ writes that exist today (`src/tasks.mjs:199`, `src/tasks.mjs:281`, `src/service.
 Not rerun: `node examples/fallback-demo.mjs`, the OpenCode smoke test, the MCP
 capability gate and any executor or live-client acceptance. The M2b gate remains
 inconsistent and is not claimed as fixed. No paid provider or credential was used.
+
+## RFC-0002 review fix round — 2026-11-02
+
+Documentation only again: `docs/rfcs/0002-lifecycle-state-machine.md` was corrected in
+place, with no source, schema or test change.
+
+```sh
+node --test
+```
+
+Result: 83 passed, 0 failed, unchanged.
+
+Re-read against the branch before committing: `docs/task-contract.md:7-8`
+(precedence), `:159` (`already_terminal`), `:179-192` (lifecycle block, fence ends
+`:188`), `src/service.mjs:13`, `:16`, `:17-19`, and the fixture sites the RFC now lists
+as step-2 breakage (`test/task-store.test.mjs:180-183`, `:284-288`;
+`test/task-service.test.mjs:53-56`, `:220`, `:255`, `:294`, `:305`, `:323`, `:337`).
+
+The sibling branch moved after the first read: `f7c8db7` was inspected with `git show`
+and the RFC now matches it — `assertSchema` rejects unknown keywords and requires `type`
+on every node, transition rows carry `type: "string"`, the empty-enum relaxation is
+local to `validateTransition`, and RFC-0001's prior combinator and numeric-bounds
+forward references are recorded as declined rather than pending.
+
+Not rerun: `node examples/fallback-demo.mjs`, the OpenCode smoke test, the MCP capability
+gate, and any executor or live-client acceptance. No paid provider or credential was
+used.

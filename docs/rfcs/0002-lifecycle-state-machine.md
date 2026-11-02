@@ -10,9 +10,9 @@ branch). This RFC is documentation only: no schema file, no source change, no te
 
 Proposed. This document specifies one transition table and one small checker entry
 point; nothing here is implemented. It builds on RFC-0001, which deliberately left
-status transitions, lifecycle legality and conditional rules to this follow-up ("the
-reason RFC-0002 exists: conditional state transitions need keywords this RFC refuses to
-half-implement").
+status transitions and lifecycle legality to this follow-up and whose corrected text
+(`f7c8db7` on the sibling branch) already records that they are modelled as a
+status-keyed dispatch table rather than as combinators.
 
 RFC-0002 must not be applied before RFC-0001 adoption step 2 (the `submit_task`
 boundary wiring). Until then there is no schema-driven validation path to attach a
@@ -45,11 +45,11 @@ The lifecycle is normative prose, and the rules that enforce it are scattered.
 4. **The read side duplicates the same knowledge again.** `get_task_status` decides
    `resultAvailable` and the `block` section from the status
    (`src/service.mjs:171-176`), and `get_task_result` re-checks terminality
-   (`src/service.mjs:190`). Three modules, four places, one prose diagram.
+   (`src/service.mjs:190`). Two modules, five places, one prose diagram.
 5. **The diagram is already narrower than the code.** `reconcile` blocks a `queued`
-   task that has an attempt (`src/tasks.mjs:279`), which the diagram at
-   `docs/task-contract.md:179-188` does not draw, relying on prose at
-   `docs/task-contract.md:203-204` instead. And the diagram's
+   task that has an attempt (`src/tasks.mjs:279`), which the lifecycle block at
+   `docs/task-contract.md:179-192` does not draw — the ASCII fence ends at `:188` —
+   relying on prose at `docs/task-contract.md:203-204` instead. And the diagram's
    `running --cancel (proven stop, no effects)--> cancelled` has no implementation:
    `cancelTask` unconditionally blocks a running task
    (`src/service.mjs:288-296`). Both are recorded below as open questions, not fixed
@@ -90,7 +90,7 @@ persisted record changes `status`.
 
 ### The transition table
 
-Derived from the diagram (`docs/task-contract.md:179-188`), the cancellation rules
+Derived from the lifecycle block (`docs/task-contract.md:179-192`), the cancellation rules
 (`docs/task-contract.md:154-159`), the restart rule
 (`docs/task-contract.md:202-204`) and the code that implements them today.
 
@@ -108,12 +108,18 @@ Derived from the diagram (`docs/task-contract.md:179-188`), the cancellation rul
 | 10 | `blocked` | `failed` | maintainer reconciliation | diagram `:187`; contract `:190-192`; no code path yet |
 | 11 | `blocked` | `cancelled` | maintainer reconciliation | diagram `:187`; contract `:190-192`; no code path yet |
 
-`succeeded`, `failed` and `cancelled` have no outgoing edges (diagram `:190`; "a
-terminal task returns `already_terminal` and is never reopened", contract `:159`).
-The terminal set at `src/tasks.mjs:19` matches, with `blocked` deliberately left out
-because rows 10 and 11 exist — a difference worth keeping visible, since the store uses
-`TERMINAL` for pruning (`src/tasks.mjs:314`) and the contract keeps blocked records
-forever (`docs/task-contract.md:205-206`).
+`succeeded`, `failed` and `cancelled` have no outgoing edges: the ASCII fence
+(`docs/task-contract.md:179-188`) draws none for them, and "a terminal task returns
+`already_terminal` and is never reopened" (`docs/task-contract.md:159`). `blocked` is
+terminal in one direction and not the other: `RESULT_STATUSES` already treats it as
+terminal "until a human reconciles it" (`src/service.mjs:17-19`), which is why
+`cancel_task` answers `already_terminal` for it without writing
+(`src/service.mjs:272-274`), while rows 10 and 11 are the *maintainer* path that
+`docs/task-contract.md:187` allows and `docs/task-contract.md:190` keeps manual ("no
+automatic transitions out of `blocked`") — no operation implements it. The store's
+`TERMINAL` set (`src/tasks.mjs:19`) matches the three hard terminal states and leaves
+`blocked` out, which is what the contract wants for pruning: `blocked` records are never
+deleted automatically (`docs/task-contract.md:205-206`).
 
 This table changes no behaviour: every row is either already reachable or already
 documented, and rows that no code performs stay unreachable until their producer
@@ -136,20 +142,26 @@ meta:
   title: task status transitions
   source: docs/task-contract.md:179-192
 values:
-  queued:    { enum: [running, cancelled, blocked] }      # rows 1-3
-  running:   { enum: [succeeded, failed, blocked, cancelled] }  # rows 4-9
-  succeeded: { enum: [] }                                 # terminal
-  failed:    { enum: [] }                                 # terminal
-  blocked:   { enum: [failed, cancelled] }                # rows 10-11
-  cancelled: { enum: [] }                                 # terminal
+  queued:    { type: string, enum: [running, cancelled, blocked] }      # rows 1-3
+  running:   { type: string, enum: [succeeded, failed, blocked, cancelled] }  # rows 4-9
+  succeeded: { type: string, enum: [] }                                 # terminal
+  failed:    { type: string, enum: [] }                                 # terminal
+  blocked:   { type: string, enum: [failed, cancelled] }                # rows 10-11
+  cancelled: { type: string, enum: [] }                                 # terminal
 ```
 
 Each `values` entry is an ordinary RFC-0001 schema node, so the enum formatting,
 primitive comparison with `Object.is` and 32-character previewing are reused unchanged.
+Every row declares `type: "string"` because RFC-0001's schema walk now requires an
+explicit type on every node (`assertSchema` in `f7c8db7` on the sibling branch); without
+it, delegating the row would throw before it could report the transition.
 An empty enum means "no successor"; it is the one place where RFC-0001's non-empty
 `enum` rule is relaxed, and only inside `validateTransition` (see below).
 
 ### Worked example
+
+Proposed output — not executed on this branch (RFC-0001's identically-titled section
+reports real output from its own branch; these three are the shape this RFC asks for).
 
 ```js
 // transitions = parsed task-status-transitions.json
@@ -185,43 +197,80 @@ distinguishable, and cannot be satisfied by an empty enum.
 
 ## Checker extension required
 
-RFC-0001's `validate()` treats every keyword it does not know as an annotation and
-ignores it (RFC-0001, "Supported subset"). That matters here: writing `if`/`then` or a
-`status`-conditional block into a schema file today would be **silently unenforced**.
-This RFC therefore does not add schema keywords. It adds one entry point.
+RFC-0001's checker walks every schema against a closed keyword whitelist
+(`assertSchema`, added in `f7c8db7`): an unknown keyword such as `if` or `then` throws,
+it is not treated as an annotation. Lifecycle rules therefore cannot be smuggled into a
+schema file, and supporting them there would mean widening the shared keyword set. This
+RFC adds no keyword; it adds one entry point whose table rows are ordinary subset nodes.
+
+**Divergence from RFC-0001's forward references, resolved.** RFC-0001 as first reviewed
+said RFC-0002 "is expected to widen the checker with combinators" and asked this RFC to
+decide whether `minimum`/`maximum` join the subset. This RFC declines both:
+
+- **Combinators: declined.** A status-keyed dispatch table replaces `oneOf`/`if`/`then`.
+  Each call selects exactly one row and validates one value, so there is no branch
+  ordering, no backtracking and no new keyword in the shared subset.
+- **Numeric bounds: declined.** `limits.maxAttempts`/`budgetMs`/`maxOutputBytes` and
+  timestamp non-negativity stay imperative. They are request-shape and configuration
+  concerns, not lifecycle edges, and `src/contracts/` gains no numeric keyword.
+
+RFC-0001's text was corrected to match in `f7c8db7` on `rfc/0001-contract-schemas`
+(sibling PR): it now states that RFC-0002 "does not add combinators to the checker" and
+records its numeric-bounds question as declined. The two documents agree; this RFC
+supplies the reasoning review asked for.
 
 Required from `src/contracts/validate.mjs`, in the same dependency-free file:
 
 1. `export function validateTransition(table, from, to)` returning
    `{ ok: true }` or `{ ok: false, errors: [{ path, message }] }`, identical in shape to
-   `validate()` so callers already have one error handling path.
-2. **Dispatch by current status**: `table.values[from]` selects the node that constrains
-   `to`. This is a lookup table keyed by enum value, not a combinator — deterministic,
-   one node per call, no ordering or backtracking, and no `oneOf`/`if`/`then` in the
-   subset. It is the mechanism recommended here precisely because JSON Schema's
-   `if`/`then` would need a `const`-per-status block duplicated six times and would
-   introduce the combinator surface RFC-0001 refused.
-3. **Fail closed on schema shape.** `meta` and `values` must exist; every key of
-   `values` must be a known status; every status in `TASK_STATUSES`
-   (`src/service.mjs:16`) must be a key, so a new status cannot silently gain no row.
-   A violation throws `TypeError`, matching RFC-0001's rule that a malformed schema node
-   is never treated as permissive.
-4. **Allow `enum: []` only inside `validateTransition`.** RFC-0001 requires a non-empty
-   enum (`src/contracts/validate.mjs`, `validateKeywordShapes`, on the sibling branch);
-   that stays true for
-   `validate()`. A transition row needs to express "terminal" *explicitly* rather than
-   by omitting the key, which would be indistinguishable from a forgotten row.
-   Duplicating the machinery is rejected: the new entry point calls the existing
-   keyword logic for the selected node.
-5. **Empty-enum message.** `{ path: 'status', message: 'transition is not allowed (no
+   `validate()` so callers already have one error handling path. A forbidden edge returns
+   the message shown in the worked example,
+   `transition is not allowed (expected one of "running", "cancelled", "blocked")`, with
+   the successor list taken from the schema side.
+2. **Dispatch by current status**: the row selected from `table.values` by `from` (the
+   lookup is defined in requirement 4) constrains `to`. This is a lookup table keyed by
+   enum value, not a combinator — deterministic, one node per call, no ordering or
+   backtracking, and no `oneOf`/`if`/`then` in the subset. It is the mechanism recommended
+   here precisely because JSON Schema's `if`/`then` would need a `const`-per-status block
+   duplicated six times and would introduce the combinator surface RFC-0001 refused.
+3. **Table checks take the known-status set as an argument.** The contracts layer keeps
+   zero imports (RFC-0001's decision), so it must not import `src/service.mjs`; doing so
+   would also close a cycle, because `src/service.mjs:13` already imports
+   `src/tasks.mjs`. `export function assertTransitionTable(table, knownStatuses)`
+   therefore receives the set: tests derive it with
+   `exportEnum(taskRecordSchema.properties.status)` (RFC-0001 step 3 makes that enum the
+   runtime source), and the store never needs it because the table is static and checked
+   once. It throws `TypeError` when `meta` or `values` is missing, when a key of `values`
+   is not in `knownStatuses`, when an entry of any row's `enum` is not in `knownStatuses`
+   (a row `{ enum: ["running", "bogus"] }` must fail), and when an entry of
+   `knownStatuses` is not a key.
+4. **Fail closed on an unknown source status.** `from` is looked up with
+   `Object.hasOwn(table.values, from)`; when it is absent, `validateTransition` throws
+   `TypeError`. A record in a status the table does not know is a malformed table or a
+   bug, never a soft "no transition is allowed". `Object.hasOwn` is load-bearing: a plain
+   `table.values[from]` would resolve `from = 'constructor'`, `'toString'` or
+   `'__proto__'` to an inherited value and derive a row out of `Object.prototype`. The
+   same rule governs the `knownStatuses` membership checks in requirement 3.
+5. **Empty enum is handled inside `validateTransition`, before delegation.** The function
+   checks `Array.isArray(row.enum) && row.enum.length === 0` itself and returns
+   requirement 6's error; otherwise it returns `validate(row, to)` unchanged, so the
+   message is RFC-0001's stock enum message and no keyword logic is duplicated.
+   `assertSchema()`/`walkSchema` — and therefore `validate()` — keep rejecting `enum: []`.
+   The relaxation lives in this one function and touches no shared keyword code.
+6. **Empty-enum message.** `{ path: 'status', message: 'transition is not allowed (no
    successor declared)' }`, because RFC-0001's stock enum message would render as
    `expected one of ` with nothing after it.
-6. **No new dependency and no new file layout beyond `src/contracts/transitions/`.**
+7. **Any `to` outside the row's enum is a validation result, not a throw** — including
+   `to = 'constructor'` or another `Object.prototype` key, which the enum comparison
+   rejects like any other non-member. Only the `from` lookup (requirement 4) and the table
+   shape (requirement 3) throw.
+8. **No new dependency and no new file layout beyond `src/contracts/transitions/`.**
 
-Compatibility with RFC-0001's open questions: this extension does not touch
-`minimum`/`maximum` (RFC-0001 open question 2), does not change the schema format
-ruling (open question 1) and does not need `$ref` (open question 4). It is additive and
-revertible: without the table file, nothing calls it.
+Compatibility with RFC-0001's open questions: none is reopened. Its YAML ruling (open
+question 1) is followed — `task-status-transitions.json`; its numeric-bounds question
+stays closed as declined; `task-record` strictness (open question 3) and the `$ref`
+question (open question 4) are untouched. Each row is validated through RFC-0001's
+existing `validate()`, so this extension adds an entry point, not a keyword.
 
 `validateTransition` is not the place for per-transition invariants such as
 `executionStopped: true` on `queued → cancelled` (`docs/task-contract.md:155`;
@@ -260,13 +309,17 @@ routes its transitions through the store rather than writing records itself.
 Three steps, each a small revertible PR, mirroring RFC-0001's shape. All of them are
 **after RFC-0001 step 2** (wire the `submit_task` boundary), which is what makes a
 schema-driven guard credible; RFC-0001 step 3 (derive `TASK_STATUSES` from the schema)
-should land before step B below so the table's status keys come from the same source.
+should land before step A below, because step A's table-coverage test compares the
+transition keys against that same enum.
 
 1. **Shadow.** Add `src/contracts/transitions/task-status-transitions.json`, the
-   `validateTransition` entry point and `test/contracts.test.mjs` coverage for the six
-   worked cases (valid edge, forbidden edge, terminal row, unknown status, missing
-   status key, empty table). No runtime import; the existing suite and demo are
-   untouched and this RFC's table can be reviewed against the diagram without risk.
+   `validateTransition` and `assertTransitionTable` entry points, and
+   `test/contracts.test.mjs` coverage for six cases: accepts a legal edge; rejects a
+   forbidden edge; rejects any successor of a terminal row; throws on an unknown source
+   status; throws on a table that misses a status key or declares an unknown status as
+   an entry; rejects a successor that collides with an `Object.prototype` key
+   (`'constructor'`). No runtime import; the existing suite and demo are untouched and
+   this RFC's table can be reviewed against the lifecycle block without risk.
 2. **Guard the store.** Add `assertTransition(previous, next)` in `src/tasks.mjs` and
    call it from `updateTask` (`src/tasks.mjs:235-244`) and `reconcile`
    (`src/tasks.mjs:278-289`), before `writeTask`. Map the failure to
@@ -275,10 +328,23 @@ should land before step B below so the table's status keys come from the same so
    running work", "service startup blocks an interrupted running task before reads");
    `node --test` and `examples/fallback-demo.mjs` are the gate. Revert restores the
    previous permissive `updateTask`.
-3. **Align the document.** Once the table is enforced, update the diagram at
-   `docs/task-contract.md:179-188` to match it (adding `queued → blocked` and deciding
-   rows 7 and 10-11 by resolving the open questions). This is a normative document
-   change with its own review; it is explicitly out of scope for steps 1 and 2.
+
+   **Known breakage this step must fix in the same PR.** Eight existing tests seed
+   records straight through `updateTask` with edges the table forbids, because they need
+   terminal artifacts without running a worker: `test/task-store.test.mjs:180-183` and
+   `:284-288` (the `make()` helper invoked for `succeeded`, `failed`, `cancelled` and
+   `blocked`), plus `test/task-service.test.mjs:53-56`, `:220`, `:255`, `:294`, `:305`,
+   `:323` and `:337` — all `queued → succeeded` or `queued → failed`. With the guard in
+   place those calls throw immediately and the suite fails for the wrong reason.
+   Fixtures must either traverse legal edges (`queued → running → succeeded`, which needs
+   an attempt and `startedAt`) or go through one documented seed helper that bypasses the
+   guard at a single reviewed place. A guard that silently tolerates queued-to-terminal
+   writes is not this proposal.
+3. **Align the document.** Once the table is enforced, update the ASCII fence at
+   `docs/task-contract.md:179-188` (the diagram inside the lifecycle block `:179-192`) to
+   match it: add `queued → blocked` and settle rows 7 and 10-11 by resolving the open
+   questions. This is a normative document change with its own review; it is explicitly
+   out of scope for steps 1 and 2.
 
 ## Non-goals
 
@@ -300,13 +366,21 @@ should land before step B below so the table's status keys come from the same so
 
 1. **`queued → blocked` is missing from the diagram.** `reconcile` blocks a `queued`
    task with a dispatched attempt (`src/tasks.mjs:279`), and prose at
-   `docs/task-contract.md:203-204` describes it, but the diagram at `:179-188` does not.
-   The table includes the row; should the diagram be amended in adoption step 3?
-2. **`running → cancelled` on a proven stop has no implementation.** The diagram
-   (`:184`) and the contract (`:156-157`) allow it; `cancelTask` always blocks a running
-   task and records `cancelled-uncertain` (`src/service.mjs:288-296`). Which is
-   authoritative today, and does the executor adapter own the proof that makes the row
-   reachable?
+   `docs/task-contract.md:203-204` describes it, but the lifecycle block at `:179-192`
+   does not draw it (the fence ends at `:188`). The contract decides precedence for
+   exactly this case: "where this document and code disagree, the document is wrong until
+   this document is updated deliberately in the same change"
+   (`docs/task-contract.md:7-8`), so the omission is a document defect, not a licence to
+   drop the row. Adoption step 3 is that deliberate update; the question narrows to the
+   row's wording (`queued --restart with a dispatched attempt--> blocked`) and whether it
+   lands with the executor adapter or before it.
+2. **`running → cancelled` on a proven stop has no implementation.** The fence (`:184`)
+   and the contract (`:156-157`) allow it; `cancelTask` always blocks a running task and
+   records `cancelled-uncertain` (`src/service.mjs:288-296`). By the same precedence rule
+   (`:7-8`) the document wins, so the row stays and the service is the incomplete side.
+   Step 3 records it as implemented only when the executor adapter can prove the stop;
+   until then it is legal but unreachable — the same situation as the rows in open
+   question 4.
 3. **`blocked → failed | cancelled` has no operation.** The diagram (`:187`) requires a
    maintainer reconciliation that no code implements, and `store.reconcile`
    (`src/tasks.mjs:249`) is startup reconciliation — same name, different concept. The
@@ -336,5 +410,6 @@ should land before step B below so the table's status keys come from the same so
   dependency.
 - [AGENTS.md](../../AGENTS.md) — no `npm install`, documentation duties, evidence
   levels.
-- `src/tasks.mjs`, `src/service.mjs`, `test/task-service.test.mjs` — the code the table
-  was derived from.
+- `src/tasks.mjs`, `src/service.mjs`, `test/task-store.test.mjs`,
+  `test/task-service.test.mjs` — the code the table and the fixture-breakage note were
+  derived from.

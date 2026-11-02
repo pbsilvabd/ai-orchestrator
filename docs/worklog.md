@@ -145,22 +145,36 @@ Template:
 - Branch: `rfc/0002-lifecycle-state-machine`
 - Scope: documentation only (`docs/rfcs/0002-lifecycle-state-machine.md` plus the
   worklog and validation entries); no source, schema, test or ADR change.
-- Steps: derived the legal status edges from the lifecycle diagram
-  (`docs/task-contract.md:179-192`), the cancellation rules (`:154-159`), the restart
-  rule (`:202-204`) and the code that implements them (`src/tasks.mjs:278-289`,
-  `src/service.mjs:266-297`); specified a per-status transition table checked at the
-  store mutation boundary (`updateTask` plus the direct `writeTask` in `reconcile`);
-  specified the single `validateTransition` entry point RFC-0001's checker must gain,
-  with a status-keyed dispatch table instead of `if`/`then` or `oneOf`; mapped the
-  table to the 13 M2b acceptance tests; recorded five diagram-versus-code gaps as open
-  questions instead of resolving them.
+- Steps: derived the legal status edges from the lifecycle block
+  (`docs/task-contract.md:179-192`, ASCII fence `:179-188`), the cancellation rules
+  (`:154-159`), the restart rule (`:202-204`) and the code that implements them
+  (`src/tasks.mjs:278-289`, `src/service.mjs:266-297`); specified a per-status
+  transition table checked at the store mutation boundary (`updateTask` plus the direct
+  `writeTask` in `reconcile`); specified the single `validateTransition` entry point
+  RFC-0001's checker must gain, with a status-keyed dispatch table instead of
+  `if`/`then` or `oneOf`, and a table-coverage check that takes the known-status set as
+  an argument so `src/contracts/` keeps zero imports; mapped the table to the 13 M2b
+  acceptance tests; recorded five open questions instead of resolving them — open
+  questions 1-3 are gaps between the lifecycle block and the code, open question 4 is the
+  missing producer for rows 1, 4, 5 and 6, open question 5 confirms the write-time-only
+  guard.
 - Files: `docs/rfcs/0002-lifecycle-state-machine.md`, `docs/worklog.md`,
   `docs/validation.md`.
 - Validation: `node --test` → 83 passed, 0 failed (unchanged; no code touched). The
   sibling RFC-0001 branch was read via `git show rfc/0001-contract-schemas:...` to align
-  the subset table, error format and adoption path; the referenced
-  `docs/rfcs/0001-contract-schemas.md` ships in that sibling PR and is not on this
-  branch.
+  the subset table, error format, `assertSchema` behaviour and adoption path; the
+  referenced `docs/rfcs/0001-contract-schemas.md` ships in that sibling PR and is not on
+  this branch.
 - Follow-up: RFC-0001 review, then RFC-0002 adoption step 1 (shadow table and
-  `validateTransition`), then step 2 (store guard). Rows 1, 4, 5, 6, 7 and 10-11 have
-  no producer until the executor adapter and maintainer reconciliation exist.
+  `validateTransition`), then step 2 (store guard), which must also rewrite the fixtures
+  that seed terminal records through `updateTask`. Rows 1, 4, 5 and 6 have no producer
+  (open question 4); rows 7, 10 and 11 are documented but unimplemented (open questions
+  2 and 3).
+- Review fix round in the same entry: corrected the terminal-row evidence to the ASCII
+  fence plus `task-contract.md:159` and added the `blocked`/`RESULT_STATUSES` clause;
+  normalized lifecycle-block references to `:179-192`; moved the status-key coverage set
+  from `TASK_STATUSES` (`src/service.mjs:16`) into an explicit `knownStatuses` argument;
+  specified the empty-enum check inside `validateTransition` and the
+  `Object.hasOwn`/prototype-key rules; declared that combinators and numeric bounds are
+  both declined and that RFC-0001 records this in `f7c8db7`; added the fixture-breakage
+  warning to adoption step 2.
