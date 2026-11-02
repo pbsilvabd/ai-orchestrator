@@ -23,7 +23,23 @@ cycle. This does not waive tests/review or change the future agent's permissions
 | OpenCode integration | Hooks, queue, context, permissions and failures in the pinned host | Real model quality/cost |
 | Use on this project | A real task produces a diff and evidence under supervision | Unrestricted autonomy or universal safety |
 
-## Integrated MVP ready (M2)
+## Task contract and reuse ready (M2a)
+
+- [ ] Task inputs, ownership, authorization, lifecycle, duplicate submission, cancellation and artifact access are specified.
+- [ ] One initial client and transport are selected with a compatibility test plan.
+- [ ] Reuse/build decision records pinned versions, licenses, evidence and gaps.
+
+## One-worker delegation ready (M2b)
+
+- [ ] A real compatible client submits a task and receives a stable task ID.
+- [ ] One worker executes independently between client status queries.
+- [ ] Status and result retrieval return scoped artifacts and verifiable evidence.
+- [ ] Duplicate submission/reconnect does not silently create duplicate work.
+- [ ] Cancellation requested and execution stopped are distinguished; uncertain restart blocks replay.
+- [ ] Task permissions, ownership, limits and failures are tested without mandatory paid APIs.
+- [ ] No implicit public exposure, permission escalation or automatic merge.
+
+## Safe worker fallback ready (M2c)
 
 - [ ] Reproducible installation and execution with pinned OpenCode 2.2.5.
 - [ ] A 429 before a response switches A to B without losing context/permissions.
@@ -35,7 +51,8 @@ cycle. This does not waive tests/review or change the future agent's permissions
 
 ## First use on this project ready (M3)
 
-- [ ] The project executed a backlog task through OpenCode, rather than only through this chat.
+- [ ] A primary LLM delegated a real backlog task through the service interface, queried progress and retrieved results; direct work in this chat does not count.
+- [ ] One authorized worker/model is sufficient; M2b is complete and fallback stays disabled unless M2c is validated.
 - [ ] Authorized providers and runtime/version details are recorded without disclosing credentials.
 - [ ] Changes are isolated on a branch, with a recorded base and a task-scoped diff.
 - [ ] The workflow ran tests, results are verifiable and human review is complete.

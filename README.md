@@ -1,53 +1,60 @@
 # AI Orchestrator
 
-An incremental orchestration framework built around OpenCode. MIT licensed.
+A pluggable worker service for a supervising LLM. MIT licensed.
 
 ## Purpose and target architecture
 
-The goal is to use authorized free models, supported subscriptions and local models
-to code, research, investigate errors and complete tasks with controlled costs.
-OpenCode supplies the execution environment; this project adds conservative fallback,
-recoverable operational state and, later, persistent knowledge and task coordination.
-The first practical goal is **developing this repository using the project itself**:
-select a backlog task, produce a scoped change, run tests and submit evidence for
-human review.
+Connect a primary LLM in a compatible local or web client to AI Orchestrator.
+The primary LLM plans, delegates tasks, checks progress and reviews results;
+workers perform the execution. The service should return task status, artifacts,
+diffs and test evidence while respecting authorized models, tools and budgets.
 
-The diagram describes the **target architecture**, not an already integrated system.
-Green components work locally or have passed the stated host smoke test; yellow is
-in progress; dashed components are planned. The local core is not yet connected to
-OpenCode through a fallback adapter.
+**The primary acceptance test is developing AI Orchestrator itself:** delegate a
+small backlog task to one worker, retrieve its diff and test report, and review
+before merging. This workflow has not been implemented yet.
+
+OpenCode 2.2.5 is the first candidate worker executor. MCP is the preferred
+integration to evaluate for compatible clients; an API is an alternative.
+Neither endpoint exists yet. Reuse existing infrastructure before building new
+routing, task or memory systems. See [ADR-006](docs/adr/006-worker-service.md).
+
+The diagram shows the **target architecture**, not a completed integration.
+Green marks local implemented components or the verified host smoke; yellow marks
+evaluation/integration work; dashed nodes are planned.
 
 ```mermaid
 flowchart TD
-    User["User: coding, research, debugging"] --> Tasks["Task planner and backlog"]
-    Tasks --> Controls["Authorization, permissions and budgets"]
-    Controls --> Host["OpenCode 2.2.5: sessions and tools<br/>Host smoke test passed"]
-    Host <--> Adapter["OpenCode fallback adapter<br/>In progress"]
-    Adapter <--> Core["Local runner, fallback policy and ledger<br/>Implemented and tested"]
-    Core --> Router["Capability and cost routing"]
-    Router --> Models["Authorized models<br/>Free, supported subscriptions, local"]
-    Models --> Adapter
-    Host --> Tools["Files, Git, tests and MCP tools"]
-    Tools --> Review["Validation, evidence and human review"]
-    Review --> Changes["Reviewed commits and pull requests"]
-    Changes --> Repo["AI Orchestrator repository"]
-    Repo --> Tasks
-    Host <--> Memory["ai-memory: decisions and knowledge"]
-    Tasks <--> Memory
-    Core --> Metrics["Usage, cost and reliability metrics"]
-    Metrics --> Router
+    User["User: objective and permissions"] --> Main["Primary LLM: plans and supervises"]
+    Main <-->|Submit, status, result, cancel| Interface["MCP or API task interface"]
+    Interface <--> Service["AI Orchestrator task service<br/>Identity, authorization, lifecycle and artifacts"]
+    Service --> Worker["One worker first<br/>OpenCode executor adapter"]
+    Worker --> Host["OpenCode 2.2.5<br/>Host smoke passed"]
+    Worker -.-> Core["Local policy, ledger and runner<br/>Implemented; task integration pending"]
+    Host --> Workspace["Isolated repository branch and tools"]
+    Workspace --> Evidence["Diff, tests, results and limitations"]
+    Evidence --> Service
+    Service --> Main
+    Main --> Review["Human review"]
+    Review --> Repo["AI Orchestrator repository<br/>Primary development workload"]
+    Repo --> User
+    Service -.-> More["Later: research and review workers"]
+    Service -.-> Memory["Later: ai-memory integration"]
+    Worker -.-> Routing["Later: reusable model routing and safe fallback"]
     classDef current fill:#e6f4ea,stroke:#237a3b,color:#111;
     classDef progress fill:#fff4ce,stroke:#9c6500,color:#111;
     classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5,color:#111;
     class Host,Core current;
-    class Adapter progress;
-    class Tasks,Controls,Router,Models,Tools,Review,Changes,Repo,Memory,Metrics planned;
+    class Interface,Worker progress;
+    class Main,Service,Workspace,Evidence,Review,Repo,More,Memory,Routing planned;
 ```
 
-Planned tool and review nodes describe the integrated workflow; the underlying
-OpenCode tools already exist. Operational checkpoints track dispatch outcomes;
-semantic memory stores knowledge and must never authorize replay. Future agents
-may propose improvements, but cannot grant themselves permissions or bypass quotas.
+Tasks should continue between status queries. Continuous supervision depends on
+the primary client's invocation/notification support; polling is sufficient for
+the first MVP. A web client needs a compatible interface and network access;
+a local service is not automatically accessible from the web.
+
+Operational state and semantic memory remain separate. Neither task instructions
+nor worker results grant permissions. The first workflow has no automatic merge.
 
 ## Current status
 
@@ -132,10 +139,10 @@ for status, dependencies and acceptance gates.
 
 ## Next steps
 
-1. Validate the OpenCode adapter contract against the implemented local runner.
-2. Build the OpenCode 2.2.5 adapter and end-to-end tests with failures, tools and real restarts.
-3. Complete the first task in this repository using explicitly authorized models.
-4. Add ai-memory integration, capability/cost routing and bounded multi-agent work incrementally.
+1. Specify the task contract and evaluate reuse; record the M2a decision.
+2. Connect one compatible primary client to one worker (M2b).
+3. Complete a real self-development task with a diff, tests and human review (M3).
+4. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.
 
 `src/http-failure.mjs` accepts Retry-After as integer seconds or canonical
 IMF-fixdate. Invalid values, overflow and obsolete formats are conservatively

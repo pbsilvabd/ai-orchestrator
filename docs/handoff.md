@@ -11,15 +11,20 @@ No dependency installation or credentials are required. GitHub:
 pbsilvabd/ai-orchestrator, branch main. Use remote HEAD as the reference and check
 for changes before editing.
 
-Next increment: M2, a fallback adapter without repeating prompts. The harness in
-integration/opencode-smoke.mjs already starts the host and local provider; read
-[integration instructions](../integration/README.md). Extend it with a controlled
-429 and events/hooks, establishing a safe boundary before switching models. Do not
-use another `run` to resubmit a failed prompt. SDK retry changes only retry/delay,
-not the readonly model. Read ADR-004/005. The harness bug is fixed: close child.stdin,
-because run waits for EOF before submitting the prompt. Keep the ledger handle
-open during the call; execute only after select returns dispatch. Never remove
-locks automatically. Pending state after a crash remains blocked.
+Next increment is M2a, not immediate fallback adapter coding. Read
+[ADR-006](adr/006-worker-service.md): the accepted objective is a worker service
+for a supervising primary LLM. Specify submit/status/result/cancel, task identity,
+ownership, lifecycle, duplicate handling, limits and artifacts. Evaluate reuse,
+choose one client/transport and record the decision before implementing M2b.
+The primary end-to-end test is a delegated task that develops this repository.
+M3 can use one worker/model with fallback disabled; M2c covers safe fallback later.
+
+The existing smoke harness remains useful for the executor. For M2c, inject a
+controlled 429 and establish safe effect boundaries; do not resubmit a failed
+prompt using another run. SDK retry changes retry/delay, not the readonly model.
+Read ADR-004/005. Close child.stdin because run waits for EOF. Keep the ledger
+handle open during calls, dispatch only after persistence, never auto-remove locks
+and keep uncertain pending state blocked. A task lifecycle is not yet implemented.
 
 Current API: createState(sessionId), select(state, models, options),
 success(state, dispatch), failure(state, dispatch, error, options), nextOperation(state).

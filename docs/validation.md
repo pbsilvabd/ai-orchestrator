@@ -65,3 +65,13 @@ and `node examples/fallback-demo.mjs` (expected 429 then 200); checked all 21 lo
 Markdown links and preserved existing source URLs. The real host smoke test was
 not rerun for this documentation-only change. Mermaid source was reviewed; visual
 rendering was not tested.
+
+## Worker-service roadmap update
+
+Accepted direction recorded in ADR-006: a supervising primary LLM delegates to
+workers; this repository is the primary end-to-end workload. Roadmap, README
+architecture, requirements, DoD and handoff are aligned. M2a/M2b/M2c distinguish
+contract/reuse, delegation and fallback. No task endpoint or worker integration
+was implemented, and no new runtime milestone is claimed. Validation for this
+documentation-only update: local Markdown links and code-fence balance checked;
+existing runtime test results above remain historical and were not rerun.

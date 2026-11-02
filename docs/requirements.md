@@ -1,5 +1,27 @@
 # Scope and acceptance criteria
 
+## Product objective
+
+Provide a pluggable worker service for a primary LLM that delegates and supervises.
+Workers execute scoped tasks and return status, artifacts and evidence. The primary
+end-to-end acceptance workload is development of this repository, with human review.
+OpenCode is the initial executor candidate, not a required supervising client.
+See [ADR-006](adr/006-worker-service.md).
+
+## Delegation MVP (M2a/M2b, pending)
+
+Specify and implement submit/status/result/cancel operations for one supported
+client and one worker. Task submission returns an ID; work continues between polls.
+Define persistent lifecycle and result retrieval, duplicate-request handling,
+task ownership, authorized actions/models, budgets and uncertain-outcome recovery.
+Cancellation must not claim effects were undone. Real client integration and
+self-development evidence are required; mocks alone are insufficient.
+
+MCP is the preferred interface to evaluate; an API is an alternative. Client and
+transport selection remain pending. Remote access requires an explicit
+authenticated deployment design. No universal web compatibility or continuous
+background LLM supervision is promised.
+
 ## Delivery 0: scaffold (current)
 
 - Pure policy, explicit allowlist, attempt limit and cooldown.
@@ -7,7 +29,7 @@
 - Tests using synthetic data, file checkpoints and new processes.
 - Audit of pinned sources and ADRs; no enabled plugins or committed credentials.
 
-## Delivery 1: OpenCode integration (pending)
+## Safe worker fallback: OpenCode integration (M2c, pending)
 
 M1a is complete: HTTP/Retry-After normalization and loopback tests. M1b includes
 correlation, checkpoints, locking and a runner with local cancellation/budget.
@@ -28,7 +50,7 @@ boundaries, reject incompatible capabilities and persist before dispatch. It mus
 handle duplicate callbacks, concurrency, expiration and cancellation. The current
 policy assumes a single trusted caller and prevalidated compatible models.
 
-## Outside this increment
+## Outside the immediate contract increment (M2a)
 
 Real providers, OAuth, paid APIs, automatic discovery, multi-agent execution,
 intelligent classification, semantic memory, UI, same-model retries with backoff,
