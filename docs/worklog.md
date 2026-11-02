@@ -43,7 +43,27 @@ Template:
   `docs/definition-of-done.md`, `docs/validation.md`, `docs/handoff.md`.
 - Validation: `node --test` → 43 passed, 0 failed; `node examples/fallback-demo.mjs`
   → 429 then 200; local Markdown links checked. Runtime integration was not rerun.
-- Follow-up: M2b step 1, the MCP capability gate against the pinned host.
+## 2026-11-02 — M2b step 2: durable task store and idempotency index
+
+- Branch: `feat/m2b-task-store`
+- Scope: code and tests.
+- Steps:
+  1. Defined `src/tasks.mjs` as a primitive record store with `createTask`, `readTask`,
+     `updateTask`, `listTasks`, `reconcile` and `prune`.
+  2. Implemented atomic writes via the exclusive temp file/fsync/rename pattern from
+     ADR-004.
+  3. Implemented an idempotency index based on `clientId` and canonical payload hash
+     (sorted keys, no whitespace, skipping `clientSessionId`).
+  4. Integrated startup reconciliation: `running` or `dispatched` tasks become `blocked`
+     on restart; missing index entries are repaired from records.
+  5. Added `test/task-store.test.mjs` covering idempotency, reconciliation, cross-process
+     visibility, persistence failures and pruning.
+  6. Recorded decision in ADR-008.
+- Files: `src/tasks.mjs`, `test/task-store.test.mjs`, `docs/adr/008-task-store.md`.
+- Validation: `node --test test/task-store.test.mjs` → 15 passed, 0 failed;
+  `node --test` (full suite) → 63 passed, 0 failed.
+- Follow-up: M2b step 3, the service surface (four operations with strict validation,
+  ownership and allowlist clamping).
 
 ## 2026-11-02 — M2b step 1: MCP capability gate passed
 
