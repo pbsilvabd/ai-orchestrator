@@ -178,3 +178,10 @@ Template:
   `Object.hasOwn`/prototype-key rules; declared that combinators and numeric bounds are
   both declined and that RFC-0001 records this in `f7c8db7`; added the fixture-breakage
   warning to adoption step 2.
+- Review round 2 in the same entry: unified the forbidden-edge result on one observable
+  contract (the delegated enum failure is wrapped to `path: 'status'` with the
+  `transition is not allowed (...)` prefix, so the worked example, requirement 1 and
+  requirement 5 agree); named the third import edge that would close the cycle; replaced
+  branch-local commit citations with RFC-0001 section references; added the
+  `succeeded → failed` fixture seed at `test/task-service.test.mjs:294` to the step-2
+  breakage list.

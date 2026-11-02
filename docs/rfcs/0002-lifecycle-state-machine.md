@@ -10,8 +10,8 @@ branch). This RFC is documentation only: no schema file, no source change, no te
 
 Proposed. This document specifies one transition table and one small checker entry
 point; nothing here is implemented. It builds on RFC-0001, which deliberately left
-status transitions and lifecycle legality to this follow-up and whose corrected text
-(`f7c8db7` on the sibling branch) already records that they are modelled as a
+status transitions and lifecycle legality to this follow-up and whose Status section, as
+corrected in review on the sibling branch, already records that they are modelled as a
 status-keyed dispatch table rather than as combinators.
 
 RFC-0002 must not be applied before RFC-0001 adoption step 2 (the `submit_task`
@@ -152,9 +152,9 @@ values:
 
 Each `values` entry is an ordinary RFC-0001 schema node, so the enum formatting,
 primitive comparison with `Object.is` and 32-character previewing are reused unchanged.
-Every row declares `type: "string"` because RFC-0001's schema walk now requires an
-explicit type on every node (`assertSchema` in `f7c8db7` on the sibling branch); without
-it, delegating the row would throw before it could report the transition.
+Every row declares `type: "string"` because RFC-0001's schema walk requires an explicit
+type on every node (`assertSchema` on the sibling branch); without it, delegating the row
+would throw before it could report the transition.
 An empty enum means "no successor"; it is the one place where RFC-0001's non-empty
 `enum` rule is relaxed, and only inside `validateTransition` (see below).
 
@@ -190,22 +190,25 @@ validateTransition(transitions, 'succeeded', 'running');
 
 Messages keep RFC-0001's rule that instance values are never echoed: the allowed list
 comes from the schema side, the current status is not quoted, and the path is the field
-that would change (`status`). The same table entry used with `validate(table.values.queued, nextStatus)`
-yields RFC-0001's stock message (`expected one of "running", "cancelled", "blocked"`),
-which is why `validateTransition` exists: it names the rule, keeps the terminal row
-distinguishable, and cannot be satisfied by an empty enum.
+that would change (`status`). Reusing the table entry directly with
+`validate(table.values.queued, nextStatus)` would report the stock enum message at the
+empty path; `validateTransition` exists to wrap that into the pinned error above, so the
+rule is named, the failure is attributed to `status`, the terminal row stays
+distinguishable, and an empty enum cannot satisfy the check.
 
 ## Checker extension required
 
 RFC-0001's checker walks every schema against a closed keyword whitelist
-(`assertSchema`, added in `f7c8db7`): an unknown keyword such as `if` or `then` throws,
+(`assertSchema`, on the sibling branch): an unknown keyword such as `if` or `then` throws,
 it is not treated as an annotation. Lifecycle rules therefore cannot be smuggled into a
 schema file, and supporting them there would mean widening the shared keyword set. This
 RFC adds no keyword; it adds one entry point whose table rows are ordinary subset nodes.
 
-**Divergence from RFC-0001's forward references, resolved.** RFC-0001 as first reviewed
-said RFC-0002 "is expected to widen the checker with combinators" and asked this RFC to
-decide whether `minimum`/`maximum` join the subset. This RFC declines both:
+**Divergence from RFC-0001's earlier forward references, resolved.** RFC-0001's Status
+section, paragraph 2, as corrected in review, states that RFC-0002 "does not add
+combinators to the checker"; the pre-review draft of that paragraph had expected RFC-0002
+to widen the checker with combinators and had asked it to decide whether
+`minimum`/`maximum` join the subset. This RFC declines both, and says why:
 
 - **Combinators: declined.** A status-keyed dispatch table replaces `oneOf`/`if`/`then`.
   Each call selects exactly one row and validates one value, so there is no branch
@@ -214,19 +217,20 @@ decide whether `minimum`/`maximum` join the subset. This RFC declines both:
   timestamp non-negativity stay imperative. They are request-shape and configuration
   concerns, not lifecycle edges, and `src/contracts/` gains no numeric keyword.
 
-RFC-0001's text was corrected to match in `f7c8db7` on `rfc/0001-contract-schemas`
-(sibling PR): it now states that RFC-0002 "does not add combinators to the checker" and
-records its numeric-bounds question as declined. The two documents agree; this RFC
-supplies the reasoning review asked for.
+RFC-0001's Status section and its numeric-bounds open question were corrected to match
+in the sibling PR (`f7c8db7` there). The two documents agree; this RFC supplies the
+reasoning review asked for.
 
 Required from `src/contracts/validate.mjs`, in the same dependency-free file:
 
 1. `export function validateTransition(table, from, to)` returning
    `{ ok: true }` or `{ ok: false, errors: [{ path, message }] }`, identical in shape to
    `validate()` so callers already have one error handling path. A forbidden edge returns
-   the message shown in the worked example,
-   `transition is not allowed (expected one of "running", "cancelled", "blocked")`, with
-   the successor list taken from the schema side.
+   exactly one error, as in the worked example:
+   `{ path: 'status', message: 'transition is not allowed (expected one of "running", "cancelled", "blocked")' }`,
+   with the successor list taken from the schema side. Requirement 5 is what normalizes
+   the delegated result into this form, so `path` is never the empty string and the
+   message is never the bare enum text.
 2. **Dispatch by current status**: the row selected from `table.values` by `from` (the
    lookup is defined in requirement 4) constrains `to`. This is a lookup table keyed by
    enum value, not a combinator — deterministic, one node per call, no ordering or
@@ -234,9 +238,11 @@ Required from `src/contracts/validate.mjs`, in the same dependency-free file:
    here precisely because JSON Schema's `if`/`then` would need a `const`-per-status block
    duplicated six times and would introduce the combinator surface RFC-0001 refused.
 3. **Table checks take the known-status set as an argument.** The contracts layer keeps
-   zero imports (RFC-0001's decision), so it must not import `src/service.mjs`; doing so
-   would also close a cycle, because `src/service.mjs:13` already imports
-   `src/tasks.mjs`. `export function assertTransitionTable(table, knownStatuses)`
+   zero imports (RFC-0001's decision), so it must not import `src/service.mjs`. An
+   import there would also complete a cycle once adoption step 2 adds
+   `src/tasks.mjs` → `src/contracts/validate.mjs`: contracts → service → tasks →
+   contracts. The zero-import rule stands on its own even without that third edge.
+   `export function assertTransitionTable(table, knownStatuses)`
    therefore receives the set: tests derive it with
    `exportEnum(taskRecordSchema.properties.status)` (RFC-0001 step 3 makes that enum the
    runtime source), and the store never needs it because the table is static and checked
@@ -251,10 +257,14 @@ Required from `src/contracts/validate.mjs`, in the same dependency-free file:
    `table.values[from]` would resolve `from = 'constructor'`, `'toString'` or
    `'__proto__'` to an inherited value and derive a row out of `Object.prototype`. The
    same rule governs the `knownStatuses` membership checks in requirement 3.
-5. **Empty enum is handled inside `validateTransition`, before delegation.** The function
-   checks `Array.isArray(row.enum) && row.enum.length === 0` itself and returns
-   requirement 6's error; otherwise it returns `validate(row, to)` unchanged, so the
-   message is RFC-0001's stock enum message and no keyword logic is duplicated.
+5. **Empty enum, then delegation with the result wrapped.** The function checks
+   `Array.isArray(row.enum) && row.enum.length === 0` itself and returns requirement 6's
+   error. Otherwise it calls `validate(row, to)`. A success is returned unchanged as
+   `{ ok: true }`. A failure is rewritten into the pinned form of requirement 1:
+   `path` becomes `'status'` (the delegated path is the empty string) and the stock
+   message is prefixed with `transition is not allowed (`, closed with `)`. The raw
+   delegated error is never returned, so callers see one contract whichever branch
+   rejected the edge, and no keyword logic is duplicated.
    `assertSchema()`/`walkSchema` — and therefore `validate()` — keep rejecting `enum: []`.
    The relaxation lives in this one function and touches no shared keyword code.
 6. **Empty-enum message.** `{ path: 'status', message: 'transition is not allowed (no
@@ -262,8 +272,9 @@ Required from `src/contracts/validate.mjs`, in the same dependency-free file:
    `expected one of ` with nothing after it.
 7. **Any `to` outside the row's enum is a validation result, not a throw** — including
    `to = 'constructor'` or another `Object.prototype` key, which the enum comparison
-   rejects like any other non-member. Only the `from` lookup (requirement 4) and the table
-   shape (requirement 3) throw.
+   rejects like any other non-member, returned in requirement 1's pinned form via
+   requirement 5. Only the `from` lookup (requirement 4) and the table shape
+   (requirement 3) throw.
 8. **No new dependency and no new file layout beyond `src/contracts/transitions/`.**
 
 Compatibility with RFC-0001's open questions: none is reopened. Its YAML ruling (open
@@ -334,7 +345,9 @@ transition keys against that same enum.
    terminal artifacts without running a worker: `test/task-store.test.mjs:180-183` and
    `:284-288` (the `make()` helper invoked for `succeeded`, `failed`, `cancelled` and
    `blocked`), plus `test/task-service.test.mjs:53-56`, `:220`, `:255`, `:294`, `:305`,
-   `:323` and `:337` — all `queued → succeeded` or `queued → failed`. With the guard in
+   `:323` and `:337` — `queued → succeeded`, `queued → failed`, and one
+   `succeeded → failed` (`test/task-service.test.mjs:294`, which reuses a task the same
+   test just marked `succeeded`). With the guard in
    place those calls throw immediately and the suite fails for the wrong reason.
    Fixtures must either traverse legal edges (`queued → running → succeeded`, which needs
    an attempt and `startedAt`) or go through one documented seed helper that bypasses the

@@ -249,3 +249,11 @@ forward references are recorded as declined rather than pending.
 Not rerun: `node examples/fallback-demo.mjs`, the OpenCode smoke test, the MCP capability
 gate, and any executor or live-client acceptance. No paid provider or credential was
 used.
+
+Round 2 review corrections (same day, documentation only): the forbidden-edge contract
+was unified so a delegated enum failure is wrapped to `path: 'status'` with the
+`transition is not allowed (...)` prefix, the import-cycle clause now names the third
+edge, `f7c8db7` citations were reduced to one parenthetical, and the fixture list gained
+the `succeeded → failed` seed at `test/task-service.test.mjs:294`. `node --test` → 83
+passed, 0 failed. The demo, OpenCode smoke test, MCP gate and executor/live-client
+acceptance were not rerun; no credential or paid provider was used.
