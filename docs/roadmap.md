@@ -26,9 +26,11 @@ normalization, ledger, runner and 43 local tests. The real OpenCode smoke passed
 for context/session continuity, explicit model switching and denied writes.
 M2a is complete as documentation: the normative [task contract](task-contract.md)
 and [ADR-007](adr/007-task-contract.md) select MCP over stdio with OpenCode 2.2.5 as
-the first client, behind a capability gate, and record the reuse/build decision.
-There is no task service, MCP/API endpoint, worker adapter, integrated fallback,
-semantic memory or completed self-development workflow.
+the first client and record the reuse/build decision. The MCP capability gate passed
+on 2026-11-02 (discovery, cataloguing and one call over revision `2026-07-28`), so
+M2b implementation starts at the task store. There is no task service, MCP/API
+endpoint, worker adapter, integrated fallback, semantic memory or completed
+self-development workflow.
 
 The existing runner executes an operation; it is not a durable task scheduler.
 Its budget is per invocation, and its ledger does not persist task artifacts or
@@ -42,7 +44,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | Next; depends on M2a (complete) | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; step 1 of 6 (gate) complete | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Primary acceptance target; depends on M2b | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -60,9 +62,10 @@ See [Definition of Done](definition-of-done.md).
 The normative contract is [task-contract.md](task-contract.md); these steps implement
 it and nothing beyond it.
 
-1. **Capability gate.** Configure one local stdio MCP server in the pinned OpenCode
-   2.2.5 host; prove tool discovery and one `tools/call`; record the transcript. If it
-   fails, switch only the transport adapter to loopback HTTP and amend ADR-007.
+1. **Capability gate — complete (2026-11-02).** OpenCode 2.2.5 discovered,
+   catalogued and called one local stdio MCP tool over revision `2026-07-28`; the
+   transcript is recorded in [validation](validation.md). MCP stays the first
+   transport; the HTTP fallback is not selected.
 2. **Task store.** JSON records with atomic writes, an idempotency index and startup
    reconciliation; tests for duplication, crash and restart behavior.
 3. **Service surface.** The four operations with strict validation, ownership,

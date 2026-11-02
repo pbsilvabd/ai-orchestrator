@@ -1,6 +1,7 @@
 # ADR-007 — Task contract, first transport and reuse decision
 
-Date: 2026-11-02. Status: accepted for M2a. Implementation target: M2b.
+Date: 2026-11-02. Status: accepted for M2a; capability gate passed 2026-11-02.
+Implementation target: M2b.
 
 ## Context
 
@@ -16,8 +17,10 @@ with pinned versions, licenses, evidence and gaps. No task service exists yet.
 3. The first supported client is **OpenCode 2.2.5**, pinned at commit
    `9bbb8ce18c80f099e0e448775f59d965ead40a21`, subject to the capability gate below.
 4. The service is a **small in-repo Node process with no third-party runtime
-   dependency**. A hand-written stdio server for `initialize`, `tools/list` and
-   `tools/call` is sufficient for four operations and keeps the wire format testable.
+   dependency**. A hand-written stateless stdio server for `server/discover`,
+   `tools/list` and `tools/call` is sufficient for four operations and keeps the wire
+   format testable. Revision `2026-07-28` has no `initialize` handshake: each request
+   carries the protocol version in `params._meta`.
 5. The executor is the **OpenCode CLI as a subprocess** in an isolated worktree. The
    plugin/fallback path is not used in M2b; fallback is M2c.
 6. Task state is stored with the **atomic JSON pattern from ADR-004**, not with a
@@ -37,6 +40,19 @@ cannot start a stdio server, rejects the advertised protocol revision, or cannot
 a structured JSON result. A failed gate selects the HTTP fallback and is recorded as
 an amendment here, not silently.
 
+### Gate result (2026-11-02)
+
+**Passed.** OpenCode 2.2.5 started `integration/mcp-fixture.mjs` as a local stdio
+server with `protocol: "2026-07-28"` and completed `server/discover`, `tools/list` and
+one `tools/call`. The tool was catalogued to the fixture model as
+`tools.orchestrator.probe_echo` through the default Code Mode `execute` path, and the
+result `probe:GATE_FIXTURE` reached model context. No `initialize` request appeared;
+every request carried
+`_meta["io.modelcontextprotocol/protocolVersion"] = "2026-07-28"`. The transcript is
+recorded in [validation](../validation.md) and the harness is described in
+[integration/README.md](../../integration/README.md). MCP over stdio stays the first
+transport; the HTTP fallback is not selected.
+
 ## Reuse evaluation
 
 Method: static repository metadata and license files retrieved 2026-11-02. **No
@@ -47,7 +63,7 @@ compatibility, cost or safety.
 | Candidate | Pinned | License | Evidence | Gap for our contract | Verdict |
 | --- | --- | --- | --- | --- | --- |
 | OpenCode 2.2.5 (`anomalyco/opencode`) | commit `9bbb8ce18c80f099e0e448775f59d965ead40a21` | MIT | Host smoke: session/context continuity, explicit model switch, denied write | No task lifecycle, ownership, artifact store or durable budget | **Adopt as executor** |
-| MCP specification | revision `2026-07-28` (stable) | Spec published by the MCP project | None executed here | Client support unverified in the pinned host | **Adopt as transport, gated** |
+| MCP specification | revision `2026-07-28` (stable) | Spec published by the MCP project | Gate passed 2026-11-02: discover/list/call over local stdio | No task lifecycle or wire-level conformance suite yet | **Adopt as transport** |
 | `@modelcontextprotocol/typescript-sdk` | `v2.4.0` | MIT to Apache-2.0 transition; per-file status | None | Adds a dependency and a mixed-license surface for three methods | **Defer; adopt only if the hand-written server fails conformance** |
 | LiteLLM (`BerriAI/litellm`) | `v1.106.6` | MIT outside `enterprise/`, separate license there | None | Python service; routing is not needed for one authorized model | **Defer to M2c/M5** |
 | OpenHands (`All-Hands-AI/OpenHands`) | `v1.34.0` | MIT | None | Overlapping executor, heavier runtime | **Keep as alternative, do not adopt** |

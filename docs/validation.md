@@ -91,9 +91,57 @@ Result: 43 tests passed, 0 failed; the demo printed the expected 429 from
 19 files and 57 relative links with 0 broken targets.
 
 The real OpenCode 2.2.5 smoke test was not rerun; its earlier result remains the only
-host evidence and does not validate the new contract. No MCP transcript exists yet: the
-capability gate is M2b step 1 and must be recorded here before service code is written.
+host evidence and does not validate the new contract. No MCP transcript existed at
+that point: the capability gate was M2b step 1 and is now recorded in the next
+section.
 
 The reuse evaluation method and its limits are recorded in ADR-007: repository
 metadata and license files were retrieved 2026-11-02, and no candidate was installed,
 executed or vendored. Passing local tests does not validate any candidate.
+
+## M2b step 1: MCP capability gate
+
+Executed on 2026-11-02 on Windows x64 with Node.js v24.22.1 and the pinned OpenCode
+2.2.5 binary from outside the repository:
+
+```sh
+node integration/mcp-gate.mjs C:\path\to\opencode-2.2.5\opencode.exe
+```
+
+Result (clean run, no debug directory retained):
+
+```json
+{"version":"2.2.5","protocol":"2026-07-28","server":"local stdio","transport":"codemode execute","discovered":true,"catalogued":true,"called":true,"resultInContext":true,"legacyHandshake":false,"providerRequests":5}
+```
+
+The host started `integration/mcp-fixture.mjs` as a local stdio server configured
+with `protocol: "2026-07-28"`. The MCP transcript contained `server/discover`,
+`tools/list` and `tools/call`; no `initialize` request was sent, and every request
+carried `_meta["io.modelcontextprotocol/protocolVersion"] = "2026-07-28"`. The fixture
+server received exactly one call with `message: "GATE_FIXTURE"` and answered
+`probe:GATE_FIXTURE`. The model-facing provider requests contained the Code Mode
+catalog entry `tools.orchestrator.probe_echo` and, after the call, the result
+`probe:GATE_FIXTURE`. The fixture model drove the default Code Mode path by calling
+`execute`.
+
+Harness detail: OpenCode connects MCP servers asynchronously and the CLI snapshots the
+tool registry before connection, so the gate starts `opencode serve`, sends one
+warm-up prompt and waits for `message="mcp connected" server=orchestrator tools=1`
+before the probe prompt. A single `run` without warm-up does not expose the tool.
+
+Intermediate failed runs were harness defects, not host defects: the first probe did
+not wait for the connection, then the wait matched stdout only while the log line was
+on stderr. Both were corrected before the recorded pass.
+
+Scope of evidence: this validates discovery, cataloguing, invocation and result
+delivery for one local stdio MCP server over revision `2026-07-28` with Code Mode
+routing. It does not validate the task contract, lifecycle, durability, ownership,
+cancellation or the executor adapter. The smoke test above remains the only evidence
+for session continuity and denied writes. No MCP task service exists yet, so M2b is
+in progress, not complete.
+
+`node --test` and `node examples/fallback-demo.mjs` were rerun for this increment:
+43 tests passed, 0 failed; the demo printed 429 from `mock/preferred` followed by 200
+from `mock/local`. The gate harness is not part of `node --test` because it requires
+the pinned binary; it must be run explicitly as documented in
+[integration](../integration/README.md).

@@ -3,22 +3,25 @@
 M0/M1a/M1b are complete within the local scope of the ADRs. M2a is complete as
 documentation: the normative [task contract](task-contract.md) and
 [ADR-007](adr/007-task-contract.md) fix the operations, lifecycle, ownership, limits,
-artifacts, the first transport and the reuse decision. M2b is next. There is no task
-service, transport adapter or self-development use yet.
+artifacts, the first transport and the reuse decision. M2b step 1 (MCP capability
+gate) passed on 2026-11-02. There is no task service, transport adapter or
+self-development use yet.
 
-## Next action (M2b step 1: capability gate)
+## Next action (M2b step 2: task store)
 
-1. Configure a local stdio MCP server in the pinned OpenCode 2.2.5 host and prove
-   `initialize`, `tools/list` and one `tools/call` returning a structured JSON result.
-2. Record the transcript and outcome in [validation](validation.md). If the gate
-   fails, switch only the transport adapter to the loopback HTTP fallback and amend
-   ADR-007 before writing service code.
-3. Only after the gate: task store (`AI_ORCHESTRATOR_HOME`, atomic JSON, idempotency
-   index, startup reconciliation), the four operations with strict validation, and one
-   executor adapter (OpenCode CLI in an isolated worktree).
+1. The MCP capability gate passed on 2026-11-02: OpenCode 2.2.5 discovered, catalogued
+   and called one local stdio tool over revision `2026-07-28` through `server/discover`
+   (no `initialize` handshake) and Code Mode `execute`. Transcript in
+   [validation](validation.md); harness in [integration](../integration/README.md).
+2. Implement the task store (`AI_ORCHESTRATOR_HOME`, atomic JSON, idempotency index,
+   startup reconciliation) with tests for duplication, crash and restart behavior
+   before adding the service surface.
+3. Then the four operations with strict validation, ownership, allowlist clamping,
+   limits and sanitized errors, followed by one executor adapter (OpenCode CLI in an
+   isolated worktree).
 
-Do not implement the task service or executor before step 2 is recorded. Do not add
-routing, memory, remote access, fallback or automatic merge in M2b.
+Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
+HTTP fallback is not selected; change transport only through a new ADR-007 amendment.
 
 ## Contract rules that must not drift
 
@@ -42,7 +45,9 @@ directories, never the developer's real `AI_ORCHESTRATOR_HOME`.
 
 The real smoke harness remains useful as the executor reference:
 `node integration/opencode-smoke.mjs <absolute-path-to-opencode.exe>`. The verified
-2.2.5 binary lives outside the repository (see integration/README.md).
+2.2.5 binary lives outside the repository (see integration/README.md). The MCP
+capability gate runs separately:
+`node integration/mcp-gate.mjs <absolute-path-to-opencode.exe>`.
 
 ## Existing API (reuse, do not bypass)
 
