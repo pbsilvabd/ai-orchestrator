@@ -252,6 +252,7 @@ Template:
   keyword whitelist as an ignored string annotation and declared
   `https://json-schema.org/draft/2020-12/schema` in all four schema files, with the RFC
   table and checker header updated.
+  - Sync with main after #10 merged (both sides' append-only sections preserved)
 - Files: `src/contracts/schemas/*.schema.json`, `src/contracts/validate.mjs`,
   `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
   `docs/worklog.md`.
