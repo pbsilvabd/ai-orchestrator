@@ -75,3 +75,25 @@ contract/reuse, delegation and fallback. No task endpoint or worker integration
 was implemented, and no new runtime milestone is claimed. Validation for this
 documentation-only update: local Markdown links and code-fence balance checked;
 existing runtime test results above remain historical and were not rerun.
+
+## M2a task contract and reuse decision
+
+Documentation-only increment; no executable code changed. Commands were rerun on
+2026-11-02 with Node.js v24.22.1 from the repository root:
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Result: 43 tests passed, 0 failed; the demo printed the expected 429 from
+`mock/preferred` followed by 200 from `mock/local`. A local Markdown link check covered
+19 files and 57 relative links with 0 broken targets.
+
+The real OpenCode 2.2.5 smoke test was not rerun; its earlier result remains the only
+host evidence and does not validate the new contract. No MCP transcript exists yet: the
+capability gate is M2b step 1 and must be recorded here before service code is written.
+
+The reuse evaluation method and its limits are recorded in ADR-007: repository
+metadata and license files were retrieved 2026-11-02, and no candidate was installed,
+executed or vendored. Passing local tests does not validate any candidate.

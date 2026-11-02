@@ -9,6 +9,7 @@
 - [ ] No mandatory paid APIs, credentials or private data appear in sources/logs/fixtures.
 - [ ] Unknown failures never authorize replay; authentication and permissions are not bypassed.
 - [ ] README, requirements and roadmap reflect the result; architectural decisions have ADRs when needed.
+- [ ] `docs/worklog.md` has an entry for this change and `docs/handoff.md` reflects the next action.
 - [ ] The diff is reviewed, license preserved, commit published and remote state verified; no force push.
 
 Direct main commits may be used when authorized by the maintainer, as in this
@@ -23,11 +24,11 @@ cycle. This does not waive tests/review or change the future agent's permissions
 | OpenCode integration | Hooks, queue, context, permissions and failures in the pinned host | Real model quality/cost |
 | Use on this project | A real task produces a diff and evidence under supervision | Unrestricted autonomy or universal safety |
 
-## Task contract and reuse ready (M2a)
+## Task contract and reuse ready (M2a) — complete 2026-11-02
 
-- [ ] Task inputs, ownership, authorization, lifecycle, duplicate submission, cancellation and artifact access are specified.
-- [ ] One initial client and transport are selected with a compatibility test plan.
-- [ ] Reuse/build decision records pinned versions, licenses, evidence and gaps.
+- [x] Task inputs, ownership, authorization, lifecycle, duplicate submission, cancellation and artifact access are specified in [task-contract.md](task-contract.md).
+- [x] One initial client and transport are selected with a compatibility test plan ([ADR-007](adr/007-task-contract.md)).
+- [x] Reuse/build decision records pinned versions, licenses, evidence and gaps.
 
 ## One-worker delegation ready (M2b)
 

@@ -24,6 +24,9 @@ See [ADR-006](adr/006-worker-service.md).
 M0/M1a/M1b remain complete within their original local scope: policy, HTTP
 normalization, ledger, runner and 43 local tests. The real OpenCode smoke passed
 for context/session continuity, explicit model switching and denied writes.
+M2a is complete as documentation: the normative [task contract](task-contract.md)
+and [ADR-007](adr/007-task-contract.md) select MCP over stdio with OpenCode 2.2.5 as
+the first client, behind a capability gate, and record the reuse/build decision.
 There is no task service, MCP/API endpoint, worker adapter, integrated fallback,
 semantic memory or completed self-development workflow.
 
@@ -38,8 +41,8 @@ authenticate clients. The new objective does not imply these features already ex
 | M0 — Verifiable foundation | Complete | Policy, pinned plugin audit, ADRs and local tests without AI APIs |
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
-| M2a — Contract and reuse decision | Next | Specify task lifecycle, ownership, authorization, artifacts and interface; compare existing components against acceptance cases and record a pinned reuse/build decision |
-| M2b — One-worker delegation MVP | Planned; depends on M2a | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
+| M2b — One-worker delegation MVP | Next; depends on M2a (complete) | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Primary acceptance target; depends on M2b | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -52,21 +55,27 @@ required for M2c, not for proving basic delegation. This changes sequencing with
 waiving safety: ambiguous outcomes still block automatic replay.
 See [Definition of Done](definition-of-done.md).
 
-## Next increment: specify before implementing
+## M2b plan (bounded, in order)
 
-1. Define a small task contract: objective, acceptance criteria, repository/base,
-   allowed actions/models, execution limits and a duplicate-submission key.
-2. Specify proposed submit_task, get_task_status, get_task_result and cancel_task
-   operations. Choose and record the first supported client and transport.
-3. Define persisted task IDs, lifecycle, client ownership, restart behavior, result
-   retention and artifact access. Distinguish cancellation requested from work stopped.
-4. Compare reuse options with synthetic fixtures before adding dependencies:
-   OpenCode as executor; LiteLLM as a routing candidate; OpenHands as an alternative
-   executor; LangGraph only if task durability warrants it. Do not combine all of them.
-5. Pin versions/licenses and test compatibility, operational limits and maintenance
-   cost. Implement only demonstrated gaps; preserve useful existing acceptance tests.
-6. Produce the M2a decision and a bounded M2b implementation plan. Do not install or
-   enable candidate plugins merely because they appear in the roadmap.
+The normative contract is [task-contract.md](task-contract.md); these steps implement
+it and nothing beyond it.
+
+1. **Capability gate.** Configure one local stdio MCP server in the pinned OpenCode
+   2.2.5 host; prove tool discovery and one `tools/call`; record the transcript. If it
+   fails, switch only the transport adapter to loopback HTTP and amend ADR-007.
+2. **Task store.** JSON records with atomic writes, an idempotency index and startup
+   reconciliation; tests for duplication, crash and restart behavior.
+3. **Service surface.** The four operations with strict validation, ownership,
+   allowlist clamping, limits and sanitized errors.
+4. **Executor adapter.** One OpenCode CLI subprocess in an isolated worktree and
+   branch, collecting diff, changed files and test evidence; cancellation is advisory.
+5. **Client integration.** One real submission, poll and result retrieval through the
+   pinned client.
+6. **M2b acceptance run.** Execute the acceptance tests in the contract plus one real
+   task on a scratch branch, and record the evidence.
+
+Do not add routing, memory, remote access, automatic fallback or an automatic merge in
+M2b. Do not install candidate dependencies because they appear in the reuse table.
 
 ## Primary acceptance experiment: develop this repository
 
