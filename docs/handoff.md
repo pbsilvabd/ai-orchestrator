@@ -28,6 +28,9 @@ as of 2026-11-02. There is no transport adapter or self-development use yet.
 5. **Client integration** — harness created (`feat/m2b-client-integration`);
    submit, poll, result retrieval and advisory cancellation through service. PR:
    https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-client-integration
+6. **Acceptance run** — harness (`feat/m2b-acceptance`) covers contract items 1–13;
+   item 13 (real binary) pending. Evidence separated (not mock-only). PR:
+   https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-acceptance
 6. **M2b acceptance run** — execute contract tests + one real task on scratch branch
    with pinned binary (step 6 pending).
 
