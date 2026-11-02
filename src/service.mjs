@@ -9,7 +9,7 @@
 // objects, or throws ServiceError with a contract error code. The MCP/API transport
 // adapter serializes the error envelope { error: { code, message } } and sets isError.
 
-import { sep, resolve } from 'node:path';
+import { isAbsolute, sep, resolve } from 'node:path';
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
 
 export const SCHEMA_VERSION = 1;
@@ -22,6 +22,12 @@ export const ERROR_CODES = ['invalid_argument', 'unknown_task', 'not_owner', 'id
   'authorization_denied', 'limit_exceeded', 'result_not_ready', 'unavailable', 'internal'];
 export const MAX_DIFF_BYTES = 1_048_576; // 1 MiB diff cap from the contract.
 export const MAX_LOG_BYTES = 262_144; // 256 KiB log tail cap from the contract.
+const SECRET_PATTERNS = [
+  /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
+  /\bBasic\s+[A-Za-z0-9+/=]+/gi,
+  /\b(authorization\s*[:=]\s*)(?:(?:Bearer|Basic)\s+)?[^\s,;]+/gi,
+  /\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret)\s*[:=]\s*[^\s,;]+/gi,
+];
 
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 const BRANCH = /^[A-Za-z0-9._/-]{1,128}$/;
@@ -66,7 +72,7 @@ function isPlainObject(value) {
 function hasExactKeys(object, required, optional, label) {
   const allowed = new Set([...required, ...optional]);
   for (const key of Object.keys(object)) {
-    if (!allowed.has(key)) fail('invalid_argument', `unknown ${label} field: ${key}`);
+    if (!allowed.has(key)) fail('invalid_argument', `unknown ${label} field`);
   }
   for (const key of required) {
     if (!Object.prototype.hasOwnProperty.call(object, key)) fail('invalid_argument', `${label} is missing ${key}`);
@@ -87,6 +93,16 @@ export function createTaskService(options = {}) {
     authorization: { ...DEFAULT_CONFIG.authorization, ...(isPlainObject(configured.authorization) ? configured.authorization : {}) },
     limits: { ...DEFAULT_CONFIG.limits, ...(isPlainObject(configured.limits) ? configured.limits : {}) },
   };
+  const startupNow = typeof options.now === 'function' ? options.now() :
+    (Number.isInteger(options.now) ? options.now : Date.now());
+  // Reconcile exactly once as the service starts. Never accept requests against an
+  // ambiguous index or an unresolved in-flight task.
+  try {
+    const reconciliation = store.reconcile({ now: startupNow });
+    if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
+  } catch (error) {
+    throw toServiceError(error);
+  }
   const now = () => {
     if (typeof options.now === 'function') return options.now();
     if (Number.isInteger(options.now)) return options.now;
@@ -108,6 +124,7 @@ export function createTaskService(options = {}) {
 
   const submitTask = request => {
     const payload = validateSubmitRequest(request, config);
+    if (containsSecretPattern(payload)) fail('invalid_argument', 'request contains credential-shaped text');
     let created;
     try {
       created = store.createTask({
@@ -129,6 +146,7 @@ export function createTaskService(options = {}) {
   };
 
   const getTaskStatus = (input = {}) => {
+    validateOperationInput(input, ['taskId'], 'get_task_status');
     const task = requireOwned(input.taskId);
     const statusView = {
       schemaVersion: SCHEMA_VERSION,
@@ -159,6 +177,7 @@ export function createTaskService(options = {}) {
   };
 
   const getTaskResult = (input = {}) => {
+    validateOperationInput(input, ['taskId', 'include'], 'get_task_result');
     const taskId = input.taskId;
     const include = input.include;
     if (include !== undefined) {
@@ -170,21 +189,42 @@ export function createTaskService(options = {}) {
     const task = requireOwned(taskId);
     if (!RESULT_STATUSES.includes(task.status)) fail('result_not_ready', 'task is not finished');
 
-    const runs = (Array.isArray(task.testRuns) ? task.testRuns : []).map(run => (
-      run && typeof run.outputTail === 'string' && run.outputTail.length > MAX_LOG_BYTES
-        ? { ...run, outputTail: run.outputTail.slice(0, MAX_LOG_BYTES) }
-        : run
-    ));
-    const changedFiles = Array.isArray(task.changedFiles) ? task.changedFiles : [];
-    let diff = typeof task.diff === 'string' ? task.diff : null;
+    const runs = (Array.isArray(task.testRuns) ? task.testRuns : []).map(run => ({
+      command: redactSecrets(run?.command),
+      exitCode: run?.exitCode,
+      durationMs: run?.durationMs,
+      summary: redactSecrets(run?.summary),
+      outputTail: redactSecrets(run?.outputTail),
+      outputTruncated: run?.outputTruncated === true,
+    }));
+    const changedFiles = Array.isArray(task.changedFiles) ? task.changedFiles.map(redactSecrets) : [];
+    let diff = typeof task.diff === 'string' ? redactSecrets(task.diff) : null;
     let diffTruncated = task.diffTruncated === true;
-    if (diff !== null && diff.length > MAX_DIFF_BYTES) {
-      diff = diff.slice(0, MAX_DIFF_BYTES);
+    let outputBytes = 0;
+    const diffLimit = Math.min(MAX_DIFF_BYTES, task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES);
+    if (diff !== null && Buffer.byteLength(diff, 'utf8') > diffLimit) {
+      diff = truncateUtf8(diff, diffLimit);
       diffTruncated = true;
     }
+    if (diff !== null) outputBytes = Buffer.byteLength(diff, 'utf8');
+    let logsTruncated = false;
+    const maxOutputBytes = task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES;
+    let remainingLogBytes = Math.min(MAX_LOG_BYTES, Math.max(0, maxOutputBytes - outputBytes));
+    const boundedRuns = runs.map(run => {
+      const raw = typeof run.outputTail === 'string' ? run.outputTail : '';
+      if (run.outputTruncated === true) logsTruncated = true;
+      const cap = Math.min(remainingLogBytes, Math.max(0, maxOutputBytes - outputBytes));
+      const trimmed = truncateUtf8Tail(raw, cap);
+      const didTruncate = Buffer.byteLength(raw, 'utf8') > Buffer.byteLength(trimmed, 'utf8');
+      if (didTruncate) logsTruncated = true;
+      const emittedBytes = Buffer.byteLength(trimmed, 'utf8');
+      outputBytes += emittedBytes;
+      remainingLogBytes -= emittedBytes;
+      return { ...run, outputTail: trimmed, outputTruncated: run.outputTruncated === true || didTruncate };
+    });
 
     const limitations = [];
-    const passed = runs.some(run => run && run.exitCode === 0);
+    const passed = runs.some(run => typeof run.command === 'string' && run.command.trim() && run.exitCode === 0);
     if (task.status === 'succeeded' && !passed) {
       limitations.push('success without a recorded passing test command and exit code');
     }
@@ -201,22 +241,30 @@ export function createTaskService(options = {}) {
       schemaVersion: SCHEMA_VERSION,
       taskId: task.taskId,
       status: task.status,
-      baseCommit: task.baseCommit ?? task.request?.repository?.baseRef ?? null,
-      branch: task.branch ?? task.request?.repository?.branch ?? null,
-      headCommit: task.headCommit ?? null,
+      baseCommit: redactSecrets(task.baseCommit ?? task.request?.repository?.baseRef ?? null),
+      branch: redactSecrets(task.branch ?? task.request?.repository?.branch ?? null),
+      headCommit: redactSecrets(task.headCommit ?? null),
       diff,
       diffTruncated,
       changedFiles,
-      testRuns: runs,
-      attempts: task.attempts,
+      testRuns: boundedRuns,
+      logsTruncated,
+      attempts: task.attempts.map(attempt => ({
+        attemptId: attempt.attemptId,
+        model: redactSecrets(attempt.model),
+        startedAt: attempt.startedAt,
+        finishedAt: attempt.finishedAt,
+        outcome: redactSecrets(attempt.outcome ?? null),
+      })),
       limitations,
       cost: { known: false, amount: null, currency: 'unknown', note: 'cost is unknown until a provider is authorized' },
       evidenceLevel,
-      sanitized: true,
+      sanitized: true, // Credential-shaped strings were redacted at input/artifact boundaries.
     };
   };
 
   const cancelTask = (input = {}) => {
+    validateOperationInput(input, ['taskId', 'reason'], 'cancel_task');
     const task = requireOwned(input.taskId);
     const reason = input.reason;
     if (reason !== undefined && typeof reason !== 'string') fail('invalid_argument', 'cancel reason must be a string');
@@ -225,25 +273,26 @@ export function createTaskService(options = {}) {
       return { schemaVersion: SCHEMA_VERSION, cancelRequestedAt: task.cancel.requestedAt, status: task.status, effect: 'already_terminal' };
     }
     if (task.status === 'queued') {
-      const cancelled = store.updateTask(task.taskId, draft => {
+      try { store.updateTask(task.taskId, draft => {
         draft.status = 'cancelled';
         draft.finishedAt = at;
         draft.cancel.requestedAt = at;
         draft.cancel.executionStopped = true;
         draft.cancel.effectsReverted = false;
         draft.block = null;
-        draft.progress.push({ at, event: 'cancel', detail: reason ?? null });
-      });
+        draft.progress.push({ at, event: 'cancel', detail: redactSecrets(reason ?? null) });
+      }); } catch (error) { throw toServiceError(error); }
       return { schemaVersion: SCHEMA_VERSION, cancelRequestedAt: at, status: 'cancelled', effect: 'not_started' };
     }
     // running: the stop cannot be proven here, so the task blocks until reconciliation.
-    const blocked = store.updateTask(task.taskId, draft => {
+    try { store.updateTask(task.taskId, draft => {
       draft.cancel.requestedAt = at;
       draft.status = 'blocked';
+      draft.cancel.executionStopped = 'unknown';
       draft.finishedAt = at;
       draft.block = { reason: 'cancelled-uncertain', requiresReconciliation: true };
       draft.progress.push({ at, event: 'blocked', detail: 'cancelled-uncertain' });
-    });
+    }); } catch (error) { throw toServiceError(error); }
     return { schemaVersion: SCHEMA_VERSION, cancelRequestedAt: at, status: 'blocked', effect: 'requested' };
   };
 
@@ -262,6 +311,7 @@ function validateSubmitRequest(request, config) {
   if (typeof clientId !== 'string' || !IDENTIFIER.test(clientId)) {
     fail('invalid_argument', 'clientId is not a valid identifier');
   }
+  if (clientId !== config.clientId) fail('authorization_denied', 'clientId does not match the configured client');
   const objective = request.objective;
   if (typeof objective !== 'string' || objective.length < 1 || objective.length > OBJECTIVE_MAX) {
     fail('invalid_argument', 'objective must be 1..4000 characters');
@@ -307,8 +357,17 @@ function validateSubmitRequest(request, config) {
   if (!Array.isArray(writablePaths)) fail('invalid_argument', 'authorization.writablePaths must be an array');
   for (const writablePath of writablePaths) {
     if (typeof writablePath !== 'string' || writablePath.length < 1) fail('invalid_argument', 'authorization.writablePaths entries must be strings');
-    const resolvedWritablePath = resolve(writablePath);
-    const allowed = writableRoots.some(root => resolvedWritablePath === root || resolvedWritablePath.startsWith(root + sep));
+    // Relative globs resolve from the repository. Absolute paths remain accepted
+    // only when their static prefix stays inside both the repository and configured roots.
+    if (writablePath.split(/[\\/]/).includes('..')) {
+      fail('authorization_denied', 'authorization writable path escapes the repository');
+    }
+    const staticPrefix = writablePath.split(/[*?{[]/, 1)[0].replace(/[\\/]+$/, '');
+    const resolvedWritablePath = isAbsolute(writablePath)
+      ? resolve(staticPrefix || writablePath)
+      : resolve(repositoryPath, staticPrefix || '.');
+    const insideRepository = resolvedWritablePath === resolvedPath || resolvedWritablePath.startsWith(resolvedPath + sep);
+    const allowed = insideRepository && writableRoots.some(root => resolvedWritablePath === root || resolvedWritablePath.startsWith(root + sep));
     if (!allowed) fail('authorization_denied', 'authorization writable path is outside the configured roots');
   }
 
@@ -330,4 +389,44 @@ function validateSubmitRequest(request, config) {
   }
 
   return request;
+}
+
+function validateOperationInput(input, allowed, operation) {
+  if (!isPlainObject(input)) fail('invalid_argument', `${operation} requires an object`);
+  for (const key of Object.keys(input)) if (!allowed.includes(key)) fail('invalid_argument', `unknown ${operation} field`);
+  if (typeof input.taskId !== 'string' || !IDENTIFIER.test(input.taskId)) fail('invalid_argument', 'taskId is not a valid identifier');
+}
+
+function redactSecrets(value) {
+  if (typeof value !== 'string') return value;
+  return SECRET_PATTERNS.reduce((text, pattern) => text.replace(pattern, match => {
+    const separator = match.match(/^([^:=]*[:=]\s*)/);
+    return `${separator?.[1] ?? ''}[REDACTED]`;
+  }), value);
+}
+
+function containsSecretPattern(value) {
+  if (typeof value === 'string') return SECRET_PATTERNS.some(pattern => {
+    pattern.lastIndex = 0;
+    return pattern.test(value);
+  });
+  if (Array.isArray(value)) return value.some(containsSecretPattern);
+  if (isPlainObject(value)) return Object.values(value).some(containsSecretPattern);
+  return false;
+}
+
+function truncateUtf8(value, maxBytes) {
+  const bytes = Buffer.from(value, 'utf8');
+  if (bytes.length <= maxBytes) return value;
+  let end = Math.max(0, maxBytes);
+  while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
+  return bytes.subarray(0, end).toString('utf8');
+}
+
+function truncateUtf8Tail(value, maxBytes) {
+  const bytes = Buffer.from(value, 'utf8');
+  if (bytes.length <= maxBytes) return value;
+  let start = bytes.length - maxBytes;
+  while (start < bytes.length && (bytes[start] & 0xc0) === 0x80) start++;
+  return bytes.subarray(start).toString('utf8');
 }

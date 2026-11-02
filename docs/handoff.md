@@ -4,25 +4,25 @@ M0/M1a/M1b are complete within the local scope of the ADRs. M2a is complete as
 documentation: the normative [task contract](task-contract.md) and
 [ADR-007](adr/007-task-contract.md) fix the operations, lifecycle, ownership, limits,
 artifacts, the first transport and the reuse decision. M2b step 1 (MCP capability
-gate) passed on 2026-11-02. M2b step 2 (durable task store and idempotency index)
-is complete, and M2b step 3 (task service surface: the four operations with strict
-validation, ownership, allowlist clamping, limits and sanitized errors) is complete
-as of 2026-11-02. There is no transport adapter or self-development use yet.
+gate) had one pass and one later failure on 2026-11-02; the root cause is unresolved
+and the gate is not considered consistently validated. M2b step 2 (durable task store
+and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
+regression reproductions passed. There is no transport adapter or self-development use yet.
 
-## Next action (M2b step 3: service surface)
+## Next action: resolve MCP gate instability before executor integration
 
-1. The MCP capability gate passed on 2026-11-02: OpenCode 2.2.5 discovered, catalogued
-   and called one local stdio tool over revision `2026-07-28` through `server/discover`
-   (no `initialize` handshake) and Code Mode `execute`. Transcript in
-   [validation](validation.md); harness in [integration](../integration/README.md).
+1. The MCP capability gate had one pass and one failure during the probe on
+   2026-11-02. Discovery/cataloguing/call were observed in a passing run, but the
+   inconsistent outcome is unresolved. Do not rely on it as a stable CI gate. Details
+   are in [validation](validation.md).
 2. The durable task store was implemented and validated (`src/tasks.mjs`, ADR-008):
    atomic records, client-scoped idempotency and startup reconciliation.
-3. Implement the service surface: the four operations (`submit_task`,
-   `get_task_status`, `get_task_result`, `cancel_task`) with strict validation,
-   ownership, allowlist clamping, limits and sanitized errors. **Complete
-   2026-11-02** (`src/service.mjs` over the store from `src/tasks.mjs`).
-4. Follow with one executor adapter (OpenCode CLI in an isolated worktree).
-   **Next action.**
+3. Review the service fixes in `src/service.mjs` and regression tests. Rerun
+   `node --test` and `node examples/fallback-demo.mjs`. The separate PR review
+   reproductions and their result are recorded in [validation](validation.md). Only
+   then decide whether step 3 is complete.
+4. After service acceptance, proceed with one executor adapter (OpenCode CLI in an
+   isolated worktree). **Next implementation step after the gate is stable.**
 
 Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
 HTTP fallback is not selected; change transport only through a new ADR-007 amendment.

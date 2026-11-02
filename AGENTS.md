@@ -8,11 +8,11 @@ the ADRs referenced by the current milestone. Check `git log` and the remote bef
 editing; another agent may have moved the repository since the handoff was written.
 
 Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a complete,
-M2b step 1 (MCP capability gate) passed, M2b step 2 (task store) complete and M2b
-step 3 (task service surface) complete as of 2026-11-02. The gate confirmed OpenCode
-2.2.5 discovery, cataloguing and one call over revision `2026-07-28` via local stdio; see
+M2b step 2 (task store) complete and step 3 (service surface) locally validated after
+corrective changes. The MCP capability gate had one pass and one later failure during
+the probe; it is not consistently validated and its root cause is unresolved. See
 [ADR-007](docs/adr/007-task-contract.md) and [validation](docs/validation.md). The four
-task operations now live in `src/service.mjs` over the store from `src/tasks.mjs`; the
+task operations live in `src/service.mjs` over the store from `src/tasks.mjs`; the
 executor adapter is still pending.
 
 ## Toolchain

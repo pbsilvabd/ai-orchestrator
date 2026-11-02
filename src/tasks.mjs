@@ -251,10 +251,35 @@ export function openTaskStore(options = {}) {
     const blocked = [];
     const repaired = [];
     const conflicts = [];
-    for (const task of listTasks()) {
+    const tasks = listTasks();
+    // Preflight every existing index before changing any task. An ambiguous mapping
+    // must leave active execution records untouched for explicit maintainer review.
+    const identities = new Map();
+    for (const task of tasks) {
+      const identity = indexName(task.clientId, task.idempotencyKey);
+      const prior = identities.get(identity) ?? [];
+      prior.push(task.taskId);
+      identities.set(identity, prior);
+    }
+    for (const taskIds of identities.values()) {
+      if (taskIds.length > 1) conflicts.push(...taskIds);
+    }
+    for (const task of tasks) {
+      const entry = readJson(join(indexDir, `${indexName(task.clientId, task.idempotencyKey)}.json`), 'idempotency index is unreadable');
+      if (entry !== undefined) {
+        try { validateIndex(entry); }
+        catch { fail('unavailable', 'idempotency index failed validation'); }
+        if (entry.clientId !== task.clientId || entry.idempotencyKey !== task.idempotencyKey || entry.taskId !== task.taskId || entry.payloadHash !== task.payloadHash) {
+          if (!conflicts.includes(task.taskId)) conflicts.push(task.taskId);
+        }
+      }
+    }
+    if (conflicts.length) return { blocked, repaired, conflicts };
+    for (const task of tasks) {
       if (task.status === 'running' || (task.status === 'queued' && task.attempts.length > 0)) {
         const next = structuredClone(task);
         next.status = 'blocked';
+        next.cancel.executionStopped = 'unknown';
         next.finishedAt ??= now;
         next.block = { reason: 'service-restart', requiresReconciliation: true };
         next.progress.push({ at: now, event: 'blocked', detail: 'service-restart' });
@@ -273,8 +298,6 @@ export function openTaskStore(options = {}) {
           taskId: task.taskId,
         });
         repaired.push(task.taskId);
-      } else if (entry.taskId !== task.taskId || entry.payloadHash !== task.payloadHash) {
-        conflicts.push(task.taskId); // Ambiguous; leave the file for the maintainer.
       }
     }
     return { blocked, repaired, conflicts };

@@ -31,7 +31,10 @@ so it needs a record store, not a session lock.
 5. The idempotency hash covers the canonical payload: sorted keys, no whitespace and
    `clientSessionId` removed. The key is scoped per `clientId`, so two clients may use
    the same key.
-6. `reconcile` runs at startup, before any submit is accepted. It turns `running` tasks
+6. `reconcile` runs once while the service initializes, before any request is accepted.
+   It preflights existing indexes and returns conflicts without mutating task records.
+   The service fails closed on conflicts. A running service does not reconcile again
+   for each connection. Reconciliation turns `running` tasks
    and `queued` tasks that already carry an attempt into `blocked` with
    `reason: "service-restart"`; it never resumes or replays work. It also repairs the
    index and reports ambiguous entries instead of overwriting them.
@@ -46,8 +49,10 @@ so it needs a record store, not a session lock.
 
 - An unreadable or invalid record is `unavailable`, never an absent task, and never
   reset. Recovery is a maintainer action, as in ADR-004.
-- Duplicate-work safety depends on reconciling before accepting submits. A service that
-  skips `reconcile` can create a second task for a key whose record survived a crash.
+- Duplicate-work safety depends on successful reconciliation before accepting any
+  operation. A service that skips `reconcile` can create a second task for a key whose
+  record survived a crash; an ambiguous index keeps the service unavailable until
+  maintainer repair.
 - Records are re-read from disk on every call, so a second process sees committed state
   without a shared cache. This is cooperative-writer visibility, not a transaction.
 - Filesystem failure details are reduced to the OS error code (`error.osCode`),

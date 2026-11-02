@@ -120,3 +120,22 @@ Template:
   examples/fallback-demo.mjs` → 429 then 200.
 - Follow-up: M2b step 4, the executor adapter (one OpenCode CLI subprocess in an
   isolated worktree and branch, collecting diff, changed files and test evidence).
+
+## 2026-11-02 — M2b step 3: service boundary corrections for PR review
+
+- Branch: `feat/m2b-task-store` (review snapshot only; no commit or remote update)
+- Scope: code, tests and docs.
+- Steps: bound submissions to configured identity; initialize through one startup reconciliation and fail closed on conflicting indexes before mutating tasks; reject credential-shaped request text without mutating caller data; redact matching patterns in result text; resolve writable patterns from repository root and enforce repository/configured-root boundaries; enforce UTF-8 diff and combined output/log budgets with truncation flags; reject unknown operation fields; map cancel persistence errors; repair negative tests to submit request objects.
+- Files: `src/service.mjs`, `src/tasks.mjs`, `test/task-service.test.mjs`, `docs/task-contract.md`, `docs/adr/008-task-store.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/validation.md`.
+- Validation: `node --test` → 82 passed, 0 failed; `node --test ../../reviews/pr-4-review.test.mjs` → 9 passed, 0 failed; `node examples/fallback-demo.mjs` → expected 429 then 200.
+- Follow-up: maintainer review before publishing/merging. MCP gate remains inconsistent; this change did not rerun or fix it.
+
+## Independent final review — 2026-11-02
+
+- Branch: `feat/m2b-task-store`; local corrections accepted for publication and merge.
+- Final review preserves existing truncation flags, requires a test command for
+  success evidence, and marks uncertain cancellation/restart stop state unknown.
+- Independent checks: full suite 83 passed, external reproductions 9 passed,
+  demo 429 then 200. Regression cases are covered in the versioned service suite.
+- Full M2b remains incomplete. Resolve MCP gate instability before relying on it
+  for executor/client integration. No live executor acceptance is claimed.
