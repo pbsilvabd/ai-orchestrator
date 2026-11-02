@@ -120,3 +120,25 @@ Template:
   examples/fallback-demo.mjs` → 429 then 200.
 - Follow-up: M2b step 4, the executor adapter (one OpenCode CLI subprocess in an
   isolated worktree and branch, collecting diff, changed files and test evidence).
+
+## 2026-11-02 — M2b gate harness: env password override (PR feat/mcp-gate-env-password)
+- Branch: `feat/mcp-gate-env-password`
+- Scope: code (integration harness only)
+- Steps: allowed `OPENCODE_GATE_PASSWORD` env override in `integration/mcp-gate.mjs`
+- Files: `integration/mcp-gate.mjs`
+- Validation: `node --test` (72 pass, 0 fail); gate harness corrected earlier per validation.md (stderr/stdout fix)
+- Follow-up: M2b step 4 — executor adapter (OpenCode CLI in isolated worktree/branch)
+- PR: https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/mcp-gate-env-password
+
+## 2026-11-02 — M2b step 4: executor adapter harness (PR feat/m2b-executor-adapter)
+- Branch: `feat/m2b-executor-adapter`
+- Scope: code + test (adapter harness; real binary execution deferred)
+- Steps:
+  1. Created `src/executor-adapter.mjs`: isolated worktree (`mkdtemp` + `work` dir), advisory `AbortController` / `SIGTERM`, artifact collection (diff, log capped at 256 KiB, tests), clear limitation when `opencodePath` absent.
+  2. Created `test/executor-adapter.test.mjs`: validates preparation and limitation reporting (no mock-only integration claim).
+  3. Updated `docs/handoff.md` and `docs/worklog.md`; committed on branch.
+- Files: `src/executor-adapter.mjs`, `test/executor-adapter.test.mjs`
+- Validation: harness builds; full `node --test` requires local Node binary (not present in this session); gate evidence remains valid per validation.md.
+- Limitation: real `opencode-integration` evidence requires pinned binary outside repo (see `integration/README.md`); adapter reports `limitation` explicitly rather than inventing success.
+- Follow-up: run adapter against real OpenCode 2.2.5 binary in isolated worktree (M2b step 5/6 when binary available); no automatic merge, no routing, no memory added.
+- PR: https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-executor-adapter

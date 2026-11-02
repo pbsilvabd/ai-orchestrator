@@ -21,8 +21,11 @@ as of 2026-11-02. There is no transport adapter or self-development use yet.
    `get_task_status`, `get_task_result`, `cancel_task`) with strict validation,
    ownership, allowlist clamping, limits and sanitized errors. **Complete
    2026-11-02** (`src/service.mjs` over the store from `src/tasks.mjs`).
-4. Follow with one executor adapter (OpenCode CLI in an isolated worktree).
-   **Next action.**
+4. **Executor adapter** — harness created (`feat/m2b-executor-adapter`); isolated
+   worktree, advisory cancellation and artifact collection defined. Waiting for
+   pinned OpenCode binary for full `opencode-integration` evidence. PR:
+   https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-executor-adapter
+5. Client integration.
 
 Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
 HTTP fallback is not selected; change transport only through a new ADR-007 amendment.
