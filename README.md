@@ -4,8 +4,9 @@ Scaffold incremental de orquestração sobre OpenCode. Licença MIT.
 
 ## Estado desta entrega
 
-Implementado: política pura de fallback, demo com dois provedores simulados e testes
-locais sem dependências. **Não é um plugin instalado nem um MVP integrado ao OpenCode.**
+Implementado: política pura de fallback, normalização de falhas HTTP/Retry-After,
+demo com dois provedores simulados e testes locais, incluindo transporte HTTP em
+loopback, sem dependências. **Não é um plugin instalado nem um MVP integrado ao OpenCode.**
 Nenhuma chamada de IA, chave, conta de provedor ou API paga é necessária.
 
 Referência avaliada: OpenCode **2.2.5**, commit
@@ -44,12 +45,24 @@ O checkpoint do teste demonstra serialização e leitura em outro processo, não
 durabilidade de produção, lock entre processos ou retomada de uma sessão OpenCode.
 Histórico pertence ao host e não é reescrito pela política.
 
+## Plano de desenvolvimento
+
+O objetivo prioritário é **desenvolver este projeto usando ele mesmo**, com uma
+primeira tarefa real em branch isolada e revisão humana. O projeto ainda não tem
+executor próprio. Consulte o [roadmap](docs/roadmap.md) e a
+[Definition of Done](docs/definition-of-done.md) para estado, dependências e gates.
+
 ## Próximas etapas
 
-1. Adaptador mínimo para os contratos públicos da versão fixada do OpenCode.
-2. Teste end-to-end com endpoint local que injete falhas, ferramentas e reinício real.
-3. Só depois, habilitar um plugin aprovado e provedores explicitamente autorizados.
-4. Avaliar ai-memory para memória persistente, sem construir banco de memória próprio.
+1. Ledger operacional, concorrência, correlação de tentativas e cancelamento.
+2. Adaptador OpenCode 2.2.5 e teste end-to-end com falhas, ferramentas e reinício real.
+3. Primeiro uso no próprio repositório com modelos explicitamente autorizados.
+4. Memória com ai-memory, roteamento por capacidade/custo e multiagentes em etapas.
+
+`src/http-failure.mjs` aceita Retry-After em segundos inteiros ou IMF-fixdate canônico.
+Valores inválidos, overflow e formatos antigos são rejeitados conservadoramente.
+Não é um parser HTTP completo. A segurança de repetir deve vir do host; um status
+429 sozinho não comprova ausência de efeitos. Corpos/headers privados não são copiados.
 
 Veja [requisitos](docs/requirements.md), [ADR-001](docs/adr/001-composition.md),
 [validação](docs/validation.md) e [contribuição](CONTRIBUTING.md).
