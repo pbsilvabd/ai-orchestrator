@@ -139,3 +139,40 @@ Template:
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## 2026-11-02 — Docs: uniform templates for recurring artifacts
+
+- Branch: `docs/templates-uniformity`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Read the real shapes of `docs/adr/007-task-contract.md`,
+     `docs/adr/008-task-store.md`, `docs/worklog.md`, `docs/validation.md`,
+     `docs/handoff.md`, `docs/definition-of-done.md` and `AGENTS.md` before writing
+     anything, so the templates reuse the existing field names and order.
+  2. Added `docs/templates/adr-template.md` with the header line, `Context`, `Decision`,
+     `Alternatives considered`, `Consequences` and `Related documents`, one inline
+     instruction per field, plus a filled sample based on ADR-008.
+  3. Added `docs/templates/worklog-entry-template.md` with the file's real fields
+     (heading, `Branch`, `Scope`, `Steps`, `Files`, `Validation`, `Follow-up`) and the
+     append-only rules stated inline.
+  4. Added `docs/templates/validation-entry-template.md` with environment, date, a
+     command table (command, purpose, result, exit code), the four evidence levels,
+     a mandatory `Not rerun` section and the final-claim sentence pattern.
+  5. Added `docs/templates/handoff-update-template.md` mirroring the sections of
+     `docs/handoff.md`, marking per section what must be updated and what is copied
+     unchanged.
+  6. Added `docs/templates/README.md` with the artifact-to-template mapping, the
+     placeholder convention and the "templates are tooling, not normative" line, and
+     added the templates bullet to the `AGENTS.md` documentation duties.
+- Files: `docs/templates/README.md`, `docs/templates/adr-template.md`,
+  `docs/templates/worklog-entry-template.md`,
+  `docs/templates/validation-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `AGENTS.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200; `git diff --check` → no output; relative Markdown links in the new
+  files checked by script → 0 broken. The OpenCode smoke and MCP capability gate were
+  not rerun, and no automated link checker exists in this repository.
+- Follow-up: publish this branch for review as the templates PR and use the templates
+  for the next change. No milestone step moved and no ADR was needed, because this adds
+  documentation tooling only.
