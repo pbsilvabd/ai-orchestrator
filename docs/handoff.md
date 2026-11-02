@@ -9,7 +9,7 @@ is complete, and M2b step 3 (task service surface: the four operations with stri
 validation, ownership, allowlist clamping, limits and sanitized errors) is complete
 as of 2026-11-02. There is no transport adapter or self-development use yet.
 
-## Next action (M2b step 3: service surface)
+## Next action (M2b step 6: acceptance run)
 
 1. The MCP capability gate passed on 2026-11-02: OpenCode 2.2.5 discovered, catalogued
    and called one local stdio tool over revision `2026-07-28` through `server/discover`
@@ -25,7 +25,11 @@ as of 2026-11-02. There is no transport adapter or self-development use yet.
    worktree, advisory cancellation and artifact collection defined. Waiting for
    pinned OpenCode binary for full `opencode-integration` evidence. PR:
    https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-executor-adapter
-5. Client integration.
+5. **Client integration** — harness created (`feat/m2b-client-integration`);
+   submit, poll, result retrieval and advisory cancellation through service. PR:
+   https://github.com/pbsilvabd/ai-orchestrator/pull/new/feat/m2b-client-integration
+6. **M2b acceptance run** — execute contract tests + one real task on scratch branch
+   with pinned binary (step 6 pending).
 
 Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
 HTTP fallback is not selected; change transport only through a new ADR-007 amendment.
