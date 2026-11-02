@@ -2,7 +2,7 @@
 
 Date: 2026-11-02. Status: Proposed.
 
-Referenced-by: docs/rfcs/0002-lifecycle-state-machine.md (follow-up)
+Follow-up (unmerged, ships in the sibling PR): docs/rfcs/0002-lifecycle-state-machine.md
 
 ## Status
 
@@ -10,9 +10,10 @@ Proposed. This RFC ships a skeleton only: schemas under `src/contracts/schemas/`
 checker in `src/contracts/validate.mjs` and tests in `test/contracts.test.mjs`. Nothing
 in `src/service.mjs` or `src/tasks.mjs` consumes them yet, so behaviour is unchanged.
 
-RFC-0002 (lifecycle state machines and conditional rules) will build on this document
-and is expected to widen the checker with combinators. The exact follow-up path is
-listed as a placeholder above so the two proposals stay linked.
+RFC-0002 (`docs/rfcs/0002-lifecycle-state-machine.md`, lifecycle state machines) builds
+on this document: it keeps lifecycle legality out of the schema subset and models
+transitions with a status-keyed dispatch table. It does **not** add combinators to the
+checker.
 
 ## Context
 
@@ -56,19 +57,21 @@ changes are measured against lives in three unrelated places.
 Adopt a **curated JSON Schema subset** as the single declarative source of truth for
 contract shapes, with a **dependency-free checker** in `src/contracts/`.
 
-- `src/contracts/validate.mjs` exports `validate(schema, value)` and
-  `exportEnum(schema)`. It has no imports at all; the project keeps
-  `"dependencies": {}` and requires no `npm install` (`AGENTS.md`, Root rules and
-  [ADR-007](../adr/007-task-contract.md), which forbids a third-party runtime
-  dependency for the contract/service layer).
+- `src/contracts/validate.mjs` exports `assertSchema(schema)`,
+  `validate(schema, value)` and `exportEnum(schema)`. It has no imports at all; the
+  project declares no runtime dependencies and requires no `npm install` (`AGENTS.md`,
+  Root rules and [ADR-007](../adr/007-task-contract.md), which forbids a third-party
+  runtime dependency for the contract/service layer).
 - `src/contracts/schemas/*.schema.json` hold the shapes: `task-submit-request`,
   `worker-artifact`, `task-record` and `error-envelope`. Each file carries a `meta`
   block (`title`, `source`) recording the `file:line` it was derived from; the checker
   treats `meta` as an annotation, exactly like `description`.
 - `test/contracts.test.mjs` is the immediate guard: it exercises every supported
   keyword and asserts the enums in the schemas equal the runtime literals
-  (`TASK_STATUSES`, the `STATUSES` literal in `src/tasks.mjs`, `EVIDENCE_LEVELS`,
-  `ERROR_CODES`) as sorted, order-insensitive sets with equal length.
+  (`TASK_STATUSES`, the `STATUSES` and `SCHEMA_VERSION` literals in `src/tasks.mjs`,
+  `EVIDENCE_LEVELS`, `ERROR_CODES`) as sorted, order-insensitive sets with equal
+  length. A second test reads the schema directory and runs `assertSchema` over every
+  file, so a typo in any shipped schema fails the suite.
 
 **Format ruling.** Schemas are `.schema.json`, not `.schema.yaml`. Node has no
 standard-library YAML parser, and the project may not add a dependency for this;
@@ -76,14 +79,15 @@ JSON is a valid YAML subset, so the files stay readable and editable with any YA
 tooling while `JSON.parse` reads them without a dependency. YAML would only win on
 comments and multi-line strings, and neither is needed by the shapes we derive.
 
-The subset is deliberately small so the checker stays auditable in one file. It is
-also the reason RFC-0002 exists: conditional state transitions need keywords this RFC
-refuses to half-implement.
+The subset is deliberately small so the checker stays auditable in one file. Every
+schema node is walked strictly before validation: an unknown keyword, a missing
+`type` or a malformed keyword value is a hard error, so a typo such as `minlength`
+cannot fail open.
 
 ## Supported subset
 
-`validate()` enforces exactly these keywords. Anything else in a schema file is an
-annotation and is ignored, never silently enforced.
+`validate()` enforces exactly these keywords, and `assertSchema()` rejects everything
+else, so the whitelist is closed rather than open to unknown annotations.
 
 | Keyword | Support |
 | --- | --- |
@@ -92,42 +96,60 @@ annotation and is ignored, never silently enforced.
 | `required` | missing property names are reported at the property path |
 | `additionalProperties` | only `false` is enforced (strict key check); `true` or a schema is rejected as unsupported |
 | `enum` | primitive entries compared with `Object.is` |
-| `pattern` | ECMAScript source; an invalid regex throws |
+| `pattern` | ECMAScript source applied as an unanchored search, like JSON Schema; an invalid regex throws. The shipped patterns spell out `^...$` wherever they must be anchored |
 | `minLength` / `maxLength` | string length in UTF-16 code units (JavaScript `.length`) |
 | `minItems` / `maxItems` | array length |
 | `items` | one subschema applied to every element |
 | `description` | annotation, ignored |
 | `meta` | project convention: `{ title, source }` annotation at the schema root, ignored |
+| `$comment` | annotation, ignored; schema files use it for provenance notes tools may strip |
 
 Behaviour rules:
 
 - `validate(schema, value)` returns `{ ok: true }` or
-  `{ ok: false, errors: [{ path, message }] }`. It collects **all** errors, depth first
-  in declaration order, so the same input always produces deep-equal errors.
+  `{ ok: false, errors: [{ path, message }] }`. It collects **all** errors depth first:
+  declaration order for required and property checks, instance order for unknown keys.
+  The same input always produces deep-equal errors.
 - Paths are relative and dot/bracket joined (`repository.baseRef`,
   `acceptanceCriteria[2]`, `attempts[0].outcome`). The root path is the empty string.
-- Messages never echo full instance values. Strings are previewed to 32 characters
-  with an ellipsis, object and array previews are type names only, and unknown-key
-  paths are truncated the same way. Enum messages list only schema-side values.
-- A malformed schema node that the checker reaches throws `TypeError`; it is never
-  treated as permissive.
+- Messages never echo instance strings. Only schema-side values (enum entries,
+  patterns), type names and short property-key previews appear. Instance previews are
+  cut to 32 characters with an ellipsis, objects and arrays are named by type and never
+  serialized, and unknown-key paths are truncated the same way.
+- `assertSchema(schema)` walks the whole schema and throws `TypeError` on an unknown
+  keyword, a missing or malformed `type`, or a malformed keyword value. `validate()`
+  and `exportEnum()` both run it first: fail-closed, and cheap because schema nodes are
+  small.
 - `exportEnum(schemaNode)` returns a frozen copy of a node's `enum` (the caller names
   the node, so no guessing which nested enum is meant).
 
 Deliberately **not** implemented: `oneOf`/`anyOf`/`allOf`, `if`/`then`/`else`,
 `$ref`/`definitions`, `const`, `minimum`/`maximum`/`exclusiveMinimum`, `format`,
-`patternProperties`, `dependencies`, `dependentRequired`. Combinators and conditional
-schemas are RFC-0002 territory; numeric bounds stay imperative for now (see Open
-questions).
+`patternProperties`, `dependencies`, `dependentRequired`. RFC-0002 review declined
+combinators: lifecycle legality is modelled in a status-keyed dispatch table instead.
+Numeric bounds were declined for the same reason and stay imperative (see Open
+questions 2).
+
+**Producer contract, not a result envelope.** `worker-artifact` describes the record
+fields the future executor adapter must write before `getTaskResult` reads them; it is
+not a `get_task_result` envelope (no `taskId`, `status`, `schemaVersion` or `sanitized`
+flag). It is stricter than the runtime on three points: unknown keys are rejected,
+`testRuns[].exitCode` is required evidence, and `attempts[].outcome` must be a non-empty
+string when present. `testRuns[].command` stays optional because the runtime tolerates
+a run reported without one (`src/service.mjs:192-199`,
+`test/task-service.test.mjs:53-56`) and reports that as a limitation. `task-record` is
+stricter than `validateTask` at three points: unknown keys rejected, `taskId` checked
+against the runtime identifier pattern (UUIDv4 remains a submit-time rule), and
+`attempts[].outcome` non-empty when present.
 
 ## Few-shots
 
-Outputs below are actual `validate()` output from this branch.
+Each pair shows the input and the actual `validate()` output produced on this branch.
 
 **Valid submit request** (`task-submit-request.schema.json`):
 
 ```js
-validate(submitSchema, {
+const request = {
   idempotencyKey: 'goal-2026-11-02-01',
   clientId: 'opencode-primary',
   objective: 'Add a regression test for the retry budget',
@@ -135,20 +157,25 @@ validate(submitSchema, {
   repository: { path: '/abs/repo', baseRef: 'main', branch: 'task/retry-budget' },
   authorization: { models: ['mock/a'], tools: ['read', 'edit'], writablePaths: ['src/**'] },
   limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
-});
+};
+validate(submitSchema, request);
 // { ok: true }
 ```
 
-**Invalid submit request** — third criterion is a number and the branch contains
-spaces:
+**Invalid submit request** — number criterion, branch with spaces and a fractional
+budget:
 
 ```js
-validate(submitSchema, {
-  /* same as above */
+const invalidRequest = {
+  idempotencyKey: 'goal-2026-11-02-01',
+  clientId: 'opencode-primary',
+  objective: 'Add a regression test for the retry budget',
   acceptanceCriteria: ['node --test passes', 'demo still works', 3],
   repository: { path: '/abs/repo', baseRef: 'main', branch: 'task with spaces' },
+  authorization: { models: ['mock/a'], tools: ['read', 'edit'], writablePaths: ['src/**'] },
   limits: { maxAttempts: 2, budgetMs: 0.5, maxOutputBytes: 1_048_576 },
-});
+};
+validate(submitSchema, invalidRequest);
 // {
 //   ok: false,
 //   errors: [
@@ -159,11 +186,11 @@ validate(submitSchema, {
 // }
 ```
 
-**Valid worker artifact** (`worker-artifact.schema.json`) — the fields that today are
-persisted unvalidated:
+**Valid worker artifact** (`worker-artifact.schema.json`) — the producer contract for
+the future executor adapter:
 
 ```js
-validate(artifactSchema, {
+const artifact = {
   attempts: [{ attemptId: 'attempt-1', model: 'mock/a', startedAt: 1_000, finishedAt: 2_000, outcome: 'succeeded' }],
   testRuns: [{ command: 'node --test', exitCode: 0, durationMs: 1_200, summary: '83 passed', outputTail: 'ok', outputTruncated: false }],
   diff: 'diff --git a/src/service.mjs b/src/service.mjs',
@@ -176,13 +203,24 @@ validate(artifactSchema, {
   limitations: [],
   cost: { known: false, amount: null, currency: 'unknown', note: 'cost is unknown until a provider is authorized' },
   evidenceLevel: 'unit',
-});
+};
+validate(artifactSchema, artifact);
 // { ok: true }
 ```
+
+A run reported without a command is still valid (the runtime turns it into a
+limitation): `{ testRuns: [{ exitCode: 0, outputTail: 'partial', outputTruncated: true }] }`
+passes once the other required fields are present.
 
 **Invalid worker artifact** — numeric outcome and an unknown evidence level:
 
 ```js
+const invalidArtifact = {
+  ...artifact,
+  attempts: [{ ...artifact.attempts[0], outcome: 42 }],
+  evidenceLevel: 'vibes',
+};
+validate(artifactSchema, invalidArtifact);
 // {
 //   ok: false,
 //   errors: [
@@ -192,17 +230,41 @@ validate(artifactSchema, {
 // }
 ```
 
-**Valid task record** (`task-record.schema.json`) is the record `createTask` writes
-(`src/tasks.mjs:192-208`); the test suite validates a record produced by a real store
-in a temporary directory:
+**Valid task record** (`task-record.schema.json`) — the shape `createTask` writes
+(`src/tasks.mjs:192-208`); the suite also validates a record produced by a real store in
+a temporary directory, before and after `updateTask` adds artifacts:
 
 ```js
+const record = {
+  schemaVersion: 1,
+  taskId: '9a1f0c4e-3b7d-4a52-9f1e-2c8d5b6a7e90',
+  clientId: 'opencode-primary',
+  idempotencyKey: 'goal-2026-11-02-01',
+  payloadHash: 'a'.repeat(64),
+  request,
+  status: 'queued',
+  createdAt: 1_000,
+  acceptedAt: 1_000,
+  startedAt: null,
+  finishedAt: null,
+  attempts: [],
+  cancel: { requestedAt: null, executionStopped: null, effectsReverted: false },
+  block: null,
+  progress: [{ at: 1_000, event: 'accepted', detail: null }],
+};
+validate(recordSchema, record);
 // { ok: true }
 ```
 
 **Invalid task record** — status outside the enum and reversible effects:
 
 ```js
+const invalidRecord = {
+  ...record,
+  status: 'paused',
+  cancel: { ...record.cancel, effectsReverted: true },
+};
+validate(recordSchema, invalidRecord);
 // {
 //   ok: false,
 //   errors: [
@@ -226,11 +288,11 @@ Three minimal, separately revertible PRs. Only step 1 is in this RFC.
    membership, writable-root containment, budget ceilings and positivity. The result
    must keep `hasExactKeys` behaviour (unknown keys rejected) and the existing error
    codes; `node --test` plus `examples/fallback-demo.mjs` guard the change.
-3. **Derive duplicated literals.** Replace `TASK_STATUSES`, `EVIDENCE_LEVELS` and
-   `ERROR_CODES` with `exportEnum(...)` of the schema nodes, and make the private
-   `STATUSES` set in `src/tasks.mjs:18` be built from the schema. At that point the
-   drift test can compare runtime to schema trivially; it stays as the guard against
-   a future hand-edit.
+3. **Derive duplicated literals.** Replace `TASK_STATUSES`, `EVIDENCE_LEVELS`,
+   `ERROR_CODES` and `SCHEMA_VERSION` with `exportEnum(...)` of the schema nodes, and
+   make the private `STATUSES` set in `src/tasks.mjs:18` be built from the schema. At
+   that point the drift test can compare runtime to schema trivially; it stays as the
+   guard against a future hand-edit.
 
 The `worker-artifact` and `task-record` schemas join step 2 as soon as the executor
 adapter exists: validate the artifact before persisting it, validate the record inside
@@ -239,8 +301,8 @@ adapter exists: validate the artifact before persisting it, validate the record 
 ## Non-goals
 
 - Status transitions, lifecycle legality and conditional rules (allowed transitions,
-  `blocked` requiring reconciliation, `cancel` effects). Those need `if`/`then` or
-  combinators and belong to RFC-0002.
+  `blocked` requiring reconciliation, `cancel` effects). RFC-0002 covers these with a
+  status-keyed dispatch table; combinators are declined, not deferred.
 - Any third-party dependency, runtime or dev. No `ajv`, no `jsonschema`, no YAML
   parser, no test-only schema library.
 - Changing the npm-install-free rule: `npm install` must stay unnecessary.
@@ -265,15 +327,21 @@ adapter exists: validate the artifact before persisting it, validate the record 
    no standard-library YAML parser, so YAML would force a dependency or a hand-written
    parser; JSON is valid YAML and stays editable in YAML tooling. Commenters who want
    YAML need to say what compensates for the dependency rule.
-2. **Numeric bounds.** `limits.maxAttempts`/`budgetMs`/`maxOutputBytes` and timestamp
-   non-negativity cannot be expressed without `minimum`, so they remain imperative.
-   Should the subset gain `minimum`/`maximum` in RFC-0002, or stay structural forever?
-3. **Strictness of `task-record`.** The schema rejects unknown top-level fields while
-   `validateTask` today ignores them. If adoption would break a persisted record from
-   an older build, the schema should relax to a warning contract instead.
+2. **Numeric bounds — declined.** `limits.maxAttempts`/`budgetMs`/`maxOutputBytes` and
+   timestamp non-negativity cannot be expressed without `minimum`. RFC-0002 review
+   declined adding numeric keywords, so these bounds stay imperative and the subset
+   stays structural. Closed unless a later RFC reopens it with a concrete need.
+3. **Strictness of `task-record`.** The schema rejects unknown top-level fields and
+   requires a non-empty `attempts[].outcome` when present, while `validateTask` today
+   ignores both. If adoption would break a persisted record from an older build, the
+   schema should relax to a warning contract instead.
 4. **Where evidence levels live.** They are in `worker-artifact` because that is where
    the runtime uses them; a future `get_task_result` response schema may need the same
    enum in two places, which the subset cannot express without `$ref`.
+5. **Worker-artifact strictness.** The prospective producer contract requires
+   `testRuns[].exitCode` while `getTaskResult` today accepts a run without one and
+   downgrades it to a limitation. Should adoption tighten the result path too, or keep
+   the runtime tolerant and let only the adapter be strict?
 
 ## References
 

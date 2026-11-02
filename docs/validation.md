@@ -223,3 +223,31 @@ Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-ga
 (the MCP capability gate remains inconsistent and unresolved), the Windows-only
 toolchain statement, and any live executor or transport use. No paid provider, network
 call or credential was used; no integration evidence is implied by these unit tests.
+
+## RFC-0001 review fixes — 2026-11-02
+
+Branch `rfc/0001-contract-schemas`. Test-only skeleton; no runtime module imports
+`src/contracts/`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Results: `node --test` → 106 passed, 0 failed (83 existing tests unchanged, 23 in
+`test/contracts.test.mjs`); the demo printed the expected 429 from `mock/preferred`
+followed by 200 from `mock/local`.
+
+New coverage in this round: an artifact-enriched record (store `createTask` followed by
+`updateTask` with attempts, a command-less test run, changed files, commits, diff and
+truncation flags) validates against `task-record.schema.json`; `assertSchema` rejects
+unknown keywords, a missing `type`, malformed keyword values and
+`additionalProperties: true`; a directory walk asserts every shipped `.schema.json`
+passes `assertSchema`; the drift guard extracts the `STATUSES` and `SCHEMA_VERSION`
+literals with quote- and whitespace-tolerant patterns and compares them to the schema
+enums and to the exports from `src/service.mjs`.
+
+Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-gate.mjs`
+(the MCP capability gate remains inconsistent and unresolved), the Windows-only
+toolchain statement, and any live executor or transport use. No paid provider, network
+call or credential was used.

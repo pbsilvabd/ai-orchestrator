@@ -1,10 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { exportEnum, validate } from '../src/contracts/validate.mjs';
-import { ERROR_CODES, EVIDENCE_LEVELS, TASK_STATUSES } from '../src/service.mjs';
+import { assertSchema, exportEnum, validate } from '../src/contracts/validate.mjs';
+import { ERROR_CODES, EVIDENCE_LEVELS, SCHEMA_VERSION, TASK_STATUSES } from '../src/service.mjs';
 import { openTaskStore } from '../src/tasks.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -79,7 +79,7 @@ test('validate accepts a value for every supported keyword', () => {
     ['null', { type: 'null' }, null],
     ['nullable unions', { type: ['string', 'null'], minLength: 1 }, null],
     ['enums', { type: 'string', enum: ['queued', 'running'] }, 'running'],
-    ['enum null entry', { enum: [null, true, 'unknown'] }, null],
+    ['enum null entry', { type: ['boolean', 'string', 'null'], enum: [null, true, 'unknown'] }, null],
     ['patterns', { type: 'string', pattern: '^[A-Za-z0-9._:-]{1,128}$' }, 'goal-1'],
     ['strict objects with no extras', { type: 'object', additionalProperties: false, properties: { a: { type: 'string' } } }, { a: 'x' }],
     ['annotations are ignored', { type: 'string', description: 'ignored', meta: { title: 'x', source: 'y' } }, 'x'],
@@ -211,13 +211,30 @@ test('validate throws on malformed schema nodes instead of accepting them', () =
   assert.throws(() => validate({ type: 'float' }, 1), /unknown type "float"/);
   assert.throws(() => validate({ type: 'string', pattern: '(' }, 'x'), /not a valid regular expression/);
   assert.throws(() => validate({ type: 'object', additionalProperties: {} }, {}), /only additionalProperties: false is supported/);
+  assert.throws(() => validate({ type: 'object', additionalProperties: true }, {}), /only additionalProperties: false is supported/);
   assert.throws(() => validate({ type: 'string', enum: [{ a: 1 }] }, 'x'), /enum entries must be primitives/);
   assert.throws(() => validate({ type: 'array', minItems: -1 }, []), /minItems must be a non-negative integer/);
   assert.throws(() => validate('object', {}), /schema must be an object/);
+  assert.throws(() => validate({ type: 'string', minlength: 5 }, 'ab'), /unknown keyword "minlength"/);
+  assert.throws(() => validate({ enum: ['a'] }, 'a'), /type is required/);
+  assert.throws(() => validate({ type: 'object', properties: { a: { enum: [1] } } }, { a: 1 }), /type is required/);
+  assert.throws(() => validate({ type: 'object', required: 'a' }, {}), /required must be an array of strings/);
+  assert.throws(() => validate({ type: 'object', properties: [] }, {}), /properties must be an object/);
+  assert.throws(() => validate({ type: 'object', $comment: 1 }, {}), /\$comment must be a string/);
+});
+
+test('every shipped schema passes the strict keyword whitelist walk', () => {
+  const directory = join(ROOT, 'src/contracts/schemas');
+  const files = readdirSync(directory).filter(name => name.endsWith('.schema.json'));
+  assert.ok(files.length >= 4, `expected the shipped schemas, found ${JSON.stringify(files)}`);
+  for (const file of files) {
+    const schema = JSON.parse(readFileSync(join(directory, file), 'utf8'));
+    assert.doesNotThrow(() => assertSchema(schema), `${file} must pass assertSchema`);
+  }
 });
 
 test('exportEnum returns a frozen copy of the schema enum', () => {
-  const source = { enum: ['a', 'b'] };
+  const source = { type: 'string', enum: ['a', 'b'] };
   const values = exportEnum(source);
   assert.deepEqual(values, ['a', 'b']);
   assert.ok(Object.isFrozen(values));
@@ -265,6 +282,12 @@ test('worker artifact schema accepts complete evidence and rejects unvalidated f
     errors: [{ path: 'testRuns[0].exitCode', message: 'expected integer, received string' }],
   });
 
+  // The runtime tolerates a run reported without a command (test/task-service.test.mjs:53-56);
+  // the artifact schema must accept that shape while still requiring the exit code.
+  const missingCommand = workerArtifact();
+  missingCommand.testRuns = [{ exitCode: 0, outputTail: 'partial', outputTruncated: true }];
+  assert.deepEqual(validate(artifactSchema, missingCommand), { ok: true });
+
   const unknownEvidence = workerArtifact({ evidenceLevel: 'vibes' });
   assert.equal(validate(artifactSchema, unknownEvidence).ok, false);
 
@@ -302,6 +325,36 @@ test('task record schema matches a record the store actually writes', t => {
   assert.deepEqual(validate(recordSchema, store.readTask(task.taskId)), { ok: true });
 });
 
+test('task record schema accepts the artifacts updateTask adds', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'orchestrator-contracts-artifacts-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  const store = openTaskStore({ home: dir });
+  const { task } = store.createTask({
+    clientId: 'opencode-primary',
+    idempotencyKey: 'goal-artifacts',
+    payload: submitRequest(),
+    now: 1_000,
+  });
+  // Mirrors test/task-service.test.mjs:255-265, including a test run without a command.
+  store.updateTask(task.taskId, draft => {
+    draft.status = 'succeeded';
+    draft.finishedAt = 1_500;
+    draft.startedAt = 1_000;
+    draft.attempts.push({ attemptId: 'attempt-1', model: 'mock/a', startedAt: 1_000, finishedAt: 1_500, outcome: 'success' });
+    draft.testRuns = [
+      { command: 'node --test', exitCode: 0, durationMs: 5, summary: 'ok', outputTail: 'ok' },
+      { exitCode: 0, outputTail: 'partial', outputTruncated: true },
+    ];
+    draft.changedFiles = ['test/example.test.mjs'];
+    draft.headCommit = 'abc123def456';
+    draft.baseCommit = 'def456abc123';
+    draft.diff = 'diff --git a/test/example.test.mjs';
+    draft.diffTruncated = true;
+  });
+
+  assert.deepEqual(validate(recordSchema, store.readTask(task.taskId)), { ok: true });
+});
+
 test('error envelope schema accepts contract errors and rejects unknown codes', () => {
   assert.deepEqual(validate(errorSchema, { error: { code: 'invalid_argument', message: 'objective must be 1..4000 characters' } }), { ok: true });
   assert.deepEqual(validate(errorSchema, { error: { code: 'eventual_consistency', message: 'x' } }), {
@@ -317,19 +370,33 @@ test('error envelope schema accepts contract errors and rejects unknown codes', 
 // same length, order-insensitive (sorted on both sides). Order is not part of the
 // contract; membership is.
 const sorted = values => [...values].sort();
+const tasksSource = readFileSync(join(ROOT, 'src/tasks.mjs'), 'utf8');
+const sourceLiteral = (pattern, what) => {
+  const match = tasksSource.match(pattern);
+  assert.ok(match, `${what} literal not found in src/tasks.mjs`);
+  return match[1];
+};
 
 test('drift: task status enum equals the runtime status literals', () => {
   const schemaStatuses = exportEnum(recordSchema.properties.status);
   assert.deepEqual(sorted(schemaStatuses), sorted(TASK_STATUSES));
 
-  // STATUSES in src/tasks.mjs is module-private and the store must not change in this
-  // RFC, so the literal is read from the source that validateTask uses.
-  const source = readFileSync(join(ROOT, 'src/tasks.mjs'), 'utf8');
-  const literal = source.match(/const STATUSES = new Set\(\[([^\]]*)\]\)/);
-  assert.ok(literal, 'STATUSES literal not found in src/tasks.mjs');
-  const storeStatuses = [...literal[1].matchAll(/'([a-z-]+)'/g)].map(match => match[1]);
+  // STATUSES in src/tasks.mjs is module-private and the store is not changed by this
+  // RFC, so the literal is read from the source that validateTask uses. Quote-generic
+  // matching keeps the guard working if the literal is reformatted.
+  const literal = sourceLiteral(/const STATUSES\s*=\s*new Set\(\s*\[([\s\S]*?)\]\s*\)/, 'STATUSES');
+  const storeStatuses = [...literal.matchAll(/['"]([^'"]+)['"]/g)].map(match => match[1]);
   assert.equal(storeStatuses.length, TASK_STATUSES.length, 'store status literal moved; update the drift guard');
   assert.deepEqual(sorted(storeStatuses), sorted(schemaStatuses));
+});
+
+test('drift: schemaVersion enum equals the runtime schema version', () => {
+  // service.mjs exports SCHEMA_VERSION; tasks.mjs keeps its copy private, so that
+  // literal is read from source. Both must agree with the schema's singleton enum.
+  const sourceVersion = Number(sourceLiteral(/const SCHEMA_VERSION\s*=\s*(\d+)\s*;/, 'SCHEMA_VERSION'));
+  assert.ok(Number.isInteger(sourceVersion), 'SCHEMA_VERSION literal is not an integer');
+  assert.equal(sourceVersion, SCHEMA_VERSION);
+  assert.deepEqual(exportEnum(recordSchema.properties.schemaVersion), [SCHEMA_VERSION]);
 });
 
 test('drift: evidence level enum equals EVIDENCE_LEVELS', () => {

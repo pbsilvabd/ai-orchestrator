@@ -1,38 +1,50 @@
 // Dependency-free checker for the curated JSON Schema subset used by
 // src/contracts/schemas/*.schema.json (RFC-0001, docs/rfcs/0001-contract-schemas.md).
 //
-// Supported keywords. This list is the whole enforced surface; every other keyword is
-// an annotation and is ignored, never enforced:
+// Enforced keyword whitelist. Any other key in a schema node is an error, not an
+// annotation, so a typo such as `minlength` fails loudly instead of validating nothing:
 //   type                  "object" | "array" | "string" | "number" | "integer" |
 //                         "boolean" | "null", or an array of those names, which is how
 //                         nullable fields are expressed (e.g. ["string", "null"])
 //   properties            per-key subschemas
 //   required              property names that must be present
-//   additionalProperties  only `false` is enforced: unknown keys are rejected
+//   additionalProperties  only `false` is accepted: unknown keys are rejected
 //   enum                  primitive values compared with Object.is
-//   pattern               ECMAScript regular expression source for strings
+//   pattern               ECMAScript source, unanchored search like JSON Schema; the
+//                         shipped patterns spell out ^...$ when they must be anchored
 //   minLength/maxLength   string length in UTF-16 code units (JavaScript .length)
 //   minItems/maxItems     array length
 //   items                 one subschema applied to every array element
 //   description           annotation, ignored
+//   meta                  project annotation block ({ title, source }), ignored
+//   $comment              annotation, ignored (JSON/YAML schema files use it for
+//                         provenance notes that tools may strip)
 //
 // Deliberately NOT implemented: oneOf/anyOf/allOf, if/then/else, $ref/definitions,
 // const, minimum/maximum/exclusiveMinimum, format, patternProperties, dependencies.
-// Combinators and conditional schemas belong to RFC-0002; numeric bounds stay
-// imperative in the runtime until a later RFC widens the subset.
+// RFC-0002 reviewed combinators and declined them in favour of a status-keyed dispatch
+// table; numeric bounds stay imperative in the runtime.
+//
+// API:
+//   assertSchema(schema)      full recursive schema walk; throws TypeError on an
+//                             unknown keyword, a missing/malformed type, or a malformed
+//                             keyword value. validate() and exportEnum() both run it
+//                             first (fail-closed; schema nodes are small, so the cost
+//                             of walking them again on each call is negligible).
+//   validate(schema, value)   { ok: true } or { ok: false, errors: [{ path, message }] }
+//   exportEnum(schemaNode)    frozen copy of a node's enum
 //
 // Conventions:
 //   * paths are relative and dot/bracket joined: `objective`, `acceptanceCriteria[2]`.
 //     The root path is the empty string.
-//   * `meta` is an annotations-only block at the schema root ({ title, source }) that
-//     records where a schema was derived from. It is ignored here because the checker
-//     only reads the keywords listed above.
-//   * a malformed schema node reached by the checker throws TypeError instead of being
-//     silently skipped or treated as permissive.
-//   * errors never echo full instance values. String previews are truncated to 32
-//     characters and objects are described by type, never serialized.
-//   * errors are collected depth first in declaration order and are deterministic:
-//     validating the same input twice yields deep-equal errors.
+//   * errors are collected depth first: declaration order for required and property
+//     checks, instance order for unknown keys. Output is deterministic, so validating
+//     the same input twice yields deep-equal errors.
+//   * messages never echo instance strings. Only schema-side values (enum entries,
+//     patterns), type names and short property-key previews appear; instance previews
+//     are cut to 32 characters and objects/arrays are named by type, never serialized.
+//   * a malformed schema node throws TypeError instead of being skipped or treated as
+//     permissive.
 
 const PREVIEW_LIMIT = 32;
 
@@ -47,6 +59,11 @@ const TYPE_CHECKS = {
 };
 
 const TYPE_NAMES = Object.keys(TYPE_CHECKS);
+const KEYWORDS = new Set([
+  'type', 'properties', 'required', 'additionalProperties', 'enum', 'pattern',
+  'minLength', 'maxLength', 'minItems', 'maxItems', 'items', 'description', 'meta',
+  '$comment',
+]);
 const isObject = TYPE_CHECKS.object;
 
 function typeName(value) {
@@ -87,8 +104,8 @@ function schemaError(path, detail) {
   return new TypeError(`invalid contract schema at ${path || '<root>'}: ${detail}`);
 }
 
-function normalizeType(schema, path) {
-  if (schema.type === undefined) return null;
+function declaredTypes(schema, path) {
+  if (schema.type === undefined) throw schemaError(path, 'type is required');
   const declared = Array.isArray(schema.type) ? schema.type : [schema.type];
   if (declared.length === 0) throw schemaError(path, 'type array is empty');
   for (const entry of declared) {
@@ -99,13 +116,29 @@ function normalizeType(schema, path) {
   return declared;
 }
 
-function validateKeywordShapes(schema, path) {
-  normalizeType(schema, path);
+// Strict schema walk. Anything the checker cannot enforce is rejected here so a
+// misspelled or unsupported keyword can never fail open.
+function walkSchema(schema, path) {
+  if (!isObject(schema)) throw schemaError(path, 'schema must be an object');
+
+  for (const keyword of Object.keys(schema)) {
+    if (!KEYWORDS.has(keyword)) throw schemaError(path, `unknown keyword ${preview(keyword)}`);
+  }
+
+  declaredTypes(schema, path);
+
+  for (const annotation of ['description', '$comment']) {
+    if (schema[annotation] !== undefined && typeof schema[annotation] !== 'string') {
+      throw schemaError(path, `${annotation} must be a string`);
+    }
+  }
+  if (schema.meta !== undefined && !isObject(schema.meta)) {
+    throw schemaError(path, 'meta must be an object');
+  }
   if (schema.properties !== undefined) {
     if (!isObject(schema.properties)) throw schemaError(path, 'properties must be an object');
     for (const key of Object.keys(schema.properties)) {
-      const child = schema.properties[key];
-      if (!isObject(child)) throw schemaError(joinPath(path, key), 'subschema must be an object');
+      walkSchema(schema.properties[key], joinPath(path, key));
     }
   }
   if (schema.required !== undefined) {
@@ -113,7 +146,7 @@ function validateKeywordShapes(schema, path) {
       throw schemaError(path, 'required must be an array of strings');
     }
   }
-  if (schema.additionalProperties !== undefined && typeof schema.additionalProperties !== 'boolean') {
+  if (schema.additionalProperties !== undefined && schema.additionalProperties !== false) {
     throw schemaError(path, 'only additionalProperties: false is supported');
   }
   if (schema.enum !== undefined) {
@@ -139,17 +172,16 @@ function validateKeywordShapes(schema, path) {
       throw schemaError(path, `${keyword} must be a non-negative integer`);
     }
   }
-  if (schema.items !== undefined && !isObject(schema.items)) {
-    throw schemaError(path, 'items must be a single subschema object');
-  }
+  if (schema.items !== undefined) walkSchema(schema.items, joinPath(path, 'items'));
+}
+
+export function assertSchema(schema) {
+  walkSchema(schema, '');
 }
 
 function walk(schema, value, path, errors) {
-  if (!isObject(schema)) throw schemaError(path, 'schema must be an object');
-  validateKeywordShapes(schema, path);
-
-  const types = normalizeType(schema, path);
-  if (types && !types.some(name => TYPE_CHECKS[name](value))) {
+  const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+  if (!types.some(name => TYPE_CHECKS[name](value))) {
     // A wrong type makes deeper keyword checks noise, so stop at this node.
     errors.push({ path, message: `expected ${types.join(' or ')}, received ${typeName(value)}` });
     return;
@@ -206,20 +238,18 @@ function walk(schema, value, path, errors) {
 }
 
 export function validate(schema, value) {
-  if (!isObject(schema)) throw schemaError('', 'schema must be an object');
-  // Validate keyword shapes once up front so a malformed schema fails even when the
-  // instance type would never reach the affected keyword.
-  validateKeywordShapes(schema, '');
+  assertSchema(schema);
   const errors = [];
   walk(schema, value, '', errors);
   return errors.length === 0 ? { ok: true } : { ok: false, errors };
 }
 
 // Schema enum used as the runtime's literal source (drift guard and, later, constant
-// derivation). The node passed here must declare `enum`; this keeps the caller
-// explicit instead of guessing which nested enum is meant.
+// derivation). The node passed here must be a schema node that declares `enum`; this
+// keeps the caller explicit instead of guessing which nested enum is meant.
 export function exportEnum(schema) {
-  if (!isObject(schema) || !Array.isArray(schema.enum) || schema.enum.length === 0) {
+  assertSchema(schema);
+  if (!Array.isArray(schema.enum) || schema.enum.length === 0) {
     throw new TypeError('schema node must declare a non-empty enum array');
   }
   return Object.freeze([...schema.enum]);

@@ -174,3 +174,42 @@ Template:
   → `[ 'exportEnum', 'validate' ]`.
 - Follow-up: RFC-0002 (lifecycle state machine, combinators) and adoption steps 2-3
   (wire the submit boundary, derive the duplicated literals).
+
+## 2026-11-02 — RFC-0001 review fixes: strict schemas and record artifacts
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal and test-only skeleton; no runtime wiring.
+- Steps:
+  1. Added the artifact fields `updateTask` may write (`testRuns`, `changedFiles`,
+     `baseCommit`, `headCommit`, `diff`, `diffTruncated`) as optional properties of
+     `task-record`, with `testRuns[].command` optional to match the runtime's tolerated
+     shape; a new test validates a store record after `updateTask` adds them.
+  2. Reframed `worker-artifact` in its `$comment` and the RFC as the producer contract
+     the future executor adapter must report, not a result envelope; `command` is now
+     optional, and the strictness divergences (unknown keys, required `exitCode`,
+     non-empty `outcome`) are stated.
+  3. Made the checker fail closed: `additionalProperties: true` is rejected, and a new
+     exported `assertSchema()` walks every node against a strict keyword whitelist
+     (`type, properties, required, additionalProperties, enum, pattern, minLength,
+     maxLength, minItems, maxItems, items, description, meta, $comment`), requiring a
+     `type` on each node and rejecting malformed keyword values. `validate()` and
+     `exportEnum()` run it first.
+  4. Added a test that reads `src/contracts/schemas/` and runs `assertSchema` over every
+     shipped file, plus cases for unknown keywords, missing `type` and
+     `additionalProperties: true`.
+  5. Aligned the RFC with the RFC-0002 review: combinators are declined and lifecycle
+     legality is a status-keyed dispatch table; numeric bounds are declined, not an
+     open question; the `Referenced-by` line names the unmerged sibling PR. Documented
+     unanchored `pattern` search, `$comment`, error ordering, preview rules and inputs
+     for every few-shot.
+  6. Hardened the drift guard to quote-generic literal extraction and added a
+     `SCHEMA_VERSION` assertion against `src/service.mjs` and the private literal in
+     `src/tasks.mjs`.
+- Files: `src/contracts/validate.mjs`,
+  `src/contracts/schemas/{task-record,worker-artifact}.schema.json`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 106 passed, 0 failed (83 existing + 23 contract tests);
+  `node examples/fallback-demo.mjs` → expected 429 then 200; every schema file passes
+  `assertSchema` via the directory walk test.
+- Follow-up: adoption steps 2-3 in the RFC.

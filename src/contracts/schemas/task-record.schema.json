@@ -106,6 +106,7 @@
         },
         "executionStopped": {
           "description": "True only when the worker confirmed no work is running; 'unknown' after an abort, crash or restart.",
+          "type": ["boolean", "string", "null"],
           "enum": [null, true, "unknown"]
         },
         "effectsReverted": {
@@ -150,6 +151,55 @@
           }
         }
       }
+    },
+    "testRuns": {
+      "description": "Test runs recorded by the executor through updateTask. command is optional because the runtime tolerates a run without one (src/service.mjs:192-199) and reports the missing command as a limitation.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["exitCode"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exitCode": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "outputTail": {
+            "type": "string"
+          },
+          "outputTruncated": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "changedFiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "baseCommit": {
+      "type": ["string", "null"]
+    },
+    "headCommit": {
+      "type": ["string", "null"]
+    },
+    "diff": {
+      "type": ["string", "null"]
+    },
+    "diffTruncated": {
+      "type": "boolean"
     }
   }
 }
