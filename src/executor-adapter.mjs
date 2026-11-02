@@ -59,12 +59,11 @@ export async function executeTask({ store, taskId, opencodePath, signal }) {
     for await (const chunk of child.stdout) chunks.push(chunk);
     const stdout = Buffer.concat(chunks).toString('utf8').slice(0, 262_144);
 
-    // Build artifacts (diff from base to branch, test commands).
-    // In a full run this runs `git diff baseRef..branch` inside work.
+    // Recolha de artefactos conforme contrato (MAX_DIFF_BYTES = 1MiB, MAX_LOG_BYTES = 256KiB).
     const artifacts = {
-      diff: '', // collected after execution
-      log: stdout,
-      tests: '', // command results captured separately
+      diff: await collectDiff(work, task.repository.baseRef, task.repository.branch),
+      log: stdout.slice(0, 262_144),
+      tests: await collectTests(work),
     };
 
     const exitCode = await new Promise((res) => child.on('close', res));
@@ -78,5 +77,31 @@ export async function executeTask({ store, taskId, opencodePath, signal }) {
   } finally {
     // Cleanup advisory; locked files require manual reconciliation per contract.
     if (child) child.kill();
+  }
+}
+
+// Helper: collect diff from base to branch, capped at MAX_DIFF_BYTES.
+async function collectDiff(workDir, baseRef = 'main', branch = 'feat/task') {
+  try {
+    const { execSync } = await import('node:child_process');
+    const raw = execSync(`git diff ${baseRef}..${branch}`, {
+      cwd: workDir, maxBuffer: 1_048_576, encoding: 'utf8',
+    });
+    return raw.slice(0, 1_048_576);
+  } catch {
+    return '';
+  }
+}
+
+// Helper: collect test evidence from isolated worktree.
+async function collectTests(workDir) {
+  try {
+    const { execSync } = await import('node:child_process');
+    const result = execSync('npm test || true', {
+      cwd: workDir, maxBuffer: 262_144, encoding: 'utf8',
+    });
+    return result.slice(0, 262_144);
+  } catch {
+    return '';
   }
 }
