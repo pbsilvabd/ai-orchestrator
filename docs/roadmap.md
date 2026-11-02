@@ -31,7 +31,7 @@ recorded pass and one later failure on 2026-11-02; discovery, cataloguing and a 
 over revision `2026-07-28` were observed, but the gate is not consistently validated.
 M2b implementation started at the task store. The task store (step 2) is complete;
 service-surface fixes passed independent local review. A storage-evolution proposal
- ([ADR-009](adr/009-task-store-sqlite.md), proposed) is open for decision: SQLite via
+([ADR-009](adr/009-task-store-sqlite.md), proposed) is open for decision: SQLite via
 `node:sqlite` after the M2b acceptance run; it never blocks the executor adapter.
 There is no MCP/API endpoint, worker adapter,
 integrated fallback, semantic memory or completed self-development workflow yet.

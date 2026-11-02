@@ -224,7 +224,7 @@ contract caps (≤ 1 MiB diff, ≤ 256 KiB logs).
 ~5–10x; artifacts near caps); run `ANALYZE` and `EXPLAIN QUERY PLAN` for the four
 operations, reconciliation and retention; record chosen plans, `sqlite_stat1` and
 p95 latencies in validation.md; keep `PRAGMA optimize` as the maintenance hook.
-Review triggers (calibrable): tasks > 100k; events > 1M; any hot query regressing
+Review triggers (calibratable): tasks > 100k; events > 1M; any hot query regressing
 to `SCAN`; status p95 above the local budget; a persistently falling active-row
 share. Adoption happens through a forward migration recorded in this ADR — never
 by silent DDL.
