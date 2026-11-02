@@ -139,3 +139,38 @@ Template:
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## 2026-11-02 — RFC-0001: declarative contract schemas and checker skeleton
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal plus test-only skeleton; no runtime wiring.
+- Steps:
+  1. Added `src/contracts/validate.mjs`, a zero-import checker for a curated JSON
+     Schema subset (type with nullable unions, properties, required,
+     `additionalProperties: false`, enum, pattern, string and array bounds, items,
+     description/meta annotations) returning `{ ok }` or `{ ok: false, errors }` with
+     relative paths, all errors collected and instance values truncated to 32 chars.
+     Combinators and numeric bounds are deliberately excluded.
+  2. Added `src/contracts/schemas/`: `task-submit-request` (from `validateSubmitRequest`),
+     `worker-artifact` (attempts, testRuns, diff, changedFiles, commits, limitations,
+     cost, evidence level; today's uncatalogued fields), `task-record` (from
+     `validateTask`), and `error-envelope` (added so `ERROR_CODES` also has a schema
+     anchor). Each file records its `file:line` origin in a `meta` block.
+  3. Added `test/contracts.test.mjs`: keyword happy/negative tables with exact paths and
+     messages, determinism and truncation checks, schema conformance for a real store
+     record, and drift guards comparing the schema enums to `TASK_STATUSES`,
+     `EVIDENCE_LEVELS`, `ERROR_CODES` and the private `STATUSES` literal read from
+     `src/tasks.mjs` (sorted set equality, equal length).
+  4. Wrote `docs/rfcs/0001-contract-schemas.md` with context, decision, supported
+     subset, few-shots with real `validate()` output, a three-step adoption path,
+     non-goals, later MCP reuse and four open questions.
+- Files: `src/contracts/validate.mjs`,
+  `src/contracts/schemas/{task-submit-request,worker-artifact,task-record,error-envelope}.schema.json`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 103 passed, 0 failed (83 existing + 20 new);
+  `node examples/fallback-demo.mjs` → expected 429 then 200;
+  `node -e "import('./src/contracts/validate.mjs').then(m=>console.log(Object.keys(m)))"`
+  → `[ 'exportEnum', 'validate' ]`.
+- Follow-up: RFC-0002 (lifecycle state machine, combinators) and adoption steps 2-3
+  (wire the submit boundary, derive the duplicated literals).

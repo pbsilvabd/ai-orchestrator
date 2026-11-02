@@ -1,0 +1,124 @@
+{
+  "$comment": "Declarative form of the submit_task request contract. Derived from src/service.mjs validateSubmitRequest (lines 302-392) and docs/task-contract.md#submit_task. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
+  "meta": {
+    "title": "task-submit-request",
+    "source": "src/service.mjs:302-392"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "idempotencyKey",
+    "clientId",
+    "objective",
+    "acceptanceCriteria",
+    "repository",
+    "authorization",
+    "limits"
+  ],
+  "properties": {
+    "idempotencyKey": {
+      "description": "Client-scoped idempotency key; opaque to the service.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "clientId": {
+      "description": "Service-configured client identity, never derived from task text.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "objective": {
+      "description": "One-sentence goal for the worker.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4000
+    },
+    "acceptanceCriteria": {
+      "description": "Checkable acceptance criteria, at least one and at most twenty.",
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 20,
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "repository": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "baseRef", "branch"],
+      "properties": {
+        "path": {
+          "description": "Absolute repository path that must resolve inside a configured writable root; the root check is configuration-relative and stays in code.",
+          "type": "string",
+          "minLength": 1
+        },
+        "baseRef": {
+          "description": "Ref that must resolve to a commit.",
+          "type": "string",
+          "minLength": 1
+        },
+        "branch": {
+          "description": "Branch the worker creates; must not already exist unless this task created it.",
+          "type": "string",
+          "pattern": "^[A-Za-z0-9._/-]{1,128}$"
+        }
+      }
+    },
+    "authorization": {
+      "description": "Requested authority. Subset checks against the configured allowlist are configuration-relative and stay in code.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["models", "tools", "writablePaths"],
+      "properties": {
+        "models": {
+          "type": "array",
+          "items": {
+            "description": "provider/model entry; must be inside the configured allowlist.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "description": "read, edit, bash, ...; must be inside the configured allowlist.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "writablePaths": {
+          "type": "array",
+          "items": {
+            "description": "Glob relative to repository.path, or an absolute path inside both the repository and a configured root.",
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "limits": {
+      "description": "Task budgets. Positivity and budget ceilings are numeric bounds that the current checker subset cannot express (no minimum keyword), so they remain imperative until a later RFC widens the subset.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["maxAttempts", "budgetMs", "maxOutputBytes"],
+      "properties": {
+        "maxAttempts": {
+          "description": "Positive integer; M2b accepts 1..2.",
+          "type": "integer"
+        },
+        "budgetMs": {
+          "description": "Positive wall-clock budget in milliseconds.",
+          "type": "integer"
+        },
+        "maxOutputBytes": {
+          "description": "Positive combined diff-plus-log byte budget.",
+          "type": "integer"
+        }
+      }
+    },
+    "clientSessionId": {
+      "description": "Optional correlation metadata; not an authority and excluded from the idempotency hash.",
+      "type": "string"
+    }
+  }
+}

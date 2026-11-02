@@ -192,3 +192,34 @@ MCP gate status remains unresolved: this review observed one failed probe (`warm
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## RFC-0001 schema skeleton — 2026-11-02
+
+Branch `rfc/0001-contract-schemas` at `3f30114`. Test-only skeleton: no runtime module
+imports `src/contracts/`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+node -e "import('./src/contracts/validate.mjs').then(m=>console.log(Object.keys(m)))"
+```
+
+Results: `node --test` → 103 passed, 0 failed (83 existing tests unchanged, 20 new in
+`test/contracts.test.mjs`); the demo printed the expected 429 from `mock/preferred`
+followed by 200 from `mock/local`; the import check printed
+`[ 'exportEnum', 'validate' ]`. New tests use only temporary directories and synthetic
+values, cover every supported keyword, collect-all-errors ordering, path shapes
+(`acceptanceCriteria[2]`, `attempts[0].outcome`), deterministic output, 32-character
+truncation of instance data in messages, malformed-schema rejection, conformance of a
+record written by `openTaskStore`, and the enum drift guards.
+
+The drift guards compare schema enums to `TASK_STATUSES`, `EVIDENCE_LEVELS` and
+`ERROR_CODES` imported from `src/service.mjs`, and to the module-private `STATUSES`
+literal extracted from `src/tasks.mjs` source (the store is not modified by this RFC).
+Enums are compared as sorted arrays with equal length: membership is contract, order is
+not.
+
+Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-gate.mjs`
+(the MCP capability gate remains inconsistent and unresolved), the Windows-only
+toolchain statement, and any live executor or transport use. No paid provider, network
+call or credential was used; no integration evidence is implied by these unit tests.
