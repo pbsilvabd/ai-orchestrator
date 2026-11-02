@@ -206,8 +206,8 @@ RFC adds no keyword; it adds one entry point whose table rows are ordinary subse
 
 **Divergence from RFC-0001's earlier forward references, resolved.** RFC-0001's Status
 section, paragraph 2, as corrected in review, states that RFC-0002 "does not add
-combinators to the checker"; the pre-review draft of that paragraph had expected RFC-0002
-to widen the checker with combinators and had asked it to decide whether
+combinators to the checker"; the pre-review draft of that document had expected RFC-0002
+to widen the checker with combinators, and its open-question 2 had asked whether
 `minimum`/`maximum` join the subset. This RFC declines both, and says why:
 
 - **Combinators: declined.** A status-keyed dispatch table replaces `oneOf`/`if`/`then`.

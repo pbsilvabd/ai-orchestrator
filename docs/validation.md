@@ -257,3 +257,7 @@ edge, `f7c8db7` citations were reduced to one parenthetical, and the fixture lis
 the `succeeded → failed` seed at `test/task-service.test.mjs:294`. `node --test` → 83
 passed, 0 failed. The demo, OpenCode smoke test, MCP gate and executor/live-client
 acceptance were not rerun; no credential or paid provider was used.
+
+Round 3 correction (same day, documentation only): the `minimum`/`maximum` ask is now
+attributed to RFC-0001's open-question 2 instead of its Status paragraph. `node --test`
+→ 83 passed, 0 failed.

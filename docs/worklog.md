@@ -185,3 +185,6 @@ Template:
   branch-local commit citations with RFC-0001 section references; added the
   `succeeded → failed` fixture seed at `test/task-service.test.mjs:294` to the step-2
   breakage list.
+  A follow-up pass corrected the attribution of the `minimum`/`maximum` question to
+  RFC-0001's open-question 2 rather than its Status paragraph; the two declined
+  decisions are unchanged.
