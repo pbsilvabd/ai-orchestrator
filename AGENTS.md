@@ -7,7 +7,7 @@ Read, in order: this file, [docs/core-rules.md](docs/core-rules.md), then
 [docs/definition-of-done.md](docs/definition-of-done.md), [CONTRIBUTING.md](CONTRIBUTING.md),
 [docs/task-contract.md](docs/task-contract.md) and the ADRs referenced by the current
 milestone. `docs/core-rules.md` is non-normative; the normative sources it links win on
-conflict — read them before work that touches scale, contract, lifecycle or transport.
+conflict — read them before work that touches the contract, lifecycle, transport or policy.
 Check `git log` and the remote before editing; another agent may have moved the
 repository since the handoff was written.
 

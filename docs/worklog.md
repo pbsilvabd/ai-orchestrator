@@ -152,10 +152,17 @@ Template:
      and `CONTRIBUTING.md` to the ordered list; the current-state text is unchanged.
   3. Commits: `chore: ignore local worktrees directory` (`.gitignore` only) and
      `docs: add core rules summary and fix required reading order`
-     (`docs/core-rules.md`, `AGENTS.md`).
+     (`docs/core-rules.md`, `AGENTS.md` plus this work log entry and the validation
+     entry; the second commit also carried both doc-duty files).
 - Files: `docs/core-rules.md` (new), `AGENTS.md`, `.gitignore`, `docs/worklog.md`,
   `docs/validation.md`.
 - Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
   429 then 200. The MCP gate and OpenCode smoke integration were not rerun.
 - Follow-up: open the PR; keep `docs/core-rules.md` in sync when a normative rule
   changes.
+- Review fix round in the same entry: the permission rule now cites the roadmap line that
+  owns it; the invented term "scale" was removed from `docs/core-rules.md` and
+  `AGENTS.md`; the dependency rule keeps the CONTRIBUTING qualifier; the allowlist and
+  uncertain-outcome rules are paraphrased instead of copied verbatim; the handoff duty
+  states "when the next action changes"; and the page is 70 lines. The second commit is
+  recorded accurately above: it also carried this entry and the validation entry.
