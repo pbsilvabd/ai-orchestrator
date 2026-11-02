@@ -7,7 +7,7 @@ node --test
 node examples/fallback-demo.mjs
 ```
 
-Resultado atual: 37 testes aprovados, 0 falhas (23 de política + 8 HTTP + 6 ledger).
+Resultado atual: 43 testes aprovados, 0 falhas (23 política + 8 HTTP + 6 ledger + 6 runner).
 Demo: 429 em mock/preferred seguido de 200 em mock/local com sessionId demo-session.
 Sem chamadas a provedores externos; testes HTTP usam exclusivamente 127.0.0.1.
 
@@ -15,6 +15,8 @@ A suíte cobre limites, allowlist, erros fatais, metadados ausentes, cooldown,
 Retry-After normalizado, timeout seguro, bloqueio após efeito e checkpoint lido
 por novo processo. Não dorme nem depende de relógio real: timestamps são injetados.
 Arquivos temporários são criados pelo próprio teste e removidos no finally.
+Exceção ao relógio injetado: teste do runner usa deadline real de 100 ms e limite
+externo de teste de 3 s; não exige latência exata.
 
 Incremento M1a: segundos/data canônica, header ausente, passado, inválido e overflow;
 loopback 429/503→B e 401/header inválido/efeitos possíveis→stop. Servidor usa porta
@@ -30,6 +32,10 @@ migração automática. Ledger local acrescentado: exclusão entre processos,
 crash sem close, reabertura pending, corrupção, rename falho e persistência de
 resultados. Processos filhos têm timeout de 5 segundos. Não validado sob queda
 de energia, filesystem de rede ou host OpenCode; ver handoff.md.
+
+Runner: fallback, sucesso persistido, pré-cancelamento, cancelamento em voo,
+resposta/rejeição tardia, provedor que ignora abort, erro desconhecido, resposta
+malformada e limite de tentativas. Abort não comprova término de trabalho externo.
 
 DoD desta mudança: comportamento testado, documentação/roadmap/ADR atualizados,
 sem dependências novas nem credenciais. M2/M3 não estão concluídos; não houve

@@ -26,7 +26,7 @@ O projeto ainda NÃO foi usado para desenvolver a si mesmo.
 | --- | --- | --- |
 | M0 — Base verificável | Concluído | Política, auditoria fixada, ADR e suíte local sem APIs |
 | M1a — Fronteira HTTP | Concluído neste incremento | Retry-After normalizado, casos inválidos bloqueados, 429/503→B e auth/efeitos→stop em loopback |
-| M1b — Segurança operacional | Em andamento: sucesso, correlação, checkpoint e lock local concluídos | Cancelamento e orçamento temporal pendentes; crash/concorrência local testados, limites no ADR-004 |
+| M1b — Segurança operacional | Concluído no escopo local | Runner com cancelamento/orçamento, checkpoint, lock e correlação testados; limites nos ADR-004/005 |
 | M2 — Bootstrap no OpenCode 2.2.5 | Planejado; depende M1b | Adaptador mínimo, endpoint simulado, contexto/permissões preservados e cinco cenários de aceitação no host real |
 | M3 — Primeiro uso no próprio projeto | Objetivo prioritário; depende M2 | Uma tarefa pequena real, dois modelos autorizados configurados, branch, diff, testes e relatório; revisão humana antes do merge |
 | M4 — Memória e continuidade | Planejado; depende M3 | ai-memory avaliado/integrado; nova sessão recupera decisão e pendência sem confundir memória com estado de execução |
@@ -41,7 +41,7 @@ Concluído é sempre no escopo da linha: M1a não comprova M2. Ver
 1. Concluído: identidade de operação/tentativa e eventos de sucesso/falha; rejeição de eventos atrasados.
 2. Concluído localmente: persistir antes do dispatch, atualização atômica e lock de escritor único.
 3. Concluído em testes locais: bloqueio após crash, corrupção, lock concorrente e evento duplicado.
-4. Acrescentar timeout/cancelamento sem assumir que interromper a conexão desfez efeitos.
+4. Concluído localmente: timeout/cancelamento sem presumir reversão de efeitos; orçamento por invocação.
 5. Escrever ADR do adaptador e só então ligar os hooks públicos do OpenCode fixado.
 
 ## Experimento de bootstrap M2 → M3

@@ -61,6 +61,14 @@ manual; não são removidos automaticamente.
 
 ## Plano de desenvolvimento
 
+`runOperation` em `src/runner.mjs` combina ledger, fallback, cancelamento e limite
+de duração. Recebe directory, sessionId, models, invoke, budgetMs (padrão 30000),
+maxAttempts (padrão 2) e signal opcional. O adaptador invoke recebe dispatch/signal
+e retorna `{ok:true,value}` ou `{ok:false,error}`. Nenhum adaptador OpenCode está
+instalado ainda. Veja [ADR-005](docs/adr/005-operation-runner.md) para limites:
+abort não desfaz efeitos, o prazo não interrompe código síncrono e não é persistido
+entre invocações. Após cancelamento em voo, a sessão exige reconciliação.
+
 O objetivo prioritário é **desenvolver este projeto usando ele mesmo**, com uma
 primeira tarefa real em branch isolada e revisão humana. O projeto ainda não tem
 executor próprio. Consulte o [roadmap](docs/roadmap.md) e a
@@ -68,7 +76,7 @@ executor próprio. Consulte o [roadmap](docs/roadmap.md) e a
 
 ## Próximas etapas
 
-1. Cancelamento e orçamento temporal sobre o ledger/correlação implementados.
+1. Validar o contrato do adaptador OpenCode sobre o runner local implementado.
 2. Adaptador OpenCode 2.2.5 e teste end-to-end com falhas, ferramentas e reinício real.
 3. Primeiro uso no próprio repositório com modelos explicitamente autorizados.
 4. Memória com ai-memory, roteamento por capacidade/custo e multiagentes em etapas.
