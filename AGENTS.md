@@ -2,10 +2,14 @@
 
 ## Start here (any model or agent)
 
-Read, in order: this file, [docs/handoff.md](docs/handoff.md),
-[docs/roadmap.md](docs/roadmap.md), [docs/task-contract.md](docs/task-contract.md) and
-the ADRs referenced by the current milestone. Check `git log` and the remote before
-editing; another agent may have moved the repository since the handoff was written.
+Read, in order: this file, [docs/core-rules.md](docs/core-rules.md), then
+[docs/handoff.md](docs/handoff.md), [docs/roadmap.md](docs/roadmap.md),
+[docs/definition-of-done.md](docs/definition-of-done.md), [CONTRIBUTING.md](CONTRIBUTING.md),
+[docs/task-contract.md](docs/task-contract.md) and the ADRs referenced by the current
+milestone. `docs/core-rules.md` is non-normative; the normative sources it links win on
+conflict — read them before work that touches scale, contract, lifecycle or transport.
+Check `git log` and the remote before editing; another agent may have moved the
+repository since the handoff was written.
 
 Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a complete,
 M2b step 2 (task store) complete and step 3 (service surface) locally validated after

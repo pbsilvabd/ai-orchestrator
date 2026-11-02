@@ -192,3 +192,23 @@ MCP gate status remains unresolved: this review observed one failed probe (`warm
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## Core rules summary and reading order — 2026-11-02
+
+Docs-only change on branch `docs/core-rules-distillation`; no code, policy, contract or
+test was changed. Commands run from the worktree on macOS, Node.js v24.11.1:
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Result: 83 tests passed, 0 failed, 0 skipped; the demo printed 429 from `mock/preferred`
+followed by 200 from `mock/local`.
+
+Scope of evidence: unit suite and demo only. `integration/mcp-gate.mjs` and
+`integration/opencode-smoke.mjs` were not rerun; the MCP gate instability recorded above
+remains unresolved. The change adds [core-rules.md](core-rules.md), a non-normative
+distillation that links each rule to its normative source, and makes it the first
+mandatory read in `AGENTS.md`. No rule was introduced that a normative document does not
+already state, and no validation claim beyond the two commands is made.

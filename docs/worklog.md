@@ -139,3 +139,23 @@ Template:
   demo 429 then 200. Regression cases are covered in the versioned service suite.
 - Full M2b remains incomplete. Resolve MCP gate instability before relying on it
   for executor/client integration. No live executor acceptance is claimed.
+
+## 2026-11-02 — Docs (outside milestones): core rules summary and reading order
+
+- Branch: `docs/core-rules-distillation`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Distilled the rules already stated in the normative documents into
+     `docs/core-rules.md`, marked non-normative, with a link to its source on every rule
+     and a conflict rule that the normative document wins.
+  2. Made it the first mandatory read in `AGENTS.md` and added the Definition of Done
+     and `CONTRIBUTING.md` to the ordered list; the current-state text is unchanged.
+  3. Commits: `chore: ignore local worktrees directory` (`.gitignore` only) and
+     `docs: add core rules summary and fix required reading order`
+     (`docs/core-rules.md`, `AGENTS.md`).
+- Files: `docs/core-rules.md` (new), `AGENTS.md`, `.gitignore`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200. The MCP gate and OpenCode smoke integration were not rerun.
+- Follow-up: open the PR; keep `docs/core-rules.md` in sync when a normative rule
+  changes.
