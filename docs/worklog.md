@@ -166,10 +166,10 @@ Template:
      `task-contract.md`, `README.md` and `docs/requirements.md` stay untouched on
      purpose (checked, not changed).
 - Files: `docs/adr/009-task-store-sqlite.md`, `docs/adr/008-task-store.md`,
-  `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`.
+  `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`.
 - Validation: `node --test` → 83 passed, 0 failed;
   `node examples/fallback-demo.mjs` → 429 then 200; Markdown link check → 21 files,
-  78 relative links, 0 broken, fences balanced (macOS, Node v24.11.1; the pinned
+  79 relative links, 0 broken, fences balanced (macOS, Node v24.11.1; the pinned
   24.22.1 was not available in this environment and the discrepancy is recorded in
   validation as the ADR-009 gate step 1). Integration transports and the MCP gate
   were not rerun; MCP instability remains the handoff next action and is untouched

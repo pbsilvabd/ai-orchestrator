@@ -205,9 +205,10 @@ and contract change together at implementation).
 
 Probes ran in memory with `node -e` (no files created or modified) on macOS
 (darwin), reporting Node v24.11.1. The documented toolchain claims 24.22.1 via fnm;
-fnm was not available in this environment's shell, so the pinned-versus-reported
-version discrepancy remains unverified and is listed as ADR-009 gate step 1. Probe
-results:
+`command -v fnm` returned nothing and `fnm list` failed with command not found
+(checked `which -a fnm` as well), so fnm is not installed in this environment and
+the pinned-versus-reported version discrepancy remains unverified; it is listed as
+ADR-009 gate step 1. Probe results:
 
 - `require('node:sqlite')` exports `DatabaseSync`, `StatementSync`, `Session`,
   `constants` and `backup`; the bundled SQLite reports 3.50.4; an
@@ -243,14 +244,14 @@ the same environment (macOS, Node v24.11.1; the pinned 24.22.1 was unavailable):
 ```sh
 node --test
 node examples/fallback-demo.mjs
-node <local helper>/check-links.mjs .
+node /private/var/folders/dk/t_prdqgs3ls2x0763t1sz9080000gn/T/opencode/check-links.mjs .
 ```
 
 The helper is a temporary, uncommitted link-and-fence checker used only for this
 run; its method matches the local Markdown link checks recorded in earlier
 documentation increments. Results: 83 tests passed, 0 failed; the demo printed 429
 from `mock/preferred` followed by 200 from `mock/local`; the link check covered 21
-files with 78 relative links, 0 broken targets and balanced code fences. The MCP
+files with 79 relative links, 0 broken targets and balanced code fences. The MCP
 capability gate, the OpenCode smoke test and the (future) storage capability gate
 were not rerun; the records earlier in this file remain the historical evidence
 for their scopes.

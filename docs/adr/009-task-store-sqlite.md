@@ -27,7 +27,7 @@ arrived or are imminent:
   their persistence atomically to the status transition that exposes them.
 
 Three concrete seams in the shipped store are the substance behind those triggers.
-They are code-observated facts, not hypotheticals:
+They are code-observed facts, not hypotheticals:
 
 1. `updateTask(taskId, mutate)` in `src/tasks.mjs` is a read–clone–mutate–write
    with no compare-and-swap and no lifecycle guard in the store. Every caller
@@ -68,7 +68,12 @@ one module behind that interface.
 3. **Lifecycle remains in service code, and the store additionally enforces it**:
    transitions run as conditional updates; CHECK constraints and one trigger guard
    the contract lifecycle — including the restart transition `queued → blocked`
-   that `reconcile` already performs for dispatched queued tasks.
+   that `reconcile` already performs for dispatched queued tasks. A contract gap
+   is flagged here: the prose rule in `docs/task-contract.md` ("an existing attempt
+   blocks" a `queued` task) requires this transition, but the contract's Lifecycle
+   diagram has no `queued → blocked` row. The implementation change amends the
+   contract in the same change to add the row; this documentation PR edits the
+   contract neither in code nor in prose.
 4. **Event log**: `task_events` rows are append-only, written in the same
    transaction as each transition; `get_task_status.progress` is assembled from
    them. An `UPDATE` guard trigger prohibits in-place edits (retention `DELETE`s
@@ -109,9 +114,13 @@ CREATE TABLE tasks (
   finished_at         INTEGER,
   block_reason        TEXT,
   cancel_requested_at INTEGER,
-  cancel_stopped      TEXT CHECK (cancel_stopped IN ('confirmed','unknown')),
+  cancel_stopped      TEXT CHECK (cancel_stopped IS NULL
+                                    OR cancel_stopped IN ('true','unknown')),
+                                  -- shipped vocabulary verbatim: null | true | 'unknown'
   payload_sha256      TEXT NOT NULL,
   request_json        TEXT NOT NULL,                 -- canonical request body
+  -- effectsReverted is not a column: shipped records validate it to stay false and
+  -- the service reads it from the record, so no import path may store another value.
   CHECK (status <> 'blocked' OR block_reason IS NOT NULL),
   CHECK (status NOT IN ('succeeded','failed','cancelled') OR finished_at IS NOT NULL)
 );
@@ -205,8 +214,9 @@ are not trusted again; measurement happens on seeded data.
 
 Candidates to measure (none promised here): the partial active index in its matching
 query form, per-status partial indexes, a generated `is_active` column, a full
-`status` index, and a retention index on `finished_at` restricted to terminal
-statuses. Growth expectations are recorded: `tasks` is monotonic because `blocked`
+`status` index, and a retention index on `finished_at` restricted to the prunable
+terminal statuses (`succeeded`, `failed`, `cancelled`); `blocked` is never pruned,
+so it must stay out of the range and out of the scans that serve retention deletes. Growth expectations are recorded: `tasks` is monotonic because `blocked`
 rows are never pruned; `task_events` grows fastest; artifacts stay bounded by the
 contract caps (≤ 1 MiB diff, ≤ 256 KiB logs).
 
@@ -272,10 +282,11 @@ store and closing this proposal with recorded findings. Never silently.
 ## Consequences
 
 Positive: transactional deduplication and terminal-time evidence; structural
-prevention of illegal transitions; constant-time reconciliation instead of a
-startup scan spanning every record; WAL lets the polling reader proceed while a
-writer commits; a schema-evolution path exists; an explicit, measured index policy
-replaces speculative tuning.
+prevention of illegal transitions; reconciliation switches from rereading and
+revalidating every record file to indexed row reads — an expected startup-cost
+improvement, unmeasured by the probes and never claimed here as constant time;
+WAL lets the polling reader proceed while a writer commits; a schema-evolution
+path exists; an explicit, measured index policy replaces speculative tuning.
 
 Negative/accepted: a second storage engine to own end to end (gate, migrations,
 import script); an experimental core module behind a narrow seam; the migration day

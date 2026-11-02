@@ -23,6 +23,10 @@ regression reproductions passed. There is no transport adapter or self-developme
    then decide whether step 3 is complete.
 4. After service acceptance, proceed with one executor adapter (OpenCode CLI in an
    isolated worktree). **Next implementation step after the gate is stable.**
+5. Decide [ADR-009](adr/009-task-store-sqlite.md) (proposed): evolve the task store
+   to SQLite via `node:sqlite` after the M2b acceptance run. It does not block the
+   executor adapter; if accepted, the storage capability gate is step 0 of the
+   implementation.
 
 Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
 HTTP fallback is not selected; change transport only through a new ADR-007 amendment.
