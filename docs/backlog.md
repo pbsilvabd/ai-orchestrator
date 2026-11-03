@@ -50,14 +50,14 @@ A merged card is retained as regression/review guidance, not new work.
 | --- | --- | --- | --- |
 | [B01 — Safe schema diagnostics](tasks/B01.md) | P1 | Correction on open #8 | Existing #8 |
 | [B02 — Practical documentation templates](tasks/B02.md) | P2 | Merged / history | Merged #11 |
-| [B03 — Repository identity before task acceptance](tasks/B03.md) | P1 | PR open | B04a/B05 merged |
+| [B03 — Repository identity before task acceptance](tasks/B03.md) | P1 | Merged | PR #16 |
 | [B04 — Ordinary lifecycle and immutable identity](tasks/B04.md) | P1 | Merged / history | B04a merged #13 |
 | [B05 — Single service owner per state home](tasks/B05.md) | P1 | Merged / history | Merged #14 |
 | [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | Ready | Pinned host for host claim |
 | [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Ready | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
-| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Gated | B03 |
-| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Ready | None |
+| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | PR open | B03 merged #16 |
+| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | PR open | None |
 | [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Gated | B09, B10, pinned host |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |

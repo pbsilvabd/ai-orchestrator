@@ -485,3 +485,23 @@ Evidence: same 141-test run as B03 initial commit; corrections do not change run
 - `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
 - `git diff --check`: passed, exit 0.
 - Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5. OpenCode/MCP gates not rerun; outside this task's scope.
+
+## M2b: B09 isolated Git workspace lifecycle — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (system installation); Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/workspace.test.mjs` | Exercise B09 acceptance scenarios against real Git worktrees | 5 passed, 0 failed | 0 |
+| `node --test` | Full suite regression | 147 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Check whitespace in proposed change | no output | 0 |
+
+Result: tests verified the fixed base and unchanged dirty parent bytes, duplicate receipt-verified reuse after worker commits, branch/path collisions, tampered receipts, a moved Windows junction, retained incomplete output and refusal to delete dirty output. Tests use temporary repositories and workspace roots.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store and service behavior in this checkout. Real temporary Git repositories and worktrees validate local workspace behavior; they do not demonstrate the host, the network or production persistence.
+
+Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not add the executor); `node integration/mcp-gate.mjs` (same binary requirement and unresolved gate); executor integration (no executor adapter exists yet).
+
+Claim: This entry supports receipt-bound workspace creation, reuse and conservative cleanup in local Git fixtures, based on `node --test test/workspace.test.mjs`. It does not support worker execution or OpenCode/MCP integration, which require the missing executor and pinned host evidence.

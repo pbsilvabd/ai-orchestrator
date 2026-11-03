@@ -75,6 +75,20 @@ as a dependency by this ADR.
 
 ## Consequences
 
+### Amendment — 2026-11-03: receipt-verified Git workspaces (B09)
+
+The task workspace helper creates a linked Git worktree at the accepted immutable
+`baseCommit` and accepted task branch. A receipt outside the repository binds the
+task ID, canonical repository, base, branch and owned path. Duplicate calls reuse
+the workspace only after receipt, path, Git common directory, branch and base
+ancestry checks. Existing unrelated paths and branches are never adopted.
+
+Cleanup is an explicit operation. It removes only an unchanged, clean task worktree
+whose branch still points at the accepted base. Dirty, advanced, moved or tampered
+workspaces are preserved. An interrupted setup retains its receipt and any output
+for manual inspection; there is no broad recursive deletion or automatic recovery.
+This does not provide worker dispatch, process-tree stop proof or effect rollback.
+
 - M2b delivers a service process plus a transport adapter, a task store and one
   executor adapter; it does not deliver routing, memory or remote access.
 - Writing the stdio server by hand creates a conformance risk. It is bounded by the

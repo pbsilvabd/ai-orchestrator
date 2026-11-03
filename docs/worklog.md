@@ -468,3 +468,17 @@ Template:
 - Added a real Git fixture covering an allowed nested directory with an unauthorized parent repository.
 - Validation: focused repository tests 7/7; full suite 142/142; fallback demo 429 then 200; `git diff --check` clean.
 - OpenCode/MCP gates not rerun; they are outside B03's scope.
+
+## 2026-11-03 — M2b: B09 isolated Git workspace lifecycle
+
+- Branch: `task/B09-isolated-worktree`, based on `c07b78e`.
+- Scope: added receipt-bound linked worktrees at the accepted base and branch, with
+  verified idempotent reuse and explicit conservative cleanup. Does not launch workers.
+- Steps: implemented creation, receipt/path/repository/branch verification and cleanup;
+  added real Git acceptance fixtures; reviewed interrupted and dirty-output behavior.
+- Files: `src/workspace.mjs`, `test/workspace.test.mjs`, task contract, ADR-007,
+  backlog, handoff, roadmap, validation and worklog.
+- Validation: focused tests 5/5; full suite 147/147; fallback demo 429 then 200;
+  `git diff --check` clean. Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+- Follow-up: review the published B09 PR. Executor and OpenCode/MCP integration remain
+  separate gated work.
