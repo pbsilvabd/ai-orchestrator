@@ -17,12 +17,13 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 Reproduce the Linux job from Bash:
 
 ```bash
+set -e -o pipefail
 node --test
 node examples/fallback-demo.mjs
 ```
 
 The commands are separate so each process exit is visible. If output is piped in
-PowerShell, capture `$LASTEXITCODE` immediately after the native command; a later
-formatter or `Out-String` can replace it. In Bash use `set -o pipefail` for pipelines.
+PowerShell, capture `$LASTEXITCODE` immediately after the pipeline, before a later
+native command can replace it. In Bash use `set -o pipefail` for pipelines.
 The pinned OpenCode smoke and MCP capability gate remain separate opt-in checks that
 need the external OpenCode 2.2.5 binary; CI does not claim host integration.

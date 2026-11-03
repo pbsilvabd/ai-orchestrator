@@ -509,3 +509,9 @@ Review: both implementation and completed-diff passes inspected workflow trigger
 ### GitHub Actions result — run #41737541145
 
 The pull-request workflow completed successfully on the PR merge ref. Windows Server 2025 (job #126270492736) and Ubuntu 24.04 (job #126270493106) both used Node.js v24.22.1, passed all 142 tests and ran the fallback demo (429 then 200). The expected-failure pipeline fixture returned exit 1 on PowerShell and exit 7 on Bash; the follow-up guard was skipped in both jobs, confirming the fixture outcome was failure as intended. The workflow token log reported Contents: read. Run conclusion: success.
+
+## B07 merge review — 2026-11-03
+
+- Corrected the Bash reproduction in `docs/ci.md` to enable `set -e -o pipefail` and clarified native exit-code capture in PowerShell.
+- Git Bash experiment: `set -e -o pipefail`, followed by an absolute Node v24.22.1 binary running `process.exit(7)` piped to `cat`, then an unreachable print. Observed shell exit 7 with no continuation output. Initial standalone shells could not resolve the transient Node path (exit 127); running Bash from the owning PowerShell process resolved it.
+- Existing PR-head run `41737897011`: both OS jobs successful. The documentation correction will receive its own PR CI run before merge. OpenCode/MCP gates remain outside scope.

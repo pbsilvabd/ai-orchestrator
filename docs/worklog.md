@@ -481,3 +481,10 @@ Template:
 - Follow-up: publish as draft while GitHub runner availability and both matrix jobs are observed; convert to ready only after required evidence is complete.
 
 - B07 publication update: PR #19 CI run `41737541145` completed successfully. Windows job `126270492736` and Ubuntu job `126270493106` both used Node v24.22.1, passed 142/142 tests and the fallback demo. Pipeline fixtures failed as expected (Windows exit 1; Bash exit 7), while the workflow jobs passed. Draft contingency was unnecessary because both runners were available; PR moved to ready for review.
+
+## 2026-11-03 — B07 merge review correction
+
+- Reviewed PR #19 at `00631ee` against the card, full diff, permissions, triggers and successful Windows/Linux CI run `41737897011`.
+- Corrected `docs/ci.md`: the Bash reproduction now enables `set -e -o pipefail`, so a failing test cannot be masked by a later successful demo. Clarified that subsequent native commands can overwrite PowerShell's `$LASTEXITCODE`.
+- Verified a real exit-7 Node pipeline under Git Bash stops the script before the following command (shell exit 7, no continuation output). Initial standalone Bash attempts could not resolve the transient Node installation (exit 127); the successful experiment used the parent PowerShell process's absolute Node binary.
+- Validation: `git diff --check`; CI will revalidate the updated PR head. No runtime code changed and OpenCode/MCP checks were not rerun.
