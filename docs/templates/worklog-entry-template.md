@@ -7,6 +7,8 @@ rules only:
   rewrite, reorder or renumber existing entries, even when a date or milestone looks out of
   sequence. Never edit the file header, its rules list or its `Template:` block.
 - One entry per change, written in the same branch and PR as the change.
+- Record work when it is performed, including work still under review. A branch or
+  PR is not proof of merge. Add later outcomes as new entries; do not rewrite history.
 - No new field is introduced by this template. Every field below appears in entries already
   in the file; the heading forms and the Steps variants described below also appear there
   already.
@@ -42,7 +44,8 @@ line.
      nothing after it.
 
      Heading form A: "## YYYY-MM-DD — <milestone>: <short title>". The date is the day
-     the change landed (ISO 8601), the milestone is the roadmap milestone, and the title
+     the work was performed (ISO 8601), not an anticipated merge date. The milestone
+     is the roadmap milestone, and the title
      is one line with no trailing period. Do not add a second date, a PR number or a
      status word such as "done" or "WIP". -->
 ## <YYYY-MM-DD> — <milestone>: <short title>

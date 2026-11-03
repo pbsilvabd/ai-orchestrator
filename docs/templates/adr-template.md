@@ -29,23 +29,21 @@ Do not use an ADR for status updates, plans, checklists or evidence. Those belon
 # ADR-<NNN> — <decision title in one line, no trailing period>
 
 <!-- Header line. One line, prose, no bullet. The date is the day the decision was taken
-     (YYYY-MM-DD), not the day the file was last touched.
+     (YYYY-MM-DD). For a proposal use the proposal date; record a later acceptance
+     date in a dated clause/amendment rather than pretending it was already decided.
 
-     Status: every existing ADR uses the lowercase word "accepted", followed by a
-     qualifier clause that says how far the decision applies, for example
-     "accepted for M1a", "accepted for M2b step 2", "accepted." when no scope applies.
-     Real forms in this repository also add one recording clause after a semicolon, as in
-     "accepted for M2a; capability gate passed 2026-11-02" and "accepted product
-     direction; transport and dependencies pending evaluation".
-     So: the status word, then the scope qualifier, then an optional "; <recording
-     clause>" that records an outcome inside the ADR. Qualifiers follow the status word;
-     they never replace it and never become a new status vocabulary.
+     Status: choose proposed, accepted or superseded by ADR-NNN.
+     NEW: proposed explicitly means pending maintainer approval. A template copy,
+     test pass or published PR does not authorize acceptance. Change to accepted
+     only after the maintainer explicitly approves the decision (including merge
+     when the PR explicitly defines merge as approval). Record the approval evidence
+     and date. A scope qualifier and a dated outcome clause may follow the status.
 
      A superseded ADR is not demonstrated in this repository yet. If a later ADR reverses
      this one, edit only the status to "Status: superseded by ADR-<NNN>." and keep the
      original text below it for history. A partial change of scope is an amendment (see
      "Amending an accepted ADR"), not a supersession. -->
-Date: <YYYY-MM-DD>. Status: accepted for <scope qualifier>; <optional recording clause>.
+Date: <YYYY-MM-DD>. Status: <proposed | accepted | superseded by ADR-NNN>; <scope and dated evidence, when applicable>.
 
 <!-- NEW: the optional "Decided by:" clause. No existing ADR has it, because the deciding
      authority is implied by the commit and the PR. Use it only when that is not enough.

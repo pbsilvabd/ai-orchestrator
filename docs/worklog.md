@@ -253,3 +253,27 @@ Template:
   Real OpenCode, MCP, SQLite and M3 experiments were not rerun.
 - Follow-up: choose an unblocked backlog task; no milestone advanced and no
   external review, issue, PR or merge was submitted.
+
+## 2026-11-02 — Docs: template lifecycle and proportionality corrections
+
+- Branch: `docs/templates-review-fixes` (published to PR #11's
+  `docs/templates-uniformity` branch; under review).
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Merged main and preserved both independent worklog/validation histories.
+  2. Added proposed/accepted/superseded ADR status guidance with maintainer
+     approval evidence and separate proposal/acceptance dates.
+  3. Made worklog dates describe work performed, without implying a merge.
+  4. Allowed explained template adaptations and proportionate handoff edits,
+     preserving required facts, invariants and normative precedence.
+- Files: `AGENTS.md`, `docs/templates/README.md`,
+  `docs/templates/adr-template.md`, `docs/templates/worklog-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` → 83 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200, exit 0;
+  `git diff --check` → no output; five template files checked, 30 prose links
+  valid and fences balanced. Real OpenCode/MCP/SQLite gates were not rerun.
+- Follow-up: review corrected PR #11. The milestone and next implementation
+  action remain unchanged; no handoff update or ADR is required for these
+  formatting clarifications.

@@ -6,16 +6,16 @@ own trigger applies — not on every change: a [worklog](../worklog.md) entry an
 decision, dependency or trust boundary changes; a [handoff](../handoff.md) update only
 when the next actionable step or a milestone moves. All four have been written in a
 different shape by different authors, which made the next reader guess. These templates
-fix one shape per artifact so a contributor — human or a fresh agent with no memory of the
-previous session — copies the matching file, replaces the placeholders and never has to
-infer a field, an order or a heading.
+provide a default shape per artifact so a contributor can copy the matching file
+and replace its placeholders. Adapt the format when the change requires it, explain
+the adaptation in the worklog and preserve all required information and evidence.
 
 ## Which file to copy
 
 | When you need to produce | Copy this file | Where the result goes |
 | --- | --- | --- |
 | A decision record: a choice, a dependency, a trust boundary, or an amendment/reversal of an earlier ADR | [`adr-template.md`](adr-template.md) | New file `docs/adr/<NNN>-<short-slug>.md`, next free three-digit number; amendments go inside the existing ADR |
-| The append-only record of one merged change | [`worklog-entry-template.md`](worklog-entry-template.md) | Appended at the end of [docs/worklog.md](../worklog.md) |
+| The append-only record of work performed, including a change still under review | [`worklog-entry-template.md`](worklog-entry-template.md) | Appended at the end of [docs/worklog.md](../worklog.md) |
 | The commands, results and limits of one change | [`validation-entry-template.md`](validation-entry-template.md) | Appended at the end of [docs/validation.md](../validation.md) |
 | A new continuation point, only when the next action or a milestone moves | [`handoff-update-template.md`](handoff-update-template.md) | Rewrites [docs/handoff.md](../handoff.md) in place |
 
@@ -30,11 +30,11 @@ and the one under `## Example` (a filled sample). Copy only the template block, 
    deleted them, run `grep -n '<!--' <destination file>` and expect no match.
 3. Replace every `<ANGLE-BRACKET>` placeholder with a real value. A remaining placeholder
    means the artifact is incomplete.
-4. Keep the heading levels, the field order and the blank line between blocks. Do not
-   rename, merge or reorder fields.
+4. Keep the default headings and field order when suitable. Explain adaptations in
+   the worklog; never omit required facts, validation limits or normative rules.
 5. For an appended artifact, paste at the end of the destination file with exactly one
    blank line before it and nothing after it. For the handoff, replace the existing
-   content in place instead.
+   relevant sections in place, preserving accurate context and invariants.
 6. Links inside an example are written as they will appear in the destination file (for
    example `../task-contract.md` from `docs/adr/`, `task-contract.md` from `docs/`), not
    relative to `docs/templates/`. When you copy the template block, write links relative
@@ -50,10 +50,9 @@ it follows.
 
 ## Format versus substance
 
-These templates govern **how** a recurring artifact is formatted, and on format they win:
-if a change writes its worklog entry in a different shape without saying why, the template
-wins. The normative documents win on **substance** — what must be recorded, what counts as
-done, which operations exist. If a template and a normative document disagree, the
+These templates provide the default format; proportionate, explained adaptations
+are allowed. The normative documents govern what must be recorded, what counts as
+done and which operations exist. If a template and a normative document disagree, the
 normative document wins and the template is corrected in the same change:
 
 - [task-contract.md](../task-contract.md) — normative for the four task operations.

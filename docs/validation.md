@@ -324,3 +324,29 @@ isolated reproductions only. No real OpenCode smoke/MCP gate, SQLite capability
 gate, paid provider or use-on-project experiment was run. Documentation-only
 PR #6/#9/#11 suites were not separately rerun. This entry does not claim M2b/M3
 completion or prove the author's previously reported environment/results.
+
+## Docs: template lifecycle and proportionality corrections — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1 (existing local toolchain).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Local regression suite after documentation edits | 83 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace verification | no output | 0 |
+
+Result: all 83 existing tests passed, and the fallback demo printed its expected
+429 and 200. A one-off Node script checked five template files: 30 prose links
+resolved and fences were balanced. Fenced example links remain relative to their
+intended destination as documented in the template README. Changes were also
+reviewed for status/date guidance and consistency with AGENTS and README.
+
+Evidence level: Unit — confirms unchanged local behavior after documentation edits;
+it does not establish host compatibility or new runtime features.
+
+Not rerun: OpenCode smoke, MCP capability gate and SQLite gate (no runtime or
+integration changes). No M3 delegation was performed.
+
+Claim: this entry supports the documentation corrections and local regression
+results. It does not support M2b completion or acceptance of any proposed ADR.

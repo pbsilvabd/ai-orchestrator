@@ -7,27 +7,28 @@ rules only:
   in [AGENTS.md](../../AGENTS.md) under "Documentation duties". A change that leaves the next
   action intact does not touch [handoff.md](../handoff.md); it appends a worklog entry and a
   validation entry only.
-- Rewrite the file in place, never append below it: it always describes exactly one
-  continuation point. Delete what is no longer true.
+- Update affected sections in place: the file describes the current continuation
+  point. Preserve accurate context and invariants; remove obsolete statements.
 - The file does not name an owner. The authority over scope and permissions is stated in
   [roadmap.md](../roadmap.md) ("The maintainer owns scope and permissions"); do not add an
   owner line here.
-- Structure is fixed and already exists in the file. Seven parts, in this order: the title,
+- The default structure follows the existing file: the title,
   one status paragraph, then five `##` sections — `Next action:`,
   `Contract rules that must not drift`, `Run and validate`,
-  `Existing API (reuse, do not bypass)`, `Workflow`. No section is optional, and none may be
-  renamed, reordered or added. No element below is new.
+  `Existing API (reuse, do not bypass)`, `Workflow`. These cover the required
+  information. Sections may be added, renamed, reordered or combined when useful;
+  explain adaptations in the worklog and preserve that information.
 
 ## What to update and what to copy
 
-Only three parts change when the next action moves: the title date, the status paragraph
-and the `Next action` section. Everything else is copied unchanged unless the change that
-triggered this update made a normative or API change; when it did, the affected bullet or
-line is updated and the same change records the ADR reference in the worklog entry.
+Usually the title date, status paragraph and `Next action` section change. Update
+other affected information when necessary and preserve everything still accurate.
+Normative or API changes must also update their authoritative sources and record
+the relevant ADR reference when the repository's decision rules require one.
 
-The current file shows the expected proportions: the status paragraph is a single paragraph
-of about eight wrapped lines, and `Next action` has four numbered items. Match that shape;
-do not paste a changelog into the status paragraph.
+Keep status concise and choose as many next steps as the task needs. Line counts
+and the number of steps in the historical example are not requirements. A small
+update does not require rebuilding the entire handoff or copying the example.
 
 ## Template
 
