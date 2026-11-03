@@ -101,21 +101,34 @@ function run(file, args, cwd, timeout = 120_000) {
   child.stdin.end(); // Non-interactive runs read stdin to EOF before submitting.
   return new Promise((resolveResult, reject) => {
     let timedOut = false;
-    let cleanupFailure;
+    let settled = false;
+    const finish = (failure, result) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      if (failure) reject(failure);
+      else resolveResult(result);
+    };
     const timer = setTimeout(() => {
       timedOut = true;
-      stop(child).catch(cleanup => {
-        cleanupFailure = cleanup;
-        reject(new Error(`Timed out: ${args.join(' ')}; cleanup failed: ${redact(cleanup.message)}\n${redact(output().stderr)}`));
+      // A descendant can inherit the pipes after the root process exits. In that
+      // case Node may never emit `close`, so the timeout must settle independently.
+      stop(child).then(() => finish(
+        new Error(`Timed out: ${args.join(' ')}\n${redact(output().stderr)}`),
+      ), cleanup => finish(new Error(
+        `Timed out: ${args.join(' ')}; cleanup failed: ${redact(cleanup.message)}\n${redact(output().stderr)}`,
+      ))).finally(() => {
+        child.stdout?.destroy();
+        child.stderr?.destroy();
+        child.stdin?.destroy();
+        child.unref();
       });
     }, timeout);
-    child.on('error', error => { clearTimeout(timer); reject(error); });
+    child.on('error', error => finish(error));
     child.on('close', code => {
-      clearTimeout(timer);
       if (timedOut) {
-        const detail = cleanupFailure ? `; cleanup failed: ${redact(cleanupFailure.message)}` : '';
-        reject(new Error(`Timed out: ${args.join(' ')}${detail}\n${redact(output().stderr)}`));
-      } else resolveResult({ code, ...output() });
+        finish(new Error(`Timed out: ${args.join(' ')}\n${redact(output().stderr)}`));
+      } else finish(null, { code, ...output() });
     });
   });
 }
@@ -151,6 +164,7 @@ const server = createHttpServer(async (req, res) => {
 });
 
 let host;
+let successResult;
 try {
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   const config = {
@@ -233,11 +247,11 @@ try {
     'Tool result did not reach the model context');
   assert.ok(!transcript.some(entry => entry.message?.method === 'initialize'), 'Host used the legacy handshake');
 
-  console.log(JSON.stringify({
+  successResult = JSON.stringify({
     version: '2.2.5', protocol: '2026-07-28', server: 'local stdio', transport: 'codemode execute',
     discovered: true, catalogued: true, called: true, resultInContext: true, legacyHandshake: false,
     providerRequests: requests.length,
-  }));
+  });
 } catch (failure) {
   gateFailure = failure;
 } finally {
@@ -250,19 +264,22 @@ try {
     });
     await closed;
   } catch (failure) { cleanupFailures.push(failure); }
-  if (process.env.MCP_GATE_DEBUG) console.error(`Temporary fixture retained for diagnosis: ${root}`);
-  else if (process.env.MCP_GATE_FORCE_CLEANUP_ERROR === '1') {
+  if (process.env.MCP_GATE_FORCE_CLEANUP_ERROR === '1') {
     cleanupFailures.push(new Error('Forced cleanup failure fixture; temporary root retained'));
-  } else try { rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
-  catch (failure) { cleanupFailures.push(failure); }
+  } else if (!cleanupFailures.length && !process.env.MCP_GATE_DEBUG) {
+    try { rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
+    catch (failure) { cleanupFailures.push(failure); }
+  }
 
   if (cleanupFailures.length) {
-    console.error(`Temporary fixture retained for diagnosis: ${root}`);
+    if (existsSync(root)) console.error(`Temporary fixture retained for diagnosis: ${root}`);
     const cleanupMessage = cleanupFailures.map(failure => `${failure.name}: ${failure.message}`).join('; ');
     if (gateFailure) {
       const original = redact(`${gateFailure.name}: ${gateFailure.message}`);
       gateFailure = new Error(`Gate failure preserved: ${original}; cleanup failure: ${redact(cleanupMessage)}`);
     } else gateFailure = new Error(`Gate cleanup failed: ${redact(cleanupMessage)}`);
   }
+  if (process.env.MCP_GATE_DEBUG && existsSync(root)) console.error(`Temporary fixture retained for diagnosis: ${root}`);
 }
 if (gateFailure) throw gateFailure;
+console.log(successResult);
