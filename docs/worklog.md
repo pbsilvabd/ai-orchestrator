@@ -468,3 +468,18 @@ Template:
 - Added a real Git fixture covering an allowed nested directory with an unauthorized parent repository.
 - Validation: focused repository tests 7/7; full suite 142/142; fallback demo 429 then 200; `git diff --check` clean.
 - OpenCode/MCP gates not rerun; they are outside B03's scope.
+
+## 2026-11-03 — M2b: B10 bounded subprocess primitive
+
+- Branch: `task/B10-bounded-subprocess`, based on `c07b78e`.
+- Scope: added a no-shell child process helper with scoped environment, separate
+  bounded UTF-8 output tails, deadlines, abort handling and truthful stop evidence.
+  It does not implement the executor or claim descendant termination.
+- Steps: implemented input validation and child lifecycle handling; added real
+  child fixtures for the B10 acceptance rows; reviewed race/cleanup paths.
+- Files: `src/subprocess.mjs`, `test/subprocess.test.mjs`, backlog, handoff,
+  roadmap, validation and worklog.
+- Validation: focused tests 5/5; full suite 147/147; fallback demo 429 then 200;
+  `git diff --check` clean. Windows x64, Node.js v24.22.1.
+- Follow-up: review the published B10 PR. OpenCode/MCP integration remains outside
+  this task and requires the pinned host and a later executor task.

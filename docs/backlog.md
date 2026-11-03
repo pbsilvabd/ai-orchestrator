@@ -57,7 +57,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Ready | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Gated | B03 |
-| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Ready | None |
+| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | PR open | None |
 | [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Gated | B09, B10, pinned host |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |

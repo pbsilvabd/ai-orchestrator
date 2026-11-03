@@ -10,20 +10,15 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review and merge B03, then execute B09, B10 or B06
+## Next action: review B10's bounded subprocess primitive PR
 
-B03 is implemented on branch `task/B03-repo-identity`: repository identity validation (`src/repository.mjs`),
-canonical realpath containment against configured writable roots (rejecting path-prefix sibling and symlink escapes),
-commit-ish `baseRef` resolution to immutable `baseCommit` full SHA, and `branch` format/collision verification
-before task acceptance. Client-scoped idempotency lookup strictly precedes filesystem/Git checks so identical
-replays succeed even if the repository moves or branch exists. 141 tests pass.
+PR #16 merged as `c07b78e`; the actual Git worktree root is checked against configured
+writable roots before any branch or commit inspection. B10's subprocess helper is now
+published for review; it captures bounded output tails, deadlines, aborts, exit status
+and conservative root/descendant stop evidence.
 
-After B03 PR review/merge, proceed with the unblocked cards:
-- **B09** (Isolated Git workspace lifecycle) — unblocked by B03.
-- **B10** (Bounded subprocess primitive) — ready, no prerequisites.
-- **B06** (Diagnose MCP capability gate instability) — ready.
-- **B07** (Credential-free Windows and Linux CI) — ready.
-- **B08** (Differential submit-schema adoption) — gated on #8 and B03.
+After B10 review, proceed with **B09** (isolated Git workspaces), **B06** (MCP gate)
+or **B07** (credential-free CI). B11 remains gated on B09, B10 and the pinned host.
 
 ## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
 
