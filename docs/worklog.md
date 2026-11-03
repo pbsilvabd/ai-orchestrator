@@ -167,6 +167,77 @@ Template:
   states "when the next action changes"; and the page is 70 lines. The second commit is
   recorded accurately above: it also carried this entry and the validation entry.
 
+## 2026-11-02 — Docs: uniform templates for recurring artifacts
+
+- Branch: `docs/templates-uniformity`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Read the real shapes of `docs/adr/007-task-contract.md`,
+     `docs/adr/008-task-store.md`, `docs/worklog.md`, `docs/validation.md`,
+     `docs/handoff.md`, `docs/definition-of-done.md` and `AGENTS.md` before writing
+     anything, so the templates reuse the existing field names and order.
+  2. Added `docs/templates/adr-template.md` with the header line, `Context`, `Decision`,
+     `Alternatives considered`, `Consequences` and `Related documents`, one inline
+     instruction per field, plus a filled sample based on ADR-008.
+  3. Added `docs/templates/worklog-entry-template.md` with the file's real fields
+     (heading, `Branch`, `Scope`, `Steps`, `Files`, `Validation`, `Follow-up`) and the
+     append-only rules stated inline.
+  4. Added `docs/templates/validation-entry-template.md` with environment, date, a
+     command table (command, purpose, result, exit code), the four evidence levels,
+     a mandatory `Not rerun` section and the final-claim sentence pattern.
+  5. Added `docs/templates/handoff-update-template.md` mirroring the sections of
+     `docs/handoff.md`, marking per section what must be updated and what is copied
+     unchanged.
+  6. Added `docs/templates/README.md` with the artifact-to-template mapping, the
+     placeholder convention and the "templates are tooling, not normative" line, and
+     added the templates bullet to the `AGENTS.md` documentation duties.
+- Files: `docs/templates/README.md`, `docs/templates/adr-template.md`,
+  `docs/templates/worklog-entry-template.md`,
+  `docs/templates/validation-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `AGENTS.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200; `git diff --check` → no output; relative Markdown links checked with a
+  one-off, unversioned script → 0 broken. The OpenCode smoke and MCP capability gate were
+  not rerun.
+- Follow-up: publish this branch for review as the templates PR and use the templates
+  for the next change. No milestone step moved and no ADR was needed, because this adds
+  documentation tooling only.
+
+## 2026-11-02 — Docs: align templates with repository practice and mark new elements
+
+- Branch: `docs/templates-uniformity`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Corrected the README trigger statement: worklog and validation on every change, ADR
+     only for a decision, dependency or trust boundary, handoff only when the next action
+     moves; added the copy procedure and the format-versus-substance rule.
+  2. Conformed the ADR template to the eight real ADRs: lowercase `accepted` plus a
+     semicolon-separated qualifier, no invented status vocabulary, `Decided by` and the
+     `Alternatives considered`/`Related documents` sections flagged as new, amendment rules
+     reconciled with `AGENTS.md`.
+  3. Replaced the ADR example that claimed to be a compressed ADR-008 with an explicitly
+     fictional ADR, so it can no longer be read as history.
+  4. Rewrote the handoff template: seven parts instead of a wrong count of six, no claim
+     that the file names the maintainer, and examples that reproduce the copied-unchanged
+     sections verbatim, including owner-only access and the M3 rule.
+  5. Corrected the worklog and validation templates: two heading and Steps forms that exist
+     in the file, scope values and wrap width as observed, the validation format declared as
+     new rather than established, one heading date rule, and the broken table cell.
+  6. Removed the round-1 validation contradiction between a listed link-check command and a
+     not-rerun line that called the same check skipped.
+  7. Sync with main after #10 merged (conflict resolution: both PRs' worklog/validation
+     sections preserved; AGENTS.md merged cleanly).
+- Files: `docs/templates/README.md`, `docs/templates/adr-template.md`,
+  `docs/templates/worklog-entry-template.md`,
+  `docs/templates/validation-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200; `git diff --check` → no output. The OpenCode smoke and MCP capability gate
+  were not rerun.
+- Follow-up: publish the branch for the next review round; apply the templates to the next
+  change. No milestone step moved.
+
 ## 2026-11-02 — M2b: independent PR review and agent backlog
 
 - Branch: `review/2026-11-02-pr-backlog` (local review; not published).
@@ -182,3 +253,27 @@ Template:
   Real OpenCode, MCP, SQLite and M3 experiments were not rerun.
 - Follow-up: choose an unblocked backlog task; no milestone advanced and no
   external review, issue, PR or merge was submitted.
+
+## 2026-11-02 — Docs: template lifecycle and proportionality corrections
+
+- Branch: `docs/templates-review-fixes` (published to PR #11's
+  `docs/templates-uniformity` branch; under review).
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Merged main and preserved both independent worklog/validation histories.
+  2. Added proposed/accepted/superseded ADR status guidance with maintainer
+     approval evidence and separate proposal/acceptance dates.
+  3. Made worklog dates describe work performed, without implying a merge.
+  4. Allowed explained template adaptations and proportionate handoff edits,
+     preserving required facts, invariants and normative precedence.
+- Files: `AGENTS.md`, `docs/templates/README.md`,
+  `docs/templates/adr-template.md`, `docs/templates/worklog-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` → 83 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200, exit 0;
+  `git diff --check` → no output; five template files checked, 30 prose links
+  valid and fences balanced. Real OpenCode/MCP/SQLite gates were not rerun.
+- Follow-up: review corrected PR #11. The milestone and next implementation
+  action remain unchanged; no handoff update or ADR is required for these
+  formatting clarifications.
