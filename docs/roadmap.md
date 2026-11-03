@@ -65,6 +65,9 @@ identity/request fields and state-dependent metadata are guarded, with 126 local
 tests passing. Process ownership, executor dispatch, stop proof and maintainer
 reconciliation remain pending. This checkpoint does not advance an M2b exit gate.
 
+B05 ownership checkpoint (2026-11-03): service startup acquires an exclusive per-home lock before reconciliation and releases it on close or failed initialization. Stale crash locks fail closed. 129 local tests pass. Executor and M2b acceptance remain pending.
+
+
 The normative contract is [task-contract.md](task-contract.md); these steps implement
 it and nothing beyond it.
 

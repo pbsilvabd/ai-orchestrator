@@ -9,7 +9,8 @@
 // objects, or throws ServiceError with a contract error code. The MCP/API transport
 // adapter serializes the error envelope { error: { code, message } } and sets isError.
 
-import { isAbsolute, sep, resolve } from 'node:path';
+import { isAbsolute, sep, resolve, join } from 'node:path';
+import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
 
 export const SCHEMA_VERSION = 1;
@@ -95,12 +96,14 @@ export function createTaskService(options = {}) {
   };
   const startupNow = typeof options.now === 'function' ? options.now() :
     (Number.isInteger(options.now) ? options.now : Date.now());
+  const releaseOwner = acquireServiceOwnership(store.home);
   // Reconcile exactly once as the service starts. Never accept requests against an
   // ambiguous index or an unresolved in-flight task.
   try {
     const reconciliation = store.reconcile({ now: startupNow });
     if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
   } catch (error) {
+    releaseOwner();
     throw toServiceError(error);
   }
   const now = () => {
@@ -296,7 +299,47 @@ export function createTaskService(options = {}) {
     return { schemaVersion: SCHEMA_VERSION, cancelRequestedAt: at, status: 'blocked', effect: 'requested' };
   };
 
-  return { store, config, now, submitTask, getTaskStatus, getTaskResult, cancelTask };
+  let closed = false;
+  const guardOpen = operation => (...args) => {
+    if (closed) fail('unavailable', 'task service is closed');
+    return operation(...args);
+  };
+  return { store, config, now,
+    submitTask: guardOpen(submitTask), getTaskStatus: guardOpen(getTaskStatus),
+    getTaskResult: guardOpen(getTaskResult), cancelTask: guardOpen(cancelTask),
+    close: () => { closed = true; releaseOwner(); } };
+}
+
+function acquireServiceOwnership(home) {
+  const locks = join(home, 'locks');
+  const lockPath = join(locks, 'service-owner.lock');
+  let fd;
+  let created = false;
+  try {
+    mkdirSync(locks, { recursive: true, mode: 0o700 });
+    fd = openSync(lockPath, 'wx', 0o600);
+    created = true;
+    writeFileSync(fd, `${JSON.stringify({ pid: process.pid, startedAt: Date.now() })}\n`);
+    closeSync(fd);
+  } catch (error) {
+    if (fd !== undefined) {
+      try { closeSync(fd); } catch { /* preserve the original acquisition error */ }
+    }
+    if (created) {
+      try { unlinkSync(lockPath); } catch { /* a stale lock fails closed */ }
+    }
+    if (error.code === 'EEXIST') fail('unavailable', 'another service owns this task store');
+    throw new ServiceError('unavailable', 'cannot acquire task store ownership', error.code);
+  }
+  let released = false;
+  return () => {
+    if (released) return;
+    try { unlinkSync(lockPath); }
+    catch (error) {
+      if (error.code !== 'ENOENT') throw new ServiceError('unavailable', 'cannot release task store ownership', error.code);
+    }
+    released = true;
+  };
 }
 
 function validateSubmitRequest(request, config) {

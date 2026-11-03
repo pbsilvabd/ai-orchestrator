@@ -9,7 +9,12 @@ and the gate is not considered consistently validated. M2b step 2 (durable task 
 and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
 regression reproductions passed. There is no transport adapter or self-development use yet.
 
-## Next action: review lifecycle guards and establish service ownership
+## Next action: review B05 service ownership and proceed with B03/B06
+
+B05 checkpoint (2026-11-03), branch `task/B05-service-owner`: service ownership uses an exclusive lock file created before reconciliation. A second owner fails closed; call `service.close()` on graceful shutdown. Initialization failures release the lock. Crash leaves a stale lock for maintainer inspection; no automatic deletion. 129 tests and fallback demo pass.
+
+Review the B05 PR, then proceed with B03 repository identity or B06 MCP gate diagnosis. Executor integration still depends on the MCP gate.
+## Earlier B04a checkpoint (merged through PR #13)
 
 B04a implementation checkpoint (2026-11-02), branch `task/B04-lifecycle-guards`:
 the store rejects illegal ordinary transitions, immutable identity/request edits,
@@ -17,12 +22,8 @@ incoherent state metadata and late terminal lifecycle rewrites. 126 local tests
 pass; the fallback demo prints 429 then 200. See the task contract's Store
 enforcement section and ADR-008 amendment. This is not completion of M2b.
 
-Next: review B04a, then implement B05 (one service owner per state directory)
-before connecting the executor. B03 repository validation and B06 MCP diagnosis
-can be developed independently with fixtures; real transport/executor integration
-still requires resolving the gate. For a small independent continuation, B01
-(safe unknown-key diagnostics on the schemas branch) is ready to implement with
-regression tests. Do not merge the old executor/client/acceptance branches.
+B01 diagnostics were corrected on the schemas branch (#8). B03 repository identity
+and B06 MCP diagnosis are the next independent development items.
 
 Remaining B04-related work is scoped to B12 dispatch production, B14 stop proof
 and B18 maintainer-only reconciliation. No generic callback may leave blocked.
@@ -33,10 +34,9 @@ tests pass. The old executor/client/acceptance branches are incomplete and must
 not be merged as completed steps. Pick an unblocked backlog task from current
 main. No milestone, MCP gate result or maintainer decision changed in this review.
 
-1. Review B04a against its tests and contract. This branch is an implementation
-   checkpoint, not a merged or end-to-end acceptance claim.
-2. Implement B05 process ownership before startup reconciliation and executor
-   connection. A second service must not rewrite the first service's running tasks.
+1. B04a was merged through PR #13.
+2. B05 ownership is implemented and reviewed in PR #14; service handles become
+   unavailable after close, and crash locks require maintainer inspection.
 3. B03 repository validation and B06 gate diagnosis can proceed independently. The
    MCP gate still has one recorded pass and one failure; resolve the cause before
    real transport integration. B01 is a smaller independent task for a fresh agent.

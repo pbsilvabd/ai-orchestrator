@@ -384,3 +384,24 @@ reconciliation tooling remain outside this change.
   without modifying committed bytes. Startup reconciliation still blocks that task.
 - Evidence: local store/service unit and existing loopback fixtures only. OpenCode,
   MCP, SQLite and executor gates were not rerun. B05/B12/B14/B18 remain pending.
+
+## B05 — Service ownership — 2026-11-03
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Store/service behavior and owner-lock regressions | 127 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker check | Passed | 0 |
+
+Evidence: local service/store tests only. A service acquires ownership before reconcile, competing service creation returns unavailable, graceful close releases ownership, and initialization failure cleans up. Stale crash locks are fail-closed and require manual inspection. No OpenCode, MCP, SQLite or executor integration gate was rerun.
+
+## B05 pre-merge review — 2026-11-03
+
+- `node --test --test-reporter=tap`: 129 passed, 0 failed, exit 0.
+- `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
+- `git diff --check`: passed, exit 0.
+- Evidence: local store/service and a real Node child process in a temporary home.
+  Contention does not rewrite running tasks, abrupt process death leaves a stale
+  lock, manual post-death recovery blocks uncertain work, and closed handles reject
+  all four operations after a replacement owner starts.
+- Real OpenCode, MCP, SQLite and executor integration gates were not rerun.

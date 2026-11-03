@@ -34,6 +34,7 @@ function makeService(t, overrides = {}) {
     },
     now: overrides.now ?? 1_000,
   });
+  t.after(() => service.close());
   return { dir, store, service };
 }
 
@@ -109,8 +110,22 @@ test('startup fails closed on an index conflict without changing active work', t
   index.taskId = UNKNOWN_TASK;
   writeFileSync(indexFile, JSON.stringify(index));
 
+  service.close();
   assert.throws(() => createTaskService({ store, config: service.config, now: 1_200 }), expected('unavailable'));
   assert.equal(store.readTask(taskId).status, 'running');
+});
+
+test('one service owns a task home until close and startup failure releases ownership', t => {
+  const { dir, store, service } = makeService(t);
+  assert.throws(() => createTaskService({ store, now: 1_000 }), expected('unavailable'));
+  service.close();
+  const replacement = createTaskService({ store, now: 1_000 });
+  t.after(() => replacement.close());
+  replacement.close();
+  const brokenStore = { ...store, reconcile: () => { throw new TaskStoreError('unavailable', 'fixture failure'); } };
+  assert.throws(() => createTaskService({ store: brokenStore, now: 1_100 }), expected('unavailable'));
+  const recovered = createTaskService({ store, now: 1_100 });
+  recovered.close();
 });
 
 test('service startup repairs a missing index before it accepts a duplicate submit', t => {
@@ -118,7 +133,9 @@ test('service startup repairs a missing index before it accepts a duplicate subm
   const request = validRequest(dir);
   const first = service.submitTask(request);
   for (const name of readdirSync(join(dir, 'idempotency'))) rmSync(join(dir, 'idempotency', name));
+  service.close();
   const restarted = createTaskService({ store, config: service.config, now: 1_100 });
+  t.after(() => restarted.close());
   const second = restarted.submitTask(request);
   assert.equal(second.taskId, first.taskId);
   assert.equal(second.idempotentReplay, true);
@@ -129,7 +146,9 @@ test('service startup blocks an interrupted running task before reads', t => {
   const { dir, store, service } = makeService(t);
   const { taskId } = validSubmit(service, dir);
   store.updateTask(taskId, draft => { draft.status = 'running'; draft.startedAt = 1_050; });
+  service.close();
   const restarted = createTaskService({ store, config: service.config, now: 1_100 });
+  t.after(() => restarted.close());
   assert.equal(restarted.getTaskStatus({ taskId }).status, 'blocked');
 });
 
@@ -148,6 +167,7 @@ test('startup finds duplicate client keys even when both index entries are missi
   writeFileSync(join(dir, 'tasks', `${duplicateId}.json`), JSON.stringify({ ...original, taskId: duplicateId }));
   for (const name of readdirSync(join(dir, 'idempotency'))) rmSync(join(dir, 'idempotency', name));
 
+  service.close();
   assert.throws(() => createTaskService({ store, config: service.config, now: 1_200 }), expected('unavailable'));
   assert.equal(store.readTask(taskId).status, 'queued');
   assert.equal(store.readTask(duplicateId).status, 'queued');
@@ -237,7 +257,9 @@ test('cancel_task maps persistence failures to service errors', t => {
   const { taskId } = validSubmit(service, dir);
   const failingStore = { ...store, reconcile: () => ({ blocked: [], repaired: [], conflicts: [] }),
     readTask: store.readTask, updateTask: () => { throw new TaskStoreError('unavailable', 'cannot persist task state'); } };
+  service.close();
   const failingService = createTaskService({ store: failingStore, config: service.config, now: 1_100 });
+  t.after(() => failingService.close());
   assert.throws(() => failingService.cancelTask({ taskId }), expected('unavailable'));
 });
 
@@ -249,9 +271,14 @@ test('get_task_status enforces ownership and unknown tasks', t => {
   assert.throws(() => service.getTaskStatus({ taskId: UNKNOWN_TASK, [sensitiveKey]: true }), error =>
     error instanceof ServiceError && error.code === 'invalid_argument' && !error.message.includes(sensitiveKey));
 
+  service.close();
   const foreignService = createTaskService({ store, config: { ...service.config, clientId: 'other-client' }, now: 1_000 });
+  t.after(() => foreignService.close());
   const foreign = validSubmit(foreignService, dir, { clientId: 'other-client', idempotencyKey: 'goal-foreign' });
-  assert.throws(() => service.getTaskStatus({ taskId: foreign.taskId }), expected('not_owner'));
+  foreignService.close();
+  const ownerService = createTaskService({ store, config: service.config, now: 1_000 });
+  t.after(() => ownerService.close());
+  assert.throws(() => ownerService.getTaskStatus({ taskId: foreign.taskId }), expected('not_owner'));
 });
 
 test('get_task_result returns terminal artifacts, truncation flags and limitations', t => {
@@ -324,9 +351,14 @@ test('diff limits use UTF-8 bytes and honor the task output budget', t => {
 
 test('get_task_result enforces ownership', t => {
   const { service, store, dir } = makeService(t);
+  service.close();
   const foreignService = createTaskService({ store, config: { ...service.config, clientId: 'other-client' }, now: 1_000 });
+  t.after(() => foreignService.close());
   const foreign = validSubmit(foreignService, dir, { clientId: 'other-client', idempotencyKey: 'goal-foreign' });
-  assert.throws(() => service.getTaskResult({ taskId: foreign.taskId }), expected('not_owner'));
+  foreignService.close();
+  const ownerService = createTaskService({ store, config: service.config, now: 1_000 });
+  t.after(() => ownerService.close());
+  assert.throws(() => ownerService.getTaskResult({ taskId: foreign.taskId }), expected('not_owner'));
 });
 
 test('result enforces the log cap across multiple test runs', t => {
