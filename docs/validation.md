@@ -405,3 +405,31 @@ Evidence: local service/store tests only. A service acquires ownership before re
   lock, manual post-death recovery blocks uncertain work, and closed handles reject
   all four operations after a replacement owner starts.
 - Real OpenCode, MCP, SQLite and executor integration gates were not rerun.
+
+## M2b: Executable backlog and PR delivery contracts — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1 from the Codex bundled primary runtime;
+Git 2.55.0.windows.5. Date: 2026-11-02 (America/Sao_Paulo).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Baseline regression suite | 129 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `node "$env:TEMP\ai-orchestrator-task-doc-check.cjs"` | Changed Markdown links/anchors and complete task-card/index/matrix coverage | 27 cards, 107 acceptance rows, 234 relative links/anchors passed | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+Result: every executable task has implementation steps, explicit scope, dependencies,
+acceptance IDs and a mandatory route through two review passes and publication.
+The checker validates file/anchor existence, card sections, sequential row IDs and
+index coverage; manual review also checked preserved requirements and dependency order.
+Its temporary script is a documentation verification aid, not a committed runtime test.
+
+Evidence level: Unit — the unchanged local suite (including existing subprocess
+fixtures) passes; static documentation verification supports the workflow/cards.
+Neither establishes future agents' compliance or completes a pending runtime task.
+
+Not rerun: `integration/opencode-smoke.mjs` and `integration/mcp-gate.mjs` (docs-only
+scope; gate diagnosis remains B06). SQLite/migration and real worker/model use remain
+gated backlog work, with no validation claimed here.
+Claim: the documentation delivery contract is more explicit and internally checked;
+the change does not establish M2b/M3 acceptance or eliminate independent PR review.

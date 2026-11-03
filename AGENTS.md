@@ -11,6 +11,19 @@ conflict — read them before work that touches the contract, lifecycle, transpo
 Check `git log` and the remote before editing; another agent may have moved the
 repository since the handoff was written.
 
+## Backlog delivery: continue through the PR
+
+Read [docs/task-execution.md](docs/task-execution.md) and the selected
+[task card](docs/backlog.md) before backlog work. One executable task ID produces
+one branch and one PR. Implement the scope, test every acceptance row, review during
+implementation, fix findings, review the completed diff again and revalidate fixes.
+Update documentation, commit, push, open/update the PR and verify its remote head.
+Continue through those already-authorized steps without stopping after a plan,
+branch or initial implementation. A green suite alone is not a completed review.
+Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
+authorization for that task. Genuine external blockers follow the protocol's
+draft/incomplete-work procedure; never claim missing evidence passed.
+
 Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a complete,
 M2b step 2 (task store) complete and step 3 (service surface) locally validated after
 corrective changes. The MCP capability gate had one pass and one later failure during

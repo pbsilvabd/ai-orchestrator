@@ -351,3 +351,73 @@ Template:
 - Validation: 129 tests passed; fallback demo 429 then 200; diff check passed.
 - No real OpenCode/MCP/SQLite gate was rerun. Maintenance must stop services/workers
   before direct store mutation. Compact review addendum preserves existing history.
+
+## 2026-11-02 — M2b: Executable backlog and PR delivery contracts
+
+- Branch: `docs/task-contracts-and-pr-workflow` (documentation implementation for review).
+- Scope: documentation and delivery rules; the runtime contract/API and milestones are unchanged.
+- Steps:
+  1. Replaced the old paragraph queue with a verified index and 27 detailed task cards
+     containing prerequisites, scope, implementation sequence and 107 acceptance rows.
+  2. Retained merged B02/B04a/B05 as history, marked B01 corrected on open #8 and split
+     the B22 umbrella into sequential one-PR tasks B22a/B22b/B22c.
+  3. Added the end-to-end execution protocol, two mandatory review passes, blocked-work
+     handling, task-card and PR templates; linked these from AGENTS, contributing and DoD.
+  4. Updated continuation/roadmap status and verified links, anchors, IDs and card coverage.
+- Files:
+  - `AGENTS.md`
+  - `CONTRIBUTING.md`
+  - `.github/pull_request_template.md`
+  - `docs/backlog.md`
+  - `docs/task-execution.md`
+  - `docs/definition-of-done.md`
+  - `docs/handoff.md`
+  - `docs/roadmap.md`
+  - `docs/templates/README.md`
+  - `docs/templates/task-card-template.md`
+  - `docs/worklog.md`
+  - `docs/validation.md`
+  - `docs/tasks/B01.md`
+  - `docs/tasks/B02.md`
+  - `docs/tasks/B03.md`
+  - `docs/tasks/B04.md`
+  - `docs/tasks/B05.md`
+  - `docs/tasks/B06.md`
+  - `docs/tasks/B07.md`
+  - `docs/tasks/B08.md`
+  - `docs/tasks/B09.md`
+  - `docs/tasks/B10.md`
+  - `docs/tasks/B11.md`
+  - `docs/tasks/B12.md`
+  - `docs/tasks/B13.md`
+  - `docs/tasks/B14.md`
+  - `docs/tasks/B15.md`
+  - `docs/tasks/B16.md`
+  - `docs/tasks/B17.md`
+  - `docs/tasks/B18.md`
+  - `docs/tasks/B19.md`
+  - `docs/tasks/B20.md`
+  - `docs/tasks/B21.md`
+  - `docs/tasks/B22a.md`
+  - `docs/tasks/B22b.md`
+  - `docs/tasks/B22c.md`
+  - `docs/tasks/B23.md`
+  - `docs/tasks/B24.md`
+  - `docs/tasks/B25.md`
+- Review pass 1: checked old acceptance requirements against every new card. Clarified
+  B03 static-validation/idempotency/new-repository ordering and the distinction between
+  required host evidence and a blocked draft; avoided rerunning completed work.
+- Review pass 2: checked final cards, dependency ordering, protocol/templates and all
+  changed docs against main. Made every named scenario variant mandatory, removed
+  stale inherited main-write authorization and updated task/PR status facts.
+- Validation: `node --test --test-reporter=tap` -> 129 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` -> 429 then 200, exit 0; temporary Markdown/card
+  checker -> 27 cards, 107 acceptance rows and 234 relative links/anchors passed;
+  `git diff --check` -> exit 0. Code was unchanged after these runtime checks.
+- Not rerun: real OpenCode smoke/MCP gate (docs-only change); no SQLite or worker
+  integration claim is made. No paid calls or credentials were used.
+- Follow-up: review this documentation PR, then dispatch one ready B03/B06/B07/B10
+  card through its PR using the copyable prompt.
+- Template adaptation: per-task cards replace oversized inline backlog paragraphs;
+  the compact review notes above preserve both review passes without an additional
+  runtime ADR because no runtime architecture, authority or state format changed.
