@@ -166,3 +166,19 @@ Template:
   uncertain-outcome rules are paraphrased instead of copied verbatim; the handoff duty
   states "when the next action changes"; and the page is 70 lines. The second commit is
   recorded accurately above: it also carried this entry and the validation entry.
+
+## 2026-11-02 — M2b: independent PR review and agent backlog
+
+- Branch: `review/2026-11-02-pr-backlog` (local review; not published).
+- Scope: documentation and review evidence; no executable behavior changed.
+- Steps: inspected main, four open PRs, merged service/rules PRs, two discussions
+  and old executor/client/acceptance branches; reproduced boundary defects;
+  prepared 25 tasks with priorities, dependencies, ownership and acceptance.
+- Files: `docs/review-2026-11-02.md`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: main suite 83/83; PR #8 snapshot 106/106; acceptance snapshot
+  73 passed / 2 failed. Both main and #8 demos printed 429 then 200.
+  Temporary-state reproductions confirmed diagnostic and lifecycle gaps.
+  Real OpenCode, MCP, SQLite and M3 experiments were not rerun.
+- Follow-up: choose an unblocked backlog task; no milestone advanced and no
+  external review, issue, PR or merge was submitted.
