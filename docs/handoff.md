@@ -16,7 +16,9 @@ B03 merged through PR #16 (`c07b78e`). B10 is open as PR #17 and B09 as PR #18.
 B07 is being delivered on `task/B07-cross-platform-ci`, from `origin/main` at
 `c07b78e`. Its credential-free Windows/Linux matrix uses Node 24.22.1, separate
 test/demo steps and an expected exit-7 pipeline fixture. Local Windows suite (142),
-demo and exit-preservation experiment pass; GitHub matrix evidence is pending.
+demo and exit-preservation experiment pass. GitHub Actions run #1 passed on Windows
+Server 2025 and Ubuntu 24.04: both ran all 142 tests and the fallback demo, and their
+nonzero pipeline fixtures failed as expected (exit 1 on Windows, 7 on Ubuntu).
 
 After review of B07, continue with B06 (MCP capability gate diagnosis). Keep
 executor integration gated on the pinned host evidence described in the task cards.

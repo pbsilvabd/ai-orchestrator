@@ -479,3 +479,5 @@ Template:
 - Review pass 2: checked the complete workflow/docs/status diff and mapped all B07 rows. Local work is complete; the GitHub matrix remains pending until a pull-request run provides Windows and Linux evidence.
 - Local validation on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5: full suite 142/142, fallback demo 429 then 200, and piped nonzero fixture retained native exit 7; each command exited 0 as expected. `git diff --check` clean.
 - Follow-up: publish as draft while GitHub runner availability and both matrix jobs are observed; convert to ready only after required evidence is complete.
+
+- B07 publication update: PR #19 CI run `41737541145` completed successfully. Windows job `126270492736` and Ubuntu job `126270493106` both used Node v24.22.1, passed 142/142 tests and the fallback demo. Pipeline fixtures failed as expected (Windows exit 1; Bash exit 7), while the workflow jobs passed. Draft contingency was unnecessary because both runners were available; PR moved to ready for review.

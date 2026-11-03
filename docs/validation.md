@@ -492,10 +492,10 @@ Branch: `task/B07-cross-platform-ci`. Base: `origin/main` at `c07b78e`.
 
 | Card row | Test or experiment | Command / evidence location | Result / exit code |
 | --- | --- | --- | --- |
-| B07-01 | Normal PR matrix: test suite and demo on Windows and Linux | GitHub Actions `CI` workflow on the B07 pull request; local Windows baseline below | NOT_RUN / pending PR run |
-| B07-02 | Known nonzero command through a formatter pipeline | PowerShell local capture plus the workflow's expected-failure fixture steps on Windows and Bash/Linux | PARTIAL: local Windows observed exit 7; PR runner outcomes pending |
+| B07-01 | Normal PR matrix: test suite and demo on Windows and Linux | GitHub Actions run #41737541145, jobs #126270492736 (Windows) and #126270493106 (Ubuntu) | PASS: 142/142 tests and demo exit 0 on each OS; run conclusion success |
+| B07-02 | Known nonzero command through a formatter pipeline | CI run #41737541145 fixture steps; PowerShell local capture | PASS: Windows fixture step failed (exit 1); Bash fixture failed (exit 7); guarded expected failures; local native code 7 observed |
 | B07-03 | Workflow security inspection | `.github/workflows/ci.yml` | PASS: `contents: read`; PR inputs are not interpolated into shell; no secrets, publishing or privileged events |
-| B07-04 | Runner unavailable | Check actual B07 workflow run; draft if unavailable | NOT_RUN until workflow runner result is observed; do not claim matrix green |
+| B07-04 | Runner unavailable | CI run #41737541145 | N/A: both runners were available, so the draft contingency was not needed |
 
 | Command | Purpose | Result | Exit code |
 | --- | --- | --- | --- |
@@ -504,4 +504,8 @@ Branch: `task/B07-cross-platform-ci`. Base: `origin/main` at `c07b78e`.
 | PowerShell exit-7 pipeline fixture | Ensure formatter does not mask the native command failure | Captured `PIPE_NATIVE_EXIT=7` | 0 (assertion passed) |
 | `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
 
-Review: both implementation and completed-diff passes inspected workflow trigger scope, permissions, shell behavior, acceptance rows and docs. The workflow is not yet externally validated; Linux and PR-triggered Windows evidence are pending GitHub Actions.
+Review: both implementation and completed-diff passes inspected workflow trigger scope, permissions, shell behavior, acceptance rows and docs. GitHub runner evidence is recorded below.
+
+### GitHub Actions result — run #41737541145
+
+The pull-request workflow completed successfully on the PR merge ref. Windows Server 2025 (job #126270492736) and Ubuntu 24.04 (job #126270493106) both used Node.js v24.22.1, passed all 142 tests and ran the fallback demo (429 then 200). The expected-failure pipeline fixture returned exit 1 on PowerShell and exit 7 on Bash; the follow-up guard was skipped in both jobs, confirming the fixture outcome was failure as intended. The workflow token log reported Contents: read. Run conclusion: success.

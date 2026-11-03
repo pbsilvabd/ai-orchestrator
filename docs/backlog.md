@@ -37,7 +37,7 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choice: B06 (B07 is in progress). B06 host evidence needs the trusted pinned binary;
+Ready choice: B06 (B07 is open for review as PR #19). B06 host evidence needs the trusted pinned binary;
 its absence blocks that claim. Prerequisites below describe ready-for-review
 acceptance; fixture-only preparatory work is not full delivery of a gated card.
 
@@ -54,7 +54,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B04 — Ordinary lifecycle and immutable identity](tasks/B04.md) | P1 | Merged / history | B04a merged #13 |
 | [B05 — Single service owner per state home](tasks/B05.md) | P1 | Merged / history | Merged #14 |
 | [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | Ready | Pinned host for host claim |
-| [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | In progress | None |
+| [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | PR open #19 | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | PR open #18 | B03 |
 | [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | PR open #17 | None |
