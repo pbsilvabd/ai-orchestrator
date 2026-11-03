@@ -12,6 +12,7 @@
 import { isAbsolute, sep, resolve, join } from 'node:path';
 import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
+import { RepositoryError, validateRepositoryIdentity } from './repository.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const TASK_STATUSES = ['queued', 'running', 'succeeded', 'failed', 'blocked', 'cancelled'];
@@ -57,6 +58,7 @@ function fail(code, message) {
 function toServiceError(error) {
   if (error instanceof ServiceError) return error;
   if (error instanceof TaskStoreError) return new ServiceError(error.code, error.message, error.osCode);
+  if (error instanceof RepositoryError) return new ServiceError(error.code, error.message);
   // Unexpected failures stay generic: no stack, no payload, no private data.
   return new ServiceError('internal', 'task service failure');
 }
@@ -128,12 +130,47 @@ export function createTaskService(options = {}) {
   const submitTask = request => {
     const payload = validateSubmitRequest(request, config);
     if (containsSecretPattern(payload)) fail('invalid_argument', 'request contains credential-shaped text');
+
+    // 1. Resolve client-scoped idempotency by original canonical payload first.
+    // An identical replay must return the original task without rechecking repository
+    // existence, branch availability or a moving ref.
+    let existing;
+    try {
+      existing = store.findIdempotentTask(payload.clientId, payload.idempotencyKey, payload);
+    } catch (error) {
+      throw toServiceError(error);
+    }
+    if (existing !== undefined) {
+      return {
+        schemaVersion: SCHEMA_VERSION,
+        taskId: existing.taskId,
+        status: existing.status,
+        acceptedAt: existing.acceptedAt,
+        idempotentReplay: true,
+      };
+    }
+
+    // 2. New request: validate repository identity, baseRef commit-ish, and branch availability.
+    let repoValidation;
+    try {
+      repoValidation = validateRepositoryIdentity({
+        repositoryPath: payload.repository.path,
+        writableRoots: config.authorization.writableRoots,
+        baseRef: payload.repository.baseRef,
+        branch: payload.repository.branch,
+      });
+    } catch (error) {
+      throw toServiceError(error);
+    }
+
+    // 3. Persist new task record with fixed full base SHA as immutable metadata.
     let created;
     try {
       created = store.createTask({
         clientId: payload.clientId,
         idempotencyKey: payload.idempotencyKey,
         payload,
+        baseCommit: repoValidation.baseCommitSha,
         now: now(),
       });
     } catch (error) {

@@ -72,17 +72,30 @@ text content block, and error objects set `isError: true`.
 Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay }`.
 
 - The record is persisted before any worker starts; a persistence failure accepts no task.
-- Same `idempotencyKey` and same canonical payload returns the original `taskId` with
-  `idempotentReplay: true` and starts no additional work.
-- Same key with a different payload returns `idempotency_conflict` and changes nothing.
-- `path` must resolve inside a configured root; relative writable globs resolve from
-  `repository.path`, and their static roots must remain within a configured root.
-  Absolute writable paths remain accepted only when inside both the repository and a
-  configured root.
-  `baseRef` must resolve to a commit;
-  `branch` must not already exist unless this task created it.
+- Validation follows strict ordering: request format, static identity and configured
+  allowlist/budget limits are verified first, followed by client-scoped idempotency
+  resolution using the canonical payload.
+- Defer new-request filesystem/Git validation until after idempotency lookup: an identical
+  replay returns the original `taskId` and `baseCommit` with `idempotentReplay: true` without
+  revalidating repository existence, branch availability or moving refs. Same key with a
+  different payload returns `idempotency_conflict` and changes nothing.
+- For new requests, `repository.path` must resolve to an accessible Git work tree whose
+  canonical path (after symlink/junction resolution) is strictly contained within a configured
+  writable root (`authorization_denied` on boundary escape or path-prefix sibling matching).
+- `repository.baseRef` must be a single commit-ish resolving to a commit (ranges like `a..b`,
+  leading hyphens and non-commit objects are rejected with `invalid_argument`). The resolved
+  full commit SHA is persisted on the task record as immutable metadata `baseCommit`; it does
+  not mutate the user's `request.repository.baseRef` and does not alter canonical payload hashing.
+  Older records without `baseCommit` remain readable.
+- `repository.branch` must be a legal Git ref format, must not exist locally, and must not
+  be checked out in any linked worktree (`invalid_argument`). Submitting against a dirty parent
+  working tree is supported and leaves user files unchanged.
+- Relative writable globs resolve from `repository.path`, and their static roots must remain
+  within a configured root. Absolute writable paths remain accepted only when inside both the
+  repository and a configured root.
 - `authorization` is clamped to the configured allowlist; exceeding it is rejected
-  with `authorization_denied`, never silently narrowed.
+  with `authorization_denied`, never silently narrowed. Configuration changes affect future
+  validations; existing tasks never silently widen permissions.
 
 The canonical payload used for the idempotency hash excludes `clientSessionId` and
 is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.
