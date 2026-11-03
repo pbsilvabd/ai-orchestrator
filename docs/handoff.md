@@ -1,4 +1,4 @@
-# Continuation point — 2026-11-02
+# Continuation point — 2026-11-03
 
 M0/M1a/M1b are complete within the local scope of the ADRs. M2a is complete as
 documentation: the normative [task contract](task-contract.md) and
@@ -7,22 +7,32 @@ artifacts, the first transport and the reuse decision. M2b step 1 (MCP capabilit
 gate) had one pass and one later failure on 2026-11-02; the root cause is unresolved
 and the gate is not considered consistently validated. M2b step 2 (durable task store
 and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
-regression reproductions passed. There is no transport adapter or self-development use yet.
+regression reproductions passed. B04a, B05 and B03 are implemented and covered.
+There is no transport adapter or self-development use yet.
 
-## Next action: execute one detailed task through its PR
+## Next action: review and merge B03, then execute B09, B10 or B06
 
-B04a (#13) and B05 (#14) are merged. B01 diagnostics are fixed on open #8;
-schema adoption still waits for review/integration. Do not redo those implementation
-tasks or assume schemas are present in main.
+B03 is implemented on branch `task/B03-repo-identity`: repository identity validation (`src/repository.mjs`),
+canonical realpath containment against configured writable roots (rejecting path-prefix sibling and symlink escapes),
+commit-ish `baseRef` resolution to immutable `baseCommit` full SHA, and `branch` format/collision verification
+before task acceptance. Client-scoped idempotency lookup strictly precedes filesystem/Git checks so identical
+replays succeed even if the repository moves or branch exists. 141 tests pass.
 
-Read [task-execution.md](task-execution.md) and choose one ready card from
-[backlog.md](backlog.md): B03 repository identity, B06 MCP diagnosis, B07 CI or B10
-subprocess runner. Each card defines scope and acceptance rows. Complete implementation,
-tests, implementation review/corrections, completed-diff review/revalidation and one
-published PR with verified remote head. No extra continue is required between steps.
-Use draft/incomplete reporting only for genuine external blockers. Merge remains a
-separate maintainer authorization. This documentation refresh is on branch
-`docs/task-contracts-and-pr-workflow`; no runtime milestone advances.
+After B03 PR review/merge, proceed with the unblocked cards:
+- **B09** (Isolated Git workspace lifecycle) — unblocked by B03.
+- **B10** (Bounded subprocess primitive) — ready, no prerequisites.
+- **B06** (Diagnose MCP capability gate instability) — ready.
+- **B07** (Credential-free Windows and Linux CI) — ready.
+- **B08** (Differential submit-schema adoption) — gated on #8 and B03.
+
+## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
+
+Repository identity validation is enforced on new task submissions. `src/repository.mjs` executes Git commands
+via argument arrays without a shell. `baseRef` commit-ish resolves to a full commit SHA stored as immutable
+metadata `task.baseCommit`. Branches are checked against Git ref rules, local existence and linked worktrees.
+Idempotent replays bypass repository inspection and return the original record. Sibling paths and symlink escapes
+fail closed with `authorization_denied`. Dirty parent working trees are accepted with user files unchanged.
+141 tests pass; fallback demo returns 429 then 200.
 
 ## Earlier B05 checkpoint (merged through PR #14)
 

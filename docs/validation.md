@@ -433,3 +433,28 @@ scope; gate diagnosis remains B06). SQLite/migration and real worker/model use r
 gated backlog work, with no validation claimed here.
 Claim: the documentation delivery contract is more explicit and internally checked;
 the change does not establish M2b/M3 acceptance or eliminate independent PR review.
+
+## B03 — Repository identity before task acceptance — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Complete test suite including B03 acceptance scenarios | 141 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
+
+### Acceptance Matrix Evidence
+
+| ID | Scenario | Result | Evidence |
+| --- | --- | --- | --- |
+| B03-01 | Valid allowed repo, branch and base | PASS | `test/task-service.test.mjs` ("B03-01: valid allowed repo, branch and base persists full commit SHA without worker launch"): record contains 40-character commit SHA, 0 attempts, startedAt null. |
+| B03-02 | Same key/payload after branch creation, ref movement or repo removal | PASS | `test/task-service.test.mjs` ("B03-02: same key/payload after branch creation, ref movement or repo removal returns original record", "B03-02: repo removal still returns idempotent replay"): returns original task ID and original baseCommit without revalidating repository; changed payload throws `idempotency_conflict`. |
+| B03-03 | Nonexistent repo, missing ref, range a..b or leading-option ref | PASS | `test/task-service.test.mjs` ("B03-03: nonexistent repo, missing ref, range a..b or leading-option ref fails closed"): all four variants fail closed with `invalid_argument`; task files and Git refs unchanged. |
+| B03-04 | Path-prefix sibling and symlink/junction escape | PASS | `test/task-service.test.mjs` ("B03-04: path-prefix sibling and symlink/junction escape are denied"): sibling path rejected with `authorization_denied`; symlink escape rejected with `authorization_denied` when symlink privileges permit. |
+| B03-05 | Existing branch, invalid branch, linked worktree and dirty parent | PASS | `test/task-service.test.mjs` ("B03-05: existing branch, invalid branch, linked worktree and dirty parent"): existing branch, invalid ref and worktree branch collisions rejected with `invalid_argument`; dirty parent accepted and user files verified intact. |
+
+Evidence level: Unit and local Git subprocess fixtures.
+Not rerun: `integration/opencode-smoke.mjs` and `integration/mcp-gate.mjs` (unresolved MCP gate is tracked by B06).
+Claim: B03 acceptance criteria are fully met by executable tests covering every matrix row.

@@ -421,3 +421,42 @@ Template:
 - Template adaptation: per-task cards replace oversized inline backlog paragraphs;
   the compact review notes above preserve both review passes without an additional
   runtime ADR because no runtime architecture, authority or state format changed.
+
+## 2026-11-03 — M2b: B03 repository identity before task acceptance
+
+- Branch: `task/B03-repo-identity` (implementation and review for PR).
+- Scope: validate real Git repository identity, path containment, commit-ish baseRef resolution to immutable full commit SHA, and branch absence/collision before task creation; defer filesystem checks after idempotency replay.
+- Steps:
+  1. Specified validation ordering: static request/identity checks -> client-scoped idempotency lookup -> new-request repository and Git inspection.
+  2. Implemented `src/repository.mjs` with `RepositoryError`, `isPathContained` (preventing sibling attacks and handling case insensitivity), `resolveCanonicalPath` (following symlinks/junctions), and `validateRepositoryIdentity` (Git argument arrays, `rev-parse --is-inside-work-tree`, single commit-ish resolving to commit, `check-ref-format`, local branch existence and linked worktree checks).
+  3. Stored fixed full base SHA as immutable metadata `baseCommit` in `src/tasks.mjs` without modifying original request or canonical payload hash. Exposed `findIdempotentTask` on store.
+  4. Updated `submitTask` in `src/service.mjs` to return replays without filesystem inspection, validate new requests with `validateRepositoryIdentity`, and persist `baseCommit`.
+  5. Updated existing service test fixtures to initialize real temporary Git repositories and added dedicated tests for acceptance matrix rows B03-01 to B03-05 plus repository unit tests in `test/repository.test.mjs`.
+  6. Documented repository validation rules and ordering in `docs/task-contract.md` and added an amendment to `docs/adr/008-task-store.md`.
+- Files:
+  - `src/repository.mjs`
+  - `src/tasks.mjs`
+  - `src/service.mjs`
+  - `test/task-service.test.mjs`
+  - `test/repository.test.mjs`
+  - `docs/task-contract.md`
+  - `docs/adr/008-task-store.md`
+  - `docs/backlog.md`
+  - `docs/handoff.md`
+  - `docs/worklog.md`
+  - `docs/validation.md`
+- Review pass 1 (implementation review):
+  - Ordering verified: idempotency check runs before filesystem operations; replays succeed even if repo was deleted or branch created.
+  - Sibling directory matching: `isPathContained` enforces exact path or subdirectory boundary (`sep`), preventing `/path-fake` from matching `/path`.
+  - Immutable baseCommit: cannot be modified after initial acceptance, preserving auditability and compatibility with older records.
+  - Subprocess safety: Git executed directly with argument arrays (`shell: false`, `windowsHide: true`).
+- Review pass 2 (completed diff review):
+  - Verified acceptance rows B03-01 through B03-05 all pass with observable evidence.
+  - Verified full test suite (141 tests) and fallback demo pass without regressions.
+  - Whitespace and formatting verified via `git diff --check`.
+- Validation:
+  - `node --test`: 141 passed, 0 failed, exit 0.
+  - `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
+  - `git diff --check`: clean, exit 0.
+- Not rerun: OpenCode smoke / MCP capability gate (requires pinned binary outside repo; B06 will diagnose gate stability).
+- Follow-up: Open PR for B03; next ready tasks are B09 (workspace lifecycle), B10 (subprocess primitive), and B06.

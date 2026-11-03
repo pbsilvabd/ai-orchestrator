@@ -178,12 +178,29 @@ export function openTaskStore(options = {}) {
       .map(name => readTask(name.slice(0, -'.json'.length)));
   };
 
-  const createTask = ({ clientId, idempotencyKey, payload, now = Date.now() } = {}) => {
+  const findIdempotentTask = (clientId, idempotencyKey, payload) => {
+    if (typeof clientId !== 'string' || !IDENTIFIER.test(clientId))
+      fail('invalid_argument', 'clientId is not a valid identifier');
+    if (typeof idempotencyKey !== 'string' || !IDENTIFIER.test(idempotencyKey))
+      fail('invalid_argument', 'idempotencyKey is not a valid identifier');
+    const canonical = canonicalPayload(payload);
+    const payloadHash = createHash('sha256').update(canonical).digest('hex');
+    const existing = readIndex(clientId, idempotencyKey);
+    if (existing === undefined) return undefined;
+    if (existing.payloadHash !== payloadHash)
+      fail('idempotency_conflict', 'idempotency key was used with a different payload');
+    return readTask(existing.taskId);
+  };
+
+  const createTask = ({ clientId, idempotencyKey, payload, now = Date.now(), baseCommit = null } = {}) => {
     if (typeof clientId !== 'string' || !IDENTIFIER.test(clientId))
       fail('invalid_argument', 'clientId is not a valid identifier');
     if (typeof idempotencyKey !== 'string' || !IDENTIFIER.test(idempotencyKey))
       fail('invalid_argument', 'idempotencyKey is not a valid identifier');
     if (!isTimestamp(now)) fail('invalid_argument', 'now is not a timestamp');
+    if (baseCommit !== null && baseCommit !== undefined && (typeof baseCommit !== 'string' || !/^[0-9a-f]{40,64}$/.test(baseCommit))) {
+      fail('invalid_argument', 'baseCommit must be a full commit SHA or null');
+    }
 
     const canonical = canonicalPayload(payload);
     const payloadHash = createHash('sha256').update(canonical).digest('hex');
@@ -203,6 +220,7 @@ export function openTaskStore(options = {}) {
       idempotencyKey,
       payloadHash,
       request,
+      baseCommit: baseCommit ?? null,
       status: 'queued',
       createdAt: now,
       acceptedAt: now,
@@ -347,6 +365,10 @@ export function openTaskStore(options = {}) {
     home,
     paths: { tasks: tasksDir, idempotency: indexDir },
     createTask,
+    findIdempotentTask: (clientId, key, payload) => {
+      const found = findIdempotentTask(clientId, key, payload);
+      return found ? structuredClone(found) : undefined;
+    },
     readTask: taskId => structuredClone(readTask(taskId)),
     updateTask,
     listTasks: () => structuredClone(listTasks()),
@@ -372,6 +394,12 @@ function validateTask(task) {
   for (const field of ['startedAt', 'finishedAt'])
     if (task[field] !== null && !isTimestamp(task[field]))
       fail('invalid_argument', `${field} is not a timestamp or null`);
+
+  if (task.baseCommit !== undefined && task.baseCommit !== null) {
+    if (typeof task.baseCommit !== 'string' || !/^[0-9a-f]{7,64}$/.test(task.baseCommit)) {
+      fail('invalid_argument', 'baseCommit must be a full commit SHA or null');
+    }
+  }
 
   if (!Array.isArray(task.attempts)) fail('invalid_argument', 'attempts must be an array');
   for (const attempt of task.attempts) {
@@ -438,6 +466,10 @@ function validateUpdate(previous, next) {
     'payloadHash', 'createdAt', 'acceptedAt']) {
     if (next[field] !== previous[field])
       fail('invalid_argument', 'task identity and acceptance fields are immutable');
+  }
+  if (previous.baseCommit !== undefined && previous.baseCommit !== null &&
+      next.baseCommit !== previous.baseCommit) {
+    fail('invalid_argument', 'task base commit is immutable once set');
   }
   if (stringify(next.request) !== stringify(previous.request))
     fail('invalid_argument', 'accepted task request is immutable');

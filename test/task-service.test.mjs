@@ -1,10 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, readdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { openTaskStore, TaskStoreError } from '../src/tasks.mjs';
 import { createTaskService, ServiceError } from '../src/service.mjs';
+
+function initGitRepo(dir) {
+  execFileSync('git', ['init', dir], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', dir, 'config', 'user.name', 'Test Runner'], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', dir, 'config', 'user.email', 'test@example.com'], { stdio: 'ignore', windowsHide: true });
+  writeFileSync(join(dir, 'README.md'), '# Test\n');
+  execFileSync('git', ['-C', dir, 'add', '.'], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', dir, 'commit', '-m', 'Initial commit'], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', dir, 'branch', '-M', 'main'], { stdio: 'ignore', windowsHide: true });
+}
 
 function startTask(store, taskId) {
   if (store.readTask(taskId).status === 'queued') {
@@ -23,6 +34,7 @@ function fixture(t) {
 
 function makeService(t, overrides = {}) {
   const dir = fixture(t);
+  initGitRepo(dir);
   const store = openTaskStore({ home: dir });
   const service = createTaskService({
     store,
@@ -297,7 +309,6 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
     draft.testRuns = [{ command: 'node --test', exitCode: 0, durationMs: 5, summary: 'ok', outputTail: 'ok' }];
     draft.changedFiles = ['test/example.test.mjs'];
     draft.headCommit = 'abc123def456';
-    draft.baseCommit = 'def456abc123';
     draft.diff = 'diff --git a/test/example.test.mjs';
   });
 
@@ -305,7 +316,7 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
   assert.equal(result.schemaVersion, 1);
   assert.equal(result.taskId, taskId);
   assert.equal(result.status, 'succeeded');
-  assert.equal(result.baseCommit, 'def456abc123');
+  assert.match(result.baseCommit, /^[0-9a-f]{40,64}$/);
   assert.equal(result.branch, 'task/example');
   assert.equal(result.headCommit, 'abc123def456');
   assert.equal(result.diff, 'diff --git a/test/example.test.mjs');
@@ -399,4 +410,194 @@ test('a filesystem persistence failure is reported as unavailable with the os co
 
   assert.throws(() => service.submitTask(validSubmit(service, dir)), error =>
     error instanceof ServiceError && error.code === 'unavailable');
+});
+
+// --- B03 Acceptance Scenarios ---
+
+test('B03-01: valid allowed repo, branch and base persists full commit SHA without worker launch', t => {
+  const { dir, service } = makeService(t);
+  const result = validSubmit(service, dir, {
+    idempotencyKey: 'b03-01-key',
+    repository: { path: dir, baseRef: 'main', branch: 'task/b03-01' },
+  });
+  assert.equal(result.status, 'queued');
+  assert.equal(result.idempotentReplay, false);
+  const record = service.store.readTask(result.taskId);
+  assert.match(record.baseCommit, /^[0-9a-f]{40,64}$/);
+  // Verify no workspace directory or subprocess worker created
+  assert.equal(record.attempts.length, 0);
+  assert.equal(record.startedAt, null);
+});
+
+test('B03-02: same key/payload after branch creation, ref movement or repo removal returns original record', t => {
+  const { dir, service } = makeService(t);
+  const initialSha = execFileSync('git', ['-C', dir, 'rev-parse', 'main'], { encoding: 'utf8' }).trim();
+  const request = validRequest(dir, {
+    idempotencyKey: 'b03-02-key',
+    repository: { path: dir, baseRef: 'main', branch: 'task/b03-02' },
+  });
+  const first = service.submitTask(request);
+  assert.equal(first.idempotentReplay, false);
+
+  // 1. Create the branch in Git
+  execFileSync('git', ['-C', dir, 'branch', 'task/b03-02', 'main'], { stdio: 'ignore' });
+  // 2. Move main ref by committing a new file
+  writeFileSync(join(dir, 'another.txt'), 'new commit');
+  execFileSync('git', ['-C', dir, 'add', '.'], { stdio: 'ignore' });
+  execFileSync('git', ['-C', dir, 'commit', '-m', 'second commit'], { stdio: 'ignore' });
+  const movedSha = execFileSync('git', ['-C', dir, 'rev-parse', 'main'], { encoding: 'utf8' }).trim();
+  assert.notEqual(movedSha, initialSha);
+
+  // Replay with identical payload: returns original task ID, original baseCommit, no error
+  const second = service.submitTask(request);
+  assert.equal(second.idempotentReplay, true);
+  assert.equal(second.taskId, first.taskId);
+  const record = service.store.readTask(second.taskId);
+  assert.equal(record.baseCommit, initialSha);
+
+  // Changed payload with same key still throws idempotency_conflict
+  assert.throws(() => service.submitTask({ ...request, objective: 'Changed objective' }), expected('idempotency_conflict'));
+});
+
+test('B03-02: repo removal still returns idempotent replay for identical payload', t => {
+  const home = fixture(t);
+  const repoDir = fixture(t);
+  initGitRepo(repoDir);
+  const store = openTaskStore({ home });
+  const service = createTaskService({
+    store,
+    config: {
+      clientId: 'opencode-primary',
+      authorization: { models: ['mock/a'], tools: ['read'], writableRoots: [repoDir] },
+      limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
+    },
+  });
+  t.after(() => service.close());
+  const request = {
+    idempotencyKey: 'b03-02-removed',
+    clientId: 'opencode-primary',
+    objective: 'Test repo removal replay',
+    acceptanceCriteria: ['pass'],
+    repository: { path: repoDir, baseRef: 'main', branch: 'task/will-delete-repo' },
+    authorization: { models: ['mock/a'], tools: ['read'], writablePaths: [repoDir] },
+    limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
+  };
+  const first = service.submitTask(request);
+  // Remove repository completely
+  rmSync(repoDir, { recursive: true, force: true });
+  // Replay returns original task
+  const second = service.submitTask(request);
+  assert.equal(second.idempotentReplay, true);
+  assert.equal(second.taskId, first.taskId);
+});
+
+test('B03-03: nonexistent repo, missing ref, range a..b or leading-option ref fails closed', t => {
+  const { dir, service } = makeService(t);
+  const beforeTasks = taskFiles(dir).length;
+
+  // Nonexistent repository
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-03-nonexistent',
+    repository: { path: join(dir, 'no-such-repo'), baseRef: 'main', branch: 'task/b03-03-a' },
+    authorization: { models: ['mock/a'], tools: ['read'], writablePaths: [join(dir, 'no-such-repo', 'src')] },
+  })), expected('invalid_argument'));
+
+  // Missing Git ref
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-03-missing-ref',
+    repository: { path: dir, baseRef: 'refs/heads/does-not-exist', branch: 'task/b03-03-b' },
+  })), expected('invalid_argument'));
+
+  // Range a..b
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-03-range',
+    repository: { path: dir, baseRef: 'main..HEAD', branch: 'task/b03-03-c' },
+  })), expected('invalid_argument'));
+
+  // Leading option ref
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-03-option',
+    repository: { path: dir, baseRef: '--all', branch: 'task/b03-03-d' },
+  })), expected('invalid_argument'));
+
+  // Verify task/index bytes and Git refs unchanged
+  assert.equal(taskFiles(dir).length, beforeTasks);
+  const refs = execFileSync('git', ['-C', dir, 'for-each-ref', '--format=%(refname)', 'refs/heads/'], { encoding: 'utf8' }).trim();
+  assert.equal(refs, 'refs/heads/main');
+});
+
+test('B03-04: path-prefix sibling and symlink/junction escape are denied', t => {
+  const { dir, service } = makeService(t);
+  const siblingDir = `${dir}-sibling`;
+
+  // Path-prefix sibling attack (e.g. /app/repo-sibling when /app/repo is allowed)
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-04-sibling',
+    repository: { path: siblingDir, baseRef: 'main', branch: 'task/b03-04-a' },
+  })), expected('authorization_denied'));
+
+  // Symlink/junction escape
+  const outsideDir = fixture(t);
+  initGitRepo(outsideDir);
+  const linkPath = join(dir, 'link-outside');
+  let junctionCreated = false;
+  try {
+    symlinkSync(outsideDir, linkPath, process.platform === 'win32' ? 'junction' : 'dir');
+    junctionCreated = true;
+  } catch {
+    // If symlink/junction creation lacks OS privileges, record not run
+  }
+
+  if (junctionCreated) {
+    assert.throws(() => service.submitTask(validRequest(dir, {
+      idempotencyKey: 'b03-04-symlink-escape',
+      repository: { path: linkPath, baseRef: 'main', branch: 'task/b03-04-b' },
+    })), expected('authorization_denied'));
+  }
+});
+
+test('B03-05: existing branch, invalid branch, linked worktree and dirty parent', t => {
+  const { dir, service } = makeService(t);
+
+  // 1. Existing branch: collision rejected
+  execFileSync('git', ['-C', dir, 'branch', 'task/already-exists', 'main'], { stdio: 'ignore' });
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-05-existing-branch',
+    repository: { path: dir, baseRef: 'main', branch: 'task/already-exists' },
+  })), expected('invalid_argument'));
+
+  // 2. Invalid branch name rejected
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-05-invalid-branch',
+    repository: { path: dir, baseRef: 'main', branch: 'invalid..branch' },
+  })), expected('invalid_argument'));
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-05-dash-branch',
+    repository: { path: dir, baseRef: 'main', branch: '-invalid' },
+  })), expected('invalid_argument'));
+
+  // 3. Linked worktree collision: branch checked out in a linked worktree
+  const wtDir = fixture(t);
+  execFileSync('git', ['-C', dir, 'worktree', 'add', '-b', 'task/in-worktree', wtDir, 'main'], { stdio: 'ignore' });
+  t.after(() => {
+    try {
+      execFileSync('git', ['-C', dir, 'worktree', 'remove', '--force', wtDir], { stdio: 'ignore' });
+    } catch {}
+  });
+
+  assert.throws(() => service.submitTask(validRequest(dir, {
+    idempotencyKey: 'b03-05-worktree-branch',
+    repository: { path: dir, baseRef: 'main', branch: 'task/in-worktree' },
+  })), expected('invalid_argument'));
+
+  // 4. Dirty parent: uncommitted modifications exist in parent repo
+  const userFilePath = join(dir, 'user-dirty-file.txt');
+  writeFileSync(userFilePath, 'uncommitted user work in progress');
+  const result = validSubmit(service, dir, {
+    idempotencyKey: 'b03-05-dirty-parent',
+    repository: { path: dir, baseRef: 'main', branch: 'task/clean-new-branch' },
+  });
+  assert.equal(result.status, 'queued');
+  // Verify user file is completely intact and unchanged
+  assert.equal(readFileSync(userFilePath, 'utf8'), 'uncommitted user work in progress');
 });

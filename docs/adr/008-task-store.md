@@ -86,6 +86,20 @@ automatically after a crash because process identity and worker outcome need mai
 inspection. Direct `openTaskStore` handles remain available for explicit local
 maintenance and tests; they do not acquire service ownership themselves.
 
+## Amendment — 2026-11-03: B03 repository identity and immutable base commit
+
+Task submission (`submit_task`) requires repository identity validation via `src/repository.mjs`:
+the repository path must resolve to a valid Git work tree contained within configured writable roots
+after canonical path resolution (preventing path-prefix sibling bypasses and symlink escapes).
+The commit-ish `baseRef` is resolved to a full commit SHA (`baseCommit`) and stored as immutable metadata
+on the task record without replacing `request.repository.baseRef` and without changing canonical payload hashing.
+The target `branch` must be a valid ref format, absent locally, and not checked out in any linked worktree.
+Submissions against a dirty parent working tree are accepted and leave user files untouched.
+
+Idempotency resolution by original canonical payload precedes filesystem and Git inspections: identical
+replays return the original task ID and base commit without revalidating repository existence, branch state
+or moving refs. Older records lacking `baseCommit` remain readable by `readTask` and `get_task_result`.
+
 ## Revisit triggers
 
 Revisit when: M2b carries
