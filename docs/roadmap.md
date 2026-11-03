@@ -60,10 +60,18 @@ See [Definition of Done](definition-of-done.md).
 
 ## M2b plan (bounded, in order)
 
+Execution tracking: [backlog](backlog.md) now indexes detailed per-task contracts.
+Every executable ID delivers one PR after acceptance testing, implementation review,
+completed-diff review and correction/revalidation under [task-execution.md](task-execution.md).
+B04a/#13 and B05/#14 are merged; B01 is corrected on open #8. Next ready tasks are
+B03, B06, B07 and B10. B22 is split into sequential B22a/B22b/B22c PRs. These workflow
+requirements do not satisfy a runtime or host-integration gate.
+
 B04a hardening checkpoint (2026-11-02): ordinary store transitions, immutable task
 identity/request fields and state-dependent metadata are guarded, with 126 local
-tests passing. Process ownership, executor dispatch, stop proof and maintainer
-reconciliation remain pending. This checkpoint does not advance an M2b exit gate.
+tests passing at that checkpoint. Process ownership subsequently merged in B05;
+executor dispatch, stop proof and maintainer reconciliation remain pending.
+This checkpoint does not advance an M2b exit gate.
 
 B05 ownership checkpoint (2026-11-03): service startup acquires an exclusive per-home lock before reconciliation and releases it on close or failed initialization. Stale crash locks fail closed. 129 local tests pass. Executor and M2b acceptance remain pending.
 

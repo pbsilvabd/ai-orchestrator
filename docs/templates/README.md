@@ -1,10 +1,11 @@
 # Templates for recurring artifacts
 
-Contributions to this repository recur as four artifacts, and each one is due when its
+Contributions to this repository recur as five artifacts, and each one is due when its
 own trigger applies — not on every change: a [worklog](../worklog.md) entry and a
 [validation](../validation.md) entry on every change; an [ADR](../adr/) only when a
 decision, dependency or trust boundary changes; a [handoff](../handoff.md) update only
-when the next actionable step or a milestone moves. All four have been written in a
+when the next actionable step or a milestone moves; a task card when adding executable
+backlog work. The original four artifacts have been written in a
 different shape by different authors, which made the next reader guess. These templates
 provide a default shape per artifact so a contributor can copy the matching file
 and replace its placeholders. Adapt the format when the change requires it, explain
@@ -18,11 +19,14 @@ the adaptation in the worklog and preserve all required information and evidence
 | The append-only record of work performed, including a change still under review | [`worklog-entry-template.md`](worklog-entry-template.md) | Appended at the end of [docs/worklog.md](../worklog.md) |
 | The commands, results and limits of one change | [`validation-entry-template.md`](validation-entry-template.md) | Appended at the end of [docs/validation.md](../validation.md) |
 | A new continuation point, only when the next action or a milestone moves | [`handoff-update-template.md`](handoff-update-template.md) | Rewrites [docs/handoff.md](../handoff.md) in place |
+| A new executable backlog task, sized for one PR | [`task-card-template.md`](task-card-template.md) | `docs/tasks/ID.md`, linked from [backlog](../backlog.md) |
 
 ## How to copy a template
 
-Each template file has two fenced blocks: the one under `## Template` (the form to fill)
-and the one under `## Example` (a filled sample). Copy only the template block, then:
+The original four templates have two fenced blocks: the one under `## Template`
+(the form to fill) and the one under `## Example` (a filled sample). The task-card
+template has one skeleton block; filled examples live in `docs/tasks/`.
+Copy only the template block, then:
 
 1. Copy the text **between** the two fence lines, not the fence lines themselves
    (```` ```markdown ```` and ```` ``` ````).

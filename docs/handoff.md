@@ -9,11 +9,27 @@ and the gate is not considered consistently validated. M2b step 2 (durable task 
 and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
 regression reproductions passed. There is no transport adapter or self-development use yet.
 
-## Next action: review B05 service ownership and proceed with B03/B06
+## Next action: execute one detailed task through its PR
+
+B04a (#13) and B05 (#14) are merged. B01 diagnostics are fixed on open #8;
+schema adoption still waits for review/integration. Do not redo those implementation
+tasks or assume schemas are present in main.
+
+Read [task-execution.md](task-execution.md) and choose one ready card from
+[backlog.md](backlog.md): B03 repository identity, B06 MCP diagnosis, B07 CI or B10
+subprocess runner. Each card defines scope and acceptance rows. Complete implementation,
+tests, implementation review/corrections, completed-diff review/revalidation and one
+published PR with verified remote head. No extra continue is required between steps.
+Use draft/incomplete reporting only for genuine external blockers. Merge remains a
+separate maintainer authorization. This documentation refresh is on branch
+`docs/task-contracts-and-pr-workflow`; no runtime milestone advances.
+
+## Earlier B05 checkpoint (merged through PR #14)
 
 B05 checkpoint (2026-11-03), branch `task/B05-service-owner`: service ownership uses an exclusive lock file created before reconciliation. A second owner fails closed; call `service.close()` on graceful shutdown. Initialization failures release the lock. Crash leaves a stale lock for maintainer inspection; no automatic deletion. 129 tests and fallback demo pass.
 
-Review the B05 PR, then proceed with B03 repository identity or B06 MCP gate diagnosis. Executor integration still depends on the MCP gate.
+Proceed with the detailed B03/B06/B07/B10 cards. Executor integration still depends
+on the MCP gate and the declared executor prerequisites.
 ## Earlier B04a checkpoint (merged through PR #13)
 
 B04a implementation checkpoint (2026-11-02), branch `task/B04-lifecycle-guards`:
@@ -39,7 +55,7 @@ main. No milestone, MCP gate result or maintainer decision changed in this revie
    unavailable after close, and crash locks require maintainer inspection.
 3. B03 repository validation and B06 gate diagnosis can proceed independently. The
    MCP gate still has one recorded pass and one failure; resolve the cause before
-   real transport integration. B01 is a smaller independent task for a fresh agent.
+   real transport integration. B01's existing correction remains on open #8.
 4. Build the executor with isolated workspaces and fixture subprocesses; real host
    acceptance follows only when the prerequisites and MCP gate are verified.
 
