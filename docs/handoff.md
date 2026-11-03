@@ -10,20 +10,18 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review and merge B03, then execute B09, B10 or B06
+## Next action: review the B07 CI pull request
 
-B03 is implemented on branch `task/B03-repo-identity`: repository identity validation (`src/repository.mjs`),
-canonical realpath containment against configured writable roots (rejecting path-prefix sibling and symlink escapes),
-commit-ish `baseRef` resolution to immutable `baseCommit` full SHA, and `branch` format/collision verification
-before task acceptance. Client-scoped idempotency lookup strictly precedes filesystem/Git checks so identical
-replays succeed even if the repository moves or branch exists. 141 tests pass.
+B03 merged through PR #16 (`c07b78e`). B10 is open as PR #17 and B09 as PR #18.
+B07 is being delivered on `task/B07-cross-platform-ci`, from `origin/main` at
+`c07b78e`. Its credential-free Windows/Linux matrix uses Node 24.22.1, separate
+test/demo steps and an expected exit-7 pipeline fixture. Local Windows suite (142),
+demo and exit-preservation experiment pass. GitHub Actions run #1 passed on Windows
+Server 2025 and Ubuntu 24.04: both ran all 142 tests and the fallback demo, and their
+nonzero pipeline fixtures failed as expected (exit 1 on Windows, 7 on Ubuntu).
 
-After B03 PR review/merge, proceed with the unblocked cards:
-- **B09** (Isolated Git workspace lifecycle) — unblocked by B03.
-- **B10** (Bounded subprocess primitive) — ready, no prerequisites.
-- **B06** (Diagnose MCP capability gate instability) — ready.
-- **B07** (Credential-free Windows and Linux CI) — ready.
-- **B08** (Differential submit-schema adoption) — gated on #8 and B03.
+After review of B07, continue with B06 (MCP capability gate diagnosis). Keep
+executor integration gated on the pinned host evidence described in the task cards.
 
 ## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
 

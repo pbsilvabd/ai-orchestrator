@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-02. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-03. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -63,8 +63,10 @@ See [Definition of Done](definition-of-done.md).
 Execution tracking: [backlog](backlog.md) now indexes detailed per-task contracts.
 Every executable ID delivers one PR after acceptance testing, implementation review,
 completed-diff review and correction/revalidation under [task-execution.md](task-execution.md).
-B04a/#13 and B05/#14 are merged; B01 is corrected on open #8. Next ready tasks are
-B03, B06, B07 and B10. B22 is split into sequential B22a/B22b/B22c PRs. These workflow
+B04a/#13 and B05/#14 are merged; B01 is corrected on open #8. B03 merged as #16;
+B10 and B09 are open as #17 and #18. B07 is open as PR #19; its Windows Server 2025
+and Ubuntu 24.04 matrix passed on Node 24.22.1 (142 tests and fallback demo on each OS).
+B06 is the next ready task. B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
 
 B04a hardening checkpoint (2026-11-02): ordinary store transitions, immutable task
