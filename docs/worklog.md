@@ -306,3 +306,18 @@ Template:
   validation and next actions without repeating unchanged milestone background.
 - Final review also made persisted attempt identity append-only; a regression covers
   erase-then-cancel and permits active attempts to acquire completion metadata.
+
+## 2026-11-03 — M2b: B04a pre-merge review
+
+- Branch: `task/B04-lifecycle-guards`, PR #13.
+- Reviewed lifecycle edges, immutable request/identity, dispatch preservation,
+  service cancellation compatibility and failure behavior against the contract.
+- Found and closed queued-with-persisted-attempt -> running: it now fails before
+  writing, so restart reconciliation must block the task rather than permit replay.
+- Files: `src/tasks.mjs`, `test/task-lifecycle.test.mjs`, `docs/task-contract.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: 126 tests passed, 0 failed; fallback demo 429 then 200; diff check passed.
+- Limits remain B05 ownership, B12 dispatch production, B14 stop proof and B18
+  maintainer reconciliation. No live integration gate was rerun.
+- Template adaptation: compact review addendum records the defect, fix and evidence
+  without repeating the implementation checkpoint above.

@@ -374,3 +374,13 @@ Not rerun: real OpenCode smoke, MCP capability gate, SQLite gate and M3 delegati
 Claim: this supports the bounded B04a store hardening, not completion of M2b/B04
 as a whole. Clock ordering, dispatch production, worker-stop proof and human
 reconciliation tooling remain outside this change.
+
+## B04a pre-merge review — 2026-11-03
+
+- `node --test --test-reporter=tap`: 126 passed, 0 failed, exit 0.
+- `node examples/fallback-demo.mjs`: expected 429 then 200, exit 0.
+- `git diff --check`: passed, exit 0.
+- Added a regression assertion rejecting queued-with-persisted-attempt -> running
+  without modifying committed bytes. Startup reconciliation still blocks that task.
+- Evidence: local store/service unit and existing loopback fixtures only. OpenCode,
+  MCP, SQLite and executor gates were not rerun. B05/B12/B14/B18 remain pending.

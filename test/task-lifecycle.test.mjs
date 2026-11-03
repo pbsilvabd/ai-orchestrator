@@ -69,6 +69,7 @@ test('dispatched queued work blocks on restart and cannot claim unstarted cancel
   store.updateTask(taskId, d => { d.attempts.push({ attemptId: 'a', model: 'mock/a', startedAt: 1_100 }); });
   const before = bytes();
   assert.throws(() => store.updateTask(taskId, d => state(d, 'cancelled')), expected('internal'));
+  assert.throws(() => store.updateTask(taskId, d => state(d, 'running')), expected('internal'));
   assert.equal(bytes(), before);
   assert.deepEqual(store.reconcile({ now: 1_200 }).blocked, [taskId]);
   const blocked = bytes();

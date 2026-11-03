@@ -450,6 +450,8 @@ function validateUpdate(previous, next) {
   }
   if (previous.status !== next.status && !TRANSITIONS[previous.status].includes(next.status))
     fail('internal', 'illegal task status transition');
+  if (previous.status === 'queued' && next.status === 'running' && previous.attempts.length)
+    fail('internal', 'persisted dispatch cannot be restarted');
   if (previous.status === 'queued' && next.status === 'cancelled' &&
     (previous.attempts.length || next.attempts.length || next.startedAt !== null))
     fail('internal', 'dispatched task cannot be cancelled as unstarted');

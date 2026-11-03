@@ -206,6 +206,8 @@ override that grants reconciliation authority.
   acceptedAt cannot change. startedAt cannot change once assigned.
 - Persisted attempts retain their order, attemptId, model and startedAt; they cannot
   be erased or replaced to hide a dispatch. Active attempts may acquire result metadata.
+  Queued work with a previously persisted attempt cannot transition to running;
+  restart reconciliation must block it instead of allowing a replay.
 - Queued work has no start timestamp; queued/running work has no finish timestamp.
   Running/succeeded/failed work requires startedAt; every terminal state, including
   blocked, requires finishedAt. This check enforces presence/types, not clock ordering.
