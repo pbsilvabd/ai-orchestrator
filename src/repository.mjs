@@ -76,7 +76,7 @@ function execGit(args, cwd) {
 // Runs only for new task submissions (never on identical idempotency replays).
 export function validateRepositoryIdentity({ repositoryPath, writableRoots = [], baseRef, branch }) {
   // 1. Resolve canonical path and enforce boundary containment against configured roots.
-  const canonicalRepo = resolveCanonicalPath(repositoryPath);
+  let canonicalRepo = resolveCanonicalPath(repositoryPath);
   const canonicalRoots = (Array.isArray(writableRoots) ? writableRoots : []).map(root => {
     try {
       if (typeof realpathSync.native === 'function') {
@@ -93,12 +93,19 @@ export function validateRepositoryIdentity({ repositoryPath, writableRoots = [],
     fail('authorization_denied', 'repository.path is outside the configured writable roots');
   }
 
-  // 2. Verify that canonicalRepo is a real Git repository work tree.
+  // 2. Resolve and authorize the real worktree root, not just the submitted
+  // directory. A Git subdirectory can expose refs belonging to its parent repo.
   try {
     const insideWorkTree = execGit(['rev-parse', '--is-inside-work-tree'], canonicalRepo).trim();
     if (insideWorkTree !== 'true') {
       fail('invalid_argument', 'repository.path is not inside a git work tree');
     }
+    const worktreeRoot = execGit(['rev-parse', '--show-toplevel'], canonicalRepo).trim();
+    const canonicalWorktreeRoot = resolveCanonicalPath(worktreeRoot);
+    if (!canonicalRoots.some(root => isPathContained(canonicalWorktreeRoot, root))) {
+      fail('authorization_denied', 'git work tree is outside the configured writable roots');
+    }
+    canonicalRepo = canonicalWorktreeRoot;
   } catch (error) {
     if (error instanceof RepositoryError) throw error;
     fail('invalid_argument', 'repository.path is not a git repository');

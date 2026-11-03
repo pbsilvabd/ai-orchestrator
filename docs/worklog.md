@@ -460,3 +460,11 @@ Template:
   - `git diff --check`: clean, exit 0.
 - Not rerun: OpenCode smoke / MCP capability gate (requires pinned binary outside repo; B06 will diagnose gate stability).
 - Follow-up: Open PR for B03; next ready tasks are B09 (workspace lifecycle), B10 (subprocess primitive), and B06.
+
+## 2026-11-03 — B03 post-review authorization boundary fix
+
+- Re-review found that a submitted subdirectory could resolve Git refs from an enclosing repository outside the configured writable roots.
+- Resolved and canonicalized Git's actual worktree root, required that root to be contained in an authorized root, and used it for subsequent Git inspections.
+- Added a real Git fixture covering an allowed nested directory with an unauthorized parent repository.
+- Validation: focused repository tests 7/7; full suite 142/142; fallback demo 429 then 200; `git diff --check` clean.
+- OpenCode/MCP gates not rerun; they are outside B03's scope.

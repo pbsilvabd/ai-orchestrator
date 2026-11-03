@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import {
@@ -81,6 +81,20 @@ test('validateRepositoryIdentity rejects non-git directory and uncontained roots
   assert.throws(() => validateRepositoryIdentity({
     repositoryPath: gitDir,
     writableRoots: [dir],
+    baseRef: 'main',
+    branch: 'task/feature',
+  }), e => e instanceof RepositoryError && e.code === 'authorization_denied');
+});
+
+test('validateRepositoryIdentity rejects an allowed subdirectory of a Git root outside authorization', t => {
+  const repo = fixture(t);
+  initGitRepo(repo);
+  const allowed = join(repo, 'allowed');
+  mkdirSync(allowed);
+
+  assert.throws(() => validateRepositoryIdentity({
+    repositoryPath: allowed,
+    writableRoots: [allowed],
     baseRef: 'main',
     branch: 'task/feature',
   }), e => e instanceof RepositoryError && e.code === 'authorization_denied');

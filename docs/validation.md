@@ -475,3 +475,13 @@ Two issues surfaced after the initial commit:
 | `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
 
 Evidence: same 141-test run as B03 initial commit; corrections do not change runtime behavior or acceptance matrix — they restore the originally intended validation strength and fix test fixture accuracy. No integration, MCP or executor gate was rerun.
+
+## B03 post-review correction — authorize the actual Git worktree root — 2026-11-03
+
+- Changed `validateRepositoryIdentity` to resolve `git rev-parse --show-toplevel`, canonicalize that path, and enforce writable-root containment on the Git worktree root before inspecting refs.
+- Added a real temporary-repository regression test: allowing only a nested subdirectory now rejects the enclosing Git repository with `authorization_denied`.
+- `node --test test/repository.test.mjs`: 7 passed, 0 failed, exit 0.
+- `node --test`: 142 passed, 0 failed, exit 0.
+- `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
+- `git diff --check`: passed, exit 0.
+- Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5. OpenCode/MCP gates not rerun; outside this task's scope.
