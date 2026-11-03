@@ -52,16 +52,19 @@ function makeService(t, overrides = {}) {
 
 const taskFiles = dir => readdirSync(join(dir, 'tasks')).filter(name => name.endsWith('.json'));
 
-const validRequest = (dir, overrides = {}) => ({
-  idempotencyKey: 'goal-1',
-  clientId: 'opencode-primary',
-  objective: 'Add a regression test',
-  acceptanceCriteria: ['node --test passes'],
-  repository: { path: dir, baseRef: 'main', branch: 'task/example' },
-  authorization: { models: ['mock/a'], tools: ['read', 'edit'], writablePaths: [join(dir, 'src')] },
-  limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
-  ...overrides,
-});
+const validRequest = (dir, overrides = {}) => {
+  const repoPath = overrides.repository?.path ?? dir;
+  return {
+    idempotencyKey: 'goal-1',
+    clientId: 'opencode-primary',
+    objective: 'Add a regression test',
+    acceptanceCriteria: ['node --test passes'],
+    repository: { path: repoPath, baseRef: 'main', branch: 'task/example' },
+    authorization: { models: ['mock/a'], tools: ['read', 'edit'], writablePaths: ['src'] },
+    limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
+    ...overrides,
+  };
+};
 const validSubmit = (service, dir, overrides = {}) => service.submitTask(validRequest(dir, overrides));
 
 const expected = code => error => error instanceof ServiceError && error.code === code;
@@ -300,6 +303,7 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
   assert.throws(() => service.getTaskResult({ taskId, unexpected: true }), expected('invalid_argument'));
   assert.throws(() => service.getTaskResult({ taskId }), expected('result_not_ready'));
 
+  const expectedBaseCommit = store.readTask(taskId).baseCommit;
   startTask(store, taskId);
   store.updateTask(taskId, draft => {
     draft.status = 'succeeded';
@@ -316,7 +320,7 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
   assert.equal(result.schemaVersion, 1);
   assert.equal(result.taskId, taskId);
   assert.equal(result.status, 'succeeded');
-  assert.match(result.baseCommit, /^[0-9a-f]{40,64}$/);
+  assert.equal(result.baseCommit, expectedBaseCommit);
   assert.equal(result.branch, 'task/example');
   assert.equal(result.headCommit, 'abc123def456');
   assert.equal(result.diff, 'diff --git a/test/example.test.mjs');
@@ -499,7 +503,6 @@ test('B03-03: nonexistent repo, missing ref, range a..b or leading-option ref fa
   assert.throws(() => service.submitTask(validRequest(dir, {
     idempotencyKey: 'b03-03-nonexistent',
     repository: { path: join(dir, 'no-such-repo'), baseRef: 'main', branch: 'task/b03-03-a' },
-    authorization: { models: ['mock/a'], tools: ['read'], writablePaths: [join(dir, 'no-such-repo', 'src')] },
   })), expected('invalid_argument'));
 
   // Missing Git ref

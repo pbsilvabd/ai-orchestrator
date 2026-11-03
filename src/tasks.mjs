@@ -396,7 +396,7 @@ function validateTask(task) {
       fail('invalid_argument', `${field} is not a timestamp or null`);
 
   if (task.baseCommit !== undefined && task.baseCommit !== null) {
-    if (typeof task.baseCommit !== 'string' || !/^[0-9a-f]{7,64}$/.test(task.baseCommit)) {
+    if (typeof task.baseCommit !== 'string' || !/^[0-9a-f]{40,64}$/.test(task.baseCommit)) {
       fail('invalid_argument', 'baseCommit must be a full commit SHA or null');
     }
   }
