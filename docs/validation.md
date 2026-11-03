@@ -315,3 +315,17 @@ Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-ga
 (the MCP capability gate remains inconsistent and unresolved), the Windows-only
 toolchain statement, and any live executor or transport use. No paid provider, network
 call or credential was used.
+
+## B01 — Safe schema diagnostics — 2026-11-03
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Full suite with unknown-key disclosure regressions | 107 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker check | Passed | 0 |
+
+Evidence: unit-level checker behavior. Diagnostics no longer contain unknown instance
+property names, while paths for declared schema fields remain informative. Tests cover
+credential-shaped, long and control-character keys at root and nested levels.
+Schemas remain proposed and are not wired to service/tool operations. No OpenCode,
+MCP, SQLite or live executor gate was rerun.

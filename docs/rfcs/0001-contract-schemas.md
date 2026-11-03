@@ -116,9 +116,10 @@ Behaviour rules:
 - Paths are relative and dot/bracket joined (`repository.baseRef`,
   `acceptanceCriteria[2]`, `attempts[0].outcome`). The root path is the empty string.
 - Messages never echo instance strings. Only schema-side values (enum entries,
-  patterns), type names and short property-key previews appear. Instance previews are
-  cut to 32 characters with an ellipsis, objects and arrays are named by type and never
-  serialized, and unknown-key paths are truncated the same way.
+  patterns) and type names appear. Instance previews are cut to 32 UTF-16 code units;
+  objects and arrays are named by type and never serialized. Unknown property names
+  never appear in diagnostic paths: each is represented by the fixed `<unknown>` path
+  segment, while paths for known schema properties remain intact.
 - `assertSchema(schema)` walks the whole schema and throws `TypeError` on an unknown
   keyword, a missing or malformed `type`, or a malformed keyword value. `validate()`
   and `exportEnum()` both run it first: fail-closed, and cheap because schema nodes are

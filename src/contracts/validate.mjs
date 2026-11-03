@@ -86,12 +86,6 @@ function preview(value) {
   return 'object';
 }
 
-// Path segments that come from instance data must be bounded: an unknown key can be
-// long or credential-shaped, so the path keeps at most PREVIEW_LIMIT characters.
-function safeKey(key) {
-  return key.length > PREVIEW_LIMIT ? `${key.slice(0, PREVIEW_LIMIT)}…` : key;
-}
-
 function joinPath(base, key) {
   return base ? `${base}.${key}` : key;
 }
@@ -227,13 +221,16 @@ function walk(schema, value, path, errors) {
     if (schema.additionalProperties === false) {
       for (const key of Object.keys(value)) {
         if (!Object.prototype.hasOwnProperty.call(properties, key)) {
-          errors.push({ path: joinPath(path, safeKey(key)), message: 'unknown property' });
+          // Unknown keys are untrusted input and may contain credentials or control
+          // characters. Never copy them into diagnostics; a fixed segment still marks
+          // where the extra property appeared without exposing its name.
+          errors.push({ path: joinPath(path, '<unknown>'), message: 'unknown property' });
         }
       }
     }
     for (const key of Object.keys(properties)) {
       if (Object.prototype.hasOwnProperty.call(value, key)) {
-        walk(properties[key], value[key], joinPath(path, safeKey(key)), errors);
+        walk(properties[key], value[key], joinPath(path, key), errors);
       }
     }
   }

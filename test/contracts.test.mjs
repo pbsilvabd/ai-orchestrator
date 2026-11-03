@@ -91,6 +91,28 @@ test('validate accepts a value for every supported keyword', () => {
   }
 });
 
+test('unknown property diagnostics never expose attacker-controlled keys', () => {
+  const schema = { type: 'object', properties: {
+    nested: { type: 'object', additionalProperties: false },
+  }, additionalProperties: false };
+  const secretKeys = [
+    'Bearer FAKE_AUDIT_SENTINEL',
+    `credential-${'x'.repeat(500)}`,
+    'control\u0000\u001b\nkey',
+  ];
+  const value = { nested: Object.fromEntries(secretKeys.map(key => [key, true])) };
+  value[secretKeys[0]] = true;
+
+  const result = validate(schema, value);
+  assert.equal(result.ok, false);
+  assert.deepEqual(paths(result), [
+    '<unknown>', 'nested.<unknown>', 'nested.<unknown>', 'nested.<unknown>',
+  ]);
+  const diagnostics = JSON.stringify(result.errors);
+  for (const key of secretKeys) assert.equal(diagnostics.includes(key), false);
+  assert.match(diagnostics, /nested\.<unknown>/);
+});
+
 test('validate reports the flat path of the failing property', () => {
   const result = validate({
     type: 'object',
@@ -130,7 +152,7 @@ test('validate reports nested object paths for missing required keys', () => {
   });
 });
 
-test('validate rejects unknown keys and names them once', () => {
+test('validate rejects unknown keys without naming them', () => {
   const result = validate({
     type: 'object',
     additionalProperties: false,
@@ -139,7 +161,7 @@ test('validate rejects unknown keys and names them once', () => {
 
   assert.deepEqual(result, {
     ok: false,
-    errors: [{ path: 'extra', message: 'unknown property' }],
+    errors: [{ path: '<unknown>', message: 'unknown property' }],
   });
 });
 
@@ -196,9 +218,7 @@ test('validate truncates instance data and never echoes secret-shaped values', (
   assert.equal(result.ok, false);
   const [error] = result.errors;
   assert.equal(error.message, 'unknown property');
-  assert.ok(error.path.length <= 34, `path is bounded: ${error.path}`);
-  assert.ok(error.path.endsWith('…'));
-  assert.ok(!error.path.includes('-key'));
+  assert.equal(error.path, '<unknown>');
 
   const enumResult = validate({ type: 'string', enum: ['ok'] }, `Bearer ${'s'.repeat(200)}`);
   assert.deepEqual(enumResult, {
@@ -253,7 +273,7 @@ test('submit request schema accepts the contract example', () => {
 
 test('submit request schema rejects the documented invalid shapes', () => {
   const cases = [
-    ['unknown field', submitRequest({ authority: 'everything' }), 'authority'],
+    ['unknown field', submitRequest({ authority: 'everything' }), '<unknown>'],
     ['objective too long', submitRequest({ objective: 'x'.repeat(4001) }), 'objective'],
     ['too many criteria', submitRequest({ acceptanceCriteria: Array.from({ length: 21 }, () => 'x') }), 'acceptanceCriteria'],
     ['empty criterion', submitRequest({ acceptanceCriteria: [''] }), 'acceptanceCriteria[0]'],
@@ -308,7 +328,7 @@ test('task record schema accepts a persisted record and rejects drift', () => {
     ['reverted effects', taskRecord({ cancel: { requestedAt: null, executionStopped: null, effectsReverted: true } }), 'cancel.effectsReverted'],
     ['bad payload hash', taskRecord({ payloadHash: 'nope' }), 'payloadHash'],
     ['block reason missing', taskRecord({ block: { requiresReconciliation: true } }), 'block.reason'],
-    ['unknown record field', taskRecord({ replay: true }), 'replay'],
+    ['unknown record field', taskRecord({ replay: true }), '<unknown>'],
     ['non-string branch', taskRecord({ branch: 7 }), 'branch'],
   ];
   for (const [name, value, path] of cases) {

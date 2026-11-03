@@ -259,3 +259,20 @@ Template:
 - Validation: `node --test` → 106 passed, 0 failed; `node examples/fallback-demo.mjs` →
   expected 429 then 200.
 - Follow-up: adoption steps 2-3 in the RFC.
+## B01 — Safe schema diagnostics — 2026-11-03
+
+- Branch: `rfc/0001-contract-schemas` (existing PR #8).
+- Scope: unknown instance property names are replaced with a fixed `<unknown>` path
+  segment, including deeply nested keys. Known schema property paths remain useful.
+- Steps:
+  1. Removed attacker-controlled keys from unknown-property diagnostic paths.
+  2. Added regression coverage for short, credential-shaped, very long and control-
+     character keys at root and nested object levels.
+  3. Updated existing unknown-key expectations and clarified the RFC diagnostics rules.
+- Files: `src/contracts/validate.mjs`, `test/contracts.test.mjs`,
+  `docs/rfcs/0001-contract-schemas.md`, `docs/worklog.md`, `docs/validation.md`.
+- Template adaptation: concise append-only entries retain scope, files, evidence,
+  limitations and commands while avoiding repeated milestone background.
+- Validation: `node --test --test-reporter=tap` -> 107 passed, 0 failed;
+  `node examples/fallback-demo.mjs` -> expected 429 then 200; `git diff --check` passed.
+- Limits: schemas remain unwired to runtime operations; no live integration gates ran.
