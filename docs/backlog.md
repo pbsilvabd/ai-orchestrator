@@ -59,6 +59,13 @@ S = narrow PR; M = several coupled behaviors; L = integration task, may need spl
 
 ## Acceptance contracts
 
+B04a checkpoint (2026-11-02, branch `task/B04-lifecycle-guards`): ordinary transition
+guards, immutable identity/request fields and state metadata checks implemented;
+126 local tests pass. The broader B04 objective is split: dispatch production stays
+in B12, stop proof in B14 and the maintainer-only reconciliation operation in B18.
+B05 process ownership remains required before real executor integration. B01 is a
+small independent continuation task; check its current branch before editing.
+
 ### B01 — Safe schema diagnostics
 Fix R5 in existing #8. Unknown keys never appear in paths/messages/logs; known
 schema paths remain useful. Test short/long credential-shaped keys, control

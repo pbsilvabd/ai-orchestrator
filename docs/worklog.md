@@ -277,3 +277,47 @@ Template:
 - Follow-up: review corrected PR #11. The milestone and next implementation
   action remain unchanged; no handoff update or ADR is required for these
   formatting clarifications.
+
+## 2026-11-02 — M2b: B04a ordinary lifecycle guards
+
+- Branch: `task/B04-lifecycle-guards` (implementation for review).
+- Scope: store hardening, regression tests and normative documentation; no worker
+  execution or manual reconciliation operation.
+- Steps:
+  1. Guarded update and restart writes with a private transition table and
+     immutable identity/request checks, using RFC-0002 as design input.
+  2. Enforced state-dependent block/cancel/timestamp presence. Invalid historical
+     records fail closed without rewriting; terminal artifacts remain writable.
+  3. Updated fixtures to use legal transitions and added a 36-pair transition
+     matrix plus identity, dispatch, corruption and late-result regressions.
+  4. Amended ADR-008 and the contract together; recorded the bounded B04a scope
+     and the next continuation task in roadmap, backlog and handoff.
+- Files: `src/tasks.mjs`, `test/task-lifecycle.test.mjs`,
+  `test/task-service.test.mjs`, `test/task-store.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/008-task-store.md`, `docs/backlog.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` -> 126 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` -> 429 then 200. Real OpenCode/MCP/SQLite
+  gates were not rerun. No paid calls or developer-state access.
+- Follow-up: B05 service ownership; B01 is a small independent continuation.
+  B12 dispatch, B14 stop proof and B18 human reconciliation remain scoped out.
+
+- Template adaptation: compact amendment/checkpoint entries preserve scope, evidence,
+  validation and next actions without repeating unchanged milestone background.
+- Final review also made persisted attempt identity append-only; a regression covers
+  erase-then-cancel and permits active attempts to acquire completion metadata.
+
+## 2026-11-03 — M2b: B04a pre-merge review
+
+- Branch: `task/B04-lifecycle-guards`, PR #13.
+- Reviewed lifecycle edges, immutable request/identity, dispatch preservation,
+  service cancellation compatibility and failure behavior against the contract.
+- Found and closed queued-with-persisted-attempt -> running: it now fails before
+  writing, so restart reconciliation must block the task rather than permit replay.
+- Files: `src/tasks.mjs`, `test/task-lifecycle.test.mjs`, `docs/task-contract.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: 126 tests passed, 0 failed; fallback demo 429 then 200; diff check passed.
+- Limits remain B05 ownership, B12 dispatch production, B14 stop proof and B18
+  maintainer reconciliation. No live integration gate was rerun.
+- Template adaptation: compact review addendum records the defect, fix and evidence
+  without repeating the implementation checkpoint above.
