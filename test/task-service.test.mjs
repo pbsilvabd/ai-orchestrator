@@ -110,6 +110,7 @@ test('startup fails closed on an index conflict without changing active work', t
   index.taskId = UNKNOWN_TASK;
   writeFileSync(indexFile, JSON.stringify(index));
 
+  service.close();
   assert.throws(() => createTaskService({ store, config: service.config, now: 1_200 }), expected('unavailable'));
   assert.equal(store.readTask(taskId).status, 'running');
 });
@@ -166,6 +167,7 @@ test('startup finds duplicate client keys even when both index entries are missi
   writeFileSync(join(dir, 'tasks', `${duplicateId}.json`), JSON.stringify({ ...original, taskId: duplicateId }));
   for (const name of readdirSync(join(dir, 'idempotency'))) rmSync(join(dir, 'idempotency', name));
 
+  service.close();
   assert.throws(() => createTaskService({ store, config: service.config, now: 1_200 }), expected('unavailable'));
   assert.equal(store.readTask(taskId).status, 'queued');
   assert.equal(store.readTask(duplicateId).status, 'queued');

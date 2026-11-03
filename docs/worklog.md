@@ -334,3 +334,20 @@ Template:
 - Validation: `node --test --test-reporter=tap` -> 127 passed, 0 failed; `node examples/fallback-demo.mjs` -> 429 then 200; `git diff --check` passed. OpenCode/MCP/SQLite gates were not rerun.
 - Follow-up: inspect stale lock PID/state after a crash before manual removal; proceed with B03/B06 before executor integration.
 - Template adaptation: compact continuation checkpoint keeps the ownership contract, evidence and next steps without duplicating unchanged milestone history.
+
+## 2026-11-03 — M2b: B05 pre-merge review
+
+- Branch: `task/B05-service-owner`, PR #14.
+- Found and fixed operation access after close: all four operations now reject closed
+  service handles, preventing old owners from writing after another service starts.
+- Made failed lock release retryable, and preserved reconciliation-conflict tests by
+  closing the previous owner before simulating restart.
+- Added real subprocess contention and abrupt-death coverage: rejected startup leaves
+  running record bytes unchanged; stale locks survive death; explicit recovery blocks
+  uncertain work. Added closed-owner/replacement-owner regression coverage.
+- Files: `src/service.mjs`, `test/task-service.test.mjs`, `test/service-owner.test.mjs`,
+  `docs/task-contract.md`, `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: 129 tests passed; fallback demo 429 then 200; diff check passed.
+- No real OpenCode/MCP/SQLite gate was rerun. Maintenance must stop services/workers
+  before direct store mutation. Compact review addendum preserves existing history.

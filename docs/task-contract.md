@@ -241,6 +241,9 @@ Success without test evidence remains an explicit limitation in get_task_result.
   holds ownership until `service.close()`. A second service for that home fails with
   `unavailable`. A lock left by a crash is not removed automatically; inspect the
   recorded PID and state before a maintainer removes it and restarts the service.
+  Closing permanently disables all four operations on that service instance, even
+  after another instance acquires ownership. Direct store maintenance is cooperative:
+  stop all services and workers before modifying state or removing a stale lock.
 - Retention: `blocked` records are never deleted automatically. Other records are kept
   until the maintainer runs cleanup; the default retention is 30 days.
 - There is no exactly-once guarantee. Duplicate work is prevented by the persisted

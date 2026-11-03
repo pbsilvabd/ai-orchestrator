@@ -97,7 +97,7 @@ late success cannot overwrite cancellation. Define a separately authorized human
 reconciliation path. Do not equate an allowed pair with proven stop/no effects.
 Explicitly handle older structurally valid records; do not silently rewrite them.
 
-B05 implementation checkpoint (2026-11-03): `createTaskService` now exclusively holds a per-home lock until `close()`. Second service startup fails unavailable; initialization failures release ownership. Crash-stale locks require manual inspection/removal. 127 local tests pass. The lock guards service instances; direct store handles remain cooperative maintenance/test APIs.
+B05 implementation checkpoint (2026-11-03): `createTaskService` now exclusively holds a per-home lock until `close()`. Second service startup fails unavailable; initialization failures release ownership. Crash-stale locks require manual inspection/removal. 129 local tests pass. The lock guards service instances; direct store handles remain cooperative maintenance/test APIs.
 ### B05 — One owner for one state home
 Acquire service-instance ownership before reconciliation or submit. A second
 process must fail without blocking the first process's running tasks or writing

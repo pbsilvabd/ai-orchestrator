@@ -9,9 +9,8 @@
 // objects, or throws ServiceError with a contract error code. The MCP/API transport
 // adapter serializes the error envelope { error: { code, message } } and sets isError.
 
-import { isAbsolute, sep, resolve } from 'node:path';
+import { isAbsolute, sep, resolve, join } from 'node:path';
 import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
 
 export const SCHEMA_VERSION = 1;
@@ -300,8 +299,15 @@ export function createTaskService(options = {}) {
     return { schemaVersion: SCHEMA_VERSION, cancelRequestedAt: at, status: 'blocked', effect: 'requested' };
   };
 
-  return { store, config, now, submitTask, getTaskStatus, getTaskResult, cancelTask,
-    close: releaseOwner };
+  let closed = false;
+  const guardOpen = operation => (...args) => {
+    if (closed) fail('unavailable', 'task service is closed');
+    return operation(...args);
+  };
+  return { store, config, now,
+    submitTask: guardOpen(submitTask), getTaskStatus: guardOpen(getTaskStatus),
+    getTaskResult: guardOpen(getTaskResult), cancelTask: guardOpen(cancelTask),
+    close: () => { closed = true; releaseOwner(); } };
 }
 
 function acquireServiceOwnership(home) {
@@ -328,11 +334,11 @@ function acquireServiceOwnership(home) {
   let released = false;
   return () => {
     if (released) return;
-    released = true;
     try { unlinkSync(lockPath); }
     catch (error) {
       if (error.code !== 'ENOENT') throw new ServiceError('unavailable', 'cannot release task store ownership', error.code);
     }
+    released = true;
   };
 }
 
