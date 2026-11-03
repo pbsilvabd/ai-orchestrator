@@ -297,3 +297,30 @@ Claim: This entry supports that the templates change leaves the local suite and 
 fallback demo unchanged, based on `node --test` and `node examples/fallback-demo.mjs`. It
 does not support any OpenCode integration, MCP transport or task-execution claim, which
 requires the pinned binary outside the repository.
+
+## Independent PR review and backlog — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1. Main baseline: `a4cae9c`.
+Review branch: `review/2026-11-02-pr-backlog` (local, not published).
+
+| Command / experiment | Snapshot | Result |
+| --- | --- | --- |
+| `node --test` | main | 83 passed, 0 failed |
+| `node examples/fallback-demo.mjs` | main | 429 then 200, exit 0 |
+| `node --test --test-reporter=tap` | PR #8 `f73c495` exported with git archive | 106 passed, 0 failed, exit 0 |
+| `node examples/fallback-demo.mjs` | PR #8 | 429 then 200, exit 0 |
+| `node --test --test-reporter=tap` | acceptance `2055cf5`, isolated AI_ORCHESTRATOR_HOME | 73 passed, 2 failed, exit 1 |
+| `node --input-type=module` boundary fixture | main; temporary store | nonexistent repo/ref and invalid branch accepted; queued-to-succeeded accepted; blocked/null causes TypeError |
+| `node --input-type=module -e` unknown-key fixture | PR #8 | returned fake credential-shaped key in errors[0].path |
+
+The initial boundary probe used the wrong snake_case method and failed; the
+reported boundary results are from the corrected camelCase probe. The probe's
+state was temporary and removed in finally. The acceptance snapshot failed at
+client import and its work-directory assertion; it did not run real workers.
+Exact findings and reproduction snippets are in review-2026-11-02.md.
+
+Evidence: local tests (including their loopback HTTP fixtures), static review and
+isolated reproductions only. No real OpenCode smoke/MCP gate, SQLite capability
+gate, paid provider or use-on-project experiment was run. Documentation-only
+PR #6/#9/#11 suites were not separately rerun. This entry does not claim M2b/M3
+completion or prove the author's previously reported environment/results.

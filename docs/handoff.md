@@ -11,6 +11,12 @@ regression reproductions passed. There is no transport adapter or self-developme
 
 ## Next action: resolve MCP gate instability before executor integration
 
+Review checkpoint (2026-11-02): see [PR review](review-2026-11-02.md) and
+[agent backlog](backlog.md). The review baseline is main `a4cae9c`; its 83 local
+tests pass. The old executor/client/acceptance branches are incomplete and must
+not be merged as completed steps. Pick an unblocked backlog task from current
+main. No milestone, MCP gate result or maintainer decision changed in this review.
+
 1. The MCP capability gate had one pass and one failure during the probe on
    2026-11-02. Discovery/cataloguing/call were observed in a passing run, but the
    inconsistent outcome is unresolved. Do not rely on it as a stable CI gate. Details
