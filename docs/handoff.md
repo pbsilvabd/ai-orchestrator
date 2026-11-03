@@ -9,6 +9,11 @@ and the gate is not considered consistently validated. M2b step 2 (durable task 
 and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
 regression reproductions passed. There is no transport adapter or self-development use yet.
 
+## Next action: review B05 service ownership and proceed with B03/B06
+
+B05 checkpoint (2026-11-03), branch `task/B05-service-owner`: service ownership uses an exclusive lock file created before reconciliation. A second owner fails closed; call `service.close()` on graceful shutdown. Initialization failures release the lock. Crash leaves a stale lock for maintainer inspection; no automatic deletion. 127 tests and fallback demo pass.
+
+Review the B05 PR, then proceed with B03 repository identity or B06 MCP gate diagnosis. Executor integration still depends on the MCP gate.
 ## Next action: review lifecycle guards and establish service ownership
 
 B04a implementation checkpoint (2026-11-02), branch `task/B04-lifecycle-guards`:

@@ -321,3 +321,16 @@ Template:
   maintainer reconciliation. No live integration gate was rerun.
 - Template adaptation: compact review addendum records the defect, fix and evidence
   without repeating the implementation checkpoint above.
+
+## 2026-11-03 — M2b: B05 service ownership
+
+- Branch: `task/B05-service-owner` (implementation for review).
+- Scope: exclusive service ownership per state home through a lock file; no distributed locking or automatic crash recovery.
+- Steps:
+  1. Acquired `locks/service-owner.lock` before startup reconciliation; exposed idempotent `close()` and release ownership after failed initialization.
+  2. Added regression coverage for competing owners, close/reopen and startup failure; updated multi-client fixtures to respect one service owner.
+  3. Amended the normative contract and ADR-008; updated backlog, roadmap and handoff.
+- Files: `src/service.mjs`, `test/task-service.test.mjs`, `docs/task-contract.md`, `docs/adr/008-task-store.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` -> 127 passed, 0 failed; `node examples/fallback-demo.mjs` -> 429 then 200; `git diff --check` passed. OpenCode/MCP/SQLite gates were not rerun.
+- Follow-up: inspect stale lock PID/state after a crash before manual removal; proceed with B03/B06 before executor integration.
+- Template adaptation: compact continuation checkpoint keeps the ownership contract, evidence and next steps without duplicating unchanged milestone history.
