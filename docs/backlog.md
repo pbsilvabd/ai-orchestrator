@@ -53,7 +53,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B03 — Repository identity before task acceptance](tasks/B03.md) | P1 | Merged #16 | B04a/B05 merged |
 | [B04 — Ordinary lifecycle and immutable identity](tasks/B04.md) | P1 | Merged / history | B04a merged #13 |
 | [B05 — Single service owner per state home](tasks/B05.md) | P1 | Merged / history | Merged #14 |
-| [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | In progress | Pinned host for host claim |
+| [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | PR open #20 | Pinned host for host claim |
 | [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Merged #19 | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | PR open #18 | B03 |

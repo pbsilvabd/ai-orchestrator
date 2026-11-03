@@ -64,7 +64,7 @@ Execution tracking: [backlog](backlog.md) now indexes detailed per-task contract
 Every executable ID delivers one PR after acceptance testing, implementation review,
 completed-diff review and correction/revalidation under [task-execution.md](task-execution.md).
 B04a/#13 and B05/#14 are merged; B01 is corrected on open #8. B03/#16 and B07/#19
-are merged. B10 and B09 are open as #17 and #18. B06 is in progress on
+are merged. B10 and B09 are open as #17 and #18. B06 is open as PR #20 on
 `task/B06-mcp-capability-gate`; eight real pinned-host gate runs passed after bounded
 readiness and cleanup handling. B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
