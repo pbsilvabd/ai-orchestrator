@@ -485,3 +485,23 @@ Evidence: same 141-test run as B03 initial commit; corrections do not change run
 - `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
 - `git diff --check`: passed, exit 0.
 - Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5. OpenCode/MCP gates not rerun; outside this task's scope.
+
+## B07 — Credential-free Windows and Linux CI — 2026-11-03
+
+Branch: `task/B07-cross-platform-ci`. Base: `origin/main` at `c07b78e`.
+
+| Card row | Test or experiment | Command / evidence location | Result / exit code |
+| --- | --- | --- | --- |
+| B07-01 | Normal PR matrix: test suite and demo on Windows and Linux | GitHub Actions `CI` workflow on the B07 pull request; local Windows baseline below | NOT_RUN / pending PR run |
+| B07-02 | Known nonzero command through a formatter pipeline | PowerShell local capture plus the workflow's expected-failure fixture steps on Windows and Bash/Linux | PARTIAL: local Windows observed exit 7; PR runner outcomes pending |
+| B07-03 | Workflow security inspection | `.github/workflows/ci.yml` | PASS: `contents: read`; PR inputs are not interpolated into shell; no secrets, publishing or privileged events |
+| B07-04 | Runner unavailable | Check actual B07 workflow run; draft if unavailable | NOT_RUN until workflow runner result is observed; do not claim matrix green |
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full local suite, Windows x64 / Node v24.22.1 | 142 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| PowerShell exit-7 pipeline fixture | Ensure formatter does not mask the native command failure | Captured `PIPE_NATIVE_EXIT=7` | 0 (assertion passed) |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
+
+Review: both implementation and completed-diff passes inspected workflow trigger scope, permissions, shell behavior, acceptance rows and docs. The workflow is not yet externally validated; Linux and PR-triggered Windows evidence are pending GitHub Actions.
