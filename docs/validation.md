@@ -350,3 +350,27 @@ integration changes). No M3 delegation was performed.
 
 Claim: this entry supports the documentation corrections and local regression
 results. It does not support M2b completion or acceptance of any proposed ADR.
+
+## M2b: B04a ordinary lifecycle guards — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1 (existing local toolchain).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Full suite including the lifecycle matrix and regressions | 126 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback policy behavior | 429 then 200 | 0 |
+
+Result: invalid ordinary edges, mutable request authority, forged unstarted
+cancellation, malformed block metadata and late terminal lifecycle writes are
+rejected without replacing committed bytes. Startup reconciliation blocks
+persisted queued dispatches; repeated reconciliation does not rewrite them.
+Historical invalid state fails closed on read and service startup without repair.
+Existing tests now construct legal transitions instead of bypassing lifecycle.
+
+Evidence level: Unit — local store/service behavior and existing loopback fixtures.
+No worker execution, process ownership or transport compatibility is established.
+Not rerun: real OpenCode smoke, MCP capability gate, SQLite gate and M3 delegation.
+Claim: this supports the bounded B04a store hardening, not completion of M2b/B04
+as a whole. Clock ordering, dispatch production, worker-stop proof and human
+reconciliation tooling remain outside this change.

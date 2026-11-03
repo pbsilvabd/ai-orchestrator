@@ -6,6 +6,12 @@ import { join } from 'node:path';
 import { openTaskStore, TaskStoreError } from '../src/tasks.mjs';
 import { createTaskService, ServiceError } from '../src/service.mjs';
 
+function startTask(store, taskId) {
+  if (store.readTask(taskId).status === 'queued') {
+    store.updateTask(taskId, draft => { draft.status = 'running'; draft.startedAt = draft.createdAt; });
+  }
+}
+
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const UNKNOWN_TASK = '00000000-0000-4000-8000-000000000000';
 
@@ -50,8 +56,10 @@ const expected = code => error => error instanceof ServiceError && error.code ==
 test('result preserves prior truncation and requires a recorded test command', t => {
   const { service, store, dir } = makeService(t);
   const { taskId } = validSubmit(service, dir);
+  startTask(store, taskId);
   store.updateTask(taskId, draft => {
     draft.status = 'succeeded';
+    draft.finishedAt = 1_500;
     draft.testRuns = [{ exitCode: 0, outputTail: 'partial', outputTruncated: true }];
   });
   const result = service.getTaskResult({ taskId });
@@ -217,6 +225,7 @@ test('cancel_task cancels queued work and blocks uncertain running work', t => {
   assert.deepEqual(blockedTask.block, { reason: 'cancelled-uncertain', requiresReconciliation: true });
 
   const terminal = validSubmit(service, dir, { idempotencyKey: 'goal-terminal' });
+  startTask(store, terminal.taskId);
   store.updateTask(terminal.taskId, draft => { draft.status = 'succeeded'; draft.finishedAt = 1_200; });
   const already = service.cancelTask({ taskId: terminal.taskId });
   assert.equal(already.effect, 'already_terminal');
@@ -252,6 +261,7 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
   assert.throws(() => service.getTaskResult({ taskId, unexpected: true }), expected('invalid_argument'));
   assert.throws(() => service.getTaskResult({ taskId }), expected('result_not_ready'));
 
+  startTask(store, taskId);
   store.updateTask(taskId, draft => {
     draft.status = 'succeeded';
     draft.finishedAt = 1_500;
@@ -291,8 +301,10 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
   const unverified = service.getTaskResult({ taskId });
   assert.deepEqual(unverified.limitations, ['success without a recorded passing test command and exit code']);
 
-  store.updateTask(taskId, draft => { draft.status = 'failed'; draft.diff = null; });
-  const failed = service.getTaskResult({ taskId });
+  const failedId = validSubmit(service, dir, { idempotencyKey: 'failed-artifacts' }).taskId;
+  startTask(store, failedId);
+  store.updateTask(failedId, draft => { draft.status = 'failed'; draft.finishedAt = 1_500; draft.diff = null; });
+  const failed = service.getTaskResult({ taskId: failedId });
   assert.equal(failed.status, 'failed');
   assert.deepEqual(failed.limitations, ['no artifact record for a failed task']);
 
@@ -302,6 +314,7 @@ test('get_task_result returns terminal artifacts, truncation flags and limitatio
 test('diff limits use UTF-8 bytes and honor the task output budget', t => {
   const { dir, store, service } = makeService(t);
   const { taskId } = validSubmit(service, dir, { limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 16 } });
+  startTask(store, taskId);
   store.updateTask(taskId, draft => { draft.status = 'failed'; draft.finishedAt = 1_100; draft.diff = 'é'.repeat(100); });
   const result = service.getTaskResult({ taskId });
   assert.ok(Buffer.byteLength(result.diff, 'utf8') <= 16);
@@ -319,6 +332,7 @@ test('get_task_result enforces ownership', t => {
 test('result enforces the log cap across multiple test runs', t => {
   const { dir, store, service } = makeService(t);
   const { taskId } = validSubmit(service, dir, { limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 } });
+  startTask(store, taskId);
   store.updateTask(taskId, draft => {
     draft.status = 'failed';
     draft.finishedAt = 1_100;
@@ -333,6 +347,7 @@ test('result enforces the log cap across multiple test runs', t => {
 test('result redacts credential-shaped text and reports the bounded policy', t => {
   const { dir, store, service } = makeService(t);
   const { taskId } = validSubmit(service, dir);
+  startTask(store, taskId);
   store.updateTask(taskId, draft => {
     draft.status = 'failed';
     draft.finishedAt = 1_100;

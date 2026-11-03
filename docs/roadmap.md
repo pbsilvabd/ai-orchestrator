@@ -60,6 +60,11 @@ See [Definition of Done](definition-of-done.md).
 
 ## M2b plan (bounded, in order)
 
+B04a hardening checkpoint (2026-11-02): ordinary store transitions, immutable task
+identity/request fields and state-dependent metadata are guarded, with 126 local
+tests passing. Process ownership, executor dispatch, stop proof and maintainer
+reconciliation remain pending. This checkpoint does not advance an M2b exit gate.
+
 The normative contract is [task-contract.md](task-contract.md); these steps implement
 it and nothing beyond it.
 

@@ -17,6 +17,13 @@ import { join, resolve } from 'node:path';
 const SCHEMA_VERSION = 1;
 const STATUSES = new Set(['queued', 'running', 'succeeded', 'failed', 'blocked', 'cancelled']);
 const TERMINAL = new Set(['succeeded', 'failed', 'cancelled']);
+// Ordinary updates cannot reconcile blocked work or prove a running worker stopped.
+// Those require separately designed maintainer/executor operations.
+const TRANSITIONS = {
+  queued: ['running', 'cancelled', 'blocked'],
+  running: ['succeeded', 'failed', 'blocked'],
+  succeeded: [], failed: [], cancelled: [], blocked: [],
+};
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
 
@@ -234,11 +241,13 @@ export function openTaskStore(options = {}) {
 
   const updateTask = (taskId, mutate) => {
     if (typeof mutate !== 'function') fail('invalid_argument', 'mutate must be a function');
-    const draft = structuredClone(readTask(taskId));
+    const previous = readTask(taskId);
+    const draft = structuredClone(previous);
     const result = mutate(draft);
     const next = result === undefined ? draft : result;
     validateTask(next);
     if (next.taskId !== taskId) fail('invalid_argument', 'a task record cannot change identity');
+    validateUpdate(previous, next);
     writeTask(next);
     return structuredClone(next);
   };
@@ -284,6 +293,7 @@ export function openTaskStore(options = {}) {
         next.block = { reason: 'service-restart', requiresReconciliation: true };
         next.progress.push({ at: now, event: 'blocked', detail: 'service-restart' });
         validateTask(next);
+        validateUpdate(task, next);
         writeTask(next);
         blocked.push(task.taskId);
       }
@@ -396,6 +406,21 @@ function validateTask(task) {
       fail('invalid_argument', 'a blocked task always requires reconciliation');
   }
 
+  if ((task.status === 'blocked') !== (task.block !== null))
+    fail('invalid_argument', 'block metadata must match task status');
+  if (['queued', 'running'].includes(task.status) && task.finishedAt !== null)
+    fail('invalid_argument', 'active task cannot have a finish timestamp');
+  if (task.status === 'queued' && task.startedAt !== null)
+    fail('invalid_argument', 'queued task cannot have a start timestamp');
+  if (['succeeded', 'failed', 'blocked', 'cancelled'].includes(task.status) && task.finishedAt === null)
+    fail('invalid_argument', 'terminal task requires a finish timestamp');
+  if (['running', 'succeeded', 'failed'].includes(task.status) && task.startedAt === null)
+    fail('invalid_argument', 'executed task requires a start timestamp');
+  if (task.status === 'blocked' && cancel.executionStopped !== 'unknown')
+    fail('invalid_argument', 'blocked task must preserve uncertain execution');
+  if (task.status === 'cancelled' && (cancel.requestedAt === null || cancel.executionStopped !== true))
+    fail('invalid_argument', 'cancelled task requires a stop confirmation and request');
+
   if (!Array.isArray(task.progress)) fail('invalid_argument', 'progress must be an array');
   for (const entry of task.progress) {
     if (!entry || typeof entry !== 'object' || Array.isArray(entry))
@@ -405,6 +430,36 @@ function validateTask(task) {
       fail('invalid_argument', 'progress event is required');
     if (entry.detail !== null && entry.detail !== undefined && typeof entry.detail !== 'string')
       fail('invalid_argument', 'progress detail must be a string or null');
+  }
+}
+
+function validateUpdate(previous, next) {
+  for (const field of ['schemaVersion', 'taskId', 'clientId', 'idempotencyKey',
+    'payloadHash', 'createdAt', 'acceptedAt']) {
+    if (next[field] !== previous[field])
+      fail('invalid_argument', 'task identity and acceptance fields are immutable');
+  }
+  if (stringify(next.request) !== stringify(previous.request))
+    fail('invalid_argument', 'accepted task request is immutable');
+  if (previous.startedAt !== null && next.startedAt !== previous.startedAt)
+    fail('invalid_argument', 'task start timestamp is immutable once set');
+  for (const [index, attempt] of previous.attempts.entries()) {
+    if (!next.attempts[index] || ['attemptId', 'model', 'startedAt'].some(
+      field => next.attempts[index][field] !== attempt[field]))
+      fail('internal', 'persisted dispatch evidence cannot be removed or replaced');
+  }
+  if (previous.status !== next.status && !TRANSITIONS[previous.status].includes(next.status))
+    fail('internal', 'illegal task status transition');
+  if (previous.status === 'queued' && next.status === 'cancelled' &&
+    (previous.attempts.length || next.attempts.length || next.startedAt !== null))
+    fail('internal', 'dispatched task cannot be cancelled as unstarted');
+  if (previous.status === 'queued' && next.status === 'blocked' && !previous.attempts.length)
+    fail('internal', 'queued task without a dispatch cannot be blocked');
+  if (TERMINAL.has(previous.status) || previous.status === 'blocked') {
+    for (const field of ['startedAt', 'finishedAt', 'cancel', 'block', 'attempts']) {
+      if (stringify(previous[field]) !== stringify(next[field]))
+        fail('internal', 'terminal task lifecycle metadata is immutable');
+    }
   }
 }
 

@@ -61,6 +61,22 @@ so it needs a record store, not a session lock.
 - Store tests use injected timestamps and temporary directories; they do not validate
   the transport, the executor or the operation semantics.
 
+## Amendment — 2026-11-02: B04a lifecycle guards
+
+The store now validates legal ordinary transitions and immutable identity/request
+fields before updating records; startup reconciliation uses the same guard.
+State-dependent block/cancel/timestamp checks also apply on reads. Legacy invalid
+v1 records fail closed as unavailable without automatic repair. Valid v1 records
+retain their format. See the contract's Store enforcement section for exact scope.
+
+This implements the immediate safety concern described in RFC-0002 (#9), using a
+small private table without depending on RFC-0001's schema checker. It does not
+adopt those RFCs wholesale. Terminal artifacts remain writable; terminal lifecycle
+metadata does not. Ordinary callbacks cannot prove worker stop or authorize human
+reconciliation, so those future operations are intentionally not exposed here.
+Process ownership (B05), dispatch creation (B12), stop proof (B14) and maintenance
+tooling (B18) remain separate work. No SQLite dependency or schema migration is added.
+
 ## Revisit triggers
 
 Revisit when: the service surface (step 3) needs cross-process exclusion; M2b carries

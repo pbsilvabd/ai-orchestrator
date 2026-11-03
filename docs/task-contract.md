@@ -179,6 +179,7 @@ Errors are objects `{ error: { code, message } }` with `message` free of private
 ```
 queued --start--> running --success--> succeeded
 queued --cancel--> cancelled
+queued --restart with a persisted attempt--> blocked
 running --safe failure--> failed
 running --uncertain failure--> blocked
 running --cancel (proven stop, no effects)--> cancelled
@@ -190,6 +191,38 @@ blocked --maintainer reconciliation--> failed | cancelled
 There are no automatic transitions out of `blocked`, and no automatic retry of a task.
 Reconciliation records the maintainer's decision and evidence; it never re-executes
 the same task. Repeat work requires a new `submit_task` with a new `idempotencyKey`.
+
+### Store enforcement (B04a, 2026-11-02)
+
+The diagram describes the target lifecycle. Ordinary `updateTask` currently permits
+`queued → running | cancelled`, dispatched `queued → blocked`, and
+`running → succeeded | failed | blocked`. The guard also runs on startup reconciliation.
+`running → cancelled` requires a future executor stop-proof operation (B14);
+`blocked → failed | cancelled` requires a future maintainer-only operation (B18).
+Neither is permitted through the generic update callback. There is no boolean
+override that grants reconciliation authority.
+
+- Task ID, client, idempotency key, payload hash, accepted request, createdAt and
+  acceptedAt cannot change. startedAt cannot change once assigned.
+- Persisted attempts retain their order, attemptId, model and startedAt; they cannot
+  be erased or replaced to hide a dispatch. Active attempts may acquire result metadata.
+- Queued work has no start timestamp; queued/running work has no finish timestamp.
+  Running/succeeded/failed work requires startedAt; every terminal state, including
+  blocked, requires finishedAt. This check enforces presence/types, not clock ordering.
+- Block metadata is required exactly for blocked state, with executionStopped unknown.
+  Cancelled state requires a cancellation request and executionStopped true. A queued
+  cancellation cannot carry a previous or newly inserted dispatch.
+- Ordinary updates cannot change a terminal status. Terminal lifecycle metadata
+  (timestamps, cancellation, block and attempts) is immutable; partial artifacts can
+  still be added without reopening work.
+- Malformed records/identity changes are invalid_argument; forbidden transitions
+  are internal service errors. Rejected updates write nothing.
+- Existing incoherent v1 records fail closed on read/startup with unavailable;
+  they are not silently migrated or rewritten. A maintainer must inspect the data.
+
+These guards are not process exclusion, an authorization sandbox or proof of actual
+execution. Persist-before-spawn attempt production is B12; stop proof is B14.
+Success without test evidence remains an explicit limitation in get_task_result.
 
 ## Persistence and restart
 
