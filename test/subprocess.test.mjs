@@ -16,7 +16,7 @@ test('B10-01: ENOENT, pre-abort, immediate exit and nonzero exit are truthful', 
   const missing = await runSubprocess({ ...options, executable: join(options.cwd, 'missing.exe') });
   assert.equal(missing.termination.reason, 'spawn-error');
   assert.equal(missing.spawnErrorCode, 'ENOENT');
-  assert.equal(missing.termination.rootExitObserved, true);
+  assert.equal(missing.termination.rootExitObserved, false);
 
   const controller = new AbortController();
   controller.abort();

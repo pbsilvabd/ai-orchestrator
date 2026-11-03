@@ -22,7 +22,6 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
     let exitCode = null;
     let exitSignal = null;
     let terminationReason = 'exited';
-    let forcedStop = false;
     let timeout;
     let graceTimer;
     let killed = false;
@@ -73,7 +72,6 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
       if (settled || killed) return;
       killed = true;
       terminationReason = reason;
-      forcedStop = true;
       try {
         child.kill();
       } catch { /* report only observed exit evidence */ }
@@ -108,7 +106,7 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
       exitCode = code;
       exitSignal = childSignal;
     });
-    child.once('close', () => finish(true));
+    child.once('close', () => finish(spawnErrorCode === null));
     signal?.addEventListener('abort', onAbort, { once: true });
     timeout = setTimeout(() => terminate('deadline'), timeoutMs);
     if (signal?.aborted) onAbort();
