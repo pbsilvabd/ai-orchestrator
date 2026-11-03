@@ -18,11 +18,19 @@ import { resolve, join } from 'node:path';
 const binary = resolve(process.argv[2] ?? '');
 assert.ok(process.argv[2], 'Pass an explicit OpenCode 2.2.5 binary path');
 const fixture = resolve('integration/mcp-fixture.mjs');
+const password = 'gate-local-password';
+const fixtureKey = 'local-fixture-only';
+const redact = value => String(value).replaceAll(password, '[redacted]').replaceAll(fixtureKey, '[redacted]');
+const commandTimeout = Number(process.env.MCP_GATE_COMMAND_TIMEOUT_MS ?? 120_000);
+const readinessTimeout = Number(process.env.MCP_GATE_READINESS_TIMEOUT_MS ?? 30_000);
+assert.ok(Number.isInteger(commandTimeout) && commandTimeout >= 1 && commandTimeout <= 120_000,
+  'MCP_GATE_COMMAND_TIMEOUT_MS must be an integer from 1 to 120000');
+assert.ok(Number.isInteger(readinessTimeout) && readinessTimeout >= 1 && readinessTimeout <= 30_000,
+  'MCP_GATE_READINESS_TIMEOUT_MS must be an integer from 1 to 30000');
 const root = mkdtempSync(join(tmpdir(), 'orchestrator-mcp-gate-'));
 const work = join(root, 'work'); mkdirSync(work);
 const mcpLog = join(root, 'mcp.jsonl');
 const mcpCalls = join(root, 'calls.jsonl');
-const password = 'gate-local-password';
 
 const env = {};
 for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC'])
@@ -35,7 +43,7 @@ Object.assign(env, {
   OPENCODE_CONFIG_DIR: join(root, 'config'), OPENCODE_PASSWORD: password,
   OPENCODE_DISABLE_MODELS_FETCH: '1', OPENCODE_DISABLE_CLAUDE_CODE: '1',
   OPENCODE_DISABLE_PROJECT_CONFIG: '1', OPENCODE_DISABLE_FILEWATCHER: '1',
-  FIXTURE_API_KEY: 'local-fixture-only',
+  FIXTURE_API_KEY: fixtureKey,
   MCP_FIXTURE_LOG: mcpLog, MCP_FIXTURE_CALLS: mcpCalls,
 });
 
@@ -58,30 +66,63 @@ function start(file, args, cwd) {
   return { child, output: () => ({ stdout, stderr }) };
 }
 
-function stop(child) {
-  return new Promise(resolveStop => {
-    if (child.exitCode !== null || child.signalCode !== null) return resolveStop();
-    child.once('close', () => resolveStop());
-    if (process.platform === 'win32')
-      spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true });
-    else child.kill('SIGKILL');
+function waitForClose(child, timeout = 5_000) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve(true);
+  return new Promise(resolveClose => {
+    const timer = setTimeout(() => finish(false), timeout);
+    const onClose = () => finish(true);
+    function finish(closed) {
+      clearTimeout(timer);
+      child.off('close', onClose);
+      resolveClose(closed);
+    }
+    child.once('close', onClose);
   });
+}
+
+async function stop(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === 'win32') {
+    const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true });
+    const killed = await new Promise((resolveKill, rejectKill) => {
+      const timer = setTimeout(() => rejectKill(new Error('taskkill timed out')), 5_000);
+      killer.once('error', error => { clearTimeout(timer); rejectKill(error); });
+      killer.once('close', code => { clearTimeout(timer); resolveKill(code === 0); });
+    });
+    if (!killed) throw new Error('taskkill failed to stop the host process tree');
+  } else if (!child.kill('SIGKILL')) {
+    throw new Error('Could not signal the host process');
+  }
+  if (!await waitForClose(child)) throw new Error('Host process did not close within 5 seconds');
 }
 
 function run(file, args, cwd, timeout = 120_000) {
   const { child, output } = start(file, args, cwd);
   child.stdin.end(); // Non-interactive runs read stdin to EOF before submitting.
   return new Promise((resolveResult, reject) => {
+    let timedOut = false;
+    let cleanupFailure;
     const timer = setTimeout(() => {
-      stop(child).then(() => reject(new Error(`Timed out: ${args.join(' ')}\n${output().stderr}`)));
+      timedOut = true;
+      stop(child).catch(cleanup => {
+        cleanupFailure = cleanup;
+        reject(new Error(`Timed out: ${args.join(' ')}; cleanup failed: ${redact(cleanup.message)}\n${redact(output().stderr)}`));
+      });
     }, timeout);
     child.on('error', error => { clearTimeout(timer); reject(error); });
-    child.on('close', code => { clearTimeout(timer); resolveResult({ code, ...output() }); });
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (timedOut) {
+        const detail = cleanupFailure ? `; cleanup failed: ${redact(cleanupFailure.message)}` : '';
+        reject(new Error(`Timed out: ${args.join(' ')}${detail}\n${redact(output().stderr)}`));
+      } else resolveResult({ code, ...output() });
+    });
   });
 }
 
 const requests = [];
 let called = false;
+let gateFailure;
 const server = createHttpServer(async (req, res) => {
   let body = ''; for await (const chunk of req) body += chunk;
   try {
@@ -130,7 +171,7 @@ try {
   env.OPENCODE_MODELS_PATH = join(root, 'models.json');
   writeFileSync(env.OPENCODE_MODELS_PATH, '{}');
 
-  const version = await run(binary, ['--version'], work, 60_000);
+  const version = await run(binary, ['--version'], work, Math.min(commandTimeout, 60_000));
   assert.equal(version.code, 0, version.stderr);
   assert.equal(version.stdout.trim(), 'opencode v2.2.5');
 
@@ -138,27 +179,29 @@ try {
   const endpoint = `http://127.0.0.1:${port}`;
   host = start(binary, ['serve', '--hostname', '127.0.0.1', '--port', String(port),
     '--print-logs', '--log-level', 'info'], work);
-  for (let attempt = 0; ; attempt++) {
+  const listenDeadline = Date.now() + readinessTimeout;
+  for (;;) {
     if (host.output().stdout.includes(`server listening on ${endpoint}`)) break;
     if (host.child.exitCode !== null) throw new Error(`Host exited early: ${host.output().stderr}`);
-    if (attempt > 300) throw new Error(`Host did not listen on ${endpoint}: ${host.output().stderr}`);
+    if (Date.now() >= listenDeadline) throw new Error(`Host did not listen on ${endpoint}: ${host.output().stderr}`);
     await new Promise(wait => setTimeout(wait, 100));
   }
 
   const warm = await run(binary, ['run', '--server', endpoint, '--format', 'json', '--model', 'fixture/mock',
-    'Say hello briefly.'], work);
+    'Say hello briefly.'], work, commandTimeout);
   assert.equal(warm.code, 0, warm.stderr + warm.stdout);
   assert.ok(warm.stdout.includes('warm-up-ok'), warm.stderr + warm.stdout);
 
-  for (let attempt = 0; ; attempt++) {
+  const connectDeadline = Date.now() + readinessTimeout;
+  for (;;) {
     const logs = `${host.output().stdout}\n${host.output().stderr}`;
     if (logs.includes('message="mcp connected"') && logs.includes('server=orchestrator tools=1')) break;
-    if (attempt > 300) throw new Error(`MCP server did not connect: ${host.output().stderr}`);
+    if (Date.now() >= connectDeadline) throw new Error(`MCP server did not connect: ${host.output().stderr}`);
     await new Promise(wait => setTimeout(wait, 100));
   }
 
   const probe = await run(binary, ['run', '--server', endpoint, '--format', 'json', '--model', 'fixture/mock',
-    'Call the probe tool once with message GATE_FIXTURE.'], work);
+    'Call the probe tool once with message GATE_FIXTURE.'], work, commandTimeout);
   assert.equal(probe.code, 0, probe.stderr + probe.stdout);
   assert.ok(probe.stdout.includes('gate-ok'), probe.stderr + probe.stdout);
 
@@ -195,10 +238,31 @@ try {
     discovered: true, catalogued: true, called: true, resultInContext: true, legacyHandshake: false,
     providerRequests: requests.length,
   }));
+} catch (failure) {
+  gateFailure = failure;
 } finally {
-  if (host) await stop(host.child);
-  const closed = new Promise(resolveClose => server.close(resolveClose)); server.closeAllConnections(); await closed;
+  const cleanupFailures = [];
+  if (host) try { await stop(host.child); } catch (failure) { cleanupFailures.push(failure); }
+  try {
+    const closed = new Promise((resolveClose, rejectClose) => {
+      server.close(error => error ? rejectClose(error) : resolveClose());
+      server.closeAllConnections();
+    });
+    await closed;
+  } catch (failure) { cleanupFailures.push(failure); }
   if (process.env.MCP_GATE_DEBUG) console.error(`Temporary fixture retained for diagnosis: ${root}`);
-  else try { rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
-  catch { console.error(`Temporary fixture retained for diagnosis: ${root}`); }
+  else if (process.env.MCP_GATE_FORCE_CLEANUP_ERROR === '1') {
+    cleanupFailures.push(new Error('Forced cleanup failure fixture; temporary root retained'));
+  } else try { rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
+  catch (failure) { cleanupFailures.push(failure); }
+
+  if (cleanupFailures.length) {
+    console.error(`Temporary fixture retained for diagnosis: ${root}`);
+    const cleanupMessage = cleanupFailures.map(failure => `${failure.name}: ${failure.message}`).join('; ');
+    if (gateFailure) {
+      const original = redact(`${gateFailure.name}: ${gateFailure.message}`);
+      gateFailure = new Error(`Gate failure preserved: ${original}; cleanup failure: ${redact(cleanupMessage)}`);
+    } else gateFailure = new Error(`Gate cleanup failed: ${redact(cleanupMessage)}`);
+  }
 }
+if (gateFailure) throw gateFailure;
