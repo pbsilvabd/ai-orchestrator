@@ -1,40 +1,42 @@
 # Continuation point — 2026-11-04
 
-Remote main is `488e57ad817dbdf19496a2eb07c09be66c18c2aa`, including FIX23/#24,
-B11/#23 and FIX17-18/#22. Main CI run 41759929003 passed. No open PRs were found.
+Verified remote main is `68d3ea51c0b65ae3aa97d79ed0833d42fbfabe51`, including
+B12/#25, FIX23/#24, B11/#23 and FIX17-18/#22. Windows/Ubuntu PR CI run
+41770113686 and post-merge main run 41770348768 passed. No open PR was found
+when this status refresh began; fetch and inspect PRs again before choosing work.
 The mirrored ChatGPT project snapshot is older and is not a Git checkout. This
 branch uses the actual repository checkout; fetch again before editing.
 M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
 `2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Current task: B12 — publication and merge authorized
+## Next implementation task: B13 — verifiable bounded artifacts
 
-Branch `task/B12-durable-scheduler` starts at remote main `488e57a`. The opt-in
-single-worker scheduler persists running/attempt/workspace identity before setup
-and spawn, serializes new submissions, never requeues duplicates or preexisting
-records, and blocks uncertain results. Active shutdown retains ownership because
-abort is not stop proof. The real OpenCode fixture now covers service-to-worker
-dispatch as well as the original authorization regressions.
+B12 is merged through PR #25, including the canonical-path receipt correction.
+Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
+serializes new submissions, never requeues duplicates or preexisting records and
+blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
+Its local evidence was 209 passed, zero failed, one POSIX-only skip; 27 focused
+tests, the pinned OpenCode loopback dispatch/authorization fixture and demo passed.
+The merge tree matches tested PR head `6ed35ad`; both remote CI runs above passed.
 
-Local validation after the CI correction: 209 passed, zero failed, one POSIX-only skip; host fixture and
-fallback demo passed. Read the current validation entry and B12 card for evidence
-and both self-reviews. No paid/external provider was used. M2b/M3 remain incomplete.
+B13 is pending and ready: B09 workspaces and B10 bounded subprocesses are merged.
+Read its card and define the artifact producer mapping before wiring the existing
+B12 scheduler. Collect fixed-base diff/changed files and real test command/exit
+evidence, including partial failures, byte caps, redaction and explicit limitations.
+No artifact collector or MCP task endpoint exists yet. The current OpenCode worker
+supports only the loopback fixture provider. No real provider is authorized by the
+completed B12 work.
 
-The maintainer subsequently authorized publication and merge based on this agent's
-completed review (2026-11-04). That supersedes the earlier publication hold; no new
-confirmation is needed for B12. Verify the published head, feedback and Windows/Linux
-CI before merging the same PR. PR #25 is published. Its first Windows CI run
-exposed B12-01 failure; a directory-alias regression reproduced mismatched planned
-and canonical workspace receipt paths. The scheduler now canonicalizes the root
-before reservation. The regression failed before the fix; focused/full/host/demo
-checks pass after it. Verify fresh Windows/Linux CI on the corrected head before
-merging; the original `69aa920` validation is not the latest runtime evidence.
+M2b remaining order: B13 → B14 → B15 → B16 → B17. B18 human recovery can follow
+B14; B20/M3 requires B17/B18 plus an available authorized real model/provider and
+a small approved task. B08 is ready supporting work; B19's diagnostic pulse can
+be prepared, but its task-history track waits for B17. Do not implement fallback,
+memory or a multi-model controller as part of B13.
 
-FIX23/#24 has no independently published review; local source review and repeated
-pinned-host regressions passed. The maintainer accepted this implementing-agent
-review for the merge decision; do not relabel it as independent review. Once the
-authorized B12 PR is merged, proceed to B13 artifacts; B14 requires both B12/B13.
-Do not add transport, providers, fallback or automatic merge capabilities to B12.
+The maintainer accepted implementing-agent review for B12; no separate independent
+review is claimed. That task-specific merge approval does not carry forward to a
+new task. Historical checkpoints below retain their original pending statuses;
+the verified summary above and current remote are the continuation reference.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 
