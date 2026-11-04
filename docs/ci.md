@@ -2,17 +2,18 @@
 
 Every pull request and push to `main` runs an ordered pipeline: static checks, then the
 suite with native coverage thresholds, then the fallback demo. The unit and smoke legs
-run on `windows-latest`, `ubuntu-latest` and `macos-latest` with Node.js 24.22.1. Every
-job declares `permissions: contents: read` and never installs runtime packages.
+run on `windows-latest`, `ubuntu-latest` and `macos-latest` with the Node.js version
+pinned in `.node-version` (currently 24.22.1). Every job declares
+`permissions: contents: read` and never installs runtime packages.
 
 ## Pipeline order
 
 | Order | Job | Runs on | Gate |
 | --- | --- | --- | --- |
-| 1 | `check` | `ubuntu-latest` | `npm run check` and `npm audit --audit-level=high` |
+| 1 | `check` | `ubuntu-latest` | `npm run check:ci` and `npm audit --audit-level=high` |
 | 2 | `unit` | Windows, Ubuntu, macOS | `npm run coverage` (suite + coverage floors) |
+| 2 | `drift` | Ubuntu, macOS | `npm ci` + `git diff --exit-code` (parallel with `unit`) |
 | 3 | `smoke` | Windows, Ubuntu, macOS | `node examples/fallback-demo.mjs` |
-| 2 | `drift` | Ubuntu, macOS | contract schema checker + `git diff --exit-code` |
 
 `unit` has `needs: [check]`, and `smoke` has `needs: [unit]`, so a failing static gate
 prevents both later stages and a failing suite prevents the demo. `drift` also has
@@ -20,15 +21,21 @@ prevents both later stages and a failing suite prevents the demo. `drift` also h
 `check` job stays Ubuntu-only to keep the fast gate cheap; platform behaviour is
 covered by the `unit` and `smoke` matrices.
 
-## Single entry point: `npm run check`
+## Static gate: `npm run check` and `npm run check:ci`
 
 `npm run check` runs `scripts/check.mjs`, which uses Node built-ins only and therefore
 works without `npm install`:
 
-1. `node --check` over every `src/**/*.mjs` and `test/**/*.mjs` module.
+1. `node --check` over every `src/**/*.mjs`, `scripts/**/*.mjs`, `examples/**/*.mjs`
+   and `test/**/*.mjs` module.
 2. `assertSchema` over every `src/contracts/schemas/*.schema.json` file (RFC-0001).
-3. `node --test` for the full suite.
-4. `git diff --check` for whitespace errors.
+3. `node --test 'test/*.test.mjs'` for the full suite.
+4. `git diff --check HEAD` for whitespace errors, including staged changes.
+
+`npm run check:ci` is the same script with `--no-tests`: it runs the syntax, schema and
+whitespace gates only. The CI `check` job uses it because the `unit` job already runs
+the suite with coverage thresholds. Use `npm run check` locally, including in the
+pre-push hook, so the suite runs before a push.
 
 The script collects every failure, prints all of them and exits non-zero; it does not
 stop at the first one. Run it before pushing.
@@ -41,7 +48,7 @@ when a floor is crossed:
 ```bash
 node --experimental-test-coverage --test-coverage-include="src/**" \
   --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=90 \
-  --test test/
+  --test 'test/*.test.mjs'
 ```
 
 | Metric | Floor |
@@ -50,11 +57,12 @@ node --experimental-test-coverage --test-coverage-include="src/**" \
 | Branches | 80 |
 | Functions | 90 |
 
-The floors sit about five points below what the current suite reaches on Node 24.22.1.
-The margin keeps the gate meaningful without making it fragile: the two platform-specific
-tests that skip on one operating system change only a few branches, and the Windows and
-macOS legs must not fail for that reason. Raise a floor when the suite consistently
-covers more; never lower one just to unblock a change.
+The floors sit below what the current suite reaches on Node 24.22.1: about 11 points
+for lines (96.06%), five for branches (85.26%) and about nine for functions (98.62%).
+The margin keeps the gate meaningful without making it fragile: the two
+platform-specific tests that skip on one operating system change only a few branches,
+and the Windows and macOS legs must not fail for that reason. Raise a floor when the
+suite consistently covers more; never lower one just to unblock a change.
 
 Coverage is measured over `src/` only (`--test-coverage-include="src/**"`). Test files,
 `scripts/`, `examples/` and `integration/` are excluded: the first three are harness or
@@ -68,14 +76,13 @@ log.
 The `drift` job runs on Ubuntu and macOS after `check`:
 
 1. `npm ci --ignore-scripts` installs strictly from `package-lock.json`.
-2. `node --test test/contracts.test.mjs` loads every schema and compares the schema
-   enums with the runtime literals (`TASK_STATUSES`, `EVIDENCE_LEVELS`, `ERROR_CODES`,
-   `SCHEMA_VERSION`), so a hand-edited schema or a changed literal fails.
-3. `git diff --exit-code -- src/contracts/schemas/ package-lock.json` fails when an
-   install or check step rewrote the committed schemas or the lockfile.
+2. `git diff --exit-code -- src/contracts/schemas/ package-lock.json` fails when an
+   install rewrote the committed schemas or the lockfile.
 
-The job never regenerates a schema inside CI. A local schema edit is committed or
-reverted by the author; CI only reports that the tree is dirty.
+The contract schema test (`test/contracts.test.mjs`) already runs inside the `unit`
+suite, so the drift job does not repeat it. The job never regenerates a schema inside
+CI. A local schema edit is committed or reverted by the author; CI only reports that
+the tree is dirty.
 
 ## Reproducing the toolchain
 
@@ -137,8 +144,6 @@ the tagged release before merging.
 ## Reproduce the unit job from PowerShell
 
 ```powershell
-node --test
-if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 npm run coverage
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
@@ -147,13 +152,13 @@ if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 ```bash
 set -e -o pipefail
-node --test
 npm run coverage
 ```
 
-The commands are separate so each process exit is visible. If output is piped in
-PowerShell, capture `$LASTEXITCODE` immediately after the pipeline, before a later
-native command can replace it. In Bash use `set -o pipefail` for pipelines.
+The coverage script runs the suite and the floors in one process, so each step exposes
+its exit status directly. If output is piped in PowerShell, capture `$LASTEXITCODE`
+immediately after the pipeline, before a later native command can replace it. In Bash
+use `set -o pipefail` for pipelines.
 
 ## Reproduce the smoke job
 

@@ -1171,6 +1171,33 @@ audit and gitleaks runs execute in this checkout. The allowlist was validated by
 negative seeded-token run rather than by inspection alone. CI URLs are placeholders
 until the workflow runs complete.
 
+## B28 CI gates — 2026-11-04
+
+Executed locally on the `task/B28-ci-gates` worktree with the Node.js 24.22.1
+toolchain pinned in `.node-version`.
+Date: 2026-11-04. Base: B27 at `a0d2793`.
+
+| Command | Result | Exit |
+| --- | --- | --- |
+| `npm run check` on a clean tree | Syntax over `src`, `scripts`, `examples` and `test`; schema validation; suite; `git diff --check HEAD` pass | 0 |
+| `npm run check:ci` | Same syntax, schema and whitespace gates with `--no-tests`; the suite is skipped intentionally | 0 |
+| `npm run coverage` | 96.06% lines, 85.26% branches and 98.62% functions against floors 85/80/90 | 0 |
+| Seeded coverage drop (B28-01) | Coverage job exits non-zero and names the missed metric | 1 |
+| `.githooks/pre-push` run twice (B28-03) | First run blocks a seeded failure; the second run repeats without installing or writing anything | 1, 1 |
+| Seeded schema/lockfile drift (B28-04) | `git diff --exit-code -- src/contracts/schemas/ package-lock.json` reports the dirty tree on both legs | 1 |
+| GitHub Actions `check`, `unit` matrix, `smoke` matrix and `drift` (B28-02/04) | Run to be recorded — RUN_URL_TBD | TBD |
+
+Result: the pipeline orders `check -> unit -> smoke`, with `drift` running in parallel
+with `unit` after `check`. The `check` job runs `npm run check:ci`, so the suite runs
+only once, with coverage, in `unit`. Coverage floors sit below the measured baseline:
+about 11 points for lines, five for branches and about nine for functions. Schema drift
+is reported by `git diff --exit-code`; the contract schema test itself already runs in
+the `unit` suite and is not duplicated in `drift`.
+
+Evidence level: Unit and local integration — the suite, coverage floors, check gate
+and hook runs execute in this checkout; CI URLs remain placeholders until the workflow
+runs complete.
+
 Not rerun: `node integration/opencode-smoke.mjs` and `node integration/mcp-gate.mjs`
 (no runtime change; both need the pinned OpenCode binary outside the repository);
 Windows-host execution of the PowerShell fixtures (covered by the remote matrix, not

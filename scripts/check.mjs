@@ -16,7 +16,8 @@ const modulesIn = directory =>
     .map(entry => join(directory, entry))
     .sort();
 
-const modules = [...modulesIn('src'), ...modulesIn('test')];
+const syntaxDirectories = ['src', 'scripts', 'examples', 'test'];
+const modules = syntaxDirectories.flatMap(directory => modulesIn(directory));
 for (const file of modules) {
   const result = spawnSync(process.execPath, ['--check', file], { cwd: root, encoding: 'utf8' });
   if (result.status !== 0) {
@@ -36,20 +37,24 @@ for (const schema of schemas) {
   }
 }
 
-const tests = spawnSync(process.execPath, ['--test'], { cwd: root, stdio: 'inherit' });
-if (tests.status !== 0) {
-  failures.push(`node --test exited with ${tests.status ?? tests.signal}`);
+const runTests = !process.argv.includes('--no-tests');
+if (runTests) {
+  const tests = spawnSync(process.execPath, ['--test', 'test/*.test.mjs'], { cwd: root, stdio: 'inherit' });
+  if (tests.status !== 0) {
+    failures.push(`node --test exited with ${tests.status ?? tests.signal}`);
+  }
 }
 
-const whitespace = spawnSync('git', ['diff', '--check'], { cwd: root, encoding: 'utf8' });
+const whitespace = spawnSync('git', ['diff', '--check', 'HEAD'], { cwd: root, encoding: 'utf8' });
 if (whitespace.error) {
-  failures.push(`git diff --check: ${whitespace.error.message}`);
+  failures.push(`git diff --check HEAD: ${whitespace.error.message}`);
 } else if (whitespace.status !== 0) {
-  failures.push(`git diff --check failed\n${(whitespace.stdout + whitespace.stderr).trim()}`);
+  failures.push(`git diff --check HEAD failed\n${(whitespace.stdout + whitespace.stderr).trim()}`);
 }
 
 if (failures.length === 0) {
-  console.log(`check passed: ${modules.length} modules, ${schemas.length} schemas, node --test, git diff --check`);
+  const suite = runTests ? ', node --test' : '';
+  console.log(`check passed: ${modules.length} modules, ${schemas.length} schemas${suite}, git diff --check HEAD`);
 } else {
   for (const failure of failures) console.error(failure);
   process.exitCode = 1;

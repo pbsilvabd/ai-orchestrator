@@ -22,13 +22,13 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Node.js 24.22.1
+      - name: Set up Node.js from .node-version
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 24.22.1
+          node-version-file: .node-version
 
       - name: Run check gate
-        run: npm run check
+        run: npm run check:ci
 
       - name: Fail on high-severity dependency advisories
         run: npm audit --audit-level=high
@@ -47,10 +47,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Node.js 24.22.1
+      - name: Set up Node.js from .node-version
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 24.22.1
+          node-version-file: .node-version
 
       - name: Verify nonzero pipeline exit (PowerShell)
         if: runner.os == 'Windows'
@@ -102,10 +102,10 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Node.js 24.22.1
+      - name: Set up Node.js from .node-version
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 24.22.1
+          node-version-file: .node-version
 
       - name: Run fallback demo (PowerShell)
         if: runner.os == 'Windows'
@@ -133,16 +133,13 @@ jobs:
       - name: Check out source
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Set up Node.js 24.22.1
+      - name: Set up Node.js from .node-version
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 24.22.1
+          node-version-file: .node-version
 
       - name: Install strictly from the lockfile
         run: npm ci --ignore-scripts
-
-      - name: Run contract schema checker
-        run: node --test test/contracts.test.mjs
 
       - name: Fail on schema or lockfile drift
         run: git diff --exit-code -- src/contracts/schemas/ package-lock.json

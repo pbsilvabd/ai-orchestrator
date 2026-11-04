@@ -996,3 +996,35 @@ Template:
   seeded token -> 1 redacted. Remote CI evidence pending (`RUN_URL_TBD`).
 - Follow-up: B28 adds coverage thresholds, job ordering, the macOS leg and the
   pre-push hook; #31 closes with B28. No publication or merge was performed here.
+
+## 2026-11-04 — B28: CI gates
+
+- Branch: `task/B28-ci-gates`, base B27 `a0d2793`.
+- Scope: mixed (CI workflow, coverage configuration, pre-push hook, drift job and
+  documentation); no runtime change under `src/`.
+- Steps:
+  1. Added native coverage with floors taken from the measured suite baseline:
+     85 lines / 80 branches / 90 functions against 96.06 / 85.26 / 98.62.
+  2. Ordered the pipeline `check -> unit -> smoke` with explicit `needs:` and added the
+     `macos-latest` leg to both matrices; `drift` runs in parallel with `unit`.
+  3. Added `.githooks/pre-push` as an idempotent opt-in local gate that reuses
+     `npm run check` and installs nothing.
+  4. Added the schema/lockfile drift job (`npm ci` plus `git diff --exit-code`) and
+     removed the duplicated contract-schema test step; the suite already runs it.
+  5. Added `npm run check:ci` (`node scripts/check.mjs --no-tests`) for the static CI
+     job, extended the syntax check to `scripts/` and `examples/`, unified test
+     discovery on `test/*.test.mjs`, and made `git diff --check HEAD` include staged
+     changes. The local `npm run check` and the hook still run the full suite.
+  6. Read Node from `.node-version` in every job instead of repeating the literal
+     version, and updated `docs/ci.md` for the new ordering, flags and measured floors.
+- Files: `.githooks/pre-push`, `.github/workflows/ci.yml`, `docs/ci.md`,
+  `docs/tasks/B28.md`, `package.json`, `scripts/check.mjs`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `npm run check` -> 0 on a clean tree; `npm run check:ci` -> 0 with the
+  suite skipped; `npm run coverage` -> 96.06% lines, 85.26% branches, 98.62% functions
+  against 85/80/90; seeded coverage drop -> 1 with the metric named; two pre-push hook
+  runs -> 1/1 without side effects; seeded schema/lockfile drift -> 1 on both legs.
+  Remote CI evidence is pending (`RUN_URL_TBD`).
+- Follow-up: record the workflow run URL when the PR runs, confirm the macOS leg and
+  the drift legs there, and open the PR that closes #31. No publication or merge was
+  performed here.
