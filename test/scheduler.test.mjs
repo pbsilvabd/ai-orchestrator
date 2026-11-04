@@ -1,0 +1,393 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { execFileSync, spawn } from 'node:child_process';
+import { once } from 'node:events';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { setTimeout as delay } from 'node:timers/promises';
+import { createTaskService } from '../src/service.mjs';
+import { openTaskStore } from '../src/tasks.mjs';
+
+const serviceUrl = new URL('../src/service.mjs', import.meta.url).href;
+const storeUrl = new URL('../src/tasks.mjs', import.meta.url).href;
+const git = (repo, ...args) => execFileSync('git', ['-C', repo, ...args],
+  { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true }).trim();
+const read = path => readFileSync(path, 'utf8');
+const isAlive = pid => { try { process.kill(pid, 0); return true; } catch { return false; } };
+async function until(predicate, message) {
+  const deadline = Date.now() + 8000;
+  while (!predicate() && Date.now() < deadline) await delay(10);
+  assert.ok(predicate(), message);
+}
+function setup(t) {
+  const root = mkdtempSync(join(tmpdir(), 'scheduler-'));
+  const repo = join(root, 'repo');
+  const home = join(root, 'home');
+  mkdirSync(repo);
+  git(repo, 'init');
+  git(repo, 'config', 'user.name', 'Fixture');
+  git(repo, 'config', 'user.email', 'fixture@example.com');
+  writeFileSync(join(repo, 'README.md'), 'base\n');
+  git(repo, 'add', '.');
+  git(repo, 'commit', '-m', 'base');
+  const baseCommit = git(repo, 'rev-parse', 'HEAD');
+  const config = { clientId: 'owner',
+    authorization: { models: ['fixture/mock'], tools: ['read', 'edit'], writableRoots: [repo] },
+    limits: { maxAttempts: 1, budgetMs: 10_000, maxOutputBytes: 4096 } };
+  const services = [];
+  t.after(async () => {
+    for (const service of services) await service.close();
+    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
+  });
+  const start = options => {
+    const service = createTaskService({ home, config, ...options });
+    services.push(service);
+    return service;
+  };
+  const request = (key = 'one') => ({ clientId: 'owner', idempotencyKey: key,
+    objective: 'Run a scoped fixture', acceptanceCriteria: ['record execution'],
+    repository: { path: repo, baseRef: baseCommit, branch: `task/${key}` },
+    authorization: { models: ['fixture/mock'], tools: ['read'], writablePaths: ['src/**'] },
+    limits: { maxAttempts: 1, budgetMs: 10_000, maxOutputBytes: 4096 } });
+  return { root, repo, home, config, baseCommit, start, request };
+}
+const workerFor = code => ({ prepare({ workspace }) {
+  return { executable: process.execPath, args: ['-e', code], cwd: workspace.workspacePath,
+    env: {}, timeoutMs: 10_000, stdoutMaxBytes: 4096, stderrMaxBytes: 4096, killGraceMs: 100 };
+} });
+
+test('B12-01: prompt submission, durable identity and serial fixtures remain observable between events', async t => {
+  const f = setup(t);
+  const events = join(f.root, 'events');
+  const marker = join(f.root, 'active');
+  const release = join(f.root, 'release');
+  const child = `const fs=require('node:fs');
+    const lock=${JSON.stringify(marker)},events=${JSON.stringify(events)},release=${JSON.stringify(release)};
+    fs.writeFileSync(lock,'active',{flag:'wx'});fs.appendFileSync(events,'start\\n');
+    const timer=setInterval(()=>{if(fs.existsSync(release)){
+      clearInterval(timer);fs.appendFileSync(events,'end\\n');fs.unlinkSync(lock);}},10);`;
+  const base = workerFor(child);
+  const service = f.start({ worker: { prepare(input) {
+    const task = service.store.readTask(input.task.taskId);
+    assert.equal(task.status, 'running');
+    assert.equal(task.attempts.length, 1);
+    assert.equal(task.attempts[0].attemptId, input.task.attempts[0].attemptId);
+    assert.equal(task.attempts[0].workspace.workspacePath, input.workspace.workspacePath);
+    assert.ok(existsSync(task.attempts[0].workspace.receiptPath));
+    const path = join(f.home, 'tasks', `${task.taskId}.json`);
+    const before = read(path);
+    assert.throws(() => service.store.updateTask(task.taskId, d => {
+      const alternate = join(f.root, 'alternate', task.taskId);
+      d.attempts[0].workspace.workspacePath = alternate;
+      d.attempts[0].workspace.receiptPath = join(f.root, 'alternate', `${task.taskId}.workspace.json`);
+    }), e => e.code === 'internal');
+    assert.equal(read(path), before);
+    const corrupted = structuredClone(task);
+    corrupted.attempts[0].workspace.branch = 'task/another';
+    writeFileSync(path, JSON.stringify(corrupted));
+    assert.throws(() => service.store.readTask(task.taskId), e => e.code === 'unavailable');
+    writeFileSync(path, before);
+    return base.prepare(input);
+  } } });
+  const a = service.submitTask(f.request('one'));
+  const b = service.submitTask(f.request('two'));
+  assert.equal(a.status, 'queued');
+  assert.equal(b.status, 'queued');
+  assert.equal(existsSync(events), false, 'spawn happened inside submit');
+  await until(() => existsSync(marker), 'first fixture started');
+  for (let n = 0; n < 10; n++) {
+    assert.equal(service.getTaskStatus({ taskId: a.taskId }).status, 'running');
+    assert.equal(service.getTaskStatus({ taskId: b.taskId }).status, 'queued');
+    await delay(5);
+  }
+  assert.equal(read(events), 'start\n');
+  writeFileSync(release, 'continue');
+  await service.whenIdle();
+  assert.equal(read(events), 'start\nend\nstart\nend\n');
+  for (const { taskId } of [a, b]) {
+    const task = service.store.readTask(taskId);
+    assert.equal(task.status, 'succeeded');
+    assert.equal(task.attempts.length, 1);
+    assert.equal(task.attempts[0].exitCode, 0);
+    assert.match(service.getTaskResult({ taskId }).limitations[0], /without a recorded passing test/);
+    assert.throws(() => service.store.updateTask(taskId, d => {
+      d.attempts[0].workspace.workspacePath = f.repo;
+    }));
+  }
+  assert.equal(git(f.repo, 'status', '--porcelain'), '');
+});
+
+test('B12-02: actual filesystem failure before the dispatch write preserves bytes and starts no child', async t => {
+  const f = setup(t);
+  const counter = join(f.root, 'spawned');
+  const service = f.start({ worker: workerFor(`require('node:fs').writeFileSync(${JSON.stringify(counter)},'bad')`) });
+  const { taskId } = service.submitTask(f.request());
+  const tasks = join(f.home, 'tasks');
+  const preserved = join(f.home, 'preserved-tasks');
+  const before = read(join(tasks, `${taskId}.json`));
+  // Replace the actual parent directory by a regular file: real ENOTDIR on write.
+  renameSync(tasks, preserved);
+  writeFileSync(tasks, 'not a directory');
+  await service.whenIdle();
+  assert.equal(existsSync(counter), false);
+  assert.equal(read(join(preserved, `${taskId}.json`)), before);
+  unlinkSync(tasks);
+  renameSync(preserved, tasks);
+  assert.equal(service.schedulerStatus().stopped, true);
+  assert.equal(service.store.readTask(taskId).status, 'queued');
+  assert.throws(() => service.submitTask(f.request('new')), e => e.code === 'unavailable');
+});
+
+test('B12-02: actual rename failure after reading queued state prevents preparation and preserves the record', async t => {
+  const f = setup(t);
+  const store = openTaskStore({ home: f.home });
+  const original = store.updateTask;
+  let prepared = 0;
+  let before;
+  let saved;
+  store.updateTask = (taskId, mutate) => original(taskId, draft => {
+    mutate(draft);
+    const path = join(f.home, 'tasks', `${taskId}.json`);
+    before = read(path);
+    saved = `${path}.preserved`;
+    renameSync(path, saved);
+    mkdirSync(path); // Atomic rename cannot replace a directory with a regular file.
+  });
+  const service = f.start({ store, worker: { prepare() { prepared++; } } });
+  const { taskId } = service.submitTask(f.request());
+  await service.whenIdle();
+  assert.equal(prepared, 0);
+  assert.equal(read(saved), before);
+  const path = join(f.home, 'tasks', `${taskId}.json`);
+  rmdirSync(path);
+  renameSync(saved, path);
+  assert.equal(store.readTask(taskId).status, 'queued');
+});
+
+for (const phase of ['before-dispatch', 'after-dispatch', 'after-spawn']) {
+  test(`B12-03: real service death ${phase} never replays on reopen`, { timeout: 20_000 }, async t => {
+    const f = setup(t);
+    const marker = join(f.root, 'spawned');
+    const pidFile = join(f.root, 'worker-pid');
+    const childCode = `const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(pidFile)},String(process.pid));
+      fs.appendFileSync(${JSON.stringify(marker)},'spawn\\n');setTimeout(()=>{},300);`;
+    const script = `
+      import {createTaskService} from ${JSON.stringify(serviceUrl)};
+      import {openTaskStore} from ${JSON.stringify(storeUrl)};
+      const store=openTaskStore({home:process.argv[1]});
+      const original=store.updateTask;
+      const phase=process.argv[2];
+      store.updateTask=(id,mutate)=>{
+        if(phase==='before-dispatch'){process.stdout.write('boundary\\n');while(true){}}
+        const result=original(id,mutate);
+        if(phase==='after-dispatch'){process.stdout.write('boundary\\n');while(true){}}
+        return result;
+      };
+      const service=createTaskService({store,config:${JSON.stringify(f.config)},worker:{prepare({workspace}){
+        return {executable:process.execPath,args:['-e',${JSON.stringify(childCode)}],cwd:workspace.workspacePath,
+          env:{},timeoutMs:3000,stdoutMaxBytes:1024,stderrMaxBytes:1024};
+      }}});
+      const result=service.submitTask(${JSON.stringify(f.request())});
+      process.stdout.write(result.taskId+'\\n');setInterval(()=>{},1000);
+    `;
+    const child = spawn(process.execPath, ['--input-type=module', '-e', script, f.home, phase],
+      { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    let output = '';
+    let errors = '';
+    child.stdout.on('data', bytes => { output += bytes; });
+    child.stderr.on('data', bytes => { errors += bytes; });
+    const exited = once(child, 'exit');
+    t.after(async () => {
+      if (child.exitCode === null && child.signalCode === null) { child.kill('SIGKILL'); await exited; }
+    });
+    await until(() => phase === 'after-spawn' ? existsSync(marker) : output.includes('boundary'), `boundary reached: ${errors}`);
+    const taskId = output.split('\n')[0];
+    child.kill('SIGKILL');
+    await exited;
+    const observer = openTaskStore({ home: f.home });
+    const before = observer.readTask(taskId);
+    const expected = phase === 'before-dispatch' ? 'queued' : 'running';
+    assert.equal(before.status, expected);
+    assert.throws(() => createTaskService({ home: f.home }), e => e.code === 'unavailable');
+    // Explicit fixture maintainer action, after known service death and worker exit.
+    if (phase === 'after-spawn') {
+      const fixturePid = Number(read(pidFile));
+      if (isAlive(fixturePid)) process.kill(fixturePid, 'SIGKILL');
+      await until(() => !isAlive(fixturePid), 'fixture root stopped before lock removal');
+    }
+    unlinkSync(join(f.home, 'locks', 'service-owner.lock'));
+    let prepared = 0;
+    const reopened = f.start({ worker: { prepare() { prepared++; throw new Error('replayed'); } } });
+    await reopened.whenIdle();
+    const after = reopened.store.readTask(taskId);
+    assert.equal(after.status, phase === 'before-dispatch' ? 'queued' : 'blocked');
+    assert.equal(after.attempts.length, before.attempts.length);
+    assert.equal(prepared, 0);
+    assert.equal(reopened.submitTask(f.request()).taskId, taskId);
+    await reopened.whenIdle();
+    assert.equal(prepared, 0, 'reconnect replay must not enqueue old work');
+    assert.equal(existsSync(marker), phase === 'after-spawn');
+    if (phase === 'after-spawn') assert.equal(read(marker), 'spawn\n');
+  });
+}
+
+test('B12-04: duplicates, another process observer and competing owner preserve the same dispatch', async t => {
+  const f = setup(t);
+  const marker = join(f.root, 'ready');
+  const release = join(f.root, 'release');
+  const service = f.start({ worker: workerFor(`const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(marker)},'ready');
+    const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)}))clearInterval(timer)},10)`) });
+  const original = service.submitTask(f.request());
+  await until(() => existsSync(marker), 'fixture running');
+  const before = service.store.readTask(original.taskId);
+  for (let n = 0; n < 10; n++) {
+    const replay = service.submitTask(f.request());
+    assert.equal(replay.taskId, original.taskId);
+    assert.equal(replay.idempotentReplay, true);
+  }
+  const observe = execFileSync(process.execPath, ['--input-type=module', '-e', `
+    import {openTaskStore} from ${JSON.stringify(storeUrl)};
+    import {createTaskService} from ${JSON.stringify(serviceUrl)};
+    const store=openTaskStore({home:process.argv[1]});
+    const task=store.readTask(process.argv[2]);
+    let error;try{createTaskService({store})}catch(e){error=e.code}
+    console.log(JSON.stringify({status:task.status,attempts:task.attempts,error}));
+  `, f.home, original.taskId], { encoding: 'utf8', windowsHide: true });
+  const observed = JSON.parse(observe);
+  assert.equal(observed.status, 'running');
+  assert.equal(observed.error, 'unavailable');
+  assert.deepEqual(observed.attempts, before.attempts);
+  assert.deepEqual(service.store.readTask(original.taskId), before);
+  writeFileSync(release, 'continue');
+  await service.whenIdle();
+  assert.equal(service.store.readTask(original.taskId).attempts.length, 1);
+});
+
+test('B12-05: active shutdown blocks before abort, holds ownership and cannot launch queued work', async t => {
+  const f = setup(t);
+  const marker = join(f.root, 'ready');
+  let prepared = 0;
+  const fixture = workerFor(`require('node:fs').writeFileSync(${JSON.stringify(marker)},'ready');setInterval(()=>{},1000)`);
+  const service = f.start({ worker: { prepare(input) { prepared++; return fixture.prepare(input); } } });
+  const a = service.submitTask(f.request());
+  const b = service.submitTask(f.request('two'));
+  await until(() => existsSync(marker), 'worker running');
+  const closing = service.close();
+  assert.equal(service.store.readTask(a.taskId).status, 'blocked');
+  assert.equal(service.store.readTask(a.taskId).block.reason, 'service-shutdown');
+  assert.throws(() => createTaskService({ home: f.home }), e => e.code === 'unavailable');
+  assert.deepEqual(await closing, { releaseOwnership: false });
+  assert.equal(prepared, 1);
+  assert.equal(service.store.readTask(b.taskId).status, 'queued');
+  assert.equal(service.store.readTask(b.taskId).attempts.length, 0);
+  assert.equal(service.store.readTask(a.taskId).cancel.executionStopped, 'unknown');
+  assert.throws(() => service.getTaskStatus({ taskId: a.taskId }), e => e.code === 'unavailable');
+  assert.equal(service.close(), closing);
+  assert.ok(existsSync(join(f.home, 'locks', 'service-owner.lock')));
+});
+
+test('B12-05: cancellation wins over a real late zero exit and halts the queue', async t => {
+  const f = setup(t);
+  const marker = join(f.root, 'ready');
+  const release = join(f.root, 'release');
+  const service = f.start({ worker: workerFor(`const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(marker)},'ready');
+    const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)}))clearInterval(timer)},10)`) });
+  const a = service.submitTask(f.request());
+  const b = service.submitTask(f.request('two'));
+  await until(() => existsSync(marker), 'worker running');
+  service.cancelTask({ taskId: a.taskId });
+  const before = service.store.readTask(a.taskId);
+  writeFileSync(release, 'exit zero');
+  await service.whenIdle();
+  assert.deepEqual(service.store.readTask(a.taskId), before);
+  assert.equal(service.store.readTask(b.taskId).status, 'queued');
+  assert.equal(service.schedulerStatus().requiresReconciliation, true);
+});
+
+test('known spawn error becomes failed; queued cancellation and idle close start no child', async t => {
+  const f = setup(t);
+  const service = f.start({ worker: { prepare({ workspace }) { return {
+    executable: join(f.root, 'does-not-exist'), cwd: workspace.workspacePath, env: {}, timeoutMs: 1000,
+  }; } } });
+  const a = service.submitTask(f.request());
+  const b = service.submitTask(f.request('two'));
+  service.cancelTask({ taskId: b.taskId });
+  await service.whenIdle();
+  assert.equal(service.store.readTask(a.taskId).status, 'failed');
+  assert.equal(service.store.readTask(a.taskId).attempts[0].outcome, 'spawn-error');
+  assert.equal(service.store.readTask(a.taskId).attempts[0].spawnErrorCode, 'ENOENT');
+  assert.equal(service.store.readTask(b.taskId).attempts.length, 0);
+  assert.deepEqual(await service.close(), { releaseOwnership: true });
+  const current = f.start();
+  service.close();
+  assert.throws(() => createTaskService({ home: f.home }), e => e.code === 'unavailable');
+  current.close();
+});
+
+test('shutdown before the scheduling turn leaves pristine work queued without dispatch', async t => {
+  const f = setup(t);
+  let prepared = 0;
+  const service = f.start({ worker: { prepare() { prepared++; } } });
+  const { taskId } = service.submitTask(f.request());
+  assert.deepEqual(await service.close(), { releaseOwnership: true });
+  assert.equal(service.store.readTask(taskId).status, 'queued');
+  assert.equal(service.store.readTask(taskId).attempts.length, 0);
+  assert.equal(prepared, 0);
+});
+
+test('completion write failure retains the dispatch and output without starting another worker', async t => {
+  const f = setup(t);
+  const marker = join(f.root, 'ready');
+  const release = join(f.root, 'release');
+  let prepared = 0;
+  const fixture = workerFor(`const fs=require('node:fs');fs.writeFileSync(${JSON.stringify(marker)},'ready');
+    const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)}))clearInterval(timer)},10)`);
+  const service = f.start({ worker: { prepare(input) { prepared++; return fixture.prepare(input); } } });
+  const a = service.submitTask(f.request());
+  const b = service.submitTask(f.request('two'));
+  await until(() => existsSync(marker), 'worker running');
+  const path = join(f.home, 'tasks', `${a.taskId}.json`);
+  const before = read(path);
+  const saved = `${path}.preserved`;
+  renameSync(path, saved);
+  mkdirSync(path);
+  writeFileSync(release, 'exit zero');
+  await service.whenIdle();
+  assert.equal(prepared, 1);
+  assert.equal(read(saved), before);
+  rmdirSync(path);
+  renameSync(saved, path);
+  assert.equal(service.store.readTask(a.taskId).status, 'running');
+  assert.equal(service.store.readTask(b.taskId).status, 'queued');
+  assert.equal(service.schedulerStatus().requiresReconciliation, true);
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+});
+
+test('preparation failure and deadline block once and retain ownership without exposing adapter text', async t => {
+  const f = setup(t);
+  const service = f.start({ worker: { prepare() { throw new Error('private adapter payload'); } } });
+  const { taskId } = service.submitTask(f.request());
+  await service.whenIdle();
+  assert.equal(service.store.readTask(taskId).status, 'blocked');
+  assert.equal(JSON.stringify(service.schedulerStatus()).includes('private'), false);
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+
+  const g = setup(t);
+  const deadline = g.start({ worker: { prepare({ workspace }) { return {
+    executable: process.execPath, cwd: workspace.workspacePath, args: ['-e', 'setInterval(()=>{},1000)'],
+    env: {}, timeoutMs: 50, killGraceMs: 100,
+  }; } } });
+  const accepted = deadline.submitTask(g.request());
+  await deadline.whenIdle();
+  assert.equal(deadline.store.readTask(accepted.taskId).status, 'blocked');
+  assert.equal(deadline.store.readTask(accepted.taskId).attempts.length, 1);
+  assert.deepEqual(await deadline.close(), { releaseOwnership: false });
+});
+
+test('invalid worker startup releases ownership and a valid owner can start', t => {
+  const f = setup(t);
+  assert.throws(() => createTaskService({ home: f.home, worker: {} }), e => e.code === 'internal');
+  const service = f.start();
+  service.close();
+});

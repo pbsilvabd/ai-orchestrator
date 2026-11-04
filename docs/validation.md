@@ -924,3 +924,81 @@ for FIX23 is required before delivery. No external/paid provider call was made.
 Not rerun: unrelated B06 MCP and session-switch smoke gates, whose implementations
 did not change. The launch-time filesystem scan is still not OS isolation against
 concurrent mutation; task-service/scheduler integration remains outside this fix.
+
+## M2b: B12 durable single-worker scheduler — 2026-11-04
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5.
+Date: 2026-11-04. Branch `task/B12-durable-scheduler`, base
+`488e57ad817dbdf19496a2eb07c09be66c18c2aa`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` before B12 edits | Fetched-main baseline | 193 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node --test --test-reporter=tap test/scheduler.test.mjs test/opencode.test.mjs` | B12 acceptance and launch/runtime regressions | 26 passed, 0 failed | 0 |
+| `node --test --test-reporter=tap` final code | Full regression | 208 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node integration/opencode-invocation.mjs C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe` | Actual pinned host, local fixture and service dispatch | version 2.2.5; serviceSchedulerDispatch, deniedWrite, allowedWrite, workspaceLinkRejected, hardlinkRejected, providerOverrideRejected true; 9 loopback requests; externalProvider false | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo | 429 from mock/preferred, then 200 from mock/local | 0 |
+| `git diff --check` | Whitespace integrity | no output | 0 |
+
+Result: all final local commands above passed. Initial filesystem-fixture failures
+were corrected before the final run: a read-boundary fault now asserts queue halt
+rather than an unrelated error classification, empty-directory restoration uses
+rmdir, and the crash-after-spawn experiment explicitly stops/verifies its fixture
+PID before maintainer lock removal instead of assuming a completion marker survives
+service death. These were test-harness corrections, not waived acceptance rows.
+
+| B12 row | Named test / experiment | Observed evidence |
+| --- | --- | --- |
+| B12-01 | prompt submission, durable identity and serial fixtures remain observable between events | queued response before spawn; durable attempt/receipt before child; repeated live status calls; exclusive fixture marker; start/end/start/end; unchanged parent repo |
+| B12-02 | actual filesystem failure before dispatch; actual rename failure after reading queued state | zero child/preparation count; preserved committed bytes; queue halted without retry |
+| B12-03 | real service death before-dispatch, after-dispatch and after-spawn | actual SIGKILL; stale owner refused; explicit fixture maintainer recovery; original attempt preserved; interrupted tasks blocked; pristine queue stays queued; duplicate reconnect never enqueues |
+| B12-04 | duplicates, another process observer and competing owner preserve the same dispatch | same task/attempt across ten replays; real second Node observer sees running; competing owner unavailable; no observer reconciliation |
+| B12-05 | active shutdown; cancellation with late zero exit; shutdown before scheduling | terminal state preserved; no next queued spawn; active-close lock retained; idle-close ownership safely transferred; stale handle cannot release replacement lock |
+
+Additional cases cover known ENOENT spawn failure, queued cancellation, completion
+persistence failure, adapter exception, deadline, invalid-worker startup cleanup,
+running receipt immutability/corruption, runtime path-like IDs, copied configuration
+and refusal to overwrite an attempt's runtime files. The new host experiment uses
+the same real B09 workspace/B10 subprocess/B11 authorization path as the service.
+Its zero exit still returns a limitation for missing recorded test evidence.
+
+Review pass 1 inspected queue ownership, atomic dispatch, error provenance,
+authorization, workspace isolation and budget/close paths. Corrections added copied
+adapter inputs, cancellation/late-result fencing and post-result budget checking.
+Review pass 2 inspected all changed files and every acceptance row, startup/close
+compatibility and evidence claims. It added direct running-receipt corruption and
+immutability coverage, UUID path rejection and exclusive runtime-file tests; final
+focused/full/host commands above passed after those changes.
+The final harness review also fenced cleanup by the submitted workspace path so
+a failed host result cannot delete task output before its descriptor was assigned.
+The pinned-host command was rerun after that harness-only correction.
+Final process-error review restricted safe spawn failure to unambiguous no-launch
+codes; a child error such as EPERM may instead mean termination failed. Other
+child errors stay blocked. Focused/full/host checks were rerun after this change.
+
+Evidence level: Unit — policy decisions and input normalization; does not establish
+host, network or production persistence. Real temporary Node/Git/filesystem fixtures
+also establish the named local process/failure behavior. OpenCode integration —
+hooks, queue, context, permissions and failures in the pinned host; the executed
+command covers only launch permissions and service dispatch to a loopback model,
+not every host capability or real model quality/cost. No Use on this project claim.
+
+Remote comparison: main stayed at `488e57a`, with successful main CI run
+[41759929003](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41759929003).
+Recent PRs #23/#24 are merged; #23 original findings and correction replies were
+read. #24 conversation, submitted reviews and inline threads were empty. Local
+source review and pinned-host repetition passed, but no independently published
+FIX23 review was found. No open PR existed for B12 at pickup.
+
+Not rerun: MCP capability gate and session/model smoke (no transport/session
+behavior changed); remote Windows/Linux CI for this branch (publication explicitly
+withheld); real providers/self-development (not authorized or implemented here).
+Power-loss durability, process-tree stop proof and concurrent hostile filesystem
+isolation remain unproved. The close path retains locks for unknown outcomes.
+
+Claim: this entry supports B12's local durable scheduling and the named pinned-host
+service dispatch. It does not establish published delivery, independent acceptance,
+Linux execution of this new code, B13 artifacts, B14 stop proof, MCP task transport,
+production provider support or M2b/M3 completion. Explicit user authorization is
+required before push/PR publication and merge; none was inferred from repository
+workflow defaults.

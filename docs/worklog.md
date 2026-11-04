@@ -820,3 +820,48 @@ Template:
   diff check clean. Windows x64, Node 24.22.1, Git 2.55.0.windows.5.
 - Publication: one FIX23 PR, replies to original findings with commit/evidence,
   cross-platform CI and independent review. No merge authorization is inferred.
+
+## 2026-11-04 — M2b: B12 durable single-worker scheduler
+
+- Branch: `task/B12-durable-scheduler`, base
+  `488e57ad817dbdf19496a2eb07c09be66c18c2aa` (local, unpublished).
+- Scope: code, tests and docs for opt-in single-worker dispatch; no transport,
+  artifact collection, production provider, fallback or automatic recovery.
+- Steps:
+  1. Compared the stale project mirror with fetched main and recent PRs. Confirmed
+     M2a/ADR-007, merged B09–B11/FIX23 and green main CI run 41759929003.
+  2. Reviewed FIX23 source and original #23 findings/correction replies; repeated
+     the pinned-host authorization regressions. #24 had no published independent
+     review; that acceptance gap remains explicit rather than inferred from merge.
+  3. Defined queue/startup/shutdown policy before implementation. Added atomic
+     running/attempt/workspace reservation, serial scheduling, no replay and
+     conservative failure/close ownership. Kept old passive service behavior.
+  4. Connected B09/B10/B11 through a trusted worker adapter with copied launch
+     configuration, UUID runtime paths and exclusive runtime file creation.
+  5. Exercised all B12 acceptance rows with real filesystem, Git and Node process
+     fixtures; extended the pinned OpenCode harness to execute from the service.
+  6. Reviewed implementation and failure paths, then the completed diff and every
+     matrix row. Added adapter-copy/receipt immutability checks, cancellation/late
+     result fencing, budget checks and runtime path-ID validation. No blocking
+     local findings remain. Final harness review preserved workspace output even
+     when host failure precedes descriptor assignment; the host gate was rerun.
+     Process-error review kept ambiguous termination errors blocked instead of
+     classifying every child error as a safe spawn failure; checks were rerun.
+     Independent review/publication remain outstanding.
+- Files: `AGENTS.md`, `README.md`, `docs/adr/008-task-store.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/requirements.md`, `docs/roadmap.md`,
+  `docs/task-contract.md`, `docs/tasks/B12.md`, `docs/validation.md`,
+  `docs/worklog.md`, `integration/README.md`,
+  `integration/opencode-invocation.mjs`, `src/opencode.mjs`,
+  `src/scheduler.mjs`, `src/service.mjs`, `src/tasks.mjs`,
+  `test/opencode.test.mjs`, `test/scheduler.test.mjs`.
+- Validation: focused scheduler/OpenCode tests → 26 passed; full `node --test`
+  → 208 passed, 0 failed, 1 POSIX-only skip; pinned OpenCode 2.2.5 invocation
+  harness → serviceSchedulerDispatch and authorization checks true, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200; diff/link checks passed.
+  Windows x64, Node 24.22.1 (fnm), Git 2.55.0.windows.5. MCP/session-switch gates
+  and new-head remote Windows/Linux CI were not rerun.
+- Follow-up: obtain explicit publication authorization, push/open the single B12
+  PR, verify head/CI and complete independent FIX23/B12 review. Then B13 artifacts
+  and B14 stop handling; M2b/M3 are not complete. The user restriction overrides
+  the repository's usual publish-through-PR protocol. No push/merge was performed.

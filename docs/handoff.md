@@ -1,12 +1,35 @@
-# Continuation point — 2026-11-03
+# Continuation point — 2026-11-04
 
-Main is `05d5cda`, including B11/#23 and FIX17-18/#22. M2a is complete; the B06 MCP gate passed
-eight isolated pinned-host runs after readiness/cleanup corrections. The task store,
-service surface, B09 workspaces and B10 subprocess primitive are merged. M2b remains
-incomplete: no task scheduler, executor dispatch, MCP transport or self-development
-task is integrated.
+Remote main is `488e57ad817dbdf19496a2eb07c09be66c18c2aa`, including FIX23/#24,
+B11/#23 and FIX17-18/#22. Main CI run 41759929003 passed. No open PRs were found.
+The mirrored ChatGPT project snapshot is older and is not a Git checkout. This
+branch uses the actual repository checkout; fetch again before editing.
+M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
+`2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Current task: FIX23 — post-merge B11 corrections
+## Current task: B12 — local durable scheduler, publication withheld
+
+Branch `task/B12-durable-scheduler` starts at remote main `488e57a`. The opt-in
+single-worker scheduler persists running/attempt/workspace identity before setup
+and spawn, serializes new submissions, never requeues duplicates or preexisting
+records, and blocks uncertain results. Active shutdown retains ownership because
+abort is not stop proof. The real OpenCode fixture now covers service-to-worker
+dispatch as well as the original authorization regressions.
+
+Local validation: 208 passed, zero failed, one POSIX-only skip; host fixture and
+fallback demo passed. Read the current validation entry and B12 card for evidence
+and both self-reviews. No paid/external provider was used. M2b/M3 remain incomplete.
+
+Next: obtain maintainer authorization to push/open the prepared B12 PR, then
+verify its head/CI and request independent review. The user explicitly prohibited
+publication and merge without authorization in this session; repository defaults
+do not override that restriction. FIX23/#24 is merged with green CI but has no
+published independent review; local source review and the repeated pinned-host
+regressions passed, and that dependency-review gap must remain visible in B12.
+B13 (artifacts) can follow independently of B12; B14 requires both. Do not add
+transport, providers, fallback or automatic merge to this task.
+
+## Historical FIX23 checkpoint before PR #24 merged
 
 Review `task/FIX23-authorization` under [FIX23](tasks/FIX23.md). It rejects multiply
 linked files before host launch, restricts provider environment to FIXTURE_API_KEY,

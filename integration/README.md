@@ -145,8 +145,17 @@ unchanged and the provider receives no extra requests. Ordinary launches still u
 the pinned host to verify real denied and allowed writes. Only FIXTURE_API_KEY is
 accepted in providerEnvironment for the currently supported loopback fixture.
 
-Limitations: the helper is not yet integrated with the task service/scheduler and
-currently accepts only loopback fixture providers. It is not an OS sandbox or
-outbound network firewall. `PATH` and other required Windows OS variables remain in
+The B12 extension also submits through `createTaskService({ worker })`, verifies
+prompt queued acceptance and duplicate-ID replay, waits for its scheduler, observes
+one durable attempt and checks an allowed write in its B09 worktree. It uses
+`createOpenCodeWorker` to prepare per-attempt isolated runtime files and B10 to run
+the child. The JSON report includes `serviceSchedulerDispatch: true`. A zero host
+exit without a recorded test command remains an explicit result limitation. The
+harness explicitly removes its known fixture output and clean worktrees; the
+scheduler itself never removes workspaces. Uncertain shutdown retains state.
+
+Limitations: the helper currently accepts only loopback fixture providers. No MCP
+task transport, production provider or self-development gate is covered. It is not
+an OS sandbox or outbound network firewall. `PATH` and other required Windows OS variables remain in
 the explicit host environment and need deployment-specific review before any real
 provider or worker is authorized.

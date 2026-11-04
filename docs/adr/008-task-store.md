@@ -100,6 +100,27 @@ Idempotency resolution by original canonical payload precedes filesystem and Git
 replays return the original task ID and base commit without revalidating repository existence, branch state
 or moving refs. Older records lacking `baseCommit` remain readable by `readTask` and `get_task_result`.
 
+## Amendment — 2026-11-04: B12 durable single-worker dispatch
+
+The opt-in service scheduler records running state and one attempt with an immutable
+planned B09 workspace binding in the same atomic JSON write before setup/spawn.
+Attempt workspace metadata is optional for legacy v1 records; when present it must
+match task identity/base/branch and valid absolute task/receipt paths. A workspace
+receipt is not process stop proof. B09 retains its separate verified Git receipt.
+
+The service schedules only newly accepted submissions, never persisted dispatches
+or preexisting pristine queues on startup. Duplicate submissions do not enqueue.
+One task runs at a time. Known process exits are recorded without inventing artifact
+or test evidence. Unknown results/persistence errors halt dispatch and retain state.
+
+Worker-enabled close disables new dispatch, persists active work as blocked before
+abort, waits for scheduler settlement and retains ownership whenever stop is unknown.
+It returns an explicit ownership-release result; callers must await it. Passive
+services preserve synchronous close. This conservative B12 behavior deliberately
+does not provide B14 stop proof or B18 recovery tooling. Maintainers must inspect
+processes, workspaces, effects and records before manually removing a retained lock.
+No background retry, stale-lock reclamation, cleanup or new dependency is added.
+
 ## Revisit triggers
 
 Revisit when: M2b carries

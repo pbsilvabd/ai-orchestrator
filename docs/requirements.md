@@ -25,6 +25,12 @@ mock-only evidence does not satisfy M2b.
 Remote access requires an explicit authenticated deployment design and remains out of
 scope. No universal web compatibility or continuous background supervision is promised.
 
+B12 local implementation adds an explicitly configured single-worker queue with
+durable dispatch, no duplicate scheduling and conservative shutdown/ownership.
+The selected client/transport remain those in ADR-007. B13 artifacts, B14 stop
+handling and B15–B17 transport/client acceptance remain required for M2b. A normal
+worker exit without recorded test evidence is reported with a limitation.
+
 ## Delivery 0: scaffold (current)
 
 - Pure policy, explicit allowlist, attempt limit and cooldown.
