@@ -968,3 +968,31 @@ Template:
 - Follow-up: exercise the task skill on the next authorized B13 assignment and the
   review skill on an authorized PR review. B13 and M2b/M3 status remain unchanged.
   This local skills delivery does not inherit earlier publication/merge approvals.
+
+## 2026-11-04 — B27: CI foundation
+
+- Branch: `task/B27-ci-foundation`, base `c6bb77a`.
+- Scope: mixed (CI workflows, dependency lockfile, check script, docs); no runtime
+  change under `src/`.
+- Steps:
+  1. Added `packageManager`, `engines` and `package-lock.json`; confirmed `npm ci`
+     installs from the lockfile after removing `node_modules`.
+  2. Added `scripts/check.mjs` (syntax, schema, suite, whitespace) and the npm
+     `check` script; verified it exits 0 clean and non-zero with a seeded defect.
+  3. Pinned checkout/setup-node by SHA with `contents: read` per job, added the
+     `check`/`test` jobs in `.github/workflows/ci.yml`, and added
+     `.github/dependabot.yml` for actions and npm.
+  4. Added `.github/workflows/secret-scan.yml` with gitleaks 8.28.0 pinned by
+     digest, plus `.gitleaks.toml` limiting the allowlist to `idempotencyKey`
+     fixture literals under `test/`; seeded-token run still fails redacted.
+  5. Recorded evidence in `docs/validation.md` and updated `docs/ci.md`.
+- Files: `.gitleaks.toml`, `.github/workflows/ci.yml`,
+  `.github/workflows/secret-scan.yml`, `.github/dependabot.yml`, `package.json`,
+  `package-lock.json`, `scripts/check.mjs`, `docs/ci.md`, `docs/tasks/B27.md`,
+  `docs/validation.md`, `docs/worklog.md`, `test/opencode.test.mjs`.
+- Validation: `npm run check` -> 0 clean and 1 with a seeded defect;
+  `node --test` -> 208 passed, 0 failed, 2 skipped; `npm ci` -> 0;
+  `npm audit --audit-level=high` -> 0; gitleaks with `.gitleaks.toml` -> 0,
+  seeded token -> 1 redacted. Remote CI evidence pending (`https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41871166274`).
+- Follow-up: B28 adds coverage thresholds, job ordering, the macOS leg and the
+  pre-push hook; #31 closes with B28. No publication or merge was performed here.
