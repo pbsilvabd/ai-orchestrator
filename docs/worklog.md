@@ -167,6 +167,378 @@ Template:
   states "when the next action changes"; and the page is 70 lines. The second commit is
   recorded accurately above: it also carried this entry and the validation entry.
 
+## 2026-11-02 — Docs: uniform templates for recurring artifacts
+
+- Branch: `docs/templates-uniformity`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Read the real shapes of `docs/adr/007-task-contract.md`,
+     `docs/adr/008-task-store.md`, `docs/worklog.md`, `docs/validation.md`,
+     `docs/handoff.md`, `docs/definition-of-done.md` and `AGENTS.md` before writing
+     anything, so the templates reuse the existing field names and order.
+  2. Added `docs/templates/adr-template.md` with the header line, `Context`, `Decision`,
+     `Alternatives considered`, `Consequences` and `Related documents`, one inline
+     instruction per field, plus a filled sample based on ADR-008.
+  3. Added `docs/templates/worklog-entry-template.md` with the file's real fields
+     (heading, `Branch`, `Scope`, `Steps`, `Files`, `Validation`, `Follow-up`) and the
+     append-only rules stated inline.
+  4. Added `docs/templates/validation-entry-template.md` with environment, date, a
+     command table (command, purpose, result, exit code), the four evidence levels,
+     a mandatory `Not rerun` section and the final-claim sentence pattern.
+  5. Added `docs/templates/handoff-update-template.md` mirroring the sections of
+     `docs/handoff.md`, marking per section what must be updated and what is copied
+     unchanged.
+  6. Added `docs/templates/README.md` with the artifact-to-template mapping, the
+     placeholder convention and the "templates are tooling, not normative" line, and
+     added the templates bullet to the `AGENTS.md` documentation duties.
+- Files: `docs/templates/README.md`, `docs/templates/adr-template.md`,
+  `docs/templates/worklog-entry-template.md`,
+  `docs/templates/validation-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `AGENTS.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200; `git diff --check` → no output; relative Markdown links checked with a
+  one-off, unversioned script → 0 broken. The OpenCode smoke and MCP capability gate were
+  not rerun.
+- Follow-up: publish this branch for review as the templates PR and use the templates
+  for the next change. No milestone step moved and no ADR was needed, because this adds
+  documentation tooling only.
+
+## 2026-11-02 — Docs: align templates with repository practice and mark new elements
+
+- Branch: `docs/templates-uniformity`
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Corrected the README trigger statement: worklog and validation on every change, ADR
+     only for a decision, dependency or trust boundary, handoff only when the next action
+     moves; added the copy procedure and the format-versus-substance rule.
+  2. Conformed the ADR template to the eight real ADRs: lowercase `accepted` plus a
+     semicolon-separated qualifier, no invented status vocabulary, `Decided by` and the
+     `Alternatives considered`/`Related documents` sections flagged as new, amendment rules
+     reconciled with `AGENTS.md`.
+  3. Replaced the ADR example that claimed to be a compressed ADR-008 with an explicitly
+     fictional ADR, so it can no longer be read as history.
+  4. Rewrote the handoff template: seven parts instead of a wrong count of six, no claim
+     that the file names the maintainer, and examples that reproduce the copied-unchanged
+     sections verbatim, including owner-only access and the M3 rule.
+  5. Corrected the worklog and validation templates: two heading and Steps forms that exist
+     in the file, scope values and wrap width as observed, the validation format declared as
+     new rather than established, one heading date rule, and the broken table cell.
+  6. Removed the round-1 validation contradiction between a listed link-check command and a
+     not-rerun line that called the same check skipped.
+  7. Sync with main after #10 merged (conflict resolution: both PRs' worklog/validation
+     sections preserved; AGENTS.md merged cleanly).
+- Files: `docs/templates/README.md`, `docs/templates/adr-template.md`,
+  `docs/templates/worklog-entry-template.md`,
+  `docs/templates/validation-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test` → 83 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  429 then 200; `git diff --check` → no output. The OpenCode smoke and MCP capability gate
+  were not rerun.
+- Follow-up: publish the branch for the next review round; apply the templates to the next
+  change. No milestone step moved.
+
+## 2026-11-02 — M2b: independent PR review and agent backlog
+
+- Branch: `review/2026-11-02-pr-backlog` (local review; not published).
+- Scope: documentation and review evidence; no executable behavior changed.
+- Steps: inspected main, four open PRs, merged service/rules PRs, two discussions
+  and old executor/client/acceptance branches; reproduced boundary defects;
+  prepared 25 tasks with priorities, dependencies, ownership and acceptance.
+- Files: `docs/review-2026-11-02.md`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: main suite 83/83; PR #8 snapshot 106/106; acceptance snapshot
+  73 passed / 2 failed. Both main and #8 demos printed 429 then 200.
+  Temporary-state reproductions confirmed diagnostic and lifecycle gaps.
+  Real OpenCode, MCP, SQLite and M3 experiments were not rerun.
+- Follow-up: choose an unblocked backlog task; no milestone advanced and no
+  external review, issue, PR or merge was submitted.
+
+## 2026-11-02 — Docs: template lifecycle and proportionality corrections
+
+- Branch: `docs/templates-review-fixes` (published to PR #11's
+  `docs/templates-uniformity` branch; under review).
+- Scope: docs only; no executable behavior changed.
+- Steps:
+  1. Merged main and preserved both independent worklog/validation histories.
+  2. Added proposed/accepted/superseded ADR status guidance with maintainer
+     approval evidence and separate proposal/acceptance dates.
+  3. Made worklog dates describe work performed, without implying a merge.
+  4. Allowed explained template adaptations and proportionate handoff edits,
+     preserving required facts, invariants and normative precedence.
+- Files: `AGENTS.md`, `docs/templates/README.md`,
+  `docs/templates/adr-template.md`, `docs/templates/worklog-entry-template.md`,
+  `docs/templates/handoff-update-template.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` → 83 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200, exit 0;
+  `git diff --check` → no output; five template files checked, 30 prose links
+  valid and fences balanced. Real OpenCode/MCP/SQLite gates were not rerun.
+- Follow-up: review corrected PR #11. The milestone and next implementation
+  action remain unchanged; no handoff update or ADR is required for these
+  formatting clarifications.
+
+## 2026-11-02 — M2b: B04a ordinary lifecycle guards
+
+- Branch: `task/B04-lifecycle-guards` (implementation for review).
+- Scope: store hardening, regression tests and normative documentation; no worker
+  execution or manual reconciliation operation.
+- Steps:
+  1. Guarded update and restart writes with a private transition table and
+     immutable identity/request checks, using RFC-0002 as design input.
+  2. Enforced state-dependent block/cancel/timestamp presence. Invalid historical
+     records fail closed without rewriting; terminal artifacts remain writable.
+  3. Updated fixtures to use legal transitions and added a 36-pair transition
+     matrix plus identity, dispatch, corruption and late-result regressions.
+  4. Amended ADR-008 and the contract together; recorded the bounded B04a scope
+     and the next continuation task in roadmap, backlog and handoff.
+- Files: `src/tasks.mjs`, `test/task-lifecycle.test.mjs`,
+  `test/task-service.test.mjs`, `test/task-store.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/008-task-store.md`, `docs/backlog.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` -> 126 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` -> 429 then 200. Real OpenCode/MCP/SQLite
+  gates were not rerun. No paid calls or developer-state access.
+- Follow-up: B05 service ownership; B01 is a small independent continuation.
+  B12 dispatch, B14 stop proof and B18 human reconciliation remain scoped out.
+
+- Template adaptation: compact amendment/checkpoint entries preserve scope, evidence,
+  validation and next actions without repeating unchanged milestone background.
+- Final review also made persisted attempt identity append-only; a regression covers
+  erase-then-cancel and permits active attempts to acquire completion metadata.
+
+## 2026-11-03 — M2b: B04a pre-merge review
+
+- Branch: `task/B04-lifecycle-guards`, PR #13.
+- Reviewed lifecycle edges, immutable request/identity, dispatch preservation,
+  service cancellation compatibility and failure behavior against the contract.
+- Found and closed queued-with-persisted-attempt -> running: it now fails before
+  writing, so restart reconciliation must block the task rather than permit replay.
+- Files: `src/tasks.mjs`, `test/task-lifecycle.test.mjs`, `docs/task-contract.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: 126 tests passed, 0 failed; fallback demo 429 then 200; diff check passed.
+- Limits remain B05 ownership, B12 dispatch production, B14 stop proof and B18
+  maintainer reconciliation. No live integration gate was rerun.
+- Template adaptation: compact review addendum records the defect, fix and evidence
+  without repeating the implementation checkpoint above.
+
+## 2026-11-03 — M2b: B05 service ownership
+
+- Branch: `task/B05-service-owner` (implementation for review).
+- Scope: exclusive service ownership per state home through a lock file; no distributed locking or automatic crash recovery.
+- Steps:
+  1. Acquired `locks/service-owner.lock` before startup reconciliation; exposed idempotent `close()` and release ownership after failed initialization.
+  2. Added regression coverage for competing owners, close/reopen and startup failure; updated multi-client fixtures to respect one service owner.
+  3. Amended the normative contract and ADR-008; updated backlog, roadmap and handoff.
+- Files: `src/service.mjs`, `test/task-service.test.mjs`, `docs/task-contract.md`, `docs/adr/008-task-store.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` -> 127 passed, 0 failed; `node examples/fallback-demo.mjs` -> 429 then 200; `git diff --check` passed. OpenCode/MCP/SQLite gates were not rerun.
+- Follow-up: inspect stale lock PID/state after a crash before manual removal; proceed with B03/B06 before executor integration.
+- Template adaptation: compact continuation checkpoint keeps the ownership contract, evidence and next steps without duplicating unchanged milestone history.
+
+## 2026-11-03 — M2b: B05 pre-merge review
+
+- Branch: `task/B05-service-owner`, PR #14.
+- Found and fixed operation access after close: all four operations now reject closed
+  service handles, preventing old owners from writing after another service starts.
+- Made failed lock release retryable, and preserved reconciliation-conflict tests by
+  closing the previous owner before simulating restart.
+- Added real subprocess contention and abrupt-death coverage: rejected startup leaves
+  running record bytes unchanged; stale locks survive death; explicit recovery blocks
+  uncertain work. Added closed-owner/replacement-owner regression coverage.
+- Files: `src/service.mjs`, `test/task-service.test.mjs`, `test/service-owner.test.mjs`,
+  `docs/task-contract.md`, `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: 129 tests passed; fallback demo 429 then 200; diff check passed.
+- No real OpenCode/MCP/SQLite gate was rerun. Maintenance must stop services/workers
+  before direct store mutation. Compact review addendum preserves existing history.
+
+## 2026-11-02 — M2b: Executable backlog and PR delivery contracts
+
+- Branch: `docs/task-contracts-and-pr-workflow` (documentation implementation for review).
+- Scope: documentation and delivery rules; the runtime contract/API and milestones are unchanged.
+- Steps:
+  1. Replaced the old paragraph queue with a verified index and 27 detailed task cards
+     containing prerequisites, scope, implementation sequence and 107 acceptance rows.
+  2. Retained merged B02/B04a/B05 as history, marked B01 corrected on open #8 and split
+     the B22 umbrella into sequential one-PR tasks B22a/B22b/B22c.
+  3. Added the end-to-end execution protocol, two mandatory review passes, blocked-work
+     handling, task-card and PR templates; linked these from AGENTS, contributing and DoD.
+  4. Updated continuation/roadmap status and verified links, anchors, IDs and card coverage.
+- Files:
+  - `AGENTS.md`
+  - `CONTRIBUTING.md`
+  - `.github/pull_request_template.md`
+  - `docs/backlog.md`
+  - `docs/task-execution.md`
+  - `docs/definition-of-done.md`
+  - `docs/handoff.md`
+  - `docs/roadmap.md`
+  - `docs/templates/README.md`
+  - `docs/templates/task-card-template.md`
+  - `docs/worklog.md`
+  - `docs/validation.md`
+  - `docs/tasks/B01.md`
+  - `docs/tasks/B02.md`
+  - `docs/tasks/B03.md`
+  - `docs/tasks/B04.md`
+  - `docs/tasks/B05.md`
+  - `docs/tasks/B06.md`
+  - `docs/tasks/B07.md`
+  - `docs/tasks/B08.md`
+  - `docs/tasks/B09.md`
+  - `docs/tasks/B10.md`
+  - `docs/tasks/B11.md`
+  - `docs/tasks/B12.md`
+  - `docs/tasks/B13.md`
+  - `docs/tasks/B14.md`
+  - `docs/tasks/B15.md`
+  - `docs/tasks/B16.md`
+  - `docs/tasks/B17.md`
+  - `docs/tasks/B18.md`
+  - `docs/tasks/B19.md`
+  - `docs/tasks/B20.md`
+  - `docs/tasks/B21.md`
+  - `docs/tasks/B22a.md`
+  - `docs/tasks/B22b.md`
+  - `docs/tasks/B22c.md`
+  - `docs/tasks/B23.md`
+  - `docs/tasks/B24.md`
+  - `docs/tasks/B25.md`
+- Review pass 1: checked old acceptance requirements against every new card. Clarified
+  B03 static-validation/idempotency/new-repository ordering and the distinction between
+  required host evidence and a blocked draft; avoided rerunning completed work.
+- Review pass 2: checked final cards, dependency ordering, protocol/templates and all
+  changed docs against main. Made every named scenario variant mandatory, removed
+  stale inherited main-write authorization and updated task/PR status facts.
+- Validation: `node --test --test-reporter=tap` -> 129 passed, 0 failed, exit 0;
+  `node examples/fallback-demo.mjs` -> 429 then 200, exit 0; temporary Markdown/card
+  checker -> 27 cards, 107 acceptance rows and 234 relative links/anchors passed;
+  `git diff --check` -> exit 0. Code was unchanged after these runtime checks.
+- Not rerun: real OpenCode smoke/MCP gate (docs-only change); no SQLite or worker
+  integration claim is made. No paid calls or credentials were used.
+- Follow-up: review this documentation PR, then dispatch one ready B03/B06/B07/B10
+  card through its PR using the copyable prompt.
+- Template adaptation: per-task cards replace oversized inline backlog paragraphs;
+  the compact review notes above preserve both review passes without an additional
+  runtime ADR because no runtime architecture, authority or state format changed.
+
+## 2026-11-03 — M2b: B03 repository identity before task acceptance
+
+- Branch: `task/B03-repo-identity` (implementation and review for PR).
+- Scope: validate real Git repository identity, path containment, commit-ish baseRef resolution to immutable full commit SHA, and branch absence/collision before task creation; defer filesystem checks after idempotency replay.
+- Steps:
+  1. Specified validation ordering: static request/identity checks -> client-scoped idempotency lookup -> new-request repository and Git inspection.
+  2. Implemented `src/repository.mjs` with `RepositoryError`, `isPathContained` (preventing sibling attacks and handling case insensitivity), `resolveCanonicalPath` (following symlinks/junctions), and `validateRepositoryIdentity` (Git argument arrays, `rev-parse --is-inside-work-tree`, single commit-ish resolving to commit, `check-ref-format`, local branch existence and linked worktree checks).
+  3. Stored fixed full base SHA as immutable metadata `baseCommit` in `src/tasks.mjs` without modifying original request or canonical payload hash. Exposed `findIdempotentTask` on store.
+  4. Updated `submitTask` in `src/service.mjs` to return replays without filesystem inspection, validate new requests with `validateRepositoryIdentity`, and persist `baseCommit`.
+  5. Updated existing service test fixtures to initialize real temporary Git repositories and added dedicated tests for acceptance matrix rows B03-01 to B03-05 plus repository unit tests in `test/repository.test.mjs`.
+  6. Documented repository validation rules and ordering in `docs/task-contract.md` and added an amendment to `docs/adr/008-task-store.md`.
+- Files:
+  - `src/repository.mjs`
+  - `src/tasks.mjs`
+  - `src/service.mjs`
+  - `test/task-service.test.mjs`
+  - `test/repository.test.mjs`
+  - `docs/task-contract.md`
+  - `docs/adr/008-task-store.md`
+  - `docs/backlog.md`
+  - `docs/handoff.md`
+  - `docs/worklog.md`
+  - `docs/validation.md`
+- Review pass 1 (implementation review):
+  - Ordering verified: idempotency check runs before filesystem operations; replays succeed even if repo was deleted or branch created.
+  - Sibling directory matching: `isPathContained` enforces exact path or subdirectory boundary (`sep`), preventing `/path-fake` from matching `/path`.
+  - Immutable baseCommit: cannot be modified after initial acceptance, preserving auditability and compatibility with older records.
+  - Subprocess safety: Git executed directly with argument arrays (`shell: false`, `windowsHide: true`).
+- Review pass 2 (completed diff review):
+  - Verified acceptance rows B03-01 through B03-05 all pass with observable evidence.
+  - Verified full test suite (141 tests) and fallback demo pass without regressions.
+  - Whitespace and formatting verified via `git diff --check`.
+- Validation:
+  - `node --test`: 141 passed, 0 failed, exit 0.
+  - `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
+  - `git diff --check`: clean, exit 0.
+- Not rerun: OpenCode smoke / MCP capability gate (requires pinned binary outside repo; B06 will diagnose gate stability).
+- Follow-up: Open PR for B03; next ready tasks are B09 (workspace lifecycle), B10 (subprocess primitive), and B06.
+
+## 2026-11-03 — B03 post-review authorization boundary fix
+
+- Re-review found that a submitted subdirectory could resolve Git refs from an enclosing repository outside the configured writable roots.
+- Resolved and canonicalized Git's actual worktree root, required that root to be contained in an authorized root, and used it for subsequent Git inspections.
+- Added a real Git fixture covering an allowed nested directory with an unauthorized parent repository.
+- Validation: focused repository tests 7/7; full suite 142/142; fallback demo 429 then 200; `git diff --check` clean.
+- OpenCode/MCP gates not rerun; they are outside B03's scope.
+
+## 2026-11-03 — B07 credential-free Windows/Linux CI
+
+- Branch: `task/B07-cross-platform-ci`, based on `origin/main` at `c07b78e` (PR #16 merged).
+- Added `.github/workflows/ci.yml`: PR and main-push triggers, `contents: read`, Windows/Linux matrix, Node 24.22.1, separate test/demo steps, explicit PowerShell native-exit propagation, and an exit-7 pipeline fixture on both shells.
+- Added `docs/ci.md` with local reproduction steps and the boundary around opt-in OpenCode/MCP checks.
+- Updated handoff, backlog and roadmap to reflect B03/#16 merged, B10/#17 and B09/#18 open, and B07 in progress.
+- Review pass 1: inspected trigger scope, token permissions, untrusted input exposure, shell quoting, failure propagation and external-host boundaries. No secrets, publishing, shell expressions from PR text or write permissions are used.
+- Review pass 2: checked the complete workflow/docs/status diff and mapped all B07 rows. Local work is complete; the GitHub matrix remains pending until a pull-request run provides Windows and Linux evidence.
+- Local validation on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5: full suite 142/142, fallback demo 429 then 200, and piped nonzero fixture retained native exit 7; each command exited 0 as expected. `git diff --check` clean.
+- Follow-up: publish as draft while GitHub runner availability and both matrix jobs are observed; convert to ready only after required evidence is complete.
+
+- B07 publication update: PR #19 CI run `41737541145` completed successfully. Windows job `126270492736` and Ubuntu job `126270493106` both used Node v24.22.1, passed 142/142 tests and the fallback demo. Pipeline fixtures failed as expected (Windows exit 1; Bash exit 7), while the workflow jobs passed. Draft contingency was unnecessary because both runners were available; PR moved to ready for review.
+
+## 2026-11-03 — B07 merge review correction
+
+- Reviewed PR #19 at `00631ee` against the card, full diff, permissions, triggers and successful Windows/Linux CI run `41737897011`.
+- Corrected `docs/ci.md`: the Bash reproduction now enables `set -e -o pipefail`, so a failing test cannot be masked by a later successful demo. Clarified that subsequent native commands can overwrite PowerShell's `$LASTEXITCODE`.
+- Verified a real exit-7 Node pipeline under Git Bash stops the script before the following command (shell exit 7, no continuation output). Initial standalone Bash attempts could not resolve the transient Node installation (exit 127); the successful experiment used the parent PowerShell process's absolute Node binary.
+- Validation: `git diff --check`; CI will revalidate the updated PR head. No runtime code changed and OpenCode/MCP checks were not rerun.
+
+## 2026-11-03 — B06 MCP capability gate diagnosis
+
+- Branch: `task/B06-mcp-capability-gate`, based on current `origin/main` at `2ff7e5e` (PR #19 merged).
+- Verified the externally supplied OpenCode 2.2.5 binary: `--version` returned `opencode v2.2.5`, Authenticode signature verified for Anomaly Innovations, and its ZIP SHA-256 matched the published digest `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8` (121,962,397 bytes).
+- Reproduced the previously intermittent ordering defect from the existing transcripts: a single probe could snapshot the tool registry before OpenCode asynchronously connected the MCP server. The harness warm-up and wait for the connection marker address that race.
+- Ran eight sequential independent launches, each with fresh temporary config/data/state and fixture logs. Every launch returned exit 0 and observed `server/discover`, `tools/list`, `tools/call`, `probe:GATE_FIXTURE` in model context, no legacy `initialize`, protocol `2026-07-28`, and exactly five provider requests.
+- Hardened `integration/mcp-gate.mjs`: readiness waits remain bounded (default 30 seconds), command execution remains bounded (default 120 seconds), Windows process-tree termination and process-close waits are each capped at five seconds, cleanup errors now fail the gate, and a cleanup failure is included alongside the original phase error with local fixture secrets redacted. Added bounded timeout overrides and a deliberate cleanup-failure diagnostic fixture; documented their use.
+- Review pass 1: inspected phase ordering, child spawn/exit, server startup, MCP readiness, timeout kill, cleanup aggregation, credential redaction and temporary-state ownership. Fixed timeout races that had converted a timeout into a child exit code and could leave a caller waiting if stop failed.
+- Review pass 2: rechecked the full harness and integration docs against B06 rows; all observed outcomes below are nonzero when expected, and the eight required real-host launches pass.
+- Local environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5, signed OpenCode 2.2.5.
+- Validation: full suite 142/142; fallback demo 429 then 200; diff check clean. Eight host launches 8/8 success. Missing binary, wrong version and `cmd.exe` nonzero child each returned harness exit 1. Command timeout and readiness timeout returned exit 1; combined readiness plus forced cleanup error returned exit 1 and reported both original phase and cleanup failure.
+- OpenCode smoke was not rerun; unrelated session/model evidence. No paid provider calls; only the loopback fixture provider was used.
+
+## 2026-11-03 — B06 PR #20 follow-up review
+
+- Reviewed PR #20's current diff, metadata, conversation, inline review threads and submitted reviews. The GitHub PR had no comments or review submissions at the time of inspection.
+- Corrected the command timeout so it settles even if a descendant keeps inherited pipes open after the root process exits; timeout cleanup now closes the streams and unreferences the child after bounded process termination.
+- Preserved the temporary fixture whenever host or server cleanup fails, fixed the retained-path diagnostic, and delayed the success JSON until cleanup completes.
+- Validation: `npm test` 142/142; fallback demo 429 then 200; eight pinned OpenCode 2.2.5 launches passed; a 1 ms command timeout and combined readiness/forced-cleanup failure both exited 1; `node --check` and `git diff --check` passed.
+
+## 2026-11-03 — Docs: shared PR review feedback (B26)
+
+- Branch: `task/B26-pr-review-feedback`, from main `2ff7e5e`.
+- Scope: documentation and instructions; no runtime or task-contract change.
+- Steps:
+  1. Inspected current code, merged baseline and open implementation PRs.
+  2. Required PR findings, developer feedback intake/replies and re-review of the
+     current commit, including failed publication and stale-review handling.
+  3. Linked the protocol from agent/developer entry points, DoD and PR template.
+  4. Documented current delegation gaps and a future sequential two-model loop.
+- Files: `AGENTS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`,
+  `docs/pr-review.md`, `docs/task-execution.md`, `docs/definition-of-done.md`,
+  `docs/tasks/B26.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test` passed 142/142; fallback demo returned 429 then 200;
+  content/link checks and `git diff --check` passed. OpenCode/MCP gates not rerun
+  because runtime files are unchanged.
+- Review: pass 1 checked publication, feedback intake, permissions and failure
+  paths; pass 2 mapped B26-01–04 to instructions and existing code/dependencies.
+  Corrected section placement and stale handoff actions. No blocking findings.
+- Follow-up: independently review this PR, then the open B06/B09/B10 PRs. Runtime
+  automation requires B11–B20 and separate controller design/implementation cards.
+
+## 2026-11-03 — B26 merge review integration
+
+- Merged current main after B06/#20; preserved both append-only histories and
+  reconciled the handoff/current capability status. No runtime changes beyond
+  already validated main. Rechecked feedback protocol and relative links; CI
+  will validate the integrated head before merge.
+
 ## 2026-11-02 — RFC-0001: declarative contract schemas and checker skeleton
 
 - Branch: `rfc/0001-contract-schemas`
@@ -276,3 +648,16 @@ Template:
 - Validation: `node --test --test-reporter=tap` -> 107 passed, 0 failed;
   `node examples/fallback-demo.mjs` -> expected 429 then 200; `git diff --check` passed.
 - Limits: schemas remain unwired to runtime operations; no live integration gates ran.
+
+## 2026-11-03 — B01 schema scaffold merge review
+
+- Branch: `rfc/0001-contract-schemas`; integrated main `104e9c1` without changing
+  service/store behavior. Preserved both append-only histories and changed the
+  unmerged sibling RFC link to its PR. Reviewed the schema subset and diagnostics;
+  the unknown-key disclosure correction is present. Runtime adoption remains B08
+  and requires differential checks. Integrated suite/demo and CI follow.
+
+- B01 integration correction: updated the artifact fixture for full immutable base
+  SHA and legal lifecycle transitions. Initial integrated suite failed 1/166;
+  after correction, 166/166 pass and demo returns 429 then 200. Reviewed the final
+  checker/schema/test diff; runtime consumers remain untouched. No host gates rerun.

@@ -11,9 +11,24 @@
 - [ ] README, requirements and roadmap reflect the result; architectural decisions have ADRs when needed.
 - [ ] `docs/worklog.md` has an entry for this change and `docs/handoff.md` reflects the next action.
 - [ ] The diff is reviewed, license preserved, commit published and remote state verified; no force push.
+- [ ] Each required task-card matrix row maps to an observed test/experiment and evidence.
+- [ ] Review pass 1 inspected implementation/failure/authority paths; blocking findings were fixed.
+- [ ] Review pass 2 inspected the completed diff and every acceptance row; fixes were revalidated.
+- [ ] The single task PR is published ready for review, its URL/base/head verified, and remote head matches the intended commit.
 
-Direct main commits may be used when authorized by the maintainer, as in this
-cycle. This does not waive tests/review or change the future agent's permissions.
+Follow [task-execution.md](task-execution.md). Backlog delivery ends at one verified
+PR ready for review; merging is a separate explicitly authorized action. A draft PR
+with a blocked criterion is a useful checkpoint, not completion. Pending CI is
+reported as pending; required not_run evidence cannot support a completed claim.
+Direct main commits require explicit task-specific maintainer authorization and
+do not waive tests/review or grant future agents permission.
+
+## PR review feedback
+
+Reviewers publish actionable findings on the PR under [the feedback protocol](pr-review.md).
+Developers read all PR feedback and reply with correction commits/evidence or a
+reasoned explanation. Blocking findings require verified re-review at the current
+head before approval; a final chat reply alone does not deliver PR findings.
 
 ## Evidence levels
 

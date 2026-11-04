@@ -40,10 +40,9 @@ so it needs a record store, not a session lock.
    index and reports ambiguous entries instead of overwriting them.
 7. `prune` is explicit maintenance. `blocked` records are never removed automatically;
    terminal records expire after 30 days by default.
-8. No cross-process lock and no concurrency control here: M2b runs one service process
-   and one task at a time. `locks/` and `artifacts/` from the contract layout are not
-   created until the step that uses them, so the store does not imply capabilities it
-   lacks.
+8. M2b originally assumed one service process, with no cross-process ownership lock.
+   See the B05 amendment below for the implemented service lock; direct store handles
+   remain cooperative tools for maintenance and tests. `artifacts/` stays deferred.
 
 ## Consequences
 
@@ -61,9 +60,49 @@ so it needs a record store, not a session lock.
 - Store tests use injected timestamps and temporary directories; they do not validate
   the transport, the executor or the operation semantics.
 
+## Amendment — 2026-11-02: B04a lifecycle guards
+
+The store now validates legal ordinary transitions and immutable identity/request
+fields before updating records; startup reconciliation uses the same guard.
+State-dependent block/cancel/timestamp checks also apply on reads. Legacy invalid
+v1 records fail closed as unavailable without automatic repair. Valid v1 records
+retain their format. See the contract's Store enforcement section for exact scope.
+
+This implements the immediate safety concern described in RFC-0002 (#9), using a
+small private table without depending on RFC-0001's schema checker. It does not
+adopt those RFCs wholesale. Terminal artifacts remain writable; terminal lifecycle
+metadata does not. Ordinary callbacks cannot prove worker stop or authorize human
+reconciliation, so those future operations are intentionally not exposed here.
+Dispatch creation (B12), stop proof (B14) and maintenance
+tooling (B18) remain separate work. No SQLite dependency or schema migration is added.
+
+## Amendment — 2026-11-03: B05 service ownership
+
+`createTaskService` exclusively creates `locks/service-owner.lock` before startup
+reconciliation and keeps it until the returned `close()` function is called. A second
+service for the same home fails closed with `unavailable`. Initialization failures
+release the lock. The lock records PID and start time; stale locks are never reclaimed
+automatically after a crash because process identity and worker outcome need maintainer
+inspection. Direct `openTaskStore` handles remain available for explicit local
+maintenance and tests; they do not acquire service ownership themselves.
+
+## Amendment — 2026-11-03: B03 repository identity and immutable base commit
+
+Task submission (`submit_task`) requires repository identity validation via `src/repository.mjs`:
+the repository path must resolve to a valid Git work tree contained within configured writable roots
+after canonical path resolution (preventing path-prefix sibling bypasses and symlink escapes).
+The commit-ish `baseRef` is resolved to a full commit SHA (`baseCommit`) and stored as immutable metadata
+on the task record without replacing `request.repository.baseRef` and without changing canonical payload hashing.
+The target `branch` must be a valid ref format, absent locally, and not checked out in any linked worktree.
+Submissions against a dirty parent working tree are accepted and leave user files untouched.
+
+Idempotency resolution by original canonical payload precedes filesystem and Git inspections: identical
+replays return the original task ID and base commit without revalidating repository existence, branch state
+or moving refs. Older records lacking `baseCommit` remain readable by `readTask` and `get_task_result`.
+
 ## Revisit triggers
 
-Revisit when: the service surface (step 3) needs cross-process exclusion; M2b carries
+Revisit when: M2b carries
 task artifacts (step 4) that need `artifacts/`; a second client or remote access
 requires authentication of `clientId`; or retention needs a configurable per-task
 override.

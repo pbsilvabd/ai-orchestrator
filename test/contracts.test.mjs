@@ -359,21 +359,28 @@ test('task record schema accepts the artifacts updateTask adds', t => {
     clientId: 'opencode-primary',
     idempotencyKey: 'goal-artifacts',
     payload: submitRequest(),
+    baseCommit: 'd'.repeat(40),
     now: 1_000,
   });
-  // Mirrors test/task-service.test.mjs:255-265, including a test run without a command.
+  // Persist a legal lifecycle and immutable full base SHA, then exercise artifact
+  // fields, including a test run without a command (reported as a limitation).
+  store.updateTask(task.taskId, draft => {
+    draft.status = 'running';
+    draft.startedAt = 1_000;
+    draft.attempts.push({ attemptId: 'attempt-1', model: 'mock/a', startedAt: 1_000 });
+  });
   store.updateTask(task.taskId, draft => {
     draft.status = 'succeeded';
     draft.finishedAt = 1_500;
     draft.startedAt = 1_000;
-    draft.attempts.push({ attemptId: 'attempt-1', model: 'mock/a', startedAt: 1_000, finishedAt: 1_500, outcome: 'success' });
+    draft.attempts[0].finishedAt = 1_500;
+    draft.attempts[0].outcome = 'success';
     draft.testRuns = [
       { command: 'node --test', exitCode: 0, durationMs: 5, summary: 'ok', outputTail: 'ok' },
       { exitCode: 0, outputTail: 'partial', outputTruncated: true },
     ];
     draft.changedFiles = ['test/example.test.mjs'];
-    draft.headCommit = 'abc123def456';
-    draft.baseCommit = 'def456abc123';
+    draft.headCommit = 'a'.repeat(40);
     draft.diff = 'diff --git a/test/example.test.mjs';
     draft.diffTruncated = true;
   });

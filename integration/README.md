@@ -44,7 +44,13 @@ operation from the contract.
 Set `MCP_GATE_DEBUG=1` to print host/probe output, the provider request log and the
 MCP transcript, and to keep the temporary directory for diagnosis. Without it the
 harness removes the directory and reports a cleanup failure instead of hiding the
-original error.
+original error. Windows process-tree termination and process-close waits are each
+capped at five seconds; cleanup preserves the gate failure if it also fails. Readiness waits default to 30
+seconds; commands default to 120 seconds. `MCP_GATE_READINESS_TIMEOUT_MS` and
+`MCP_GATE_COMMAND_TIMEOUT_MS` accept smaller positive values (up to those defaults)
+for bounded failure experiments. `MCP_GATE_FORCE_CLEANUP_ERROR=1` is a diagnostic
+fixture that deliberately reports cleanup failure and retains its temporary tree;
+remove that exact printed path after the experiment.
 
 Limits: the gate proves that the pinned host can connect, list and call one local
 stdio MCP tool over revision `2026-07-28` with Code Mode routing. It does not

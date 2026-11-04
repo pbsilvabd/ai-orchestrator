@@ -72,17 +72,30 @@ text content block, and error objects set `isError: true`.
 Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay }`.
 
 - The record is persisted before any worker starts; a persistence failure accepts no task.
-- Same `idempotencyKey` and same canonical payload returns the original `taskId` with
-  `idempotentReplay: true` and starts no additional work.
-- Same key with a different payload returns `idempotency_conflict` and changes nothing.
-- `path` must resolve inside a configured root; relative writable globs resolve from
-  `repository.path`, and their static roots must remain within a configured root.
-  Absolute writable paths remain accepted only when inside both the repository and a
-  configured root.
-  `baseRef` must resolve to a commit;
-  `branch` must not already exist unless this task created it.
+- Validation follows strict ordering: request format, static identity and configured
+  allowlist/budget limits are verified first, followed by client-scoped idempotency
+  resolution using the canonical payload.
+- Defer new-request filesystem/Git validation until after idempotency lookup: an identical
+  replay returns the original `taskId` and `baseCommit` with `idempotentReplay: true` without
+  revalidating repository existence, branch availability or moving refs. Same key with a
+  different payload returns `idempotency_conflict` and changes nothing.
+- For new requests, `repository.path` must resolve to an accessible Git work tree whose
+  canonical path (after symlink/junction resolution) is strictly contained within a configured
+  writable root (`authorization_denied` on boundary escape or path-prefix sibling matching).
+- `repository.baseRef` must be a single commit-ish resolving to a commit (ranges like `a..b`,
+  leading hyphens and non-commit objects are rejected with `invalid_argument`). The resolved
+  full commit SHA is persisted on the task record as immutable metadata `baseCommit`; it does
+  not mutate the user's `request.repository.baseRef` and does not alter canonical payload hashing.
+  Older records without `baseCommit` remain readable.
+- `repository.branch` must be a legal Git ref format, must not exist locally, and must not
+  be checked out in any linked worktree (`invalid_argument`). Submitting against a dirty parent
+  working tree is supported and leaves user files unchanged.
+- Relative writable globs resolve from `repository.path`, and their static roots must remain
+  within a configured root. Absolute writable paths remain accepted only when inside both the
+  repository and a configured root.
 - `authorization` is clamped to the configured allowlist; exceeding it is rejected
-  with `authorization_denied`, never silently narrowed.
+  with `authorization_denied`, never silently narrowed. Configuration changes affect future
+  validations; existing tasks never silently widen permissions.
 
 The canonical payload used for the idempotency hash excludes `clientSessionId` and
 is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.
@@ -179,6 +192,7 @@ Errors are objects `{ error: { code, message } }` with `message` free of private
 ```
 queued --start--> running --success--> succeeded
 queued --cancel--> cancelled
+queued --restart with a persisted attempt--> blocked
 running --safe failure--> failed
 running --uncertain failure--> blocked
 running --cancel (proven stop, no effects)--> cancelled
@@ -191,6 +205,40 @@ There are no automatic transitions out of `blocked`, and no automatic retry of a
 Reconciliation records the maintainer's decision and evidence; it never re-executes
 the same task. Repeat work requires a new `submit_task` with a new `idempotencyKey`.
 
+### Store enforcement (B04a, 2026-11-02)
+
+The diagram describes the target lifecycle. Ordinary `updateTask` currently permits
+`queued → running | cancelled`, dispatched `queued → blocked`, and
+`running → succeeded | failed | blocked`. The guard also runs on startup reconciliation.
+`running → cancelled` requires a future executor stop-proof operation (B14);
+`blocked → failed | cancelled` requires a future maintainer-only operation (B18).
+Neither is permitted through the generic update callback. There is no boolean
+override that grants reconciliation authority.
+
+- Task ID, client, idempotency key, payload hash, accepted request, createdAt and
+  acceptedAt cannot change. startedAt cannot change once assigned.
+- Persisted attempts retain their order, attemptId, model and startedAt; they cannot
+  be erased or replaced to hide a dispatch. Active attempts may acquire result metadata.
+  Queued work with a previously persisted attempt cannot transition to running;
+  restart reconciliation must block it instead of allowing a replay.
+- Queued work has no start timestamp; queued/running work has no finish timestamp.
+  Running/succeeded/failed work requires startedAt; every terminal state, including
+  blocked, requires finishedAt. This check enforces presence/types, not clock ordering.
+- Block metadata is required exactly for blocked state, with executionStopped unknown.
+  Cancelled state requires a cancellation request and executionStopped true. A queued
+  cancellation cannot carry a previous or newly inserted dispatch.
+- Ordinary updates cannot change a terminal status. Terminal lifecycle metadata
+  (timestamps, cancellation, block and attempts) is immutable; partial artifacts can
+  still be added without reopening work.
+- Malformed records/identity changes are invalid_argument; forbidden transitions
+  are internal service errors. Rejected updates write nothing.
+- Existing incoherent v1 records fail closed on read/startup with unavailable;
+  they are not silently migrated or rewritten. A maintainer must inspect the data.
+
+These guards are not process exclusion, an authorization sandbox or proof of actual
+execution. Persist-before-spawn attempt production is B12; stop proof is B14.
+Success without test evidence remains an explicit limitation in get_task_result.
+
 ## Persistence and restart
 
 - One JSON record per task under `AI_ORCHESTRATOR_HOME` (`tasks/`, `idempotency/`,
@@ -202,6 +250,13 @@ the same task. Repeat work requires a new `submit_task` with a new `idempotencyK
 - On startup, `running` tasks become `blocked` with `reason: "service-restart"`.
   `queued` tasks may start only if no attempt was ever dispatched; an existing attempt
   blocks them. Nothing resumes from a persisted dispatch.
+- A service exclusively creates `locks/service-owner.lock` before reconciliation and
+  holds ownership until `service.close()`. A second service for that home fails with
+  `unavailable`. A lock left by a crash is not removed automatically; inspect the
+  recorded PID and state before a maintainer removes it and restarts the service.
+  Closing permanently disables all four operations on that service instance, even
+  after another instance acquires ownership. Direct store maintenance is cooperative:
+  stop all services and workers before modifying state or removing a stale lock.
 - Retention: `blocked` records are never deleted automatically. Other records are kept
   until the maintainer runs cleanup; the default retention is 30 days.
 - There is no exactly-once guarantee. Duplicate work is prevented by the persisted

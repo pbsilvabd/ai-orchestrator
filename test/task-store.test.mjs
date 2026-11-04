@@ -6,6 +6,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { canonicalPayload, DEFAULT_RETENTION_MS, defaultHome, openTaskStore } from '../src/tasks.mjs';
 
+function startTask(store, taskId) {
+  if (store.readTask(taskId).status === 'queued') {
+    store.updateTask(taskId, draft => { draft.status = 'running'; draft.startedAt = draft.createdAt; });
+  }
+}
+
 const UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const taskFiles = dir => readdirSync(join(dir, 'tasks')).filter(name => name.endsWith('.json'));
 const indexFiles = dir => readdirSync(join(dir, 'idempotency')).filter(name => name.endsWith('.json'));
@@ -177,6 +183,7 @@ test('records survive reopening and no committed record is rewritten by a read',
   const dir = fixture(t);
   let store = openTaskStore({ home: dir });
   const { task } = submit(store);
+  startTask(store, task.taskId);
   store.updateTask(task.taskId, draft => {
     draft.status = 'succeeded';
     draft.finishedAt = 1_500;
@@ -257,6 +264,7 @@ test('a second process sees the same records with no shared cache', t => {
        draft.status = 'blocked';
        draft.finishedAt = 3_000;
        draft.block = { reason: 'service-restart', requiresReconciliation: true };
+       draft.cancel.executionStopped = 'unknown';
      });
      const replay = store.createTask({
        clientId: process.argv[3], idempotencyKey: process.argv[4],
@@ -276,10 +284,20 @@ test('a second process sees the same records with no shared cache', t => {
 test('prune keeps blocked records and removes expired terminal ones', t => {
   const dir = fixture(t);
   const store = openTaskStore({ home: dir });
-  const make = (key, status, finishedAt) => store.updateTask(
-    submit(store, { idempotencyKey: key }).task.taskId,
-    draft => { draft.status = status; draft.finishedAt = finishedAt; },
-  );
+  const make = (key, status, finishedAt) => {
+    const id = submit(store, { idempotencyKey: key, now: 0 }).task.taskId;
+    if (status !== 'cancelled') startTask(store, id);
+    return store.updateTask(id, draft => {
+      draft.status = status; draft.finishedAt = finishedAt;
+      if (status === 'blocked') {
+        draft.block = { reason: 'fixture', requiresReconciliation: true };
+        draft.cancel.executionStopped = 'unknown';
+      }
+      if (status === 'cancelled') {
+        draft.cancel.requestedAt = 0; draft.cancel.executionStopped = true;
+      }
+    });
+  };
 
   const oldSucceeded = make('old-succeeded', 'succeeded', 0);
   const oldFailed = make('old-failed', 'failed', 0);

@@ -1,4 +1,4 @@
-# Continuation point — 2026-11-02
+# Continuation point — 2026-11-03
 
 M0/M1a/M1b are complete within the local scope of the ADRs. M2a is complete as
 documentation: the normative [task contract](task-contract.md) and
@@ -7,22 +7,65 @@ artifacts, the first transport and the reuse decision. M2b step 1 (MCP capabilit
 gate) had one pass and one later failure on 2026-11-02; the root cause is unresolved
 and the gate is not considered consistently validated. M2b step 2 (durable task store
 and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
-regression reproductions passed. There is no transport adapter or self-development use yet.
+regression reproductions passed. B04a, B05 and B03 are implemented and covered.
+There is no transport adapter or self-development use yet.
 
-## Next action: resolve MCP gate instability before executor integration
+## Next action: review B26 feedback instructions and pending implementation PRs
 
-1. The MCP capability gate had one pass and one failure during the probe on
-   2026-11-02. Discovery/cataloguing/call were observed in a passing run, but the
-   inconsistent outcome is unresolved. Do not rely on it as a stable CI gate. Details
-   are in [validation](validation.md).
-2. The durable task store was implemented and validated (`src/tasks.mjs`, ADR-008):
-   atomic records, client-scoped idempotency and startup reconciliation.
-3. Review the service fixes in `src/service.mjs` and regression tests. Rerun
-   `node --test` and `node examples/fallback-demo.mjs`. The separate PR review
-   reproductions and their result are recorded in [validation](validation.md). Only
-   then decide whether step 3 is complete.
-4. After service acceptance, proceed with one executor adapter (OpenCode CLI in an
-   isolated worktree). **Next implementation step after the gate is stable.**
+B03/#16, B07/#19 and B06/#20 are merged; current main is `63e3e6b`.
+B10/#17 and B09/#18 remain open. B26 documentation is being delivered on
+`task/B26-pr-review-feedback` from main. Review its instructions independently.
+Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
+read all feedback before resuming development and answer findings with commit/evidence.
+Then review the pending implementation PRs against their task cards.
+
+The planned two-model development/review cycle requires B11–B20 delegation work,
+then a scoped controller design. See the protocol and roadmap. These instructions
+do not advance a runtime milestone or authorize merge.
+
+## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
+
+Repository identity validation is enforced on new task submissions. `src/repository.mjs` executes Git commands
+via argument arrays without a shell. `baseRef` commit-ish resolves to a full commit SHA stored as immutable
+metadata `task.baseCommit`. Branches are checked against Git ref rules, local existence and linked worktrees.
+Idempotent replays bypass repository inspection and return the original record. Sibling paths and symlink escapes
+fail closed with `authorization_denied`. Dirty parent working trees are accepted with user files unchanged.
+141 tests pass; fallback demo returns 429 then 200.
+
+## Earlier B05 checkpoint (merged through PR #14)
+
+B05 checkpoint (2026-11-03), branch `task/B05-service-owner`: service ownership uses an exclusive lock file created before reconciliation. A second owner fails closed; call `service.close()` on graceful shutdown. Initialization failures release the lock. Crash leaves a stale lock for maintainer inspection; no automatic deletion. 129 tests and fallback demo pass.
+
+Proceed with the detailed B03/B06/B07/B10 cards. Executor integration still depends
+on the MCP gate and the declared executor prerequisites.
+## Earlier B04a checkpoint (merged through PR #13)
+
+B04a implementation checkpoint (2026-11-02), branch `task/B04-lifecycle-guards`:
+the store rejects illegal ordinary transitions, immutable identity/request edits,
+incoherent state metadata and late terminal lifecycle rewrites. 126 local tests
+pass; the fallback demo prints 429 then 200. See the task contract's Store
+enforcement section and ADR-008 amendment. This is not completion of M2b.
+
+B01 diagnostics were corrected on the schemas branch (#8). B03 repository identity
+and B06 MCP diagnosis are the next independent development items.
+
+Remaining B04-related work is scoped to B12 dispatch production, B14 stop proof
+and B18 maintainer-only reconciliation. No generic callback may leave blocked.
+
+Review checkpoint (2026-11-02): see [PR review](review-2026-11-02.md) and
+[agent backlog](backlog.md). The review baseline is main `a4cae9c`; its 83 local
+tests pass. The old executor/client/acceptance branches are incomplete and must
+not be merged as completed steps. Pick an unblocked backlog task from current
+main. No milestone, MCP gate result or maintainer decision changed in this review.
+
+1. B04a was merged through PR #13.
+2. B05 ownership is implemented and reviewed in PR #14; service handles become
+   unavailable after close, and crash locks require maintainer inspection.
+3. B03 repository validation and B06 gate diagnosis can proceed independently. The
+   MCP gate still has one recorded pass and one failure; resolve the cause before
+   real transport integration. B01's existing correction remains on open #8.
+4. Build the executor with isolated workspaces and fixture subprocesses; real host
+   acceptance follows only when the prerequisites and MCP gate are verified.
 
 Do not add routing, memory, remote access, fallback or automatic merge in M2b. The
 HTTP fallback is not selected; change transport only through a new ADR-007 amendment.

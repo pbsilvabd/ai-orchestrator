@@ -235,6 +235,352 @@ Scope of evidence: unit suite and demo only. `integration/mcp-gate.mjs`,
 rerun; the MCP gate instability recorded above remains unresolved. No paid provider or
 credential was used.
 
+## Docs: uniform templates for recurring artifacts — 2026-11-02
+
+Executed on macOS arm64, Node.js v24.22.1 (worktree `.worktrees/templates`).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full local suite regression after a documentation-only change | 83 tests passed, 0 failed, 0 skipped, 0 cancelled | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo still prints the expected two responses | 429 from `mock/preferred`, then 200 from `mock/local`, sessionId `demo-session` | 0 |
+| `git diff --check` | No whitespace errors in the new Markdown | no output | 0 |
+
+Result: the full suite reports 83 passed and 0 failed, the demo prints 429 from
+`mock/preferred` followed by 200 from `mock/local`, and `git diff --check` reports no
+whitespace error. Relative links in the five template files were checked with a one-off
+script (5 files, 0 broken); that script is not versioned in this repository, so it is not a
+reproducible command and therefore not a table row.
+
+Evidence level: unit — the suite and the demo exercise policy, ledger, runner, task store
+and service behavior in this checkout; they confirm that a documentation-only change left
+executable behavior unchanged. No host, network or persistence evidence is added here.
+
+Not rerun: `node integration/opencode-smoke.mjs` (needs the pinned OpenCode 2.2.5 binary
+outside the repository; documentation does not affect it); `node integration/mcp-gate.mjs`
+(same reason, and the gate outcome remains unresolved); live task transport and executor
+integration (no executor adapter exists yet).
+
+Claim: This entry supports that the templates change leaves the local suite and the
+fallback demo unchanged, based on `node --test` and `node examples/fallback-demo.mjs`.
+It does not support any OpenCode integration, MCP transport or task-execution claim,
+which requires the pinned binary outside the repository.
+
+## Docs: uniform templates, review-corrections round — 2026-11-02
+
+Executed on macOS arm64, Node.js v24.22.1 (worktree `.worktrees/templates`).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full local suite regression after a documentation-only change | 83 tests passed, 0 failed, 0 skipped, 0 cancelled | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo still prints the expected two responses | 429 from `mock/preferred`, then 200 from `mock/local`, sessionId `demo-session` | 0 |
+| `git diff --check` | No whitespace errors in the changed Markdown | no output | 0 |
+
+Result: the full suite reports 83 passed and 0 failed, the demo prints 429 from
+`mock/preferred` followed by 200 from `mock/local`, and `git diff --check` reports no
+whitespace error. Relative links in the five template files were checked with a one-off
+script (5 files, 0 broken); that script is not versioned in this repository, so it is not a
+reproducible command and therefore not a table row.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store
+and service behavior in this checkout and show that a documentation-only change left them
+unchanged. They do not demonstrate the host, the network, production persistence or any new
+behavior of the templates.
+
+Not rerun: `node integration/opencode-smoke.mjs` (needs the pinned OpenCode 2.2.5 binary
+outside the repository; documentation does not affect it); `node integration/mcp-gate.mjs`
+(same reason, and the gate outcome remains unresolved); live task transport and executor
+integration (no executor adapter exists yet).
+
+Claim: This entry supports that the templates change leaves the local suite and the
+fallback demo unchanged, based on `node --test` and `node examples/fallback-demo.mjs`. It
+does not support any OpenCode integration, MCP transport or task-execution claim, which
+requires the pinned binary outside the repository.
+
+## Independent PR review and backlog — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1. Main baseline: `a4cae9c`.
+Review branch: `review/2026-11-02-pr-backlog` (local, not published).
+
+| Command / experiment | Snapshot | Result |
+| --- | --- | --- |
+| `node --test` | main | 83 passed, 0 failed |
+| `node examples/fallback-demo.mjs` | main | 429 then 200, exit 0 |
+| `node --test --test-reporter=tap` | PR #8 `f73c495` exported with git archive | 106 passed, 0 failed, exit 0 |
+| `node examples/fallback-demo.mjs` | PR #8 | 429 then 200, exit 0 |
+| `node --test --test-reporter=tap` | acceptance `2055cf5`, isolated AI_ORCHESTRATOR_HOME | 73 passed, 2 failed, exit 1 |
+| `node --input-type=module` boundary fixture | main; temporary store | nonexistent repo/ref and invalid branch accepted; queued-to-succeeded accepted; blocked/null causes TypeError |
+| `node --input-type=module -e` unknown-key fixture | PR #8 | returned fake credential-shaped key in errors[0].path |
+
+The initial boundary probe used the wrong snake_case method and failed; the
+reported boundary results are from the corrected camelCase probe. The probe's
+state was temporary and removed in finally. The acceptance snapshot failed at
+client import and its work-directory assertion; it did not run real workers.
+Exact findings and reproduction snippets are in review-2026-11-02.md.
+
+Evidence: local tests (including their loopback HTTP fixtures), static review and
+isolated reproductions only. No real OpenCode smoke/MCP gate, SQLite capability
+gate, paid provider or use-on-project experiment was run. Documentation-only
+PR #6/#9/#11 suites were not separately rerun. This entry does not claim M2b/M3
+completion or prove the author's previously reported environment/results.
+
+## Docs: template lifecycle and proportionality corrections — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1 (existing local toolchain).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Local regression suite after documentation edits | 83 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace verification | no output | 0 |
+
+Result: all 83 existing tests passed, and the fallback demo printed its expected
+429 and 200. A one-off Node script checked five template files: 30 prose links
+resolved and fences were balanced. Fenced example links remain relative to their
+intended destination as documented in the template README. Changes were also
+reviewed for status/date guidance and consistency with AGENTS and README.
+
+Evidence level: Unit — confirms unchanged local behavior after documentation edits;
+it does not establish host compatibility or new runtime features.
+
+Not rerun: OpenCode smoke, MCP capability gate and SQLite gate (no runtime or
+integration changes). No M3 delegation was performed.
+
+Claim: this entry supports the documentation corrections and local regression
+results. It does not support M2b completion or acceptance of any proposed ADR.
+
+## M2b: B04a ordinary lifecycle guards — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1 (existing local toolchain).
+Date: 2026-11-02.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Full suite including the lifecycle matrix and regressions | 126 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback policy behavior | 429 then 200 | 0 |
+
+Result: invalid ordinary edges, mutable request authority, forged unstarted
+cancellation, malformed block metadata and late terminal lifecycle writes are
+rejected without replacing committed bytes. Startup reconciliation blocks
+persisted queued dispatches; repeated reconciliation does not rewrite them.
+Historical invalid state fails closed on read and service startup without repair.
+Existing tests now construct legal transitions instead of bypassing lifecycle.
+
+Evidence level: Unit — local store/service behavior and existing loopback fixtures.
+No worker execution, process ownership or transport compatibility is established.
+Not rerun: real OpenCode smoke, MCP capability gate, SQLite gate and M3 delegation.
+Claim: this supports the bounded B04a store hardening, not completion of M2b/B04
+as a whole. Clock ordering, dispatch production, worker-stop proof and human
+reconciliation tooling remain outside this change.
+
+## B04a pre-merge review — 2026-11-03
+
+- `node --test --test-reporter=tap`: 126 passed, 0 failed, exit 0.
+- `node examples/fallback-demo.mjs`: expected 429 then 200, exit 0.
+- `git diff --check`: passed, exit 0.
+- Added a regression assertion rejecting queued-with-persisted-attempt -> running
+  without modifying committed bytes. Startup reconciliation still blocks that task.
+- Evidence: local store/service unit and existing loopback fixtures only. OpenCode,
+  MCP, SQLite and executor gates were not rerun. B05/B12/B14/B18 remain pending.
+
+## B05 — Service ownership — 2026-11-03
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Store/service behavior and owner-lock regressions | 127 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker check | Passed | 0 |
+
+Evidence: local service/store tests only. A service acquires ownership before reconcile, competing service creation returns unavailable, graceful close releases ownership, and initialization failure cleans up. Stale crash locks are fail-closed and require manual inspection. No OpenCode, MCP, SQLite or executor integration gate was rerun.
+
+## B05 pre-merge review — 2026-11-03
+
+- `node --test --test-reporter=tap`: 129 passed, 0 failed, exit 0.
+- `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
+- `git diff --check`: passed, exit 0.
+- Evidence: local store/service and a real Node child process in a temporary home.
+  Contention does not rewrite running tasks, abrupt process death leaves a stale
+  lock, manual post-death recovery blocks uncertain work, and closed handles reject
+  all four operations after a replacement owner starts.
+- Real OpenCode, MCP, SQLite and executor integration gates were not rerun.
+
+## M2b: Executable backlog and PR delivery contracts — 2026-11-02
+
+Executed on Windows x64, Node.js v24.22.1 from the Codex bundled primary runtime;
+Git 2.55.0.windows.5. Date: 2026-11-02 (America/Sao_Paulo).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Baseline regression suite | 129 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `node "$env:TEMP\ai-orchestrator-task-doc-check.cjs"` | Changed Markdown links/anchors and complete task-card/index/matrix coverage | 27 cards, 107 acceptance rows, 234 relative links/anchors passed | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+Result: every executable task has implementation steps, explicit scope, dependencies,
+acceptance IDs and a mandatory route through two review passes and publication.
+The checker validates file/anchor existence, card sections, sequential row IDs and
+index coverage; manual review also checked preserved requirements and dependency order.
+Its temporary script is a documentation verification aid, not a committed runtime test.
+
+Evidence level: Unit — the unchanged local suite (including existing subprocess
+fixtures) passes; static documentation verification supports the workflow/cards.
+Neither establishes future agents' compliance or completes a pending runtime task.
+
+Not rerun: `integration/opencode-smoke.mjs` and `integration/mcp-gate.mjs` (docs-only
+scope; gate diagnosis remains B06). SQLite/migration and real worker/model use remain
+gated backlog work, with no validation claimed here.
+Claim: the documentation delivery contract is more explicit and internally checked;
+the change does not establish M2b/M3 acceptance or eliminate independent PR review.
+
+## B03 — Repository identity before task acceptance — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Complete test suite including B03 acceptance scenarios | 141 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
+
+### Acceptance Matrix Evidence
+
+| ID | Scenario | Result | Evidence |
+| --- | --- | --- | --- |
+| B03-01 | Valid allowed repo, branch and base | PASS | `test/task-service.test.mjs` ("B03-01: valid allowed repo, branch and base persists full commit SHA without worker launch"): record contains 40-character commit SHA, 0 attempts, startedAt null. |
+| B03-02 | Same key/payload after branch creation, ref movement or repo removal | PASS | `test/task-service.test.mjs` ("B03-02: same key/payload after branch creation, ref movement or repo removal returns original record", "B03-02: repo removal still returns idempotent replay"): returns original task ID and original baseCommit without revalidating repository; changed payload throws `idempotency_conflict`. |
+| B03-03 | Nonexistent repo, missing ref, range a..b or leading-option ref | PASS | `test/task-service.test.mjs` ("B03-03: nonexistent repo, missing ref, range a..b or leading-option ref fails closed"): all four variants fail closed with `invalid_argument`; task files and Git refs unchanged. |
+| B03-04 | Path-prefix sibling and symlink/junction escape | PASS | `test/task-service.test.mjs` ("B03-04: path-prefix sibling and symlink/junction escape are denied"): sibling path rejected with `authorization_denied`; symlink escape rejected with `authorization_denied` when symlink privileges permit. |
+| B03-05 | Existing branch, invalid branch, linked worktree and dirty parent | PASS | `test/task-service.test.mjs` ("B03-05: existing branch, invalid branch, linked worktree and dirty parent"): existing branch, invalid ref and worktree branch collisions rejected with `invalid_argument`; dirty parent accepted and user files verified intact. |
+
+Evidence level: Unit and local Git subprocess fixtures.
+Not rerun: `integration/opencode-smoke.mjs` and `integration/mcp-gate.mjs` (unresolved MCP gate is tracked by B06).
+Claim: B03 acceptance criteria are fully met by executable tests covering every matrix row.
+
+## B03 post-review corrections — 2026-11-03
+
+Branch: `task/B03-repo-identity`. Commit: `a1ca8ed`.
+
+Two issues surfaced after the initial commit:
+
+1. `baseCommit` regex was relaxed to `{7,64}` during debugging; restored to `{40,64}` to enforce the full SHA contract in `src/tasks.mjs`.
+2. `validRequest` helper used absolute `writablePaths` tied to the outer `dir`, causing `authorization_denied` before repository validation when tests overrode `repository.path`; changed to relative `'src'` so all B03 scenarios reach the intended validation code path. Test `get_task_result` updated to capture `baseCommit` from the real task record rather than a short literal fixture.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full suite after corrections | 141 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
+
+Evidence: same 141-test run as B03 initial commit; corrections do not change runtime behavior or acceptance matrix — they restore the originally intended validation strength and fix test fixture accuracy. No integration, MCP or executor gate was rerun.
+
+## B03 post-review correction — authorize the actual Git worktree root — 2026-11-03
+
+- Changed `validateRepositoryIdentity` to resolve `git rev-parse --show-toplevel`, canonicalize that path, and enforce writable-root containment on the Git worktree root before inspecting refs.
+- Added a real temporary-repository regression test: allowing only a nested subdirectory now rejects the enclosing Git repository with `authorization_denied`.
+- `node --test test/repository.test.mjs`: 7 passed, 0 failed, exit 0.
+- `node --test`: 142 passed, 0 failed, exit 0.
+- `node examples/fallback-demo.mjs`: 429 then 200, exit 0.
+- `git diff --check`: passed, exit 0.
+- Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5. OpenCode/MCP gates not rerun; outside this task's scope.
+
+## B07 — Credential-free Windows and Linux CI — 2026-11-03
+
+Branch: `task/B07-cross-platform-ci`. Base: `origin/main` at `c07b78e`.
+
+| Card row | Test or experiment | Command / evidence location | Result / exit code |
+| --- | --- | --- | --- |
+| B07-01 | Normal PR matrix: test suite and demo on Windows and Linux | GitHub Actions run #41737541145, jobs #126270492736 (Windows) and #126270493106 (Ubuntu) | PASS: 142/142 tests and demo exit 0 on each OS; run conclusion success |
+| B07-02 | Known nonzero command through a formatter pipeline | CI run #41737541145 fixture steps; PowerShell local capture | PASS: Windows fixture step failed (exit 1); Bash fixture failed (exit 7); guarded expected failures; local native code 7 observed |
+| B07-03 | Workflow security inspection | `.github/workflows/ci.yml` | PASS: `contents: read`; PR inputs are not interpolated into shell; no secrets, publishing or privileged events |
+| B07-04 | Runner unavailable | CI run #41737541145 | N/A: both runners were available, so the draft contingency was not needed |
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full local suite, Windows x64 / Node v24.22.1 | 142 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| PowerShell exit-7 pipeline fixture | Ensure formatter does not mask the native command failure | Captured `PIPE_NATIVE_EXIT=7` | 0 (assertion passed) |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed (no output) | 0 |
+
+Review: both implementation and completed-diff passes inspected workflow trigger scope, permissions, shell behavior, acceptance rows and docs. GitHub runner evidence is recorded below.
+
+### GitHub Actions result — run #41737541145
+
+The pull-request workflow completed successfully on the PR merge ref. Windows Server 2025 (job #126270492736) and Ubuntu 24.04 (job #126270493106) both used Node.js v24.22.1, passed all 142 tests and ran the fallback demo (429 then 200). The expected-failure pipeline fixture returned exit 1 on PowerShell and exit 7 on Bash; the follow-up guard was skipped in both jobs, confirming the fixture outcome was failure as intended. The workflow token log reported Contents: read. Run conclusion: success.
+
+## B07 merge review — 2026-11-03
+
+- Corrected the Bash reproduction in `docs/ci.md` to enable `set -e -o pipefail` and clarified native exit-code capture in PowerShell.
+- Git Bash experiment: `set -e -o pipefail`, followed by an absolute Node v24.22.1 binary running `process.exit(7)` piped to `cat`, then an unreachable print. Observed shell exit 7 with no continuation output. Initial standalone shells could not resolve the transient Node path (exit 127); running Bash from the owning PowerShell process resolved it.
+- Existing PR-head run `41737897011`: both OS jobs successful. The documentation correction will receive its own PR CI run before merge. OpenCode/MCP gates remain outside scope.
+
+## B06 — Diagnose MCP capability gate instability — 2026-11-03
+
+Branch: `task/B06-mcp-capability-gate`. Base: `origin/main` at `2ff7e5e`.
+
+| Card row | Test or experiment | Command / evidence location | Result / exit code |
+| --- | --- | --- | --- |
+| B06-01 | Pinned host, eight isolated launches | Eight sequential `node integration/mcp-gate.mjs <pinned-opencode.exe>` invocations; each harness run allocates a fresh temporary tree | PASS: 8/8 exit 0; every JSON result records discovery/catalogue/call/result; protocol transcript checks and one call pass each time |
+| B06-02 | Wrong/missing binary or version | Gate invoked with absent path and current Node executable | PASS: both fail closed with harness exit 1; missing path reports spawn error, wrong version is rejected |
+| B06-03 | Readiness failure, timeout and cleanup failure | `MCP_GATE_COMMAND_TIMEOUT_MS=1`; `MCP_GATE_READINESS_TIMEOUT_MS=1`; combined readiness timeout + `MCP_GATE_FORCE_CLEANUP_ERROR=1` | PASS: bounded exit 1; combined output retains `Host did not listen` and separately reports cleanup failure; fixture credentials are redacted |
+| B06-04 | Fixture error or nonzero child exit | Gate invoked with `cmd.exe` as the supplied child; missing executable experiment | PASS: actual invalid child/version/spawn cases yield nonzero harness exit 1; no false green |
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full suite, Windows x64 / Node v24.22.1 | 142 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict validation | Passed | 0 |
+| Eight-run pinned-host loop | Required cold/fresh-state acceptance matrix | 8 successful JSON transcripts | 0 for each run |
+
+Root cause: OpenCode connects local MCP servers asynchronously; the CLI can snapshot its registry before the fixture is available. The harness now warms the persistent server, waits for the explicit connection marker across stdout and stderr, then probes. The eight cold isolated launches passed. The binary's signed publisher and release ZIP digest were verified before execution. OpenCode smoke and MCP gate are separate; no model/provider credentials or remote calls were used.
+
+### PR #20 follow-up review — 2026-11-03
+
+- GitHub PR #20 was open and mergeable. Its conversation, inline review threads and review submissions were empty during review.
+- Fixed a command timeout path that could await `close` indefinitely when an exited host left descendants holding inherited pipes. The timeout now settles independently after bounded stop handling and releases child streams.
+- Cleanup failures now preserve the fixture tree for diagnosis, and the PASS JSON is printed only after successful cleanup.
+- Revalidated: `npm test` passed 142/142; the fallback demo returned 429 then 200; eight independent pinned OpenCode launches passed; command-timeout and combined readiness/forced-cleanup fixtures both exited 1; syntax and whitespace checks passed.
+
+## Docs: shared PR review feedback (B26) — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (fnm toolchain).
+Date: 2026-11-03. Branch: `task/B26-pr-review-feedback`; base: `2ff7e5e`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Required regression suite | 142 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo | 429 then 200 | 0 |
+| `git diff --check` | Whitespace validation | No errors | 0 |
+
+Result: content walkthroughs cover B26-01 (PR publication, finding fields and
+self-review refusal fallback), B26-02 (all feedback surfaces, replies and same PR),
+B26-03 (changed head, unresolved disagreement and verified thread resolution), and
+B26-04 (existing modules, open PRs and missing executor/scheduler/MCP/controller).
+Relative Markdown links in changed files were checked with a one-off Node script;
+none were broken. Both review passes inspected entry points, publication failure,
+authority limits and planned-versus-implemented claims. Fixed misplaced section
+headings and the handoff's obsolete B07 next action.
+
+Evidence level: Unit — existing local suite/demo regression only. Documentation
+walkthroughs establish protocol coverage, not model adherence or integration.
+
+Not rerun: OpenCode smoke and MCP capability gate (runtime unchanged); no live
+model or PR-comment fixture was invoked for this documentation-only task.
+
+Claim: these checks support a linked PR feedback protocol with unchanged local
+behavior. They do not establish automatic delegation, model switching, GitHub
+orchestration or first use on this project; those need runtime implementation and
+real acceptance evidence.
+
+## B26 merge review integration — 2026-11-03
+
+- Resolved documentation conflicts with main after PR #20, retaining B06 and B26
+  evidence. Reviewed the resulting diff and current PR feedback. Runtime matches
+  main; prior suite/demo evidence remains applicable. Content/link and whitespace
+  checks are rerun before publication; Windows/Linux CI is required before merge.
+
 ## RFC-0001 schema skeleton — 2026-11-02
 
 Branch `rfc/0001-contract-schemas` at `3f30114`. Test-only skeleton: no runtime module
@@ -329,3 +675,17 @@ property names, while paths for declared schema fields remain informative. Tests
 credential-shaped, long and control-character keys at root and nested levels.
 Schemas remain proposed and are not wired to service/tool operations. No OpenCode,
 MCP, SQLite or live executor gate was rerun.
+
+## B01 integrated schema scaffold review — 2026-11-03
+
+- Integrated main 104e9c1 on rfc/0001-contract-schemas. Original focused tests:
+  24 passed. Initial integrated suite: 165 passed, 1 failed (exit 1), exposing an
+  obsolete artifact fixture using an abbreviated base SHA and queued-to-succeeded
+  transition. Corrected the fixture to initialize an immutable full base SHA and
+  persist queued -> running -> succeeded without changing runtime guards.
+- Final node --test: 166 passed, 0 failed, exit 0. Fallback demo: 429 then 200,
+  exit 0. Markdown local-link check passed; git diff --check follows before commit.
+- Both review passes checked schemas, checker keyword rejection, diagnostics and
+  current-store compatibility. Unknown-key credentials remain absent from errors.
+  Host gates not rerun: no host/service/store runtime changed. Current-head CI
+  must pass before merge. Adoption into service/transport remains B08.
