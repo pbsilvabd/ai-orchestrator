@@ -33,6 +33,16 @@ B13–B17; M3 needs B18 recovery and B20 first real supervised use. See the curr
 handoff/backlog for remaining dependencies; B12 merge approval does not authorize
 merging another task.
 
+## Repository maintenance skills (Codex)
+
+For backlog implementation/correction, use
+[$orchestrator-task](.agents/skills/orchestrator-task/SKILL.md). For a requested PR
+review/re-review, use
+[$orchestrator-review](.agents/skills/orchestrator-review/SKILL.md). Each skill routes
+to the maintained protocols; existing session authorization still governs actions.
+These repo-local skills guide development agents. They do not enable skills in
+the OpenCode worker or change service permissions.
+
 ## PR feedback
 
 Developers and reviewers must follow [docs/pr-review.md](docs/pr-review.md).
