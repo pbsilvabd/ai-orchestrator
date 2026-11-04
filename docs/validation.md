@@ -690,6 +690,7 @@ MCP, SQLite or live executor gate was rerun.
   Host gates not rerun: no host/service/store runtime changed. Current-head CI
   must pass before merge. Adoption into service/transport remains B08.
 
+
 ## M2b: B09 isolated Git workspace lifecycle — 2026-11-03
 
 Executed on Windows x64, Node.js v24.22.1 (system installation); Git 2.55.0.windows.5.
@@ -709,6 +710,26 @@ Evidence level: Unit — the suite and the demo exercise policy, ledger, runner,
 Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not add the executor); `node integration/mcp-gate.mjs` (same binary requirement and unresolved gate); executor integration (no executor adapter exists yet).
 
 Claim: This entry supports receipt-bound workspace creation, reuse and conservative cleanup in local Git fixtures, based on `node --test test/workspace.test.mjs`. It does not support worker execution or OpenCode/MCP integration, which require the missing executor and pinned host evidence.
+
+## M2b: B10 bounded subprocess primitive — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (system installation); Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/subprocess.test.mjs` | Exercise B10 acceptance scenarios with real Node child processes | 5 passed, 0 failed | 0 |
+| `node --test` | Full suite regression | 147 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Check whitespace in proposed change | no output | 0 |
+
+Result: fixtures covered spawn failure, pre-abort without spawn, immediate exit, exit code 7, bounded stdout/stderr tails while both pipes drain, UTF-8 byte boundaries, deadline, abort with partial output and a descendant process whose stop remains unverified.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store and service behavior in this checkout. Child fixtures demonstrate local subprocess behavior; they do not demonstrate the host, the network or production persistence.
+
+Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not change that integration); `node integration/mcp-gate.mjs` (same binary requirement and the gate remains unresolved); executor integration (no executor adapter exists yet).
+
+Claim: This entry supports bounded output, exit status and conservative root/descendant stop reporting for local Node child processes, based on `node --test test/subprocess.test.mjs`. It does not support OpenCode integration or task execution, which require the missing executor and pinned host evidence.
 
 ## B09 current-main integration — 2026-11-04
 
@@ -738,3 +759,50 @@ repository and workspace paths.
 
 Windows GitHub Actions must rerun on the corrected head before merge. The Ubuntu CI
 result from the previous head does not verify this new commit.
+
+## B09 integration with merged B10 — 2026-11-04
+
+After PR #17 merged to main, B09 was updated to that main and both append-only
+validation/worklog histories were preserved. The prior B09 CI run `41749352307`
+passed on Windows and Ubuntu before this base update; it does not verify the updated
+merge head.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/workspace.test.mjs` | B09 workspace regressions | 6 passed, 0 failed | 0 |
+| `node --test` | Full suite after integrating B10 | 178 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+Fresh Windows and Ubuntu CI remains required on the updated B09 head before merge.
+
+Result: fixtures covered spawn failure, pre-abort without spawn, immediate exit, exit code 7, bounded stdout/stderr tails while both pipes drain, UTF-8 byte boundaries, deadline, abort with partial output and a descendant process whose stop remains unverified.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store and service behavior in this checkout. Child fixtures demonstrate local subprocess behavior; they do not demonstrate the host, the network or production persistence.
+
+Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not change that integration); `node integration/mcp-gate.mjs` (same binary requirement and the gate remains unresolved); executor integration (no executor adapter exists yet).
+
+Claim: This entry supports bounded output, exit status and conservative root/descendant stop reporting for local Node child processes, based on `node --test test/subprocess.test.mjs`. It does not support OpenCode integration or task execution, which require the missing executor and pinned host evidence.
+
+## B10 current-main integration — 2026-11-04
+
+- Integrated current main into B10. Focused subprocess fixtures cover exact byte
+  tails across chunks, UTF-8 boundaries, pre-abort evidence shape, descendants, and
+  POSIX SIGTERM escalation. The POSIX fixture is skipped on Windows and will run in
+  Ubuntu CI. Full suite/demo/diff and Windows/Linux CI follow after publication.
+
+## B10 correction validation — 2026-11-04
+
+Environment: Windows x64, Node.js v24.22.1.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/subprocess.test.mjs` | B10 child process behavior and corrections | 6 passed, 0 failed, 1 POSIX-only test skipped | 0 |
+| `node --test` | Full regression suite after main integration | 172 passed, 0 failed, 1 POSIX-only test skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+The focused suite verifies exact byte tails across chunks, complete UTF-8 output,
+consistent pre-abort termination fields and bounded termination reporting. The POSIX
+fixture for a child that ignores SIGTERM is skipped on Windows; Ubuntu CI must execute
+it before merge. No executor or external-host integration was exercised.
