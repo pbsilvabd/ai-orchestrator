@@ -1158,7 +1158,7 @@ Date: 2026-11-04. Base: `origin/main` at `c6bb77a`.
 | `npm audit --audit-level=high` | 0 high-severity advisories | 0 |
 | `./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1` | No leaks; test `idempotencyKey` fixtures excluded by the allowlist | 0 |
 | Same scan with a seeded token outside the allowlist | Redacted finding reported | 1 |
-| GitHub Actions `check`, `test` matrix and `gitleaks` jobs | Run to be recorded — RUN_URL_TBD | TBD |
+| GitHub Actions `check`, `test` matrix and `gitleaks` jobs | Run to be recorded — https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41871166274 | TBD |
 
 Result: the lockfile reproduces the dependency set, every action is pinned by SHA
 with `contents: read`, and `npm run check` is the single local gate. The secret scan
