@@ -1,0 +1,210 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Declarative form of the persisted task record. Mirrors the current checks in src/tasks.mjs validateTask (lines 348-409), the shape written by createTask (lines 192-208) and the artifact fields updateTask may add (src/service.mjs:192-224). It is deliberately stricter than today's validateTask at three points, as the adoption target: unknown object keys are rejected, the taskId pattern is the runtime identifier pattern (UUIDv4 is a submit-time product rule, not a store check), and attempts[].outcome must be a non-empty string when present (the store never checks it). The record may also carry branch, which src/service.mjs:207 reads and no runtime writer sets today. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
+  "meta": {
+    "title": "task-record",
+    "source": "src/tasks.mjs:348-409"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "taskId",
+    "clientId",
+    "idempotencyKey",
+    "payloadHash",
+    "request",
+    "status",
+    "createdAt",
+    "acceptedAt",
+    "startedAt",
+    "finishedAt",
+    "attempts",
+    "cancel",
+    "block",
+    "progress"
+  ],
+  "properties": {
+    "schemaVersion": {
+      "type": "integer",
+      "enum": [1]
+    },
+    "taskId": {
+      "description": "Opaque UUIDv4 identifier; the store only enforces the identifier pattern.",
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "clientId": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "idempotencyKey": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+    },
+    "payloadHash": {
+      "description": "SHA-256 hex digest of the canonical payload.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "request": {
+      "description": "The validated submit request without clientSessionId; see task-submit-request.schema.json.",
+      "type": "object"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["queued", "running", "succeeded", "failed", "blocked", "cancelled"]
+    },
+    "createdAt": {
+      "description": "Epoch milliseconds. Non-negativity is not expressible without a minimum keyword and stays imperative.",
+      "type": "integer"
+    },
+    "acceptedAt": {
+      "type": "integer"
+    },
+    "startedAt": {
+      "type": ["integer", "null"]
+    },
+    "finishedAt": {
+      "type": ["integer", "null"]
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attemptId", "model", "startedAt"],
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "model": {
+            "type": "string",
+            "minLength": 1
+          },
+          "startedAt": {
+            "type": "integer"
+          },
+          "finishedAt": {
+            "type": ["integer", "null"]
+          },
+          "outcome": {
+            "description": "Recorded by the executor adapter; the store does not validate it today.",
+            "type": ["string", "null"],
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "cancel": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["requestedAt", "executionStopped", "effectsReverted"],
+      "properties": {
+        "requestedAt": {
+          "type": ["integer", "null"]
+        },
+        "executionStopped": {
+          "description": "True only when the worker confirmed no work is running; 'unknown' after an abort, crash or restart.",
+          "type": ["boolean", "string", "null"],
+          "enum": [null, true, "unknown"]
+        },
+        "effectsReverted": {
+          "description": "Cancellation is a request, never proof that effects were undone.",
+          "type": "boolean",
+          "enum": [false]
+        }
+      }
+    },
+    "block": {
+      "description": "Null unless the task needs maintainer reconciliation.",
+      "type": ["object", "null"],
+      "additionalProperties": false,
+      "required": ["reason", "requiresReconciliation"],
+      "properties": {
+        "reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "requiresReconciliation": {
+          "type": "boolean",
+          "enum": [true]
+        }
+      }
+    },
+    "progress": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["at", "event"],
+        "properties": {
+          "at": {
+            "type": "integer"
+          },
+          "event": {
+            "type": "string",
+            "minLength": 1
+          },
+          "detail": {
+            "type": ["string", "null"]
+          }
+        }
+      }
+    },
+    "testRuns": {
+      "description": "Test runs recorded by the executor through updateTask. command is optional because the runtime tolerates a run without one (src/service.mjs:192-199) and reports the missing command as a limitation.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["exitCode"],
+        "properties": {
+          "command": {
+            "type": "string",
+            "minLength": 1
+          },
+          "exitCode": {
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "outputTail": {
+            "type": "string"
+          },
+          "outputTruncated": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "changedFiles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "baseCommit": {
+      "type": ["string", "null"]
+    },
+    "branch": {
+      "description": "Optional branch recorded by an executor; src/service.mjs:207 reads it and no runtime writer sets it today.",
+      "type": ["string", "null"]
+    },
+    "headCommit": {
+      "type": ["string", "null"]
+    },
+    "diff": {
+      "type": ["string", "null"]
+    },
+    "diffTruncated": {
+      "type": "boolean"
+    }
+  }
+}

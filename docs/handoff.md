@@ -10,14 +10,18 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review B09's isolated workspace PR
+## Next action: review B26 feedback instructions and pending implementation PRs
 
-PR #16 is merged as `c07b78e`; task submissions now authorize the actual Git worktree root.
-B10 is open for review in PR #17. B09 is open for review with receipt-bound task workspaces,
-verified reuse, and conservative preservation for dirty, advanced, moved or incomplete output.
+B03/#16, B07/#19 and B06/#20 are merged; current main is `63e3e6b`.
+B10/#17 and B09/#18 remain open. B26 documentation is being delivered on
+`task/B26-pr-review-feedback` from main. Review its instructions independently.
+Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
+read all feedback before resuming development and answer findings with commit/evidence.
+Then review the pending implementation PRs against their task cards.
 
-After B09 review, proceed with **B06** (MCP gate) or **B07** (credential-free CI).
-B11 remains gated on B09, B10 and the pinned host.
+The planned two-model development/review cycle requires B11–B20 delegation work,
+then a scoped controller design. See the protocol and roadmap. These instructions
+do not advance a runtime milestone or authorize merge.
 
 ## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
 

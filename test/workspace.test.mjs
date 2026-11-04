@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTaskWorkspace, removeTaskWorkspace, WorkspaceError } from '../src/workspace.mjs';
@@ -115,4 +115,22 @@ test('B09-04: incomplete setup and dirty output are retained with a diagnostic',
   assert.throws(() => removeTaskWorkspace(other.options), expected('workspace_dirty'));
   assert.equal(readFileSync(join(created.workspacePath, 'dirty.txt'), 'utf8'), 'uncommitted result');
   assert.equal(other.git('branch', '--list', other.options.branch).startsWith('+'), true);
+});
+
+test('B09-04: ignored workspace output is preserved and blocks removal', t => {
+  const f = fixture(t);
+  writeFileSync(join(f.repositoryPath, '.gitignore'), 'ignored-output.txt\n');
+  f.git('add', '.gitignore'); f.git('commit', '-m', 'ignore worker fixture output');
+  const baseCommit = f.git('rev-parse', 'HEAD');
+  const options = { ...f.options, baseCommit };
+  const created = createTaskWorkspace(options);
+  const output = join(created.workspacePath, 'ignored-output.txt');
+  writeFileSync(output, 'worker result that must survive cleanup');
+
+  assert.throws(() => removeTaskWorkspace(options), expected('workspace_dirty'));
+  assert.equal(readFileSync(output, 'utf8'), 'worker result that must survive cleanup');
+  assert.equal(existsSync(join(f.workspaceRoot, `${taskId}.workspace.json`)), true);
+
+  rmSync(output);
+  assert.equal(removeTaskWorkspace(options).removed, true);
 });

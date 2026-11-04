@@ -32,6 +32,15 @@ the probe; it is not consistently validated and its root cause is unresolved. Se
 task operations live in `src/service.mjs` over the store from `src/tasks.mjs`; the
 executor adapter is still pending.
 
+## PR feedback
+
+Developers and reviewers must follow [docs/pr-review.md](docs/pr-review.md).
+Reviewers publish actionable findings on the PR with the reviewed SHA and evidence.
+Developers read conversation comments, review submissions and inline threads before
+resuming a PR and before final delivery, then reply to each finding with a fix
+commit and verification or an evidence-based explanation. Re-review the new head;
+a chat-only verdict or a push does not close blocking findings.
+
 ## Toolchain
 
 - Node.js 24.22.1 (`engines: >=24 <25`), managed by fnm (`fnm use`).

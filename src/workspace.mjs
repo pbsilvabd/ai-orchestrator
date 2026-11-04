@@ -73,7 +73,9 @@ export function removeTaskWorkspace({ taskId, repositoryPath, baseCommit, branch
   const receipt = readReceipt(receiptPath);
   if (!sameReceipt(receipt, expected)) fail('workspace_conflict', 'workspace receipt does not match the task');
   const workspace = verifyWorkspace(expected, true);
-  if (git(['status', '--porcelain', '--untracked-files=all'], workspace.workspacePath)) {
+  // Include ignored files: worktree removal deletes them too, and they may be
+  // worker output or local configuration that is absent from the normal status.
+  if (git(['status', '--porcelain', '--untracked-files=all', '--ignored'], workspace.workspacePath)) {
     fail('workspace_dirty', 'workspace contains changes; output and receipt were preserved');
   }
   const head = git(['rev-parse', 'HEAD'], workspace.workspacePath);

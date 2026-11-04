@@ -469,6 +469,199 @@ Template:
 - Validation: focused repository tests 7/7; full suite 142/142; fallback demo 429 then 200; `git diff --check` clean.
 - OpenCode/MCP gates not rerun; they are outside B03's scope.
 
+## 2026-11-03 — B07 credential-free Windows/Linux CI
+
+- Branch: `task/B07-cross-platform-ci`, based on `origin/main` at `c07b78e` (PR #16 merged).
+- Added `.github/workflows/ci.yml`: PR and main-push triggers, `contents: read`, Windows/Linux matrix, Node 24.22.1, separate test/demo steps, explicit PowerShell native-exit propagation, and an exit-7 pipeline fixture on both shells.
+- Added `docs/ci.md` with local reproduction steps and the boundary around opt-in OpenCode/MCP checks.
+- Updated handoff, backlog and roadmap to reflect B03/#16 merged, B10/#17 and B09/#18 open, and B07 in progress.
+- Review pass 1: inspected trigger scope, token permissions, untrusted input exposure, shell quoting, failure propagation and external-host boundaries. No secrets, publishing, shell expressions from PR text or write permissions are used.
+- Review pass 2: checked the complete workflow/docs/status diff and mapped all B07 rows. Local work is complete; the GitHub matrix remains pending until a pull-request run provides Windows and Linux evidence.
+- Local validation on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5: full suite 142/142, fallback demo 429 then 200, and piped nonzero fixture retained native exit 7; each command exited 0 as expected. `git diff --check` clean.
+- Follow-up: publish as draft while GitHub runner availability and both matrix jobs are observed; convert to ready only after required evidence is complete.
+
+- B07 publication update: PR #19 CI run `41737541145` completed successfully. Windows job `126270492736` and Ubuntu job `126270493106` both used Node v24.22.1, passed 142/142 tests and the fallback demo. Pipeline fixtures failed as expected (Windows exit 1; Bash exit 7), while the workflow jobs passed. Draft contingency was unnecessary because both runners were available; PR moved to ready for review.
+
+## 2026-11-03 — B07 merge review correction
+
+- Reviewed PR #19 at `00631ee` against the card, full diff, permissions, triggers and successful Windows/Linux CI run `41737897011`.
+- Corrected `docs/ci.md`: the Bash reproduction now enables `set -e -o pipefail`, so a failing test cannot be masked by a later successful demo. Clarified that subsequent native commands can overwrite PowerShell's `$LASTEXITCODE`.
+- Verified a real exit-7 Node pipeline under Git Bash stops the script before the following command (shell exit 7, no continuation output). Initial standalone Bash attempts could not resolve the transient Node installation (exit 127); the successful experiment used the parent PowerShell process's absolute Node binary.
+- Validation: `git diff --check`; CI will revalidate the updated PR head. No runtime code changed and OpenCode/MCP checks were not rerun.
+
+## 2026-11-03 — B06 MCP capability gate diagnosis
+
+- Branch: `task/B06-mcp-capability-gate`, based on current `origin/main` at `2ff7e5e` (PR #19 merged).
+- Verified the externally supplied OpenCode 2.2.5 binary: `--version` returned `opencode v2.2.5`, Authenticode signature verified for Anomaly Innovations, and its ZIP SHA-256 matched the published digest `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8` (121,962,397 bytes).
+- Reproduced the previously intermittent ordering defect from the existing transcripts: a single probe could snapshot the tool registry before OpenCode asynchronously connected the MCP server. The harness warm-up and wait for the connection marker address that race.
+- Ran eight sequential independent launches, each with fresh temporary config/data/state and fixture logs. Every launch returned exit 0 and observed `server/discover`, `tools/list`, `tools/call`, `probe:GATE_FIXTURE` in model context, no legacy `initialize`, protocol `2026-07-28`, and exactly five provider requests.
+- Hardened `integration/mcp-gate.mjs`: readiness waits remain bounded (default 30 seconds), command execution remains bounded (default 120 seconds), Windows process-tree termination and process-close waits are each capped at five seconds, cleanup errors now fail the gate, and a cleanup failure is included alongside the original phase error with local fixture secrets redacted. Added bounded timeout overrides and a deliberate cleanup-failure diagnostic fixture; documented their use.
+- Review pass 1: inspected phase ordering, child spawn/exit, server startup, MCP readiness, timeout kill, cleanup aggregation, credential redaction and temporary-state ownership. Fixed timeout races that had converted a timeout into a child exit code and could leave a caller waiting if stop failed.
+- Review pass 2: rechecked the full harness and integration docs against B06 rows; all observed outcomes below are nonzero when expected, and the eight required real-host launches pass.
+- Local environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5, signed OpenCode 2.2.5.
+- Validation: full suite 142/142; fallback demo 429 then 200; diff check clean. Eight host launches 8/8 success. Missing binary, wrong version and `cmd.exe` nonzero child each returned harness exit 1. Command timeout and readiness timeout returned exit 1; combined readiness plus forced cleanup error returned exit 1 and reported both original phase and cleanup failure.
+- OpenCode smoke was not rerun; unrelated session/model evidence. No paid provider calls; only the loopback fixture provider was used.
+
+## 2026-11-03 — B06 PR #20 follow-up review
+
+- Reviewed PR #20's current diff, metadata, conversation, inline review threads and submitted reviews. The GitHub PR had no comments or review submissions at the time of inspection.
+- Corrected the command timeout so it settles even if a descendant keeps inherited pipes open after the root process exits; timeout cleanup now closes the streams and unreferences the child after bounded process termination.
+- Preserved the temporary fixture whenever host or server cleanup fails, fixed the retained-path diagnostic, and delayed the success JSON until cleanup completes.
+- Validation: `npm test` 142/142; fallback demo 429 then 200; eight pinned OpenCode 2.2.5 launches passed; a 1 ms command timeout and combined readiness/forced-cleanup failure both exited 1; `node --check` and `git diff --check` passed.
+
+## 2026-11-03 — Docs: shared PR review feedback (B26)
+
+- Branch: `task/B26-pr-review-feedback`, from main `2ff7e5e`.
+- Scope: documentation and instructions; no runtime or task-contract change.
+- Steps:
+  1. Inspected current code, merged baseline and open implementation PRs.
+  2. Required PR findings, developer feedback intake/replies and re-review of the
+     current commit, including failed publication and stale-review handling.
+  3. Linked the protocol from agent/developer entry points, DoD and PR template.
+  4. Documented current delegation gaps and a future sequential two-model loop.
+- Files: `AGENTS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`,
+  `docs/pr-review.md`, `docs/task-execution.md`, `docs/definition-of-done.md`,
+  `docs/tasks/B26.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test` passed 142/142; fallback demo returned 429 then 200;
+  content/link checks and `git diff --check` passed. OpenCode/MCP gates not rerun
+  because runtime files are unchanged.
+- Review: pass 1 checked publication, feedback intake, permissions and failure
+  paths; pass 2 mapped B26-01–04 to instructions and existing code/dependencies.
+  Corrected section placement and stale handoff actions. No blocking findings.
+- Follow-up: independently review this PR, then the open B06/B09/B10 PRs. Runtime
+  automation requires B11–B20 and separate controller design/implementation cards.
+
+## 2026-11-03 — B26 merge review integration
+
+- Merged current main after B06/#20; preserved both append-only histories and
+  reconciled the handoff/current capability status. No runtime changes beyond
+  already validated main. Rechecked feedback protocol and relative links; CI
+  will validate the integrated head before merge.
+
+## 2026-11-02 — RFC-0001: declarative contract schemas and checker skeleton
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal plus test-only skeleton; no runtime wiring.
+- Steps:
+  1. Added `src/contracts/validate.mjs`, a zero-import checker for a curated JSON
+     Schema subset (type with nullable unions, properties, required,
+     `additionalProperties: false`, enum, pattern, string and array bounds, items,
+     description/meta annotations) returning `{ ok }` or `{ ok: false, errors }` with
+     relative paths, all errors collected and instance values truncated to 32 chars.
+     Combinators and numeric bounds are deliberately excluded.
+  2. Added `src/contracts/schemas/`: `task-submit-request` (from `validateSubmitRequest`),
+     `worker-artifact` (attempts, testRuns, diff, changedFiles, commits, limitations,
+     cost, evidence level; today's uncatalogued fields), `task-record` (from
+     `validateTask`), and `error-envelope` (added so `ERROR_CODES` also has a schema
+     anchor). Each file records its `file:line` origin in a `meta` block.
+  3. Added `test/contracts.test.mjs`: keyword happy/negative tables with exact paths and
+     messages, determinism and truncation checks, schema conformance for a real store
+     record, and drift guards comparing the schema enums to `TASK_STATUSES`,
+     `EVIDENCE_LEVELS`, `ERROR_CODES` and the private `STATUSES` literal read from
+     `src/tasks.mjs` (sorted set equality, equal length).
+  4. Wrote `docs/rfcs/0001-contract-schemas.md` with context, decision, supported
+     subset, few-shots with real `validate()` output, a three-step adoption path,
+     non-goals, later MCP reuse and four open questions.
+- Files: `src/contracts/validate.mjs`,
+  `src/contracts/schemas/{task-submit-request,worker-artifact,task-record,error-envelope}.schema.json`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 103 passed, 0 failed (83 existing + 20 new);
+  `node examples/fallback-demo.mjs` → expected 429 then 200;
+  `node -e "import('./src/contracts/validate.mjs').then(m=>console.log(Object.keys(m)))"`
+  → `[ 'exportEnum', 'validate' ]`.
+- Follow-up: RFC-0002 (lifecycle state machine, combinators) and adoption steps 2-3
+  (wire the submit boundary, derive the duplicated literals).
+
+## 2026-11-02 — RFC-0001 review fixes: strict schemas and record artifacts
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal and test-only skeleton; no runtime wiring.
+- Steps:
+  1. Added the artifact fields `updateTask` may write (`testRuns`, `changedFiles`,
+     `baseCommit`, `headCommit`, `diff`, `diffTruncated`) as optional properties of
+     `task-record`, with `testRuns[].command` optional to match the runtime's tolerated
+     shape; a new test validates a store record after `updateTask` adds them.
+  2. Reframed `worker-artifact` in its `$comment` and the RFC as the producer contract
+     the future executor adapter must report, not a result envelope; `command` is now
+     optional, and the strictness divergences (unknown keys, required `exitCode`,
+     non-empty `outcome`) are stated.
+  3. Made the checker fail closed: `additionalProperties: true` is rejected, and a new
+     exported `assertSchema()` walks every node against a strict keyword whitelist
+     (`type, properties, required, additionalProperties, enum, pattern, minLength,
+     maxLength, minItems, maxItems, items, description, meta, $comment`), requiring a
+     `type` on each node and rejecting malformed keyword values. `validate()` and
+     `exportEnum()` run it first.
+  4. Added a test that reads `src/contracts/schemas/` and runs `assertSchema` over every
+     shipped file, plus cases for unknown keywords, missing `type` and
+     `additionalProperties: true`.
+  5. Aligned the RFC with the RFC-0002 review: combinators are declined and lifecycle
+     legality is a status-keyed dispatch table; numeric bounds are declined, not an
+     open question; the `Referenced-by` line names the unmerged sibling PR. Documented
+     unanchored `pattern` search, `$comment`, error ordering, preview rules and inputs
+     for every few-shot.
+  6. Hardened the drift guard to quote-generic literal extraction and added a
+     `SCHEMA_VERSION` assertion against `src/service.mjs` and the private literal in
+     `src/tasks.mjs`.
+- Files: `src/contracts/validate.mjs`,
+  `src/contracts/schemas/{task-record,worker-artifact}.schema.json`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 106 passed, 0 failed (83 existing + 23 contract tests);
+  `node examples/fallback-demo.mjs` → expected 429 then 200; every schema file passes
+  `assertSchema` via the directory walk test.
+- Follow-up: adoption steps 2-3 in the RFC.
+
+## 2026-11-02 — RFC-0001 re-review fixes: record branch and dialect declaration
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal and test-only skeleton; no runtime wiring.
+- Steps: corrected the `task-record` `$comment` to three deliberate strictness points
+  including non-empty `attempts[].outcome`; added optional `branch`
+  (`["string", "null"]`) to `task-record` because `src/service.mjs:207` reads it from
+  the record even though no runtime writer sets it; added `$schema` to the closed
+  keyword whitelist as an ignored string annotation and declared
+  `https://json-schema.org/draft/2020-12/schema` in all four schema files, with the RFC
+  table and checker header updated.
+  - Sync with main after #10 merged (both sides' append-only sections preserved)
+- Files: `src/contracts/schemas/*.schema.json`, `src/contracts/validate.mjs`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 106 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  expected 429 then 200.
+- Follow-up: adoption steps 2-3 in the RFC.
+## B01 — Safe schema diagnostics — 2026-11-03
+
+- Branch: `rfc/0001-contract-schemas` (existing PR #8).
+- Scope: unknown instance property names are replaced with a fixed `<unknown>` path
+  segment, including deeply nested keys. Known schema property paths remain useful.
+- Steps:
+  1. Removed attacker-controlled keys from unknown-property diagnostic paths.
+  2. Added regression coverage for short, credential-shaped, very long and control-
+     character keys at root and nested object levels.
+  3. Updated existing unknown-key expectations and clarified the RFC diagnostics rules.
+- Files: `src/contracts/validate.mjs`, `test/contracts.test.mjs`,
+  `docs/rfcs/0001-contract-schemas.md`, `docs/worklog.md`, `docs/validation.md`.
+- Template adaptation: concise append-only entries retain scope, files, evidence,
+  limitations and commands while avoiding repeated milestone background.
+- Validation: `node --test --test-reporter=tap` -> 107 passed, 0 failed;
+  `node examples/fallback-demo.mjs` -> expected 429 then 200; `git diff --check` passed.
+- Limits: schemas remain unwired to runtime operations; no live integration gates ran.
+
+## 2026-11-03 — B01 schema scaffold merge review
+
+- Branch: `rfc/0001-contract-schemas`; integrated main `104e9c1` without changing
+  service/store behavior. Preserved both append-only histories and changed the
+  unmerged sibling RFC link to its PR. Reviewed the schema subset and diagnostics;
+  the unknown-key disclosure correction is present. Runtime adoption remains B08
+  and requires differential checks. Integrated suite/demo and CI follow.
+
+- B01 integration correction: updated the artifact fixture for full immutable base
+  SHA and legal lifecycle transitions. Initial integrated suite failed 1/166;
+  after correction, 166/166 pass and demo returns 429 then 200. Reviewed the final
+  checker/schema/test diff; runtime consumers remain untouched. No host gates rerun.
+
 ## 2026-11-03 — M2b: B09 isolated Git workspace lifecycle
 
 - Branch: `task/B09-isolated-worktree`, based on `c07b78e`.
@@ -482,3 +675,12 @@ Template:
   `git diff --check` clean. Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
 - Follow-up: review the published B09 PR. Executor and OpenCode/MCP integration remain
   separate gated work.
+
+## 2026-11-04 — B09 current-main integration
+
+- Merged current main into the existing B09 branch and reconciled status/handoff
+  while preserving append-only history. Fixed review finding for ignored workspace
+  output and added a real Git preservation regression fixture.
+- Validation: `node --test test/workspace.test.mjs` passed 6/6; full suite passed
+  172/172; fallback demo returned 429 then 200; `git diff --check` passed. Windows
+  x64, Node 24.22.1, Git 2.55.0. Linux CI is pending after push.

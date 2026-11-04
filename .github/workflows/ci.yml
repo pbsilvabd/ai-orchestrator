@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Node 24.22.1 / ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 24.22.1
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24.22.1
+
+      - name: Verify nonzero pipeline exit (PowerShell)
+        if: runner.os == 'Windows'
+        id: powershell_pipeline_fixture
+        continue-on-error: true
+        shell: pwsh
+        run: node -e "process.exit(7)" | Out-String
+
+      - name: Fail if PowerShell masked the pipeline exit
+        if: runner.os == 'Windows' && steps.powershell_pipeline_fixture.outcome != 'failure'
+        shell: pwsh
+        run: throw 'The expected nonzero pipeline unexpectedly succeeded.'
+
+      - name: Verify nonzero pipeline exit (Bash)
+        if: runner.os == 'Linux'
+        id: bash_pipeline_fixture
+        continue-on-error: true
+        shell: bash
+        run: node -e 'process.exit(7)' | cat
+
+      - name: Fail if Bash masked the pipeline exit
+        if: runner.os == 'Linux' && steps.bash_pipeline_fixture.outcome != 'failure'
+        shell: bash
+        run: exit 1
+
+      - name: Run test suite (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node --test
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run test suite (Bash)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: node --test
+
+      - name: Run fallback demo (PowerShell)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node examples/fallback-demo.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Run fallback demo (Bash)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: node examples/fallback-demo.mjs

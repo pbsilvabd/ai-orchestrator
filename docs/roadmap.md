@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-02. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-03. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -63,9 +63,10 @@ See [Definition of Done](definition-of-done.md).
 Execution tracking: [backlog](backlog.md) now indexes detailed per-task contracts.
 Every executable ID delivers one PR after acceptance testing, implementation review,
 completed-diff review and correction/revalidation under [task-execution.md](task-execution.md).
-B04a/#13, B05/#14 and B03/#16 are merged; B01 is corrected on open #8. B09 and B10
-are open for review; next ready tasks are B06 and B07. B22 is split into sequential
-B22a/B22b/B22c PRs. These workflow
+B04a/#13 and B05/#14 are merged; B01 is corrected on open #8. B03/#16 and B07/#19
+are merged. B10 and B09 are open as #17 and #18. B06 is open as PR #20 on
+`task/B06-mcp-capability-gate`; eight real pinned-host gate runs passed after bounded
+readiness and cleanup handling. B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
 
 B04a hardening checkpoint (2026-11-02): ordinary store transitions, immutable task
@@ -102,6 +103,15 @@ Do not add routing, memory, remote access, automatic fallback or an automatic me
 M2b. Do not install candidate dependencies because they appear in the reuse table.
 
 ## Primary acceptance experiment: develop this repository
+
+The maintainer's intended next workflow is a simpler implementation model followed
+by a more capable review model, PR findings, correction and re-review. The
+[PR feedback protocol](pr-review.md) defines today's manual process (B26).
+After B20 proves real delegation, scope a sequential two-model controller with
+durable phase/feedback receipts, exact-commit review and bounded correction rounds.
+This remains planned: it needs a workflow contract/ADR and separate task cards.
+It can run one role at a time before general M5 routing/concurrency; it does not
+require failure-driven fallback to alternate developer and reviewer tasks.
 
 - Choose a small real backlog item, such as a fixture and regression test.
 - First validate the service contract and failures with a simulated worker/provider.

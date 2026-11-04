@@ -18,6 +18,9 @@ Use pass/fail/not_run; never omit a required row or treat not_run as passed.
 - Pass 1 (implementation): inspected behavior/failure/authority paths; findings and fixes:
 - Pass 2 (completed diff): rechecked all card rows, callers, tests and docs; findings and fixes:
 - Revalidation after fixes (final code revision, commands and results):
+- PR feedback: conversation/reviews/threads read at head SHA; finding links,
+  correction commits/replies, unresolved items and re-review status
+  (see docs/pr-review.md):
 
 ## Validation and limits
 
@@ -34,6 +37,8 @@ Use pass/fail/not_run; never omit a required row or treat not_run as passed.
 - [ ] Both review passes and final revalidation completed.
 - [ ] Branch pushed and remote head verified against intended local commit.
 - [ ] CI results are reported as observed (including pending/not_run).
+- [ ] Existing PR feedback was read and answered; actionable review findings are
+      published on the PR and blocking findings have verified re-review.
 
 Leave incomplete work as draft and identify the unmet criteria. Merge is a separate
 maintainer decision, not part of the implementing agent's delivery.
