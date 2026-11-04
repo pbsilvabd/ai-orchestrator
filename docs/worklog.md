@@ -886,3 +886,27 @@ Template:
   documentation changed. New-head remote CI must run after publication.
 - Follow-up: publish the same B12 PR, verify remote head/feedback/Windows/Linux CI
   and merge under this authorization; then B13 artifacts. M2b/M3 remain incomplete.
+
+## 2026-11-04 — M2b: B12 canonical workspace receipt correction
+
+- Branch: `task/B12-durable-scheduler`, same PR #25.
+- Scope: code, tests and contract documentation for canonical dispatch receipt
+  identity; no permission, replay, cancellation or provider expansion.
+- Steps:
+  1. Inspected CI run 41769624335: Ubuntu passed; Windows failed B12-01 while
+     waiting for its first fixture marker (207 passed, one failure, one skip).
+  2. Reproduced divergent planned/B09 canonical paths with a real aliased home;
+     the new regression failed before the fix, exit 1, with both paths displayed.
+  3. Canonicalized the workspace root before reserving dispatch, matching B09 even
+     when the configured home uses an alias or a Windows short-name spelling.
+  4. Reviewed startup ownership/failure cleanup and the complete correction diff;
+     preserved the dispatch-before-spawn rule and immutable receipt binding.
+- Files: `src/scheduler.mjs`, `test/scheduler.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/008-task-store.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused scheduler/OpenCode tests -> 27 passed; full suite -> 209
+  passed, zero failed, one POSIX-only skipped; pinned OpenCode fixture -> dispatch
+  and authorization checks true; demo -> 429 then 200; all exits 0. Whitespace and
+  relative file links checked. Unchanged MCP/session-switch gates were not rerun.
+- Follow-up: push the correction on PR #25, verify new-head Windows/Ubuntu CI and
+  feedback, then execute the maintainer-authorized merge. No merge on failed CI.

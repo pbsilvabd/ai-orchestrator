@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
 import { once } from 'node:events';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmdirSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmdirSync, rmSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -390,4 +390,25 @@ test('invalid worker startup releases ownership and a valid owner can start', t 
   assert.throws(() => createTaskService({ home: f.home, worker: {} }), e => e.code === 'internal');
   const service = f.start();
   service.close();
+});
+
+test('dispatch workspace receipts use canonical home paths across filesystem aliases', async t => {
+  const f = setup(t);
+  mkdirSync(f.home);
+  const alias = join(f.root, 'home-alias');
+  symlinkSync(f.home, alias, process.platform === 'win32' ? 'junction' : 'dir');
+  let planned;
+  let actual;
+  const fixture = workerFor('process.exit(0)');
+  const service = f.start({ home: alias, worker: { prepare(input) {
+    planned = input.task.attempts[0].workspace;
+    actual = input.workspace;
+    return fixture.prepare(input);
+  } } });
+  const accepted = service.submitTask(f.request());
+  await service.whenIdle();
+  assert.ok(planned && actual, 'worker preparation reached the receipt comparison');
+  assert.equal(planned.workspacePath, actual.workspacePath);
+  assert.equal(planned.receiptPath, join(actual.workspacePath, '..', `${accepted.taskId}.workspace.json`));
+  assert.equal(service.store.readTask(accepted.taskId).status, 'succeeded');
 });

@@ -272,6 +272,8 @@ or production provider is enabled by this option.
   `startedAt` and appends one UUID attempt with its model and planned workspace
   binding (`taskId`, `baseCommit`, `branch`, `workspacePath`, `receiptPath`). This
   binding is validated on read and cannot be changed or removed after persistence.
+  The workspace root is canonicalized before reservation, so filesystem aliases
+  (including Windows short-name home paths) use the same identity as B09 receipts.
   Only then can B09 create/verify the worktree and receipt, the trusted adapter
   prepare a launch and B10 spawn a child. A failed write starts no worker.
 - There is one active attempt per service, no retry and no fallback. Preparation

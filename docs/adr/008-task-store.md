@@ -107,6 +107,8 @@ planned B09 workspace binding in the same atomic JSON write before setup/spawn.
 Attempt workspace metadata is optional for legacy v1 records; when present it must
 match task identity/base/branch and valid absolute task/receipt paths. A workspace
 receipt is not process stop proof. B09 retains its separate verified Git receipt.
+The scheduler canonicalizes its workspace root before reserving an attempt, so
+aliased/Windows short-name home paths cannot diverge from B09's canonical receipt.
 
 The service schedules only newly accepted submissions, never persisted dispatches
 or preexisting pristine queues on startup. Duplicate submissions do not enqueue.

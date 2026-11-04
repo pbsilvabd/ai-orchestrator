@@ -16,15 +16,19 @@ records, and blocks uncertain results. Active shutdown retains ownership because
 abort is not stop proof. The real OpenCode fixture now covers service-to-worker
 dispatch as well as the original authorization regressions.
 
-Local validation: 208 passed, zero failed, one POSIX-only skip; host fixture and
+Local validation after the CI correction: 209 passed, zero failed, one POSIX-only skip; host fixture and
 fallback demo passed. Read the current validation entry and B12 card for evidence
 and both self-reviews. No paid/external provider was used. M2b/M3 remain incomplete.
 
 The maintainer subsequently authorized publication and merge based on this agent's
 completed review (2026-11-04). That supersedes the earlier publication hold; no new
 confirmation is needed for B12. Verify the published head, feedback and Windows/Linux
-CI before merging the same PR. The implemented runtime remains `69aa920`; this
-follow-up updates delivery documentation only.
+CI before merging the same PR. PR #25 is published. Its first Windows CI run
+exposed B12-01 failure; a directory-alias regression reproduced mismatched planned
+and canonical workspace receipt paths. The scheduler now canonicalizes the root
+before reservation. The regression failed before the fix; focused/full/host/demo
+checks pass after it. Verify fresh Windows/Linux CI on the corrected head before
+merging; the original `69aa920` validation is not the latest runtime evidence.
 
 FIX23/#24 has no independently published review; local source review and repeated
 pinned-host regressions passed. The maintainer accepted this implementing-agent

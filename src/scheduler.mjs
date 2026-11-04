@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { mkdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { createTaskWorkspace } from './workspace.mjs';
@@ -8,6 +9,11 @@ import { runSubprocess } from './subprocess.mjs';
 // text. It prepares a synchronous invocation; this module alone starts the child.
 export function createTaskScheduler({ store, clientId, worker, now }) {
   if (typeof worker?.prepare !== 'function') throw new TypeError('worker.prepare is required');
+  // Match B09's canonical receipt identity, including Windows short-name aliases
+  // and configured home/workspace junctions, before persisting the reservation.
+  const configuredRoot = join(store.home, 'workspaces');
+  mkdirSync(configuredRoot, { recursive: true, mode: 0o700 });
+  const workspaceRoot = realpathSync.native(configuredRoot);
   const queue = [];
   let stopped = false;
   let active = null;
@@ -41,7 +47,6 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
     const started = performance.now();
     const at = now();
     const attemptId = randomUUID();
-    const workspaceRoot = join(store.home, 'workspaces');
     // Persist the dispatch reservation and planned workspace receipt in ONE write.
     // A crash before actual launch still requires reconciliation, never replay.
     const running = store.updateTask(taskId, draft => {

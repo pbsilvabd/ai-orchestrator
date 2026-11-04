@@ -1022,3 +1022,34 @@ rerun: production code/tests are identical to the previously validated revision
 New-head Windows/Linux CI and current PR feedback must be inspected before the
 already-authorized merge. The PR description will record observed CI/head results;
 no CI result is inferred from this documentation checkpoint. M2b/M3 remain pending.
+
+## B12 canonical workspace receipt correction — 2026-11-04
+
+Executed on Windows x64, Node v24.22.1 (fnm), Git 2.55.0.windows.5.
+Date: 2026-11-04. Same branch/task/PR #25.
+
+CI run 41769624335 at f96b982 passed Ubuntu, but Windows failed B12-01 at
+`first fixture started` (207 passed, 1 failed, 1 POSIX-only skipped). Investigation
+found that the planned task receipt used the configured home spelling while B09
+returns canonical workspace paths. A real directory-alias fixture reproduces the
+mismatch without changing the timeout or disabling the acceptance assertion.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap --test-name-pattern='canonical home paths' test/scheduler.test.mjs` before correction | Reproduce alias/canonical receipt divergence | 1 failure displaying different planned/canonical paths | 1 |
+| `node --test --test-reporter=tap test/scheduler.test.mjs test/opencode.test.mjs` after correction | Focused dispatch/runtime regression | 27 passed, 0 failed | 0 |
+| `node --test --test-reporter=tap` after correction | Full regression | 209 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node integration/opencode-invocation.mjs C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe` | Pinned-host service dispatch/authorization | All recorded checks true, 9 loopback requests, no external provider | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+
+The scheduler creates/canonicalizes its workspace root after service ownership is
+acquired, before any dispatch record is reserved. B09 still creates the actual
+worktree and receipt only after durable dispatch. Startup failure still releases
+ownership, and no queued task/attempt is resumed. The regression asserts exact
+planned/canonical path equality and successful execution through the alias.
+Implementation and completed-diff reviews found no remaining local blocker.
+
+Evidence level: Unit with real temporary Git/filesystem/Node fixtures; OpenCode
+integration for the existing pinned-host dispatch and permission checks. Fresh
+Windows/Linux CI on the corrected head is required before merge. No MCP/session
+smoke rerun, independent reviewer, production isolation or M2b/M3 claim is added.
