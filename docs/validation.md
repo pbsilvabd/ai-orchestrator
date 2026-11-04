@@ -516,6 +516,33 @@ The pull-request workflow completed successfully on the PR merge ref. Windows Se
 - Git Bash experiment: `set -e -o pipefail`, followed by an absolute Node v24.22.1 binary running `process.exit(7)` piped to `cat`, then an unreachable print. Observed shell exit 7 with no continuation output. Initial standalone shells could not resolve the transient Node path (exit 127); running Bash from the owning PowerShell process resolved it.
 - Existing PR-head run `41737897011`: both OS jobs successful. The documentation correction will receive its own PR CI run before merge. OpenCode/MCP gates remain outside scope.
 
+## B06 — Diagnose MCP capability gate instability — 2026-11-03
+
+Branch: `task/B06-mcp-capability-gate`. Base: `origin/main` at `2ff7e5e`.
+
+| Card row | Test or experiment | Command / evidence location | Result / exit code |
+| --- | --- | --- | --- |
+| B06-01 | Pinned host, eight isolated launches | Eight sequential `node integration/mcp-gate.mjs <pinned-opencode.exe>` invocations; each harness run allocates a fresh temporary tree | PASS: 8/8 exit 0; every JSON result records discovery/catalogue/call/result; protocol transcript checks and one call pass each time |
+| B06-02 | Wrong/missing binary or version | Gate invoked with absent path and current Node executable | PASS: both fail closed with harness exit 1; missing path reports spawn error, wrong version is rejected |
+| B06-03 | Readiness failure, timeout and cleanup failure | `MCP_GATE_COMMAND_TIMEOUT_MS=1`; `MCP_GATE_READINESS_TIMEOUT_MS=1`; combined readiness timeout + `MCP_GATE_FORCE_CLEANUP_ERROR=1` | PASS: bounded exit 1; combined output retains `Host did not listen` and separately reports cleanup failure; fixture credentials are redacted |
+| B06-04 | Fixture error or nonzero child exit | Gate invoked with `cmd.exe` as the supplied child; missing executable experiment | PASS: actual invalid child/version/spawn cases yield nonzero harness exit 1; no false green |
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Full suite, Windows x64 / Node v24.22.1 | 142 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict validation | Passed | 0 |
+| Eight-run pinned-host loop | Required cold/fresh-state acceptance matrix | 8 successful JSON transcripts | 0 for each run |
+
+Root cause: OpenCode connects local MCP servers asynchronously; the CLI can snapshot its registry before the fixture is available. The harness now warms the persistent server, waits for the explicit connection marker across stdout and stderr, then probes. The eight cold isolated launches passed. The binary's signed publisher and release ZIP digest were verified before execution. OpenCode smoke and MCP gate are separate; no model/provider credentials or remote calls were used.
+
+### PR #20 follow-up review — 2026-11-03
+
+- GitHub PR #20 was open and mergeable. Its conversation, inline review threads and review submissions were empty during review.
+- Fixed a command timeout path that could await `close` indefinitely when an exited host left descendants holding inherited pipes. The timeout now settles independently after bounded stop handling and releases child streams.
+- Cleanup failures now preserve the fixture tree for diagnosis, and the PASS JSON is printed only after successful cleanup.
+- Revalidated: `npm test` passed 142/142; the fallback demo returned 429 then 200; eight independent pinned OpenCode launches passed; command-timeout and combined readiness/forced-cleanup fixtures both exited 1; syntax and whitespace checks passed.
+
 ## Docs: shared PR review feedback (B26) — 2026-11-03
 
 Executed on Windows x64, Node.js v24.22.1 (fnm toolchain).
@@ -546,3 +573,10 @@ Claim: these checks support a linked PR feedback protocol with unchanged local
 behavior. They do not establish automatic delegation, model switching, GitHub
 orchestration or first use on this project; those need runtime implementation and
 real acceptance evidence.
+
+## B26 merge review integration — 2026-11-03
+
+- Resolved documentation conflicts with main after PR #20, retaining B06 and B26
+  evidence. Reviewed the resulting diff and current PR feedback. Runtime matches
+  main; prior suite/demo evidence remains applicable. Content/link and whitespace
+  checks are rerun before publication; Windows/Linux CI is required before merge.

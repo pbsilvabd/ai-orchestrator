@@ -12,8 +12,8 @@ There is no transport adapter or self-development use yet.
 
 ## Next action: review B26 feedback instructions and pending implementation PRs
 
-B03/#16 and B07/#19 are merged; current main is `2ff7e5e`. B10/#17, B09/#18
-and B06/#20 remain open. B26 documentation is being delivered on
+B03/#16, B07/#19 and B06/#20 are merged; current main is `63e3e6b`.
+B10/#17 and B09/#18 remain open. B26 documentation is being delivered on
 `task/B26-pr-review-feedback` from main. Review its instructions independently.
 Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
 read all feedback before resuming development and answer findings with commit/evidence.

@@ -97,9 +97,8 @@ The reviewer needs repository/test access and PR feedback capability; edits retu
 to the developer role. These instructions also apply to manual model switching.
 
 **Implemented:** this human/client-driven protocol, durable task store, service
-operations, repository identity and local policy/runner. Workspace B09/#18,
-subprocess B10/#17 and capability-gate corrections B06/#20 are open PRs at this
-checkpoint, not merged dependencies.
+operations, repository identity and local policy/runner. Capability-gate corrections B06/#20 are merged. Workspace B09/#18 and subprocess
+B10/#17 remain open PRs at this checkpoint, not merged dependencies.
 
 **Required for real delegation:** B11 authorized OpenCode invocation; B12 durable
 scheduler; B13 artifacts; B14 cancellation; B15 MCP adapter; B16/B17 client workflow

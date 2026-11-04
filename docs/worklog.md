@@ -489,6 +489,26 @@ Template:
 - Verified a real exit-7 Node pipeline under Git Bash stops the script before the following command (shell exit 7, no continuation output). Initial standalone Bash attempts could not resolve the transient Node installation (exit 127); the successful experiment used the parent PowerShell process's absolute Node binary.
 - Validation: `git diff --check`; CI will revalidate the updated PR head. No runtime code changed and OpenCode/MCP checks were not rerun.
 
+## 2026-11-03 — B06 MCP capability gate diagnosis
+
+- Branch: `task/B06-mcp-capability-gate`, based on current `origin/main` at `2ff7e5e` (PR #19 merged).
+- Verified the externally supplied OpenCode 2.2.5 binary: `--version` returned `opencode v2.2.5`, Authenticode signature verified for Anomaly Innovations, and its ZIP SHA-256 matched the published digest `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8` (121,962,397 bytes).
+- Reproduced the previously intermittent ordering defect from the existing transcripts: a single probe could snapshot the tool registry before OpenCode asynchronously connected the MCP server. The harness warm-up and wait for the connection marker address that race.
+- Ran eight sequential independent launches, each with fresh temporary config/data/state and fixture logs. Every launch returned exit 0 and observed `server/discover`, `tools/list`, `tools/call`, `probe:GATE_FIXTURE` in model context, no legacy `initialize`, protocol `2026-07-28`, and exactly five provider requests.
+- Hardened `integration/mcp-gate.mjs`: readiness waits remain bounded (default 30 seconds), command execution remains bounded (default 120 seconds), Windows process-tree termination and process-close waits are each capped at five seconds, cleanup errors now fail the gate, and a cleanup failure is included alongside the original phase error with local fixture secrets redacted. Added bounded timeout overrides and a deliberate cleanup-failure diagnostic fixture; documented their use.
+- Review pass 1: inspected phase ordering, child spawn/exit, server startup, MCP readiness, timeout kill, cleanup aggregation, credential redaction and temporary-state ownership. Fixed timeout races that had converted a timeout into a child exit code and could leave a caller waiting if stop failed.
+- Review pass 2: rechecked the full harness and integration docs against B06 rows; all observed outcomes below are nonzero when expected, and the eight required real-host launches pass.
+- Local environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5, signed OpenCode 2.2.5.
+- Validation: full suite 142/142; fallback demo 429 then 200; diff check clean. Eight host launches 8/8 success. Missing binary, wrong version and `cmd.exe` nonzero child each returned harness exit 1. Command timeout and readiness timeout returned exit 1; combined readiness plus forced cleanup error returned exit 1 and reported both original phase and cleanup failure.
+- OpenCode smoke was not rerun; unrelated session/model evidence. No paid provider calls; only the loopback fixture provider was used.
+
+## 2026-11-03 — B06 PR #20 follow-up review
+
+- Reviewed PR #20's current diff, metadata, conversation, inline review threads and submitted reviews. The GitHub PR had no comments or review submissions at the time of inspection.
+- Corrected the command timeout so it settles even if a descendant keeps inherited pipes open after the root process exits; timeout cleanup now closes the streams and unreferences the child after bounded process termination.
+- Preserved the temporary fixture whenever host or server cleanup fails, fixed the retained-path diagnostic, and delayed the success JSON until cleanup completes.
+- Validation: `npm test` 142/142; fallback demo 429 then 200; eight pinned OpenCode 2.2.5 launches passed; a 1 ms command timeout and combined readiness/forced-cleanup failure both exited 1; `node --check` and `git diff --check` passed.
+
 ## 2026-11-03 — Docs: shared PR review feedback (B26)
 
 - Branch: `task/B26-pr-review-feedback`, from main `2ff7e5e`.
@@ -511,3 +531,10 @@ Template:
   Corrected section placement and stale handoff actions. No blocking findings.
 - Follow-up: independently review this PR, then the open B06/B09/B10 PRs. Runtime
   automation requires B11–B20 and separate controller design/implementation cards.
+
+## 2026-11-03 — B26 merge review integration
+
+- Merged current main after B06/#20; preserved both append-only histories and
+  reconciled the handoff/current capability status. No runtime changes beyond
+  already validated main. Rechecked feedback protocol and relative links; CI
+  will validate the integrated head before merge.
