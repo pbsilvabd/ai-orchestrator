@@ -12,7 +12,7 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
   const emptyResult = reason => ({ code: null, signal: null, durationMs: elapsed(),
     stdout: '', stderr: '', stdoutBytes: 0, stderrBytes: 0,
     stdoutTruncated: false, stderrTruncated: false, spawnErrorCode: null,
-    termination: { reason, rootExitObserved: false, processTreeStopped: false } });
+    termination: { reason, rootExitObserved: false, descendantsStopped: false } });
   if (signal?.aborted) return Promise.resolve(emptyResult('aborted-before-spawn'));
 
   return new Promise(resolve => {
@@ -24,6 +24,7 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
     let terminationReason = 'exited';
     let timeout;
     let graceTimer;
+    let forceTimer;
     let killed = false;
     let stdoutBytes = 0;
     let stderrBytes = 0;
@@ -39,12 +40,19 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
       const buffer = Buffer.from(data);
       if (buffer.length >= cap) {
         chunks.length = 0;
-        chunks.push(buffer.subarray(buffer.length - cap));
+        chunks.push(Buffer.from(buffer.subarray(buffer.length - cap)));
         return cap;
       }
       chunks.push(buffer);
       current += buffer.length;
-      while (current > cap) current -= chunks.shift().length;
+      while (current > cap) {
+        const excess = current - cap;
+        if (chunks[0].length <= excess) current -= chunks.shift().length;
+        else {
+          chunks[0] = chunks[0].subarray(excess);
+          current -= excess;
+        }
+      }
       return current;
     };
     const utf8Tail = chunks => {
@@ -56,26 +64,38 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
     const cleanup = () => {
       clearTimeout(timeout);
       clearTimeout(graceTimer);
+      clearTimeout(forceTimer);
       signal?.removeEventListener('abort', onAbort);
     };
     const finish = rootExitObserved => {
       if (settled) return;
       settled = true;
       cleanup();
-      resolve({ code: exitCode, signal: exitSignal, durationMs: elapsed(),
+      const result = { code: exitCode, signal: exitSignal, durationMs: elapsed(),
         stdout: utf8Tail(stdoutChunks), stderr: utf8Tail(stderrChunks),
         stdoutBytes, stderrBytes, stdoutTruncated, stderrTruncated, spawnErrorCode,
         termination: { reason: terminationReason, rootExitObserved,
-          descendantsStopped: false } });
+          descendantsStopped: false } };
+      // Settle callers even when descendants retain inherited pipes. Stop evidence
+      // remains conservative; releasing handles does not prove descendants stopped.
+      child.stdout?.destroy();
+      child.stderr?.destroy();
+      child.stdin?.destroy();
+      child.unref();
+      resolve(result);
     };
     const terminate = reason => {
       if (settled || killed) return;
       killed = true;
       terminationReason = reason;
-      try {
-        child.kill();
-      } catch { /* report only observed exit evidence */ }
-      graceTimer = setTimeout(() => finish(false), killGraceMs);
+      try { child.kill('SIGTERM'); } catch { /* report only observed exit evidence */ }
+      graceTimer = setTimeout(() => {
+        if (settled) return;
+        // Escalate after the grace period. This only targets the root process;
+        // descendants and external effects remain unverified.
+        try { child.kill('SIGKILL'); } catch { /* report only observed exit evidence */ }
+        forceTimer = setTimeout(() => finish(exitCode !== null || exitSignal !== null), killGraceMs);
+      }, killGraceMs);
     };
     const onAbort = () => terminate('aborted');
 
@@ -105,8 +125,9 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
     child.once('exit', (code, childSignal) => {
       exitCode = code;
       exitSignal = childSignal;
+      if (killed) setImmediate(() => finish(true));
     });
-    child.once('close', () => finish(spawnErrorCode === null));
+    child.once('close', () => finish(exitCode !== null || exitSignal !== null));
     signal?.addEventListener('abort', onAbort, { once: true });
     timeout = setTimeout(() => terminate('deadline'), timeoutMs);
     if (signal?.aborted) onAbort();

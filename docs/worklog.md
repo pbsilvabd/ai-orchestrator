@@ -683,3 +683,6 @@ Template:
   histories. Fixed cross-chunk byte-tail trimming, normalized stop evidence, and
   bounded ignored-signal termination with stream/child detachment. Added split-tail,
   UTF-8 boundary and POSIX SIGTERM-ignore fixtures.
+- Validation on Windows x64 / Node.js v24.22.1: focused subprocess tests 6 passed,
+  1 POSIX-only skipped; full suite 172 passed, 1 skipped; fallback demo 429 then
+  200; `git diff --check` clean. The ignored-SIGTERM fixture remains for Ubuntu CI.

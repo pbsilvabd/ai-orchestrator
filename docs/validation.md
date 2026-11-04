@@ -716,3 +716,19 @@ Claim: This entry supports bounded output, exit status and conservative root/des
   tails across chunks, UTF-8 boundaries, pre-abort evidence shape, descendants, and
   POSIX SIGTERM escalation. The POSIX fixture is skipped on Windows and will run in
   Ubuntu CI. Full suite/demo/diff and Windows/Linux CI follow after publication.
+
+## B10 correction validation — 2026-11-04
+
+Environment: Windows x64, Node.js v24.22.1.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/subprocess.test.mjs` | B10 child process behavior and corrections | 6 passed, 0 failed, 1 POSIX-only test skipped | 0 |
+| `node --test` | Full regression suite after main integration | 172 passed, 0 failed, 1 POSIX-only test skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+The focused suite verifies exact byte tails across chunks, complete UTF-8 output,
+consistent pre-abort termination fields and bounded termination reporting. The POSIX
+fixture for a child that ignores SIGTERM is skipped on Windows; Ubuntu CI must execute
+it before merge. No executor or external-host integration was exercised.

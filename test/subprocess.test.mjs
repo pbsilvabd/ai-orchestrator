@@ -23,6 +23,8 @@ test('B10-01: ENOENT, pre-abort, immediate exit and nonzero exit are truthful', 
   const beforeSpawn = await runSubprocess({ ...options, signal: controller.signal });
   assert.equal(beforeSpawn.termination.reason, 'aborted-before-spawn');
   assert.equal(beforeSpawn.termination.rootExitObserved, false);
+  assert.deepEqual(Object.keys(beforeSpawn.termination).sort(),
+    ['reason', 'rootExitObserved', 'descendantsStopped'].sort());
 
   const immediate = await runSubprocess({ ...options, args: ['-e', 'process.exit(7)'] });
   assert.equal(immediate.code, 7);
@@ -41,13 +43,27 @@ test('B10-02: stdout and stderr are drained while separate byte tails stay bound
   assert.equal(result.stderrTruncated, true);
 });
 
+test('B10-02: tails trim across chunks and preserve UTF-8 boundaries', async t => {
+  const result = await runSubprocess({ ...setup(t), stdoutMaxBytes: 10,
+    args: ['-e', "process.stdout.write('abcdef');setTimeout(()=>process.stdout.write('ghijkl'),80)"] });
+  assert.equal(result.code, 0);
+  assert.equal(result.stdout, 'cdefghijkl');
+  assert.equal(result.stdoutBytes, 12);
+  assert.equal(result.stdoutTruncated, true);
+
+  const utf8 = await runSubprocess({ ...setup(t), stdoutMaxBytes: 7,
+    args: ['-e', "process.stdout.write('ab😀');setTimeout(()=>process.stdout.write('xy'),80)"] });
+  assert.equal(utf8.stdout, 'b😀xy');
+  assert.equal(Buffer.byteLength(utf8.stdout), 7);
+});
+
 test('B10-03: deadline and abort settle once with partial output and clean up', async t => {
   const deadline = await runSubprocess({ ...setup(t), timeoutMs: 80, args: ['-e',
     "process.stdout.write('partial');setInterval(()=>process.stdout.write('x'),10)"] });
   assert.equal(deadline.termination.reason, 'deadline');
   assert.equal(deadline.stdout.startsWith('partial'), true);
   assert.equal(typeof deadline.termination.rootExitObserved, 'boolean');
-  assert.equal(deadline.descendantsStopped, undefined);
+  assert.equal(deadline.termination.descendantsStopped, false);
 
   const controller = new AbortController();
   const pending = runSubprocess({ ...setup(t), signal: controller.signal, args: ['-e',
@@ -64,6 +80,17 @@ test('B10-04: Windows process termination reports root exit and leaves descendan
   assert.equal(result.termination.reason, 'deadline');
   assert.equal(typeof result.termination.rootExitObserved, 'boolean');
   assert.equal(result.termination.descendantsStopped, false);
+});
+
+test('B10-03: ignored SIGTERM is escalated within the grace bound', { skip: process.platform === 'win32' }, async t => {
+  const started = Date.now();
+  const result = await runSubprocess({ ...setup(t), timeoutMs: 100, killGraceMs: 100,
+    args: ['-e', "process.on('SIGTERM',()=>{});process.stdout.write('ready');setInterval(()=>{},1000)"] });
+  assert.equal(result.termination.reason, 'deadline');
+  assert.equal(result.signal, 'SIGKILL');
+  assert.equal(result.termination.rootExitObserved, true);
+  assert.equal(result.termination.descendantsStopped, false);
+  assert.ok(Date.now() - started < 1500);
 });
 
 test('rejects invalid executable, args, env and bounds', async t => {
