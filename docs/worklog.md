@@ -993,6 +993,6 @@ Template:
 - Validation: `npm run check` -> 0 clean and 1 with a seeded defect;
   `node --test` -> 208 passed, 0 failed, 2 skipped; `npm ci` -> 0;
   `npm audit --audit-level=high` -> 0; gitleaks with `.gitleaks.toml` -> 0,
-  seeded token -> 1 redacted. Remote CI evidence pending (`RUN_URL_TBD`).
+  seeded token -> 1 redacted. Remote CI evidence pending (`https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41871166274`).
 - Follow-up: B28 adds coverage thresholds, job ordering, the macOS leg and the
   pre-push hook; #31 closes with B28. No publication or merge was performed here.
