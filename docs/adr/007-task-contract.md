@@ -89,6 +89,13 @@ workspaces are preserved. An interrupted setup retains its receipt and any outpu
 for manual inspection; there is no broad recursive deletion or automatic recovery.
 This does not provide worker dispatch, process-tree stop proof or effect rollback.
 
+### Amendment — 2026-11-04: hidden index changes
+
+Cleanup refuses skip-worktree and assume-unchanged entries before relying on Git
+status. Those flags can hide modified tracked output from both status and worktree
+removal checks. Refusal preserves the files, branch, receipt and index flags; the
+helper does not change the worker's index to make cleanup appear safe.
+
 - M2b delivers a service process plus a transport adapter, a task store and one
   executor adapter; it does not deliver routing, memory or remote access.
 - Writing the stdio server by hand creates a conformance risk. It is bounded by the

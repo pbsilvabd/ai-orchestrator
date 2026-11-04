@@ -728,3 +728,24 @@ Template:
 - Validation on Windows x64 / Node.js v24.22.1: focused subprocess tests 6 passed,
   1 POSIX-only skipped; full suite 172 passed, 1 skipped; fallback demo 429 then
   200; `git diff --check` clean. The ignored-SIGTERM fixture remains for Ubuntu CI.
+
+## 2026-11-03 — M2b: post-merge workspace and subprocess corrections
+
+- Branch: `task/FIX17-18-post-merge`, based on main `772fe3a`.
+- Scope: code, tests and docs for maintainer task FIX17-18; no executor or model
+  eligibility change.
+- Steps: read all feedback on #17/#18, reproduced both findings, added four failing
+  regressions, then guarded absent-child cleanup and refused hidden index flags.
+- Files: workspace/subprocess helpers and tests, FIX17-18 card, task contract,
+  ADR-007, backlog, handoff, roadmap, validation and this log.
+- Review pass 1: checked original-error preservation, absent child resources, index
+  tag parsing with NUL records, and preservation of file/branch/receipt/index state.
+- Review pass 2: inspected completed diff and acceptance mapping; confirmed both
+  index-flag fixtures also refuse dirty output after flag removal, then allow clean
+  removal. No blocking findings remain locally; CI follows publication.
+- Validation: before fixes, all four new regressions failed (exit 1). After fixes,
+  focused tests 16 passed/1 POSIX-only skipped; full suite 182 passed/1 skipped;
+  fallback demo 429 then 200; diff check passed. Windows x64, Node v24.22.1,
+  Git 2.55.0.windows.5.
+- Follow-up: publish corrective PR, answer original findings with commit/evidence,
+  and inspect Windows/Ubuntu CI. Resume B11 only after corrections are accepted.

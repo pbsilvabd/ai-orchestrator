@@ -117,6 +117,32 @@ test('B09-04: incomplete setup and dirty output are retained with a diagnostic',
   assert.equal(other.git('branch', '--list', other.options.branch).startsWith('+'), true);
 });
 
+for (const flag of ['skip-worktree', 'assume-unchanged']) {
+  test(`B09-04: ${flag} cannot hide output from cleanup`, t => {
+    const f = fixture(t);
+    const created = createTaskWorkspace(f.options);
+    const receiptPath = join(f.workspaceRoot, `${taskId}.workspace.json`);
+    const receiptBefore = readFileSync(receiptPath);
+    const output = join(created.workspacePath, 'tracked.txt');
+    execFileSync('git', ['-C', created.workspacePath, 'update-index', `--${flag}`, 'tracked.txt']);
+    writeFileSync(output, 'valuable worker output');
+    assert.equal(execFileSync('git', ['-C', created.workspacePath, 'status', '--porcelain',
+      '--untracked-files=all', '--ignored'], { encoding: 'utf8' }).trim(), '');
+
+    assert.throws(() => removeTaskWorkspace(f.options), expected('workspace_dirty'));
+    assert.equal(readFileSync(output, 'utf8'), 'valuable worker output');
+    assert.deepEqual(readFileSync(receiptPath), receiptBefore);
+    assert.equal(f.git('rev-parse', `refs/heads/${f.options.branch}`), f.baseCommit);
+
+    execFileSync('git', ['-C', created.workspacePath, 'update-index', `--no-${flag}`, 'tracked.txt']);
+    assert.throws(() => removeTaskWorkspace(f.options), expected('workspace_dirty'));
+    writeFileSync(output, f.baseline);
+    assert.equal(removeTaskWorkspace(f.options).removed, true);
+    assert.equal(existsSync(created.workspacePath), false);
+    assert.equal(existsSync(receiptPath), false);
+  });
+}
+
 test('B09-04: ignored workspace output is preserved and blocks removal', t => {
   const f = fixture(t);
   writeFileSync(join(f.repositoryPath, '.gitignore'), 'ignored-output.txt\n');

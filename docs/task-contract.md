@@ -98,6 +98,8 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   task branch. Dirty or advanced output, moved paths, tampered receipts and uncertain setup
   failures are retained for inspection. Worktree cleanup does not prove that external effects
   were reversed or that any worker process stopped.
+  Cleanup also refuses index entries marked skip-worktree or assume-unchanged, because
+  ordinary Git status can hide modified tracked output. The helper does not clear those flags.
 - Relative writable globs resolve from `repository.path`, and their static roots must remain
   within a configured root. Absolute writable paths remain accepted only when inside both the
   repository and a configured root.

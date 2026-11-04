@@ -806,3 +806,29 @@ The focused suite verifies exact byte tails across chunks, complete UTF-8 output
 consistent pre-abort termination fields and bounded termination reporting. The POSIX
 fixture for a child that ignores SIGTERM is skipped on Windows; Ubuntu CI must execute
 it before merge. No executor or external-host integration was exercised.
+
+## FIX17-18 — Post-merge correction evidence — 2026-11-03
+
+Branch: `task/FIX17-18-post-merge`; base: `772fe3a`.
+Environment: Windows x64, Node v24.22.1, Git 2.55.0.windows.5.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-name-pattern="synchronous spawn|command-line overflow|cannot hide output" test/subprocess.test.mjs test/workspace.test.mjs` (before fix) | Confirm new tests detect the defects | All 4 fail: cleanup TypeError and missing workspace refusal | 1 |
+| `node --test test/subprocess.test.mjs test/workspace.test.mjs` | Focused regression | 16 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node --test` | Full suite | 182 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict validation | Passed | 0 |
+
+FIX17-18-01/02 map to the real Git `skip-worktree cannot hide output from cleanup`
+and `assume-unchanged cannot hide output from cleanup` fixtures. Both assert file
+bytes, unchanged receipt and branch, refusal after clearing the flag while output
+is dirty, and successful cleanup after restoring baseline bytes. FIX17-18-03 maps
+to `synchronous spawn failures preserve their original code without a child`;
+FIX17-18-04 maps to the Windows command-line overflow fixture.
+
+Evidence level: real local Git worktrees and Node child/spawn behavior. Windows
+executes command-line overflow; Ubuntu CI must execute the POSIX-specific tests
+and portable NUL spawn cases. CI is pending publication. No OpenCode/MCP host,
+executor integration or provider call was run; these helpers remain outside the
+host integration layer. No task-execution acceptance claim is made.

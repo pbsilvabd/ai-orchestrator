@@ -78,10 +78,10 @@ export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxB
           descendantsStopped: false } };
       // Settle callers even when descendants retain inherited pipes. Stop evidence
       // remains conservative; releasing handles does not prove descendants stopped.
-      child.stdout?.destroy();
-      child.stderr?.destroy();
-      child.stdin?.destroy();
-      child.unref();
+      child?.stdout?.destroy();
+      child?.stderr?.destroy();
+      child?.stdin?.destroy();
+      child?.unref();
       resolve(result);
     };
     const terminate = reason => {

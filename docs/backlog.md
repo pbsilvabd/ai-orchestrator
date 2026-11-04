@@ -8,6 +8,9 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
+Current corrective task: [FIX17-18](tasks/FIX17-18.md), requested after review of
+the merged workspace and subprocess PRs.
+
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
 through testing, review during development, corrections, another review of the completed
@@ -37,7 +40,7 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: review the open B09/B10 PRs. B06 host evidence needs the trusted pinned binary;
+Ready choices: review FIX17-18 corrections to merged B09/B10. B06 host evidence needs the trusted pinned binary;
 its absence blocks that claim. Prerequisites below describe ready-for-review
 acceptance; fixture-only preparatory work is not full delivery of a gated card.
 
@@ -56,8 +59,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | PR open #20 | Pinned host for host claim |
 | [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Merged #19 | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
-| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | PR open #18 | B03 |
-| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | PR open #17 | None |
+| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 cleanup correction under review | B03 |
+| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 spawn correction under review | None |
 | [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Gated | B09, B10, pinned host |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |
