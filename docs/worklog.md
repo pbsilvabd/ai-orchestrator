@@ -993,7 +993,7 @@ Template:
 - Validation: `npm run check` -> 0 clean and 1 with a seeded defect;
   `node --test` -> 208 passed, 0 failed, 2 skipped; `npm ci` -> 0;
   `npm audit --audit-level=high` -> 0; gitleaks with `.gitleaks.toml` -> 0,
-  seeded token -> 1 redacted. Remote CI evidence pending (`RUN_URL_TBD`).
+  seeded token -> 1 redacted. Remote CI evidence pending (`https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695`).
 - Follow-up: B28 adds coverage thresholds, job ordering, the macOS leg and the
   pre-push hook; #31 closes with B28. No publication or merge was performed here.
 
@@ -1024,7 +1024,7 @@ Template:
   suite skipped; `npm run coverage` -> 96.06% lines, 85.26% branches, 98.62% functions
   against 85/80/90; seeded coverage drop -> 1 with the metric named; two pre-push hook
   runs -> 1/1 without side effects; seeded schema/lockfile drift -> 1 on both legs.
-  Remote CI evidence is pending (`RUN_URL_TBD`).
+  Remote CI evidence is pending (`https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695`).
 - Follow-up: record the workflow run URL when the PR runs, confirm the macOS leg and
   the drift legs there, and open the PR that closes #31. No publication or merge was
   performed here.
