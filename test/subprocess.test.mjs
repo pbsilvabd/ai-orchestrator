@@ -58,7 +58,7 @@ test('B10-02: tails trim across chunks and preserve UTF-8 boundaries', async t =
 });
 
 test('B10-03: deadline and abort settle once with partial output and clean up', async t => {
-  const deadline = await runSubprocess({ ...setup(t), timeoutMs: 80, args: ['-e',
+  const deadline = await runSubprocess({ ...setup(t), timeoutMs: 500, args: ['-e',
     "process.stdout.write('partial');setInterval(()=>process.stdout.write('x'),10)"] });
   assert.equal(deadline.termination.reason, 'deadline');
   assert.equal(deadline.stdout.startsWith('partial'), true);

@@ -749,3 +749,33 @@ Template:
   Git 2.55.0.windows.5.
 - Follow-up: publish corrective PR, answer original findings with commit/evidence,
   and inspect Windows/Ubuntu CI. Resume B11 only after corrections are accepted.
+
+## 2026-11-03 — M2b: B11 authorized OpenCode invocation
+
+- Branch: `task/B11-authorized-opencode`, based on main `093e050`.
+- Scope: code, tests and docs for a trusted launch/config builder plus a pinned-host
+  denied-write experiment. No service dispatch, scheduler or production provider.
+- Steps: enforced one exact model, `read`/`edit` only, configured relative write globs,
+  task budget caps, isolated host paths/environment, and a loopback-only fixture
+  provider. The OpenCode 2.2.5 host denied a fixture write outside `src/**` despite a
+  prompt requesting broader model/tool/path permissions, then allowed and wrote a
+  fixture file inside the authorized glob. Review also found an
+  existing 80 ms subprocess-test startup race under full-suite load; increased its
+  fixture deadline to 500 ms while retaining the partial-output and deadline asserts.
+- Files: `src/opencode.mjs`, `test/opencode.test.mjs`,
+  `integration/opencode-invocation.mjs`, subprocess regression fixture, B11 card,
+  task contract, ADR-006, integration README, backlog, roadmap, handoff, validation.
+- Review pass 1: checked model/tool/path/budget rejection, CLI positional prompt
+  handling, environment/config precedence, reserved provider variables, exact base
+  workspace binding, cleanup and actual host permission evidence. Fixed provider env
+  shadowing and flaky test startup discovered during review/validation.
+- Review pass 2: reviewed complete diff and B11-01 through B11-04 against named tests
+  and the real B09 receipt-backed host experiment. Checked changed local Markdown
+  links (70, no missing targets). No blocking local findings remain; task-service
+  integration, external providers, sandboxing and publication CI remain unrun/out of scope.
+- Validation: 8 focused tests passed; OpenCode 2.2.5 denied the out-of-glob write and
+  allowed the in-glob fixture write; full suite 190 passed, 0 failed, 1 POSIX-only
+  skipped; fallback demo 429 then 200;
+  diff check clean. Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+- Follow-up: commit, push and open one B11 PR; inspect its CI. Do not merge without
+  task-specific maintainer authorization.

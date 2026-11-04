@@ -53,3 +53,22 @@ limits or merge their own changes without authorized review.
 Acceptance is actual delegation through the interface followed by a useful,
 reviewed change to this repository. Mock tests and edits made directly in the
 development chat do not establish that acceptance.
+
+### Amendment — 2026-11-03: B11 launch boundary
+
+The OpenCode launch builder consumes the persisted task plus trusted service
+configuration, checks for one exact model and supported tools, verifies task limits
+and writable globs, then emits a deny-by-default permission ruleset. The initial
+supported tool set is `read` and `edit`; shell access is rejected because OpenCode's
+shell permission resource is command text rather than a filesystem path. Prompt text
+is passed as one positional JSON-data message and cannot add CLI switches or alter the
+generated configuration. The host receives an explicitly constructed environment and
+isolated config/data/state paths; plugins, MCP servers, instructions and skills are
+disabled for this launch.
+
+The B11 implementation currently allows only a local loopback fixture provider. This
+is enough to test the actual pinned host without paid calls or credentials, but it is
+not production provider support. The builder is not yet called by the durable task
+service or scheduler. OpenCode permission rules do not provide an OS sandbox or an
+outbound network boundary; remaining ambient OS variables needed by the host, including
+`PATH`, require a later deployment review.

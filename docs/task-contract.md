@@ -277,6 +277,17 @@ Success without test evidence remains an explicit limitation in get_task_result.
 - `clientId` comes from service configuration, not from task text or model output.
   Ownership is the task's `clientId`; other clients receive `not_owner`.
 - The worker receives one repository root, one branch, one model and one tool list.
+- The B11 OpenCode launch builder accepts exactly one configured model, the supported
+  tools `read` and `edit`, configured writable globs and task limits. `bash` is rejected
+  because shell commands cannot be confined to writable globs. Writable globs must
+  match a configured relative pattern exactly; broader or absolute patterns are
+  rejected. The generated host configuration denies permissions by default, then
+  permits repository reads and edits only for the accepted patterns. Ambient OpenCode
+  config, plugins, instructions and skills are isolated or disabled.
+- The current B11 builder supports only a local loopback fixture provider. No external
+  or paid provider is authorized by that implementation. Production provider setup and
+  service-to-worker dispatch remain future work. Host permission checks are not an OS
+  sandbox or outbound network firewall.
 - A task-level `budgetMs` is wall clock measured from start; the per-invocation budget
   of [ADR-005](adr/005-operation-runner.md) still applies and the lower value wins.
 - M2b runs one task at a time (`maxAttempts` ≤ 2, concurrency 1) with no automatic

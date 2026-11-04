@@ -112,3 +112,32 @@ Contracts inspected at OpenCode commit `9bbb8ce18c80f099e0e448775f59d965ead40a21
 `packages/core/src/tool/plugin/write.ts`. The retry hook controls retry/delay;
 the readonly model is not an atomic switching mechanism. Do not implement fallback
 by repeating run/prompt without validating the effect boundary.
+
+## B11 authorized invocation
+
+Run separately from local tests with the pinned OpenCode binary:
+
+```sh
+node integration/opencode-invocation.mjs /absolute/path/opencode.exe
+```
+
+The launch builder requires a receipt-verified workspace descriptor at the accepted
+base commit, one exact configured model, supported `read`/`edit` tools, exact
+repository-relative writable globs and limits within the configured caps. It denies
+all host permissions by default, then allows reads in the task workspace and edits
+only for accepted globs. `bash` is rejected because shell command permissions cannot
+be confined by file-path globs. Prompt content is serialized as positional JSON data.
+
+The harness creates a temporary Git repository and obtains a real receipt-verified
+worktree from B09, then runs OpenCode 2.2.5 against a local OpenAI-compatible fixture
+provider. It poisons ambient config/credential variables, then asks the fixture model
+to call `write` outside the authorized glob and expand its permissions. It verifies the
+host returned a denied tool result and the forbidden file was not created. A second
+fixture request writes inside `src/**` and verifies the bytes before removing the
+test file. The test does not make an external or paid call.
+
+Limitations: the helper is not yet integrated with the task service/scheduler and
+currently accepts only loopback fixture providers. It is not an OS sandbox or
+outbound network firewall. `PATH` and other required Windows OS variables remain in
+the explicit host environment and need deployment-specific review before any real
+provider or worker is authorized.

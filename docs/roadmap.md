@@ -26,12 +26,14 @@ normalization, ledger, runner and 43 local tests. The real OpenCode smoke passed
 for context/session continuity, explicit model switching and denied writes.
 M2a is complete as documentation: the normative [task contract](task-contract.md)
 and [ADR-007](adr/007-task-contract.md) select MCP over stdio with OpenCode 2.2.5 as
-the first client and record the reuse/build decision. The MCP capability gate has one
-recorded pass and one later failure on 2026-11-02; discovery, cataloguing and a call
-over revision `2026-07-28` were observed, but the gate is not consistently validated.
-M2b implementation started at the task store. The task store (step 2) is complete;
-service-surface fixes passed independent local review. There is no MCP/API endpoint, worker adapter,
-integrated fallback, semantic memory or completed self-development workflow yet.
+the first client and record the reuse/build decision. The B06 MCP capability gate
+corrections passed eight isolated runs against the pinned host; the failure was
+readiness timing, not protocol incompatibility. The task store and service-surface
+corrections are complete. FIX17-18/#22 corrected hidden workspace output and spawn
+error handling. B11 is in progress: its launch builder and pinned-host denied-write
+fixture pass locally. The builder is not connected to the task service/scheduler;
+there is no MCP/API endpoint, durable worker execution, integrated fallback,
+semantic memory or completed self-development workflow yet.
 
 The existing runner executes an operation; it is not a durable task scheduler.
 Its budget is per invocation, and its ledger does not persist task artifacts or
@@ -45,7 +47,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; step 3 of 6 locally validated; MCP gate stability unresolved | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B11 launch builder in review; steps 1–3 complete | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Primary acceptance target; depends on M2b | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -63,10 +65,10 @@ See [Definition of Done](definition-of-done.md).
 Execution tracking: [backlog](backlog.md) now indexes detailed per-task contracts.
 Every executable ID delivers one PR after acceptance testing, implementation review,
 completed-diff review and correction/revalidation under [task-execution.md](task-execution.md).
-B04a/#13, B05/#14, B01/#8, B03/#16, B07/#19, B06/#20, B26/#21,
-B10/#17 and B09/#18 are merged. FIX17-18 corrects post-merge review findings in
-workspace cleanup and synchronous spawn errors before B11 proceeds. Eight real
-pinned-host B06 gate runs passed after bounded readiness and cleanup handling.
+B04a/#13, B05/#14, B03/#16, B07/#19, B06/#20, B26/#21, B10/#17, B09/#18 and
+FIX17-18/#22 are merged. Eight real pinned-host B06 gate runs passed after bounded
+readiness and cleanup handling. B11's launch builder and denied-write experiment are
+implemented on `task/B11-authorized-opencode`; they remain unconnected to dispatch.
 B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
 

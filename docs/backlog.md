@@ -1,15 +1,16 @@
 # Agent backlog — execution contracts
 
-Baseline: `origin/main` at `2ff7e5e` (PR #19 merged). Fetch before choosing work.
+Baseline: `origin/main` at `093e050` (PR #22 merged). Fetch before choosing work.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
-acceptance. The local baseline has 129 passing tests; counts are observations, never
-a fixed target future agents should preserve instead of testing changed behavior.
+acceptance. Test counts are observations, never a fixed target future agents should
+preserve instead of testing changed behavior.
 No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current corrective task: [FIX17-18](tasks/FIX17-18.md), requested after review of
-the merged workspace and subprocess PRs.
+Current task: [B11 — Authorized OpenCode invocation](tasks/B11.md), next after
+FIX17-18 merged in PR #22. B11 is being delivered on
+`task/B11-authorized-opencode` from `093e050`.
 
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
@@ -40,8 +41,8 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: review FIX17-18 corrections to merged B09/B10. B06 host evidence needs the trusted pinned binary;
-its absence blocks that claim. Prerequisites below describe ready-for-review
+Ready choices: complete B11 and publish its required acceptance evidence. B06/#20
+and FIX17-18/#22 are merged. Prerequisites below describe ready-for-review
 acceptance; fixture-only preparatory work is not full delivery of a gated card.
 
 ## Queue and detailed cards
@@ -51,17 +52,17 @@ A merged card is retained as regression/review guidance, not new work.
 
 | ID and detailed contract | Priority | State at baseline | Prerequisites |
 | --- | --- | --- | --- |
-| [B01 — Safe schema diagnostics](tasks/B01.md) | P1 | Correction on open #8 | Existing #8 |
+| [B01 — Safe schema diagnostics](tasks/B01.md) | P1 | Merged #8 | Existing #8 |
 | [B02 — Practical documentation templates](tasks/B02.md) | P2 | Merged / history | Merged #11 |
 | [B03 — Repository identity before task acceptance](tasks/B03.md) | P1 | Merged #16 | B04a/B05 merged |
 | [B04 — Ordinary lifecycle and immutable identity](tasks/B04.md) | P1 | Merged / history | B04a merged #13 |
 | [B05 — Single service owner per state home](tasks/B05.md) | P1 | Merged / history | Merged #14 |
-| [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | PR open #20 | Pinned host for host claim |
+| [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | Merged #20; 8 pinned-host runs passed | Pinned host |
 | [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Merged #19 | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
-| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 cleanup correction under review | B03 |
-| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 spawn correction under review | None |
-| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Gated | B09, B10, pinned host |
+| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 merged #22 | B03 |
+| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 merged #22 | None |
+| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | In progress on `task/B11-authorized-opencode` | B09, B10, pinned host |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Gated | B12, B13 |
@@ -83,7 +84,7 @@ A merged card is retained as regression/review guidance, not new work.
 
 | Additional task | Priority | State | Prerequisites |
 | --- | --- | --- | --- |
-| [B26 — PR feedback protocol](tasks/B26.md) | P2 | Prepared for PR review | Existing execution protocol |
+| [B26 — PR feedback protocol](tasks/B26.md) | P2 | Merged #21 | Existing execution protocol |
 
 B26 defines developer/reviewer instructions and records the automation gap. The
 future sequential two-model controller needs separate design/implementation cards
