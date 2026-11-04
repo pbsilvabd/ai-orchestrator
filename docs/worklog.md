@@ -938,3 +938,33 @@ Template:
 - Follow-up: publish this documentation branch when authorized; B13 remains the
   next implementation task. M2b/M3 remain incomplete. No merge authorization is
   inherited from B12 and no publication/merge was performed at this checkpoint.
+
+## 2026-11-04 — Docs: repository maintenance skills
+
+- Branch: `docs/repository-maintenance-skills`, base `3d70556`.
+- Scope: two repo-local Codex instruction-only skills and discovery/usage guidance;
+  no service, worker, permission, provider or runtime dependency change.
+  Task ID: SKILLS-maintenance.
+- Steps:
+  1. Read Skill Creator and the maintained task/review protocols; confirmed clean
+     current main and no existing repo skills or open PRs to duplicate.
+  2. Created `orchestrator-task` and `orchestrator-review` under `.agents/skills`,
+     linking canonical documents instead of copying their detailed procedures.
+  3. Added AGENTS routing and README invocation examples. Kept normal skill
+     discovery defaults, with no global installation or worker skill activation.
+  4. Reviewed task selection, feedback intake, same-task authorization, uncertain
+     remote writes, changed-head verdicts and implementing-agent review disclosure.
+  5. Reviewed the complete diff; corrected duplicate section headings, checked
+     relative targets and ran both bundled skill validators and baseline tests.
+- Files: `.agents/skills/orchestrator-task/SKILL.md`,
+  `.agents/skills/orchestrator-review/SKILL.md`, `AGENTS.md`, `README.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: both bundled `quick_validate.py` runs -> Skill is valid, exit 0;
+  `node --test --test-reporter=tap` -> 209 passed, zero failed, one POSIX-only
+  skip; demo -> 429 then 200; relative-file links and whitespace checked.
+  Python 3.13.3/PyYAML 6.0.3 were used only in an isolated temporary validator
+  environment outside the repository. Host/MCP gates and model-driven skill
+  evaluations were not rerun; no runtime changed and no provider was activated.
+- Follow-up: exercise the task skill on the next authorized B13 assignment and the
+  review skill on an authorized PR review. B13 and M2b/M3 status remain unchanged.
+  This local skills delivery does not inherit earlier publication/merge approvals.

@@ -83,6 +83,20 @@ Evaluated reference: OpenCode **2.2.5**, commit
 `9bbb8ce18c80f099e0e448775f59d965ead40a21`. Candidate plugins remain disabled
 until they meet the [audit criteria](docs/plugin-audit.md).
 
+## Repository maintenance skills (Codex)
+
+The repo includes two development workflows under `.agents/skills`:
+
+- [$orchestrator-task](.agents/skills/orchestrator-task/SKILL.md): implement one
+  assigned backlog card using the existing execution/acceptance protocol.
+- [$orchestrator-review](.agents/skills/orchestrator-review/SKILL.md): review a PR
+  or correction at its current commit and report findings with evidence.
+
+For example, request `$orchestrator-task Execute B13` or
+`$orchestrator-review Review PR NUMBER`. Automatic selection may also use the
+skill descriptions. These instructions guide repository development; the OpenCode
+worker's `skills: []` configuration and service authorization remain unchanged.
+
 ## Run
 
 Use Node.js 24 (validated with 24.22.1) from the repository root:

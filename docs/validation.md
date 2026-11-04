@@ -1087,3 +1087,59 @@ Not rerun: OpenCode invocation, MCP capability and session/model gates (no runti
 change). No new independent-review, provider-support or M2b/M3 completion claim.
 This new documentation branch is a local checkpoint; publication/merge are not
 inferred from the previous B12 authorization.
+
+## Docs: repository maintenance skills — 2026-11-04
+
+Executed on Windows x64, Node v24.22.1 (fnm), Git 2.55.0.windows.5.
+Date: 2026-11-04. Branch `docs/repository-maintenance-skills`, base `3d70556`.
+
+Two repo-local skills route backlog implementation/correction and requested PR
+review to the existing protocols. They preserve session authorization, same-task
+approval, evidence levels and uncertain-outcome handling. No scripts, agent UI
+metadata, global skill configuration or runtime dependencies were added.
+
+The bundled validator requires PyYAML, absent from system Python. Validation used
+Python 3.13.3 with PyYAML 6.0.3 in a temporary isolated environment outside the
+repository; no global Python installation or project dependency file changed.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `& 'C:/Users/paulo/AppData/Local/Temp/ai-orchestrator-skill-validator-72d619cf4e754ce9a92515300703d3d8/Scripts/python.exe' C:/Users/paulo/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/orchestrator-task` | Validate task skill frontmatter/name/scaffold | Skill is valid! | 0 |
+| `& 'C:/Users/paulo/AppData/Local/Temp/ai-orchestrator-skill-validator-72d619cf4e754ce9a92515300703d3d8/Scripts/python.exe' C:/Users/paulo/.codex/skills/.system/skill-creator/scripts/quick_validate.py .agents/skills/orchestrator-review` | Validate review skill frontmatter/name/scaffold | Skill is valid! | 0 |
+| `node --test --test-reporter=tap` | Required baseline regression | 209 passed, 0 failed, 1 POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Existing demo | mock/preferred 429 then mock/local 200 | 0 |
+| `git diff --cached --check` | Staged whitespace | no errors | 0 |
+
+Result: both skill validators, baseline tests and demo passed. A one-off check
+inspected 6 changed Markdown files and 49 relative file targets, with zero missing
+targets. Production code, tests, integration harnesses,
+package/workflow files and `src/opencode.mjs` are unchanged; the worker still emits
+`skills: []`. This is maintenance guidance, not task-service or model integration.
+
+Manual request walkthroughs (inspection, not independent model execution):
+
+| Request or condition | Expected routing/outcome in the instructions |
+| --- | --- |
+| Implement B13 | Task skill resolves its actual card/dependencies and card-specific evidence; it does not start another item or a provider implicitly. |
+| Implement already-merged B12 | Report the existing delivery; replacement selection requires scope to choose a next task. |
+| Explain M2b or the roadmap | Neither implementation nor PR-review description matches a question-only request. |
+| Publication withheld | Finish reviewable local work and exact PR text; do not publish. |
+| Same-task publication or merge already authorized | Continue within that approval; do not ask for it again. |
+| Review a PR whose head moved or feedback read failed | Inspect the new head or restrict the verdict to the inspected SHA; failed feedback reads remain unknown. |
+| Remote publication/merge outcome uncertain | Inspect remote state before retrying; no blind duplicate mutation. |
+| Formal review of own PR refused | Use the maintained protocol's authorized comment fallback; disclose implementing-agent review. |
+
+Review pass 1 checked triggers, scope, reference reuse and authorization/evidence
+boundaries. Pass 2 inspected the full skill/entry-point diff and walkthroughs,
+removing duplicate headings. Normal implicit discovery remains enabled by default;
+no explicit-only policy or new approval rule was introduced.
+
+Evidence level: Unit for baseline suite/demo; structural validation for skill
+format and inspection for routing/authorization walkthroughs. These do not prove
+model adherence or automatic discovery in every host/session. No independent
+subagent/model evaluation was performed for these small instruction-only workflows.
+Not rerun: OpenCode invocation/MCP/session gates (runtime and worker configuration
+unchanged); paid/real-provider evaluation (not authorized or needed here).
+Claim: this entry supports valid repo-local skill packages with resolved references
+and an unchanged local runtime baseline. Real use on B13/a PR is the next behavioral
+validation; it is not evidence of M2b/M3 completion or independent review.
