@@ -542,3 +542,41 @@ Root cause: OpenCode connects local MCP servers asynchronously; the CLI can snap
 - Fixed a command timeout path that could await `close` indefinitely when an exited host left descendants holding inherited pipes. The timeout now settles independently after bounded stop handling and releases child streams.
 - Cleanup failures now preserve the fixture tree for diagnosis, and the PASS JSON is printed only after successful cleanup.
 - Revalidated: `npm test` passed 142/142; the fallback demo returned 429 then 200; eight independent pinned OpenCode launches passed; command-timeout and combined readiness/forced-cleanup fixtures both exited 1; syntax and whitespace checks passed.
+
+## Docs: shared PR review feedback (B26) — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (fnm toolchain).
+Date: 2026-11-03. Branch: `task/B26-pr-review-feedback`; base: `2ff7e5e`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Required regression suite | 142 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo | 429 then 200 | 0 |
+| `git diff --check` | Whitespace validation | No errors | 0 |
+
+Result: content walkthroughs cover B26-01 (PR publication, finding fields and
+self-review refusal fallback), B26-02 (all feedback surfaces, replies and same PR),
+B26-03 (changed head, unresolved disagreement and verified thread resolution), and
+B26-04 (existing modules, open PRs and missing executor/scheduler/MCP/controller).
+Relative Markdown links in changed files were checked with a one-off Node script;
+none were broken. Both review passes inspected entry points, publication failure,
+authority limits and planned-versus-implemented claims. Fixed misplaced section
+headings and the handoff's obsolete B07 next action.
+
+Evidence level: Unit — existing local suite/demo regression only. Documentation
+walkthroughs establish protocol coverage, not model adherence or integration.
+
+Not rerun: OpenCode smoke and MCP capability gate (runtime unchanged); no live
+model or PR-comment fixture was invoked for this documentation-only task.
+
+Claim: these checks support a linked PR feedback protocol with unchanged local
+behavior. They do not establish automatic delegation, model switching, GitHub
+orchestration or first use on this project; those need runtime implementation and
+real acceptance evidence.
+
+## B26 merge review integration — 2026-11-03
+
+- Resolved documentation conflicts with main after PR #20, retaining B06 and B26
+  evidence. Reviewed the resulting diff and current PR feedback. Runtime matches
+  main; prior suite/demo evidence remains applicable. Content/link and whitespace
+  checks are rerun before publication; Windows/Linux CI is required before merge.

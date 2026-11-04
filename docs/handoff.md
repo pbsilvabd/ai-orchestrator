@@ -10,18 +10,18 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review the B06 capability gate pull request
+## Next action: review B26 feedback instructions and pending implementation PRs
 
-B03 merged through PR #16, B07 through PR #19, B10 is open as PR #17 and B09 as PR
-#18. B06 is being delivered on `task/B06-mcp-capability-gate`, from current main at
-`2ff7e5e`. The signed OpenCode 2.2.5 binary matched the published ZIP digest. Eight
-independent Windows launches passed discovery/list/call/result; missing/wrong binary,
-nonzero child, timeout, readiness and cleanup-error experiments all failed closed.
-The earlier intermittent gate was caused by probing before asynchronous MCP startup;
-the warm-up and connection-log wait now pass all eight cold/fresh-state launches.
+B03/#16, B07/#19 and B06/#20 are merged; current main is `63e3e6b`.
+B10/#17 and B09/#18 remain open. B26 documentation is being delivered on
+`task/B26-pr-review-feedback` from main. Review its instructions independently.
+Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
+read all feedback before resuming development and answer findings with commit/evidence.
+Then review the pending implementation PRs against their task cards.
 
-After review of B06, review open PRs #17 and #18. Keep executor integration gated on
-the pinned host evidence described in the task cards.
+The planned two-model development/review cycle requires B11–B20 delegation work,
+then a scoped controller design. See the protocol and roadmap. These instructions
+do not advance a runtime milestone or authorize merge.
 
 ## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
 

@@ -508,3 +508,33 @@ Template:
 - Corrected the command timeout so it settles even if a descendant keeps inherited pipes open after the root process exits; timeout cleanup now closes the streams and unreferences the child after bounded process termination.
 - Preserved the temporary fixture whenever host or server cleanup fails, fixed the retained-path diagnostic, and delayed the success JSON until cleanup completes.
 - Validation: `npm test` 142/142; fallback demo 429 then 200; eight pinned OpenCode 2.2.5 launches passed; a 1 ms command timeout and combined readiness/forced-cleanup failure both exited 1; `node --check` and `git diff --check` passed.
+
+## 2026-11-03 — Docs: shared PR review feedback (B26)
+
+- Branch: `task/B26-pr-review-feedback`, from main `2ff7e5e`.
+- Scope: documentation and instructions; no runtime or task-contract change.
+- Steps:
+  1. Inspected current code, merged baseline and open implementation PRs.
+  2. Required PR findings, developer feedback intake/replies and re-review of the
+     current commit, including failed publication and stale-review handling.
+  3. Linked the protocol from agent/developer entry points, DoD and PR template.
+  4. Documented current delegation gaps and a future sequential two-model loop.
+- Files: `AGENTS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`,
+  `docs/pr-review.md`, `docs/task-execution.md`, `docs/definition-of-done.md`,
+  `docs/tasks/B26.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test` passed 142/142; fallback demo returned 429 then 200;
+  content/link checks and `git diff --check` passed. OpenCode/MCP gates not rerun
+  because runtime files are unchanged.
+- Review: pass 1 checked publication, feedback intake, permissions and failure
+  paths; pass 2 mapped B26-01–04 to instructions and existing code/dependencies.
+  Corrected section placement and stale handoff actions. No blocking findings.
+- Follow-up: independently review this PR, then the open B06/B09/B10 PRs. Runtime
+  automation requires B11–B20 and separate controller design/implementation cards.
+
+## 2026-11-03 — B26 merge review integration
+
+- Merged current main after B06/#20; preserved both append-only histories and
+  reconciled the handoff/current capability status. No runtime changes beyond
+  already validated main. Rechecked feedback protocol and relative links; CI
+  will validate the integrated head before merge.

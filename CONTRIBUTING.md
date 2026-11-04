@@ -7,6 +7,10 @@ automatically or add credentials, private payloads or provider logs.
 Write documentation, comments and user-facing messages in English. Preserve API
 identifiers, commands and proper names when translating existing material.
 
+Developers and reviewers follow [the PR feedback protocol](docs/pr-review.md).
+Publish actionable findings on the PR. Read existing conversations/reviews/threads
+before continuing a PR and reply to each finding with the commit and evidence.
+
 Fallback contract changes require observable safety tests and an updated ADR.
 Distinguish simulation, static inspection and executed integration. Preserve the
 existing license and use branches/PRs without force pushes.
