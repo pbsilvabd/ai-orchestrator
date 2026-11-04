@@ -1,27 +1,29 @@
 # Continuation point — 2026-11-03
 
-M0/M1a/M1b are complete within the local scope of the ADRs. M2a is complete as
-documentation: the normative [task contract](task-contract.md) and
-[ADR-007](adr/007-task-contract.md) fix the operations, lifecycle, ownership, limits,
-artifacts, the first transport and the reuse decision. M2b step 1 (MCP capability
-gate) had one pass and one later failure on 2026-11-02; the root cause is unresolved
-and the gate is not considered consistently validated. M2b step 2 (durable task store
-and idempotency index) is complete. Step 3 service-surface fixes passed independent review: 83 suite tests and nine
-regression reproductions passed. B04a, B05 and B03 are implemented and covered.
-There is no transport adapter or self-development use yet.
+Main is `093e050`, including FIX17-18/#22. M2a is complete; the B06 MCP gate passed
+eight isolated pinned-host runs after readiness/cleanup corrections. The task store,
+service surface, B09 workspaces and B10 subprocess primitive are merged. M2b remains
+incomplete: no task scheduler, executor dispatch, MCP transport or self-development
+task is integrated.
 
-## Next action: review FIX17-18 corrections, then resume B11
+## Current task: B11 — authorized OpenCode invocation
 
-B01/#8, B03/#16, B07/#19, B06/#20, B26/#21, B10/#17 and B09/#18 are merged;
-the correction baseline is main `772fe3a`. Task FIX17-18 on
-`task/FIX17-18-post-merge` addresses two post-merge review findings: hidden tracked
-output must survive workspace cleanup, and synchronous spawn failures must retain
-their original error code. Review the regression fixtures and current-head CI.
-Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
-read all feedback before resuming development and answer findings with commit/evidence.
-After these corrections, B11 remains the next executor integration task and needs
-the pinned host and explicit worker authorization. This correction does not prove
-executor or M2b acceptance.
+Branch: `task/B11-authorized-opencode`, base `093e050`. The B11 builder and test
+fixture implement one exact configured model, `read`/`edit` only, exact relative
+writable globs, bounded time/output and an isolated OpenCode environment. `bash` is
+rejected. The pinned OpenCode 2.2.5 fixture denied a write outside `src/**` while
+ambient configuration and a credential sentinel were present in the parent process.
+All model requests went to the loopback fixture provider; no paid or external request
+was made. Unit, full-suite, demo, diff and review evidence is recorded in
+[validation](validation.md).
+
+The B11 builder is not integrated with `createTaskService` or the scheduler. It only
+accepts a loopback fixture provider today, is not an OS sandbox/network firewall, and
+does not support production provider credentials. B11 is published as [PR #23](https://github.com/pbsilvabd/ai-orchestrator/pull/23);
+review and CI are pending. Do not claim B11/M2b complete until required review,
+acceptance and checks are satisfied. PR CI run 41756163116 passed on Windows and
+Ubuntu at head `8eb9ac0`; review is pending. Proceed to B12 only after PR #23 is
+reviewed and merged by a maintainer. Follow [the feedback protocol](pr-review.md).
 
 The planned two-model development/review cycle requires B11–B20 delegation work,
 then a scoped controller design. See the protocol and roadmap. These instructions

@@ -749,3 +749,49 @@ Template:
   Git 2.55.0.windows.5.
 - Follow-up: publish corrective PR, answer original findings with commit/evidence,
   and inspect Windows/Ubuntu CI. Resume B11 only after corrections are accepted.
+
+## 2026-11-03 — M2b: B11 authorized OpenCode invocation
+
+- Branch: `task/B11-authorized-opencode`, based on main `093e050`.
+- Scope: code, tests and docs for a trusted launch/config builder plus a pinned-host
+  denied-write experiment. No service dispatch, scheduler or production provider.
+- Steps: enforced one exact model, `read`/`edit` only, configured relative write globs,
+  task budget caps, isolated host paths/environment, and a loopback-only fixture
+  provider. The OpenCode 2.2.5 host denied a fixture write outside `src/**` despite a
+  prompt requesting broader model/tool/path permissions, then allowed and wrote a
+  fixture file inside the authorized glob. Review also found an
+  existing 80 ms subprocess-test startup race under full-suite load; increased its
+  fixture deadline to 500 ms while retaining the partial-output and deadline asserts.
+- Files: `src/opencode.mjs`, `test/opencode.test.mjs`,
+  `integration/opencode-invocation.mjs`, subprocess regression fixture, B11 card,
+  task contract, ADR-006, integration README, backlog, roadmap, handoff, validation.
+- Review pass 1: checked model/tool/path/budget rejection, CLI positional prompt
+  handling, environment/config precedence, reserved provider variables, exact base
+  workspace binding, cleanup and actual host permission evidence. Fixed provider env
+  shadowing and flaky test startup discovered during review/validation.
+- Review pass 2: reviewed complete diff and B11-01 through B11-04 against named tests
+  and the real B09 receipt-backed host experiment. Checked changed local Markdown
+  links (70, no missing targets). No blocking local findings remain; task-service
+  integration, external providers, sandboxing and publication CI remain unrun/out of scope.
+- Validation: 8 focused tests passed; OpenCode 2.2.5 denied the out-of-glob write and
+  allowed the in-glob fixture write; full suite 190 passed, 0 failed, 1 POSIX-only
+  skipped; fallback demo 429 then 200;
+  diff check clean. Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+- Publication: committed as `af74d75997bb06749271cba0561a5931070500a7`, pushed and
+  opened [PR #23](https://github.com/pbsilvabd/ai-orchestrator/pull/23) against
+  `main`. Initial CI run 41755507739 was queued at publication; check the current PR
+  head and review feedback before delivery. Do not merge without task-specific
+  maintainer authorization.
+- CI correction: PR run 41755592522 passed Windows but failed Ubuntu because the new
+  unit fixture supplied Windows-only absolute paths. Replaced those fixtures with
+  platform-resolved paths; focused tests passed 8/8 and the full local suite passed
+  190 tests with one POSIX-only skip. The corrected head needs fresh CI verification.
+- CI completion: run 41756163116 passed on Ubuntu and Windows at head
+  `8eb9ac05fcd407a38ddf728a1051cb945447e47e`. PR conversation comments, reviews and
+  inline threads were empty at that head; maintainer review and merge remain pending.
+- PR #23 review correction: reproduced the P1 junction escape with OpenCode 2.2.5;
+  an allowed `src/link/...` write reached a sibling directory outside the workspace.
+  The launch builder now rejects any workspace symlink/junction, with unit and real
+  host fixtures verifying rejection and an unchanged external sentinel. Focused tests
+  9/9, full suite 191 passed/1 POSIX-only skipped, integration/demo/diff checks passed.
+  Fresh cross-platform CI is pending; the finding remains open until re-review.

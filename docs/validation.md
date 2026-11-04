@@ -832,3 +832,71 @@ executes command-line overflow; Ubuntu CI must execute the POSIX-specific tests
 and portable NUL spawn cases. CI is pending publication. No OpenCode/MCP host,
 executor integration or provider call was run; these helpers remain outside the
 host integration layer. No task-execution acceptance claim is made.
+
+## B11 — Authorized OpenCode invocation — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (system installation), Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/opencode.test.mjs` | Verify trusted model/tool/path/budget checks, workspace binding, env isolation and prompt-as-data | 8 passed, 0 failed, 0 skipped | 0 |
+| `node integration/opencode-invocation.mjs ..\.audit\bin\opencode-2.2.5\opencode.exe` | Exercise the B11 configuration against the real pinned host and loopback fixture | JSON: version 2.2.5, fixture/mock, B09 receipt-verified worktree, ambient config ignored, credential excluded, denied and allowed writes, 6 provider requests, no external provider | 0 |
+| `node --test` (first full run) | Full regression suite before fixing the slow-start fixture | One B10 deadline test failed because the child had not printed partial output before its 80 ms deadline under suite load | 1 |
+| `node --test` (final run after deadline fixture correction) | Full regression suite | 190 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Check existing fallback behavior | 429 from `mock/preferred`, then 200 from `mock/local` | 0 |
+| `git diff --check` | Check whitespace and conflict markers | No output | 0 |
+
+Result: unit tests reject model/tool/path/budget expansion and ensure the launch
+matches the B09 workspace descriptor at the immutable base. The pinned host ran in a
+disposable worktree created by `createTaskWorkspace` with a B09 receipt and fixed base
+commit. It attempted the fixture model's write outside `src/**`; OpenCode returned a
+denied tool result and did not create the forbidden file. A second invocation wrote
+inside `src/**`; the exact file bytes were verified, then removed so the clean worktree
+could be safely removed. The prompt also requested
+changing the model, tool and path authorization; the actual request remained
+`fixture/mock` and the generated configuration stayed unchanged. The parent process
+contained a poisoned ambient OpenCode config and credential sentinel; the child
+environment used the
+explicit isolated configuration and did not receive the credential sentinel.
+
+The first full-suite run exposed the existing 80 ms B10 subprocess fixture startup
+race under load. Its test deadline was raised to 500 ms; the test still requires
+deadline termination and partial output. The final full suite passed with the
+POSIX-only SIGTERM fixture skipped on Windows.
+A one-off link checker scanned 70 local Markdown links in the changed docs and found
+no missing targets; the checker was not committed as a repository script.
+
+Evidence level: OpenCode integration — this proves the launch builder's config and
+path permission behavior with OpenCode 2.2.5 and a loopback fixture. It does not
+prove production provider behavior, an OS sandbox, outbound network control or
+task-service/scheduler dispatch.
+
+Not rerun: `node integration/mcp-gate.mjs` (B06 transport gate unchanged; its eight
+isolated pinned-host passes remain recorded earlier); `node integration/opencode-smoke.mjs`
+(tests session/context switching and does not exercise this builder). First PR CI run
+41755592522 on head `a0b84e1` passed Windows and failed Ubuntu because the new unit
+fixture used Windows-only absolute paths. After switching to platform-resolved paths,
+PR CI run 41756163116 passed on both Ubuntu and Windows at head `8eb9ac0`. No real
+provider or paid call was made.
+
+Claim: This entry supports the B11 launch-config and denied-write behavior for one
+loopback fixture model, based on `node --test test/opencode.test.mjs` and the pinned
+OpenCode integration command above. It does not support durable task execution,
+production provider authorization or M2b completion, which require the integrated
+scheduler, transport and remaining acceptance experiments.
+
+### PR #23 correction — symlink/junction path escape
+
+Review reproduced a write through `src/link`, a junction to a sibling directory, while
+`src/**` was authorized. The pinned OpenCode 2.2.5 host wrote `ALLOWED_FIXTURE` into
+the external target. The builder now scans the receipt-verified workspace without
+following links and refuses launch if it encounters a symlink or junction. The real
+host integration creates a junction under `src`, verifies the builder rejects the
+launch before any provider request, and checks the outside sentinel remains unchanged.
+
+Validation after correction on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5:
+`node --test test/opencode.test.mjs` — 9 passed; pinned host integration including
+link rejection — exit 0; `node --test` — 191 passed, 0 failed, 1 POSIX-only skipped;
+fallback demo — 429 then 200; `git diff --check` — clean. Cross-platform CI remains
+pending for the correction commit.
