@@ -1,0 +1,141 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$comment": "Declarative form of the record fields a worker/executor reports. Derived from src/service.mjs getTaskResult consumption (lines 192-263) and the attempt checks in src/tasks.mjs validateTask (lines 366-378). There is no runtime producer yet: this is the shape the future executor adapter must write into a task record before getTaskResult reads it, NOT a get_task_result envelope (no taskId, status, schemaVersion or sanitized flag). It is deliberately stricter than today's runtime tolerance in three ways: unknown keys are rejected, testRuns[].exitCode is required as evidence, and attempts[].outcome must be a non-empty string when present. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
+  "meta": {
+    "title": "worker-artifact",
+    "source": "src/service.mjs:192-263"
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["attempts", "testRuns", "changedFiles", "limitations"],
+  "properties": {
+    "attempts": {
+      "description": "Every worker attempt, in dispatch order.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["attemptId", "model", "startedAt"],
+        "properties": {
+          "attemptId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$"
+          },
+          "model": {
+            "description": "provider/model actually used for this attempt.",
+            "type": "string",
+            "minLength": 1
+          },
+          "startedAt": {
+            "description": "Epoch milliseconds, injected by the caller.",
+            "type": "integer"
+          },
+          "finishedAt": {
+            "description": "Epoch milliseconds when the attempt ended; null while running.",
+            "type": ["integer", "null"]
+          },
+          "outcome": {
+            "description": "Outcome label; null while the attempt is still running. Never validated by the current runtime.",
+            "type": ["string", "null"],
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "testRuns": {
+      "description": "Test commands actually executed, with their exit codes.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["exitCode"],
+        "properties": {
+          "command": {
+            "description": "Optional: the runtime tolerates a run reported without a command (src/service.mjs:192-199) and turns that into a limitation instead of evidence. A future adapter that claims success must still record it.",
+            "type": "string",
+            "minLength": 1
+          },
+          "exitCode": {
+            "description": "Exit code reported by the process; -1 when the run was aborted.",
+            "type": "integer"
+          },
+          "durationMs": {
+            "type": "integer"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "outputTail": {
+            "description": "Bounded log tail; UTF-8 sequences are never cut mid-character.",
+            "type": "string"
+          },
+          "outputTruncated": {
+            "description": "True when the tail does not contain the full output.",
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "diff": {
+      "description": "Unified diff, capped at 1 MiB, or null when no artifact was recorded.",
+      "type": ["string", "null"]
+    },
+    "diffTruncated": {
+      "type": "boolean"
+    },
+    "changedFiles": {
+      "description": "Repository-relative paths changed by the task.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "baseCommit": {
+      "type": ["string", "null"]
+    },
+    "branch": {
+      "type": ["string", "null"]
+    },
+    "headCommit": {
+      "type": ["string", "null"]
+    },
+    "logsTruncated": {
+      "type": "boolean"
+    },
+    "limitations": {
+      "description": "Explicit statements about missing or partial evidence; never empty for an unverified success claim.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["known"],
+      "properties": {
+        "known": {
+          "description": "False until a paid provider is authorized; unknown cost is never reported as zero.",
+          "type": "boolean"
+        },
+        "amount": {
+          "type": ["number", "null"]
+        },
+        "currency": {
+          "type": "string",
+          "minLength": 1
+        },
+        "note": {
+          "type": "string"
+        }
+      }
+    },
+    "evidenceLevel": {
+      "description": "Evidence level of the result, per docs/definition-of-done.md.",
+      "type": "string",
+      "enum": ["unit", "local-http", "opencode-integration", "use-on-project"]
+    }
+  }
+}

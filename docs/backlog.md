@@ -1,6 +1,6 @@
 # Agent backlog — execution contracts
 
-Baseline: `origin/main` at `d5cdcea` (PR #14 merged). Fetch before choosing work.
+Baseline: `origin/main` at `2ff7e5e` (PR #19 merged). Fetch before choosing work.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. The local baseline has 129 passing tests; counts are observations, never
 a fixed target future agents should preserve instead of testing changed behavior.
@@ -37,7 +37,7 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: B03, B06, B07 or B10. B06 host evidence needs the trusted pinned binary;
+Ready choices: review the open B09/B10 PRs. B06 host evidence needs the trusted pinned binary;
 its absence blocks that claim. Prerequisites below describe ready-for-review
 acceptance; fixture-only preparatory work is not full delivery of a gated card.
 
@@ -50,14 +50,14 @@ A merged card is retained as regression/review guidance, not new work.
 | --- | --- | --- | --- |
 | [B01 — Safe schema diagnostics](tasks/B01.md) | P1 | Correction on open #8 | Existing #8 |
 | [B02 — Practical documentation templates](tasks/B02.md) | P2 | Merged / history | Merged #11 |
-| [B03 — Repository identity before task acceptance](tasks/B03.md) | P1 | PR open | B04a/B05 merged |
+| [B03 — Repository identity before task acceptance](tasks/B03.md) | P1 | Merged #16 | B04a/B05 merged |
 | [B04 — Ordinary lifecycle and immutable identity](tasks/B04.md) | P1 | Merged / history | B04a merged #13 |
 | [B05 — Single service owner per state home](tasks/B05.md) | P1 | Merged / history | Merged #14 |
-| [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | Ready | Pinned host for host claim |
-| [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Ready | None |
+| [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | PR open #20 | Pinned host for host claim |
+| [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Merged #19 | None |
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
-| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Gated | B03 |
-| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | PR open | None |
+| [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | PR open #18 | B03 |
+| [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | PR open #17 | None |
 | [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Gated | B09, B10, pinned host |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |
@@ -75,6 +75,16 @@ A merged card is retained as regression/review guidance, not new work.
 | [B23 — Safe worker fallback](tasks/B23.md) | P3 | Gated | B17 + two authorized models |
 | [B24 — Memory reuse evaluation](tasks/B24.md) | P3 | Gated | B20 |
 | [B25 — Offline routing advisor evaluation](tasks/B25.md) | P3 | Gated | B20, B23 |
+
+## Review workflow task
+
+| Additional task | Priority | State | Prerequisites |
+| --- | --- | --- | --- |
+| [B26 — PR feedback protocol](tasks/B26.md) | P2 | Prepared for PR review | Existing execution protocol |
+
+B26 defines developer/reviewer instructions and records the automation gap. The
+future sequential two-model controller needs separate design/implementation cards
+after B20; it is not delivered by B26 or the B25 routing evaluation.
 
 ## Shared safety and integration rules
 

@@ -23,6 +23,13 @@ reported as pending; required not_run evidence cannot support a completed claim.
 Direct main commits require explicit task-specific maintainer authorization and
 do not waive tests/review or grant future agents permission.
 
+## PR review feedback
+
+Reviewers publish actionable findings on the PR under [the feedback protocol](pr-review.md).
+Developers read all PR feedback and reply with correction commits/evidence or a
+reasoned explanation. Blocking findings require verified re-review at the current
+head before approval; a final chat reply alone does not deliver PR findings.
+
 ## Evidence levels
 
 | Level | Demonstrates | Does not demonstrate |
