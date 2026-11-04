@@ -538,3 +538,126 @@ Template:
   reconciled the handoff/current capability status. No runtime changes beyond
   already validated main. Rechecked feedback protocol and relative links; CI
   will validate the integrated head before merge.
+
+## 2026-11-02 — RFC-0001: declarative contract schemas and checker skeleton
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal plus test-only skeleton; no runtime wiring.
+- Steps:
+  1. Added `src/contracts/validate.mjs`, a zero-import checker for a curated JSON
+     Schema subset (type with nullable unions, properties, required,
+     `additionalProperties: false`, enum, pattern, string and array bounds, items,
+     description/meta annotations) returning `{ ok }` or `{ ok: false, errors }` with
+     relative paths, all errors collected and instance values truncated to 32 chars.
+     Combinators and numeric bounds are deliberately excluded.
+  2. Added `src/contracts/schemas/`: `task-submit-request` (from `validateSubmitRequest`),
+     `worker-artifact` (attempts, testRuns, diff, changedFiles, commits, limitations,
+     cost, evidence level; today's uncatalogued fields), `task-record` (from
+     `validateTask`), and `error-envelope` (added so `ERROR_CODES` also has a schema
+     anchor). Each file records its `file:line` origin in a `meta` block.
+  3. Added `test/contracts.test.mjs`: keyword happy/negative tables with exact paths and
+     messages, determinism and truncation checks, schema conformance for a real store
+     record, and drift guards comparing the schema enums to `TASK_STATUSES`,
+     `EVIDENCE_LEVELS`, `ERROR_CODES` and the private `STATUSES` literal read from
+     `src/tasks.mjs` (sorted set equality, equal length).
+  4. Wrote `docs/rfcs/0001-contract-schemas.md` with context, decision, supported
+     subset, few-shots with real `validate()` output, a three-step adoption path,
+     non-goals, later MCP reuse and four open questions.
+- Files: `src/contracts/validate.mjs`,
+  `src/contracts/schemas/{task-submit-request,worker-artifact,task-record,error-envelope}.schema.json`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 103 passed, 0 failed (83 existing + 20 new);
+  `node examples/fallback-demo.mjs` → expected 429 then 200;
+  `node -e "import('./src/contracts/validate.mjs').then(m=>console.log(Object.keys(m)))"`
+  → `[ 'exportEnum', 'validate' ]`.
+- Follow-up: RFC-0002 (lifecycle state machine, combinators) and adoption steps 2-3
+  (wire the submit boundary, derive the duplicated literals).
+
+## 2026-11-02 — RFC-0001 review fixes: strict schemas and record artifacts
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal and test-only skeleton; no runtime wiring.
+- Steps:
+  1. Added the artifact fields `updateTask` may write (`testRuns`, `changedFiles`,
+     `baseCommit`, `headCommit`, `diff`, `diffTruncated`) as optional properties of
+     `task-record`, with `testRuns[].command` optional to match the runtime's tolerated
+     shape; a new test validates a store record after `updateTask` adds them.
+  2. Reframed `worker-artifact` in its `$comment` and the RFC as the producer contract
+     the future executor adapter must report, not a result envelope; `command` is now
+     optional, and the strictness divergences (unknown keys, required `exitCode`,
+     non-empty `outcome`) are stated.
+  3. Made the checker fail closed: `additionalProperties: true` is rejected, and a new
+     exported `assertSchema()` walks every node against a strict keyword whitelist
+     (`type, properties, required, additionalProperties, enum, pattern, minLength,
+     maxLength, minItems, maxItems, items, description, meta, $comment`), requiring a
+     `type` on each node and rejecting malformed keyword values. `validate()` and
+     `exportEnum()` run it first.
+  4. Added a test that reads `src/contracts/schemas/` and runs `assertSchema` over every
+     shipped file, plus cases for unknown keywords, missing `type` and
+     `additionalProperties: true`.
+  5. Aligned the RFC with the RFC-0002 review: combinators are declined and lifecycle
+     legality is a status-keyed dispatch table; numeric bounds are declined, not an
+     open question; the `Referenced-by` line names the unmerged sibling PR. Documented
+     unanchored `pattern` search, `$comment`, error ordering, preview rules and inputs
+     for every few-shot.
+  6. Hardened the drift guard to quote-generic literal extraction and added a
+     `SCHEMA_VERSION` assertion against `src/service.mjs` and the private literal in
+     `src/tasks.mjs`.
+- Files: `src/contracts/validate.mjs`,
+  `src/contracts/schemas/{task-record,worker-artifact}.schema.json`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 106 passed, 0 failed (83 existing + 23 contract tests);
+  `node examples/fallback-demo.mjs` → expected 429 then 200; every schema file passes
+  `assertSchema` via the directory walk test.
+- Follow-up: adoption steps 2-3 in the RFC.
+
+## 2026-11-02 — RFC-0001 re-review fixes: record branch and dialect declaration
+
+- Branch: `rfc/0001-contract-schemas`
+- Scope: proposal and test-only skeleton; no runtime wiring.
+- Steps: corrected the `task-record` `$comment` to three deliberate strictness points
+  including non-empty `attempts[].outcome`; added optional `branch`
+  (`["string", "null"]`) to `task-record` because `src/service.mjs:207` reads it from
+  the record even though no runtime writer sets it; added `$schema` to the closed
+  keyword whitelist as an ignored string annotation and declared
+  `https://json-schema.org/draft/2020-12/schema` in all four schema files, with the RFC
+  table and checker header updated.
+  - Sync with main after #10 merged (both sides' append-only sections preserved)
+- Files: `src/contracts/schemas/*.schema.json`, `src/contracts/validate.mjs`,
+  `test/contracts.test.mjs`, `docs/rfcs/0001-contract-schemas.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 106 passed, 0 failed; `node examples/fallback-demo.mjs` →
+  expected 429 then 200.
+- Follow-up: adoption steps 2-3 in the RFC.
+## B01 — Safe schema diagnostics — 2026-11-03
+
+- Branch: `rfc/0001-contract-schemas` (existing PR #8).
+- Scope: unknown instance property names are replaced with a fixed `<unknown>` path
+  segment, including deeply nested keys. Known schema property paths remain useful.
+- Steps:
+  1. Removed attacker-controlled keys from unknown-property diagnostic paths.
+  2. Added regression coverage for short, credential-shaped, very long and control-
+     character keys at root and nested object levels.
+  3. Updated existing unknown-key expectations and clarified the RFC diagnostics rules.
+- Files: `src/contracts/validate.mjs`, `test/contracts.test.mjs`,
+  `docs/rfcs/0001-contract-schemas.md`, `docs/worklog.md`, `docs/validation.md`.
+- Template adaptation: concise append-only entries retain scope, files, evidence,
+  limitations and commands while avoiding repeated milestone background.
+- Validation: `node --test --test-reporter=tap` -> 107 passed, 0 failed;
+  `node examples/fallback-demo.mjs` -> expected 429 then 200; `git diff --check` passed.
+- Limits: schemas remain unwired to runtime operations; no live integration gates ran.
+
+## 2026-11-03 — B01 schema scaffold merge review
+
+- Branch: `rfc/0001-contract-schemas`; integrated main `104e9c1` without changing
+  service/store behavior. Preserved both append-only histories and changed the
+  unmerged sibling RFC link to its PR. Reviewed the schema subset and diagnostics;
+  the unknown-key disclosure correction is present. Runtime adoption remains B08
+  and requires differential checks. Integrated suite/demo and CI follow.
+
+- B01 integration correction: updated the artifact fixture for full immutable base
+  SHA and legal lifecycle transitions. Initial integrated suite failed 1/166;
+  after correction, 166/166 pass and demo returns 429 then 200. Reviewed the final
+  checker/schema/test diff; runtime consumers remain untouched. No host gates rerun.

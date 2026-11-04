@@ -580,3 +580,112 @@ real acceptance evidence.
   evidence. Reviewed the resulting diff and current PR feedback. Runtime matches
   main; prior suite/demo evidence remains applicable. Content/link and whitespace
   checks are rerun before publication; Windows/Linux CI is required before merge.
+
+## RFC-0001 schema skeleton — 2026-11-02
+
+Branch `rfc/0001-contract-schemas` at `3f30114`. Test-only skeleton: no runtime module
+imports `src/contracts/`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+node -e "import('./src/contracts/validate.mjs').then(m=>console.log(Object.keys(m)))"
+```
+
+Results: `node --test` → 103 passed, 0 failed (83 existing tests unchanged, 20 new in
+`test/contracts.test.mjs`); the demo printed the expected 429 from `mock/preferred`
+followed by 200 from `mock/local`; the import check printed
+`[ 'exportEnum', 'validate' ]`. New tests use only temporary directories and synthetic
+values, cover every supported keyword, collect-all-errors ordering, path shapes
+(`acceptanceCriteria[2]`, `attempts[0].outcome`), deterministic output, 32-character
+truncation of instance data in messages, malformed-schema rejection, conformance of a
+record written by `openTaskStore`, and the enum drift guards.
+
+The drift guards compare schema enums to `TASK_STATUSES`, `EVIDENCE_LEVELS` and
+`ERROR_CODES` imported from `src/service.mjs`, and to the module-private `STATUSES`
+literal extracted from `src/tasks.mjs` source (the store is not modified by this RFC).
+Enums are compared as sorted arrays with equal length: membership is contract, order is
+not.
+
+Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-gate.mjs`
+(the MCP capability gate remains inconsistent and unresolved), the Windows-only
+toolchain statement, and any live executor or transport use. No paid provider, network
+call or credential was used; no integration evidence is implied by these unit tests.
+
+## RFC-0001 review fixes — 2026-11-02
+
+Branch `rfc/0001-contract-schemas`. Test-only skeleton; no runtime module imports
+`src/contracts/`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Results: `node --test` → 106 passed, 0 failed (83 existing tests unchanged, 23 in
+`test/contracts.test.mjs`); the demo printed the expected 429 from `mock/preferred`
+followed by 200 from `mock/local`.
+
+New coverage in this round: an artifact-enriched record (store `createTask` followed by
+`updateTask` with attempts, a command-less test run, changed files, commits, diff and
+truncation flags) validates against `task-record.schema.json`; `assertSchema` rejects
+unknown keywords, a missing `type`, malformed keyword values and
+`additionalProperties: true`; a directory walk asserts every shipped `.schema.json`
+passes `assertSchema`; the drift guard extracts the `STATUSES` and `SCHEMA_VERSION`
+literals with quote- and whitespace-tolerant patterns and compares them to the schema
+enums and to the exports from `src/service.mjs`.
+
+Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-gate.mjs`
+(the MCP capability gate remains inconsistent and unresolved), the Windows-only
+toolchain statement, and any live executor or transport use. No paid provider, network
+call or credential was used.
+
+## RFC-0001 re-review fixes — 2026-11-02
+
+Branch `rfc/0001-contract-schemas`. Test-only skeleton; no runtime module imports
+`src/contracts/`.
+
+```sh
+node --test
+node examples/fallback-demo.mjs
+```
+
+Results: `node --test` → 106 passed, 0 failed (no new test cases; assertions added to
+the existing keyword and directory-walk tests); the demo printed the expected 429 from
+`mock/preferred` followed by 200 from `mock/local`. Coverage added: `$schema` is
+accepted as an ignored string annotation and rejected when it is not a string, every
+shipped schema file declares its dialect, and `task-record` accepts an optional
+`branch` string or null. Few-shot outputs in RFC-0001 were regenerated and unchanged.
+
+Not rerun and not claimed: `integration/opencode-smoke.mjs`, `integration/mcp-gate.mjs`
+(the MCP capability gate remains inconsistent and unresolved), the Windows-only
+toolchain statement, and any live executor or transport use. No paid provider, network
+call or credential was used.
+
+## B01 — Safe schema diagnostics — 2026-11-03
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Full suite with unknown-key disclosure regressions | 107 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker check | Passed | 0 |
+
+Evidence: unit-level checker behavior. Diagnostics no longer contain unknown instance
+property names, while paths for declared schema fields remain informative. Tests cover
+credential-shaped, long and control-character keys at root and nested levels.
+Schemas remain proposed and are not wired to service/tool operations. No OpenCode,
+MCP, SQLite or live executor gate was rerun.
+
+## B01 integrated schema scaffold review — 2026-11-03
+
+- Integrated main 104e9c1 on rfc/0001-contract-schemas. Original focused tests:
+  24 passed. Initial integrated suite: 165 passed, 1 failed (exit 1), exposing an
+  obsolete artifact fixture using an abbreviated base SHA and queued-to-succeeded
+  transition. Corrected the fixture to initialize an immutable full base SHA and
+  persist queued -> running -> succeeded without changing runtime guards.
+- Final node --test: 166 passed, 0 failed, exit 0. Fallback demo: 429 then 200,
+  exit 0. Markdown local-link check passed; git diff --check follows before commit.
+- Both review passes checked schemas, checker keyword rejection, diagnostics and
+  current-store compatibility. Unknown-key credentials remain absent from errors.
+  Host gates not rerun: no host/service/store runtime changed. Current-head CI
+  must pass before merge. Adoption into service/transport remains B08.
