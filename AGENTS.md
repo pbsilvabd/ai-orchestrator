@@ -24,13 +24,13 @@ Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
 authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
-Current state (2026-11-02): M0/M1a/M1b complete within their local scope, M2a complete,
-M2b step 2 (task store) complete and step 3 (service surface) locally validated after
-corrective changes. The MCP capability gate had one pass and one later failure during
-the probe; it is not consistently validated and its root cause is unresolved. See
-[ADR-007](docs/adr/007-task-contract.md) and [validation](docs/validation.md). The four
-task operations live in `src/service.mjs` over the store from `src/tasks.mjs`; the
-executor adapter is still pending.
+Current state (2026-11-04): M2a is complete; B06 passed eight isolated pinned-host
+runs. Main `488e57a` contains B09–B11 and FIX23/#24, with successful main CI.
+B12 adds an opt-in durable scheduler on `task/B12-durable-scheduler`, locally
+validated and authorized for publication/merge after final checks. The maintainer
+accepted the implementing agent's review; no independent review is claimed.
+Follow the current handoff and validation;
+M2b still needs artifacts, stop handling, MCP transport and real-client acceptance.
 
 ## PR feedback
 

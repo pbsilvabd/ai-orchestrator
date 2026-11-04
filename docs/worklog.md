@@ -820,3 +820,93 @@ Template:
   diff check clean. Windows x64, Node 24.22.1, Git 2.55.0.windows.5.
 - Publication: one FIX23 PR, replies to original findings with commit/evidence,
   cross-platform CI and independent review. No merge authorization is inferred.
+
+## 2026-11-04 — M2b: B12 durable single-worker scheduler
+
+- Branch: `task/B12-durable-scheduler`, base
+  `488e57ad817dbdf19496a2eb07c09be66c18c2aa` (local, unpublished).
+- Scope: code, tests and docs for opt-in single-worker dispatch; no transport,
+  artifact collection, production provider, fallback or automatic recovery.
+- Steps:
+  1. Compared the stale project mirror with fetched main and recent PRs. Confirmed
+     M2a/ADR-007, merged B09–B11/FIX23 and green main CI run 41759929003.
+  2. Reviewed FIX23 source and original #23 findings/correction replies; repeated
+     the pinned-host authorization regressions. #24 had no published independent
+     review; that acceptance gap remains explicit rather than inferred from merge.
+  3. Defined queue/startup/shutdown policy before implementation. Added atomic
+     running/attempt/workspace reservation, serial scheduling, no replay and
+     conservative failure/close ownership. Kept old passive service behavior.
+  4. Connected B09/B10/B11 through a trusted worker adapter with copied launch
+     configuration, UUID runtime paths and exclusive runtime file creation.
+  5. Exercised all B12 acceptance rows with real filesystem, Git and Node process
+     fixtures; extended the pinned OpenCode harness to execute from the service.
+  6. Reviewed implementation and failure paths, then the completed diff and every
+     matrix row. Added adapter-copy/receipt immutability checks, cancellation/late
+     result fencing, budget checks and runtime path-ID validation. No blocking
+     local findings remain. Final harness review preserved workspace output even
+     when host failure precedes descriptor assignment; the host gate was rerun.
+     Process-error review kept ambiguous termination errors blocked instead of
+     classifying every child error as a safe spawn failure; checks were rerun.
+     Independent review/publication remain outstanding.
+- Files: `AGENTS.md`, `README.md`, `docs/adr/008-task-store.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/requirements.md`, `docs/roadmap.md`,
+  `docs/task-contract.md`, `docs/tasks/B12.md`, `docs/validation.md`,
+  `docs/worklog.md`, `integration/README.md`,
+  `integration/opencode-invocation.mjs`, `src/opencode.mjs`,
+  `src/scheduler.mjs`, `src/service.mjs`, `src/tasks.mjs`,
+  `test/opencode.test.mjs`, `test/scheduler.test.mjs`.
+- Validation: focused scheduler/OpenCode tests → 26 passed; full `node --test`
+  → 208 passed, 0 failed, 1 POSIX-only skip; pinned OpenCode 2.2.5 invocation
+  harness → serviceSchedulerDispatch and authorization checks true, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200; diff/link checks passed.
+  Windows x64, Node 24.22.1 (fnm), Git 2.55.0.windows.5. MCP/session-switch gates
+  and new-head remote Windows/Linux CI were not rerun.
+- Follow-up: obtain explicit publication authorization, push/open the single B12
+  PR, verify head/CI and complete independent FIX23/B12 review. Then B13 artifacts
+  and B14 stop handling; M2b/M3 are not complete. The user restriction overrides
+  the repository's usual publish-through-PR protocol. No push/merge was performed.
+
+## 2026-11-04 — M2b: B12 authorized delivery checkpoint
+
+- Branch: `task/B12-durable-scheduler`; runtime reviewed at `69aa920`.
+- Scope: delivery documentation only; no runtime, tests or authority policy changed.
+- Steps:
+  1. Rechecked clean local state, unchanged remote main `488e57a` and absence of
+     another B12 PR before publication.
+  2. Recorded the maintainer's explicit publication/merge authorization following
+     the implementing agent's completed review. No independent review is claimed.
+  3. Updated current status pointers; final published head, feedback and CI must
+     be verified before the already-authorized merge.
+- Files: `AGENTS.md`, `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`,
+  `docs/tasks/B12.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `git diff origin/main..HEAD --check` passed for the reviewed runtime;
+  documentation links and staged whitespace checked for this follow-up. Runtime
+  evidence remains 208 passing tests, one POSIX skip, 26 focused passes and the
+  passing pinned OpenCode harness. Runtime/host suites were not rerun because only
+  documentation changed. New-head remote CI must run after publication.
+- Follow-up: publish the same B12 PR, verify remote head/feedback/Windows/Linux CI
+  and merge under this authorization; then B13 artifacts. M2b/M3 remain incomplete.
+
+## 2026-11-04 — M2b: B12 canonical workspace receipt correction
+
+- Branch: `task/B12-durable-scheduler`, same PR #25.
+- Scope: code, tests and contract documentation for canonical dispatch receipt
+  identity; no permission, replay, cancellation or provider expansion.
+- Steps:
+  1. Inspected CI run 41769624335: Ubuntu passed; Windows failed B12-01 while
+     waiting for its first fixture marker (207 passed, one failure, one skip).
+  2. Reproduced divergent planned/B09 canonical paths with a real aliased home;
+     the new regression failed before the fix, exit 1, with both paths displayed.
+  3. Canonicalized the workspace root before reserving dispatch, matching B09 even
+     when the configured home uses an alias or a Windows short-name spelling.
+  4. Reviewed startup ownership/failure cleanup and the complete correction diff;
+     preserved the dispatch-before-spawn rule and immutable receipt binding.
+- Files: `src/scheduler.mjs`, `test/scheduler.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/008-task-store.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused scheduler/OpenCode tests -> 27 passed; full suite -> 209
+  passed, zero failed, one POSIX-only skipped; pinned OpenCode fixture -> dispatch
+  and authorization checks true; demo -> 429 then 200; all exits 0. Whitespace and
+  relative file links checked. Unchanged MCP/session-switch gates were not rerun.
+- Follow-up: push the correction on PR #25, verify new-head Windows/Ubuntu CI and
+  feedback, then execute the maintainer-authorized merge. No merge on failed CI.

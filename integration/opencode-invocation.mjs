@@ -7,7 +7,8 @@ import { once } from 'node:events';
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync, rmSync, symlinkSync, linkSync, lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
-import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
+import { buildOpenCodeInvocation, createOpenCodeWorker, OpenCodeLaunchError } from '../src/opencode.mjs';
+import { createTaskService } from '../src/service.mjs';
 import { runSubprocess } from '../src/subprocess.mjs';
 import { createTaskWorkspace, removeTaskWorkspace } from '../src/workspace.mjs';
 
@@ -31,6 +32,9 @@ let safeToRemoveRoot = true;
 let workspaceRemoved = false;
 let attemptedDeniedWrite = false;
 let attemptedAllowedWrite = false;
+let service;
+let serviceWorkspace;
+let serviceWorkspacePath;
 const originalAmbient = Object.fromEntries(['OPENCODE_CONFIG', 'OPENCODE_CONFIG_DIR',
   'B11_AMBIENT_CREDENTIAL_SENTINEL'].map(key => [key, process.env[key]]));
 
@@ -222,12 +226,56 @@ try {
   workspaceRemoved = removeTaskWorkspace({ taskId: workspace.taskId, repositoryPath,
     baseCommit: workspace.baseCommit, branch: workspace.branch, workspaceRoot }).removed;
   assert.equal(workspaceRemoved, true);
+
+  // B12 connects the real service queue to B09, B10 and the B11 builder. This is
+  // still a loopback fixture model, not the MCP adapter or self-development gate.
+  const serviceHome = join(root, 'service-home');
+  service = createTaskService({ home: serviceHome,
+    config: { clientId: 'fixture-owner', authorization: {
+      models: ['fixture/mock'], tools: ['read', 'edit'], writableRoots: [repositoryPath],
+    } },
+    worker: createOpenCodeWorker({ runtimeRoot: join(serviceHome, 'runtime'),
+      executable: binary, authorizedModel: 'fixture/mock', allowedTools: ['read', 'edit'],
+      writablePaths: ['src/**'], provider: launchOptions.provider,
+      providerEnvironment: { FIXTURE_API_KEY: fixtureKey }, hostEnvironment,
+      maxBudgetMs: 45_000, maxOutputBytes: 65_536 }),
+  });
+  attemptedAllowedWrite = false;
+  const submittedRequest = { ...task('B11_ALLOWED_WRITE: write src/allowed-output.txt with ALLOWED_FIXTURE.').request,
+    clientId: 'fixture-owner', idempotencyKey: 'b12-host-fixture',
+    repository: { path: repositoryPath, baseRef: baseCommit, branch: 'task/b12-host-fixture' } };
+  const accepted = service.submitTask(submittedRequest);
+  serviceWorkspacePath = join(serviceHome, 'workspaces', accepted.taskId);
+  assert.equal(accepted.status, 'queued');
+  assert.equal(service.submitTask(submittedRequest).taskId, accepted.taskId);
+  await service.whenIdle();
+  const completed = service.store.readTask(accepted.taskId);
+  assert.equal(completed.status, 'succeeded', JSON.stringify(service.schedulerStatus()));
+  assert.equal(completed.attempts.length, 1);
+  assert.equal(completed.attempts[0].exitCode, 0);
+  serviceWorkspace = completed.attempts[0].workspace;
+  const serviceOutput = join(serviceWorkspace.workspacePath, 'src', 'allowed-output.txt');
+  assert.equal(readFileSync(serviceOutput, 'utf8'), 'ALLOWED_FIXTURE');
+  assert.equal(service.getTaskResult({ taskId: accepted.taskId }).limitations.length, 1,
+    'host exit alone is not test evidence');
+  unlinkSync(serviceOutput);
+  removeTaskWorkspace({ taskId: accepted.taskId, repositoryPath, baseCommit,
+    branch: serviceWorkspace.branch, workspaceRoot: join(serviceHome, 'workspaces') });
+  serviceWorkspace = null;
+  assert.deepEqual(await service.close(), { releaseOwnership: true });
   console.log(JSON.stringify({ version: '2.2.5', model: 'fixture/mock', cwd: 'isolated workspace',
     b09ReceiptVerifiedWorkspace: true, ambientConfigIgnored: true, ambientCredentialExcluded: true,
     deniedWrite: true, workspaceLinkRejected: true, hardlinkRejected: true,
-    providerOverrideRejected: true, allowedWrite: true,
+    providerOverrideRejected: true, allowedWrite: true, serviceSchedulerDispatch: true,
     providerRequests: requests.length, externalProvider: false }));
 } finally {
+  if (service) {
+    const closed = await service.close();
+    if (!closed.releaseOwnership) safeToRemoveRoot = false;
+  }
+  // Even a failed terminal result may have dirty output. Do not rely on the
+  // success-only descriptor assignment when deciding whether fixture cleanup is safe.
+  if (serviceWorkspace || (serviceWorkspacePath && existsSync(serviceWorkspacePath))) safeToRemoveRoot = false;
   if (server) {
     const closed = new Promise(resolveClose => server.close(resolveClose));
     server.closeAllConnections();

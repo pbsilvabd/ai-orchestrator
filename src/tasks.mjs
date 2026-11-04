@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { closeSync, fsyncSync, mkdirSync, openSync, readFileSync, readdirSync,
   renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, isAbsolute, join, resolve } from 'node:path';
 
 // Durable task records (M2b step 2). This module owns persistence, the idempotency
 // index and startup reconciliation. It does not implement the four operations, the
@@ -413,6 +413,18 @@ function validateTask(task) {
       fail('invalid_argument', 'attempt startedAt is not a timestamp');
     if (attempt.finishedAt !== null && attempt.finishedAt !== undefined && !isTimestamp(attempt.finishedAt))
       fail('invalid_argument', 'attempt finishedAt is not a timestamp or null');
+    if (attempt.workspace !== undefined) {
+      const receipt = attempt.workspace;
+      if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt) ||
+          Object.keys(receipt).sort().join(',') !== 'baseCommit,branch,receiptPath,taskId,workspacePath' ||
+          receipt.taskId !== task.taskId || receipt.baseCommit !== task.baseCommit ||
+          typeof receipt.baseCommit !== 'string' || !/^[a-f0-9]{40,64}$/.test(receipt.baseCommit) ||
+          receipt.branch !== task.request?.repository?.branch ||
+          typeof receipt.workspacePath !== 'string' || !isAbsolute(receipt.workspacePath) ||
+          receipt.workspacePath !== join(dirname(receipt.workspacePath), task.taskId) ||
+          receipt.receiptPath !== join(dirname(receipt.workspacePath), `${task.taskId}.workspace.json`))
+        fail('invalid_argument', 'invalid workspace dispatch receipt');
+    }
   }
 
   const cancel = task.cancel;
@@ -479,6 +491,8 @@ function validateUpdate(previous, next) {
     if (!next.attempts[index] || ['attemptId', 'model', 'startedAt'].some(
       field => next.attempts[index][field] !== attempt[field]))
       fail('internal', 'persisted dispatch evidence cannot be removed or replaced');
+    if (attempt.workspace !== undefined && stringify(next.attempts[index].workspace) !== stringify(attempt.workspace))
+      fail('internal', 'persisted workspace dispatch receipt cannot be replaced');
   }
   if (previous.status !== next.status && !TRANSITIONS[previous.status].includes(next.status))
     fail('internal', 'illegal task status transition');

@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-03. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-04. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -14,9 +14,9 @@ The first and primary end-to-end test is development of AI Orchestrator itself:
 the primary LLM delegates a small backlog task, a worker changes an isolated branch,
 runs tests, and returns a diff and report for review. No automatic merge.
 
-OpenCode 2.2.5 is the first candidate worker executor, not the mandatory interface
-for the supervising LLM. MCP is the preferred interface to evaluate for compatible
-clients; an API is an alternative. Neither interface is implemented yet.
+OpenCode 2.2.5 is the selected first worker executor and supervising client.
+ADR-007 selects MCP over stdio as the first transport; the loopback HTTP fallback
+was not selected. Neither task transport is implemented yet.
 See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
@@ -31,10 +31,13 @@ corrections passed eight isolated runs against the pinned host; the failure was
 readiness timing, not protocol incompatibility. The task store and service-surface
 corrections are complete. FIX17-18/#22 corrected hidden workspace output and spawn
 error handling. B11/#23 is merged; FIX23 corrects post-merge hard-link/environment
-authorization findings and a Windows test-cleanup failure. Review of FIX23 remains
-required. The builder is not connected to the task service/scheduler;
-there is no MCP/API endpoint, durable worker execution, integrated fallback,
-semantic memory or completed self-development workflow yet.
+authorization findings and a Windows test-cleanup failure. FIX23/#24 is merged and
+main CI passed; no published independent review was found. B12 adds a locally
+validated opt-in durable single-worker scheduler connected to the B11 builder.
+Its publication and merge are authorized following the agent's completed review,
+subject to final published-head/CI checks. There is no MCP/API
+endpoint, artifact collector, integrated fallback, semantic memory or completed
+self-development workflow yet.
 
 The existing runner executes an operation; it is not a durable task scheduler.
 Its budget is per invocation, and its ledger does not persist task artifacts or
@@ -48,7 +51,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B11 launch builder in review; steps 1–3 complete | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12 locally validated and merge authorized pending final checks; B13–B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Primary acceptance target; depends on M2b | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -69,7 +72,8 @@ completed-diff review and correction/revalidation under [task-execution.md](task
 B04a/#13, B05/#14, B03/#16, B07/#19, B06/#20, B26/#21, B10/#17, B09/#18 and
 FIX17-18/#22 are merged. Eight real pinned-host B06 gate runs passed after bounded
 readiness and cleanup handling. B11's launch builder and denied-write experiment are
-implemented on `task/B11-authorized-opencode`; they remain unconnected to dispatch.
+merged through #23/#24. B12 connects service dispatch locally on
+`task/B12-durable-scheduler`; publication/merge are authorized after final checks.
 B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
 
@@ -85,11 +89,9 @@ B05 ownership checkpoint (2026-11-03): service startup acquires an exclusive per
 The normative contract is [task-contract.md](task-contract.md); these steps implement
 it and nothing beyond it.
 
-1. **Capability gate — inconsistent (2026-11-02).** One OpenCode 2.2.5 run passed and
-   another failed during the probe; discovery/cataloguing/call were observed, but the
-   root cause is unresolved. See [validation](validation.md). Do not rely on this as a
-   consistently passing CI gate. MCP remains the selected first transport pending
-   diagnosis; the HTTP fallback is not selected.
+1. **Capability gate — passed after B06/#20.** Eight isolated pinned-host runs
+   passed after readiness and cleanup corrections. The earlier failure was startup
+   timing. MCP remains selected; the HTTP fallback is not selected.
 2. **Task store.** JSON records with atomic writes, an idempotency index and startup
    reconciliation; tests for duplication, crash and restart behavior. **Complete
    (2026-11-02).**
@@ -98,6 +100,10 @@ it and nothing beyond it.
    83 suite tests and nine review reproductions passed.
 4. **Executor adapter.** One OpenCode CLI subprocess in an isolated worktree and
    branch, collecting diff, changed files and test evidence; cancellation is advisory.
+   B12 scheduling/dispatch is locally validated with real Node/Git fixtures and one
+   pinned OpenCode service-dispatch fixture. Publication/merge are authorized;
+   final published-head checks remain required.
+   B13 artifacts and B14 cancellation/stop handling remain separate requirements.
 5. **Client integration.** One real submission, poll and result retrieval through the
    pinned client.
 6. **M2b acceptance run.** Execute the acceptance tests in the contract plus one real

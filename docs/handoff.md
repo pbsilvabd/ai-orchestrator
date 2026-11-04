@@ -1,12 +1,42 @@
-# Continuation point — 2026-11-03
+# Continuation point — 2026-11-04
 
-Main is `05d5cda`, including B11/#23 and FIX17-18/#22. M2a is complete; the B06 MCP gate passed
-eight isolated pinned-host runs after readiness/cleanup corrections. The task store,
-service surface, B09 workspaces and B10 subprocess primitive are merged. M2b remains
-incomplete: no task scheduler, executor dispatch, MCP transport or self-development
-task is integrated.
+Remote main is `488e57ad817dbdf19496a2eb07c09be66c18c2aa`, including FIX23/#24,
+B11/#23 and FIX17-18/#22. Main CI run 41759929003 passed. No open PRs were found.
+The mirrored ChatGPT project snapshot is older and is not a Git checkout. This
+branch uses the actual repository checkout; fetch again before editing.
+M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
+`2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Current task: FIX23 — post-merge B11 corrections
+## Current task: B12 — publication and merge authorized
+
+Branch `task/B12-durable-scheduler` starts at remote main `488e57a`. The opt-in
+single-worker scheduler persists running/attempt/workspace identity before setup
+and spawn, serializes new submissions, never requeues duplicates or preexisting
+records, and blocks uncertain results. Active shutdown retains ownership because
+abort is not stop proof. The real OpenCode fixture now covers service-to-worker
+dispatch as well as the original authorization regressions.
+
+Local validation after the CI correction: 209 passed, zero failed, one POSIX-only skip; host fixture and
+fallback demo passed. Read the current validation entry and B12 card for evidence
+and both self-reviews. No paid/external provider was used. M2b/M3 remain incomplete.
+
+The maintainer subsequently authorized publication and merge based on this agent's
+completed review (2026-11-04). That supersedes the earlier publication hold; no new
+confirmation is needed for B12. Verify the published head, feedback and Windows/Linux
+CI before merging the same PR. PR #25 is published. Its first Windows CI run
+exposed B12-01 failure; a directory-alias regression reproduced mismatched planned
+and canonical workspace receipt paths. The scheduler now canonicalizes the root
+before reservation. The regression failed before the fix; focused/full/host/demo
+checks pass after it. Verify fresh Windows/Linux CI on the corrected head before
+merging; the original `69aa920` validation is not the latest runtime evidence.
+
+FIX23/#24 has no independently published review; local source review and repeated
+pinned-host regressions passed. The maintainer accepted this implementing-agent
+review for the merge decision; do not relabel it as independent review. Once the
+authorized B12 PR is merged, proceed to B13 artifacts; B14 requires both B12/B13.
+Do not add transport, providers, fallback or automatic merge capabilities to B12.
+
+## Historical FIX23 checkpoint before PR #24 merged
 
 Review `task/FIX23-authorization` under [FIX23](tasks/FIX23.md). It rejects multiply
 linked files before host launch, restricts provider environment to FIXTURE_API_KEY,

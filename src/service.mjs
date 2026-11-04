@@ -2,8 +2,8 @@
 // This module orchestrates the durable task store and implements the four contract
 // operations: submit_task, get_task_status, get_task_result and cancel_task. It owns
 // strict request validation, ownership checks, allowlist clamping, lifecycle decisions
-// and sanitized error mapping. It does not execute workers; artifact collection belongs
-// to the executor adapter built on top of these primitives.
+// and sanitized error mapping. An explicitly configured worker enables the serial
+// scheduler; artifact collection remains B13.
 //
 // The service is transport neutral: it is synchronous and returns plain response
 // objects, or throws ServiceError with a contract error code. The MCP/API transport
@@ -13,6 +13,7 @@ import { isAbsolute, sep, resolve, join } from 'node:path';
 import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
 import { RepositoryError, validateRepositoryIdentity } from './repository.mjs';
+import { createTaskScheduler } from './scheduler.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const TASK_STATUSES = ['queued', 'running', 'succeeded', 'failed', 'blocked', 'cancelled'];
@@ -113,6 +114,11 @@ export function createTaskService(options = {}) {
     if (Number.isInteger(options.now)) return options.now;
     return Date.now();
   };
+  let scheduler;
+  try {
+    if (options.worker !== undefined) scheduler = createTaskScheduler({ store,
+      clientId: config.clientId, worker: options.worker, now });
+  } catch (error) { releaseOwner(); throw toServiceError(error); }
 
   // Ownership: the task owner is the client that submitted it; the caller is the
   // service-configured client. Other clients receive not_owner.
@@ -149,6 +155,7 @@ export function createTaskService(options = {}) {
         idempotentReplay: true,
       };
     }
+    if (scheduler?.snapshot().stopped) fail('unavailable', 'task scheduler requires inspection');
 
     // 2. New request: validate repository identity, baseRef commit-ish, and branch availability.
     let repoValidation;
@@ -176,6 +183,7 @@ export function createTaskService(options = {}) {
     } catch (error) {
       throw toServiceError(error);
     }
+    if (!created.replay) scheduler?.enqueue(created.task.taskId);
     return {
       schemaVersion: SCHEMA_VERSION,
       taskId: created.task.taskId,
@@ -337,6 +345,7 @@ export function createTaskService(options = {}) {
   };
 
   let closed = false;
+  let closing;
   const guardOpen = operation => (...args) => {
     if (closed) fail('unavailable', 'task service is closed');
     return operation(...args);
@@ -344,7 +353,17 @@ export function createTaskService(options = {}) {
   return { store, config, now,
     submitTask: guardOpen(submitTask), getTaskStatus: guardOpen(getTaskStatus),
     getTaskResult: guardOpen(getTaskResult), cancelTask: guardOpen(cancelTask),
-    close: () => { closed = true; releaseOwner(); } };
+    whenIdle: () => scheduler?.whenIdle() ?? Promise.resolve(),
+    schedulerStatus: () => scheduler?.snapshot() ?? null,
+    close: () => {
+      closed = true;
+      if (!scheduler) { releaseOwner(); return; }
+      closing ??= scheduler.close().then(result => {
+        if (result.releaseOwnership) releaseOwner();
+        return result;
+      });
+      return closing;
+    } };
 }
 
 function acquireServiceOwnership(home) {

@@ -1,5 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
-import { lstatSync, readdirSync } from 'node:fs';
+import { lstatSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 
 const FIXED_HOST_ENVIRONMENT = new Set([
   'SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC', 'HOME', 'USERPROFILE',
@@ -12,6 +12,28 @@ const FIXED_HOST_ENVIRONMENT = new Set([
 // names deliberately; arbitrary environment entries can reconfigure the host.
 const PROVIDER_CREDENTIAL_ENVIRONMENT = new Set(['FIXTURE_API_KEY']);
 const ALLOWED_TOOLS = new Set(['read', 'edit']);
+
+// Explicit opt-in service adapter. Configuration is supplied by the maintainer,
+// copied once and never derived from task text. Only loopback fixtures are supported.
+export function createOpenCodeWorker({ runtimeRoot, ...options } = {}) {
+  if (typeof runtimeRoot !== 'string' || !isAbsolute(runtimeRoot))
+    fail('invalid_argument', 'worker runtimeRoot must be absolute');
+  const configured = structuredClone(options);
+  return { prepare({ task, workspace }) {
+    const attemptId = task?.attempts?.at(-1)?.attemptId;
+    const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
+    if (!uuid.test(task?.taskId ?? '') || !uuid.test(attemptId ?? ''))
+      fail('invalid_argument', 'worker requires persisted task and attempt UUIDs');
+    const configRoot = resolve(runtimeRoot, task.taskId, attemptId);
+    const invocation = buildOpenCodeInvocation({ ...configured, task, workspace,
+      configRoot, stateRoot: resolve(configRoot, 'state') });
+    // New attempt directories only. Never overwrite runtime state from a past run.
+    mkdirSync(configRoot, { recursive: true, mode: 0o700 });
+    writeFileSync(invocation.env.OPENCODE_CONFIG, JSON.stringify(invocation.config), { flag: 'wx', mode: 0o600 });
+    writeFileSync(invocation.env.OPENCODE_MODELS_PATH, '{}', { flag: 'wx', mode: 0o600 });
+    return invocation;
+  } };
+}
 
 export class OpenCodeLaunchError extends Error {
   constructor(code, message) {

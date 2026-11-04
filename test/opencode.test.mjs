@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, linkSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
-import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
+import { buildOpenCodeInvocation, createOpenCodeWorker, OpenCodeLaunchError } from '../src/opencode.mjs';
 
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'opencode-test-fixture-'));
 const repositoryPath = resolve(fixtureRoot, 'repository');
@@ -43,6 +43,24 @@ const options = (changes = {}) => ({
 });
 
 const denied = code => error => error instanceof OpenCodeLaunchError && error.code === code;
+
+test('service worker snapshots configuration, rejects path-like IDs and never overwrites attempt runtime files', () => {
+  const settings = options();
+  const worker = createOpenCodeWorker({ ...settings, runtimeRoot: resolve(fixtureRoot, 'runtime') });
+  settings.providerEnvironment.FIXTURE_API_KEY = 'changed-after-configuration';
+  const record = { ...task(), attempts: [{ attemptId: '00000000-0000-4000-8000-000000000003' }] };
+  assert.throws(() => worker.prepare({ task: { ...record, taskId: '../escape' },
+    workspace: settings.workspace }), denied('invalid_argument'));
+  assert.throws(() => worker.prepare({ task: { ...record, attempts: [{ attemptId: '../escape' }] },
+    workspace: settings.workspace }), denied('invalid_argument'));
+  const invocation = worker.prepare({ task: record, workspace: settings.workspace });
+  assert.equal(invocation.env.FIXTURE_API_KEY, 'fixture-only');
+  assert.equal(readFileSync(invocation.env.OPENCODE_MODELS_PATH, 'utf8'), '{}');
+  const before = readFileSync(invocation.env.OPENCODE_CONFIG, 'utf8');
+  assert.deepEqual(JSON.parse(before), invocation.config);
+  assert.throws(() => worker.prepare({ task: record, workspace: settings.workspace }), e => e.code === 'EEXIST');
+  assert.equal(readFileSync(invocation.env.OPENCODE_CONFIG, 'utf8'), before);
+});
 
 test('builds a fixed no-shell launch with one model and a narrow permission ruleset', () => {
   const invocation = buildOpenCodeInvocation(options());

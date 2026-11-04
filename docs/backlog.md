@@ -1,6 +1,6 @@
 # Agent backlog — execution contracts
 
-Baseline: `origin/main` at `05d5cda` (PR #23 merged). Fetch before choosing work.
+Baseline: `origin/main` at `488e57a` (PR #24 merged). Fetch before choosing work.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -8,10 +8,12 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current corrective task: [FIX23](tasks/FIX23.md), on `task/FIX23-authorization`.
-B11/#23 merged, but post-merge review found hard-link and environment override
-escapes; Windows main CI also exposed a fixture cleanup error. Review FIX23 and its
-current-head CI before treating B11 as accepted or proceeding to B12.
+Current task: [B12](tasks/B12.md), on `task/B12-durable-scheduler`, implemented and
+validated locally, now authorized for publication and merge after final checks.
+FIX23/#24 merged; main CI passed. A fresh local source/host review passed its
+hard-link/environment regressions, but no published independent review was found.
+The maintainer accepted this agent's completed review for the B12 merge decision;
+do not claim a separate independent reviewer.
 
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
@@ -28,9 +30,8 @@ A later reviewer is an additional check, not a substitute for either self-review
 
 ## Verified status and task selection
 
-- B01: diagnostic fix `ae729bf` is on open [PR #8](https://github.com/pbsilvabd/ai-orchestrator/pull/8);
-  schemas are not merged or wired to runtime. Review/integrate existing work, do not
-  create another B01 PR or assume B08 is ready.
+- B01: [PR #8](https://github.com/pbsilvabd/ai-orchestrator/pull/8) is merged;
+  differential runtime adoption remains B08. Do not create another B01 PR.
 - B02: merged through [PR #11](https://github.com/pbsilvabd/ai-orchestrator/pull/11).
 - B04a: ordinary lifecycle/identity guards merged through
   [PR #13](https://github.com/pbsilvabd/ai-orchestrator/pull/13).
@@ -42,9 +43,11 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: review FIX23 post-merge corrections. B06/#20
-and FIX17-18/#22 are merged. Prerequisites below describe ready-for-review
-acceptance; fixture-only preparatory work is not full delivery of a gated card.
+Ready choices: publish/verify and merge B12 under the maintainer's authorization;
+B13 has merged B09/B10
+prerequisites. B06/#20 and FIX17-18/#22 are merged. Prerequisites below describe
+ready-for-review acceptance; fixture-only preparatory work is not full delivery
+of a gated card.
 
 ## Queue and detailed cards
 
@@ -63,10 +66,10 @@ A merged card is retained as regression/review guidance, not new work.
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 merged #22 | B03 |
 | [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 merged #22 | None |
-| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23; FIX23 correction requires review | B09, B10, pinned host |
-| [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Review required on task/FIX23-authorization | Merged #23 |
-| [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
-| [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |
+| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23 and FIX23/#24; independent review pending | B09, B10, pinned host |
+| [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Merged #24; main CI passed; independent review unrecorded | Merged #23 |
+| [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Locally validated; publication/merge authorized, pending final CI | B04a, B05, B09–B11 |
+| [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Ready | B09, B10 |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Gated | B12, B13 |
 | [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Gated | B06; B12/B14 for execution acceptance |
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Gated | B12–B15 |

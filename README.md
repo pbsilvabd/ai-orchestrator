@@ -13,8 +13,8 @@ diffs and test evidence while respecting authorized models, tools and budgets.
 small backlog task to one worker, retrieve its diff and test report, and review
 before merging. This workflow has not been implemented yet.
 
-OpenCode 2.2.5 is the first candidate worker executor. MCP is the preferred
-integration to evaluate for compatible clients; an API is an alternative.
+OpenCode 2.2.5 is the first worker executor and selected supervising client.
+MCP over stdio is the selected first transport under ADR-007.
 Neither endpoint exists yet. Reuse existing infrastructure before building new
 routing, task or memory systems. See [ADR-006](docs/adr/006-worker-service.md).
 
@@ -68,9 +68,12 @@ M2a is complete as a specification: the normative [task contract](docs/task-cont
 and [ADR-007](docs/adr/007-task-contract.md) define the four task operations,
 lifecycle, ownership, limits and artifacts, select MCP over stdio with OpenCode 2.2.5
 as the first client behind a capability gate, and record the pinned reuse/build
-decision. As of 2026-11-02 the task store (`src/tasks.mjs`) and the task service
-surface (`src/service.mjs`) are implemented; no task endpoint, transport or executor
-adapter exists yet.
+decision. The task store (`src/tasks.mjs`) and service (`src/service.mjs`) are
+implemented. B12 adds an opt-in serial scheduler (`src/scheduler.mjs`) that persists
+one attempt before creating an isolated worktree and launching a configured worker.
+The B11 adapter supports only a loopback fixture provider. Local process/host
+evidence is recorded in [validation](docs/validation.md); no task endpoint,
+MCP adapter, production provider or complete delegation MVP is delivered yet.
 
 A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
 and a simulated local provider. It validates session continuity, context, explicit

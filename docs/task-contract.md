@@ -251,6 +251,60 @@ Success without test evidence remains an explicit limitation in get_task_result.
 
 ## Persistence and restart
 
+### B12 scheduler and shutdown (2026-11-04)
+
+`createTaskService({ worker })` explicitly enables one service-owned scheduler.
+Without `worker`, the existing synchronous four-operation service remains passive.
+The configured adapter is trusted application code exposing synchronous
+`prepare({ task, workspace })`; task instructions cannot supply that code or an
+executable. `createOpenCodeWorker` connects the existing B11 builder to this hook
+and still accepts only the configured loopback fixture provider. No MCP endpoint
+or production provider is enabled by this option.
+
+- A new successful submission enqueues its persisted ID for a later event-loop
+  turn. Submit returns `queued` before workspace preparation or spawn. Idempotent
+  replay returns the original ID without enqueueing it.
+- Only new submissions accepted by this service instance are scheduled. Pristine
+  queued records from an earlier instance remain queued for maintainer inspection;
+  reconnect/replay does not enqueue them. Dispatched records are blocked by startup
+  reconciliation. No stored attempt is automatically restarted.
+- One atomic task-record write changes pristine `queued` to `running`, assigns
+  `startedAt` and appends one UUID attempt with its model and planned workspace
+  binding (`taskId`, `baseCommit`, `branch`, `workspacePath`, `receiptPath`). This
+  binding is validated on read and cannot be changed or removed after persistence.
+  The workspace root is canonicalized before reservation, so filesystem aliases
+  (including Windows short-name home paths) use the same identity as B09 receipts.
+  Only then can B09 create/verify the worktree and receipt, the trusted adapter
+  prepare a launch and B10 spawn a child. A failed write starts no worker.
+- There is one active attempt per service, no retry and no fallback. Preparation
+  counts against the task budget; subprocess duration/output caps cannot exceed
+  accepted limits. Synchronous preparation cannot be interrupted by a timer.
+- A normal observed zero exit records `succeeded`; a known nonzero exit or
+  unambiguous no-launch error (`ENOENT`, `ENAMETOOLONG`, `ERR_INVALID_ARG_VALUE`)
+  records `failed`. Other child errors can also originate in termination and stay
+  blocked. This records process outcome only. It adds no test
+  evidence: result limitations still disclose missing test commands/exit codes.
+  Artifact collection is B13. Unknown outcomes, deadlines and setup/completion
+  persistence failures halt the queue and require inspection without replay.
+- Polling and cancellation remain available while a worker runs. Cancellation
+  keeps its existing conservative `blocked` outcome; B14 will add stop handling.
+  A late child completion never changes a terminal task. If cancelled work has
+  completed, the scheduler still halts rather than treating cancellation as stop
+  proof. New submissions to a halted scheduler fail `unavailable`; identical
+  idempotent replays remain readable.
+- `whenIdle()` waits for pending scheduling/active child settlement; it is not a
+  task-success assertion. `schedulerStatus()` returns sanitized local diagnostics.
+- `close()` immediately disables operations and new dispatch. With a configured
+  worker it returns an idempotent Promise: await it before attempting another
+  owner. A not-yet-dispatched queue stays pristine. Active work becomes `blocked`
+  with `service-shutdown` before abort, and late results cannot reopen it. If
+  worker stop remains uncertain or persistence failed, close returns
+  `{ releaseOwnership: false }` and retains the service lock for explicit
+  maintainer recovery. Otherwise it releases ownership and returns
+  `{ releaseOwnership: true }`. Passive services retain synchronous close behavior.
+  Neither `whenIdle`, root exit after abort nor a closed handle proves descendants
+  stopped or effects reverted. No automatic workspace cleanup occurs.
+
 - One JSON record per task under `AI_ORCHESTRATOR_HOME` (`tasks/`, `idempotency/`,
   `locks/`, `artifacts/`), written with an exclusive temporary file, fsync and rename
   in the same directory, following [ADR-004](adr/004-local-ledger.md).
@@ -290,9 +344,9 @@ Success without test evidence remains an explicit limitation in get_task_result.
   accepts only `FIXTURE_API_KEY`; arbitrary host/runtime environment controls are
   rejected even when explicitly supplied.
 - The current B11 builder supports only a local loopback fixture provider. No external
-  or paid provider is authorized by that implementation. Production provider setup and
-  service-to-worker dispatch remain future work. Host permission checks are not an OS
-  sandbox or outbound network firewall.
+  or paid provider is authorized by that implementation. B12 opts into service-to-worker
+  dispatch; production provider setup remains future work. Host permission checks
+  are not an OS sandbox or outbound network firewall.
 - A task-level `budgetMs` is wall clock measured from start; the per-invocation budget
   of [ADR-005](adr/005-operation-runner.md) still applies and the lower value wins.
 - M2b runs one task at a time (`maxAttempts` ≤ 2, concurrency 1) with no automatic
