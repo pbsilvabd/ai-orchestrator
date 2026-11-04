@@ -21,8 +21,9 @@ The B11 builder is not integrated with `createTaskService` or the scheduler. It 
 accepts a loopback fixture provider today, is not an OS sandbox/network firewall, and
 does not support production provider credentials. B11 is published as [PR #23](https://github.com/pbsilvabd/ai-orchestrator/pull/23);
 review and CI are pending. Do not claim B11/M2b complete until required review,
-acceptance and checks are satisfied. Proceed to B12 only after PR #23 is reviewed and
-merged by a maintainer. Follow [the feedback protocol](pr-review.md).
+acceptance and checks are satisfied. PR CI run 41756163116 passed on Windows and
+Ubuntu at head `8eb9ac0`; review is pending. Proceed to B12 only after PR #23 is
+reviewed and merged by a maintainer. Follow [the feedback protocol](pr-review.md).
 
 The planned two-model development/review cycle requires B11–B20 delegation work,
 then a scoped controller design. See the protocol and roadmap. These instructions

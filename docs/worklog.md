@@ -786,3 +786,6 @@ Template:
   unit fixture supplied Windows-only absolute paths. Replaced those fixtures with
   platform-resolved paths; focused tests passed 8/8 and the full local suite passed
   190 tests with one POSIX-only skip. The corrected head needs fresh CI verification.
+- CI completion: run 41756163116 passed on Ubuntu and Windows at head
+  `8eb9ac05fcd407a38ddf728a1051cb945447e47e`. PR conversation comments, reviews and
+  inline threads were empty at that head; maintainer review and merge remain pending.
