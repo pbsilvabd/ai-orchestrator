@@ -9,6 +9,7 @@
   "scripts": {
     "check": "node scripts/check.mjs",
     "test": "node --test",
+    "coverage": "node --experimental-test-coverage --test-coverage-include=\"src/**\" --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=90 --test test/*.test.mjs",
     "demo": "node examples/fallback-demo.mjs"
   }
 }

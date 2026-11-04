@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   check:
-    name: Static checks and suite
+    name: Static checks
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -33,13 +33,13 @@ jobs:
       - name: Fail on high-severity dependency advisories
         run: npm audit --audit-level=high
 
-  test:
-    name: Node 24.22.1 / ${{ matrix.os }}
+  unit:
+    name: Unit and coverage / ${{ matrix.os }}
     needs: [check]
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, ubuntu-latest]
+        os: [windows-latest, ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -65,28 +65,47 @@ jobs:
         run: throw 'The expected nonzero pipeline unexpectedly succeeded.'
 
       - name: Verify nonzero pipeline exit (Bash)
-        if: runner.os == 'Linux'
+        if: runner.os != 'Windows'
         id: bash_pipeline_fixture
         continue-on-error: true
         shell: bash
         run: node -e 'process.exit(7)' | cat
 
       - name: Fail if Bash masked the pipeline exit
-        if: runner.os == 'Linux' && steps.bash_pipeline_fixture.outcome != 'failure'
+        if: runner.os != 'Windows' && steps.bash_pipeline_fixture.outcome != 'failure'
         shell: bash
         run: exit 1
 
-      - name: Run test suite (PowerShell)
+      - name: Run suite with coverage thresholds (PowerShell)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          node --test
+          npm run coverage
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Run test suite (Bash)
-        if: runner.os == 'Linux'
+      - name: Run suite with coverage thresholds (Bash)
+        if: runner.os != 'Windows'
         shell: bash
-        run: node --test
+        run: npm run coverage
+
+  smoke:
+    name: Smoke demo / ${{ matrix.os }}
+    needs: [unit]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Node.js 24.22.1
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.22.1
 
       - name: Run fallback demo (PowerShell)
         if: runner.os == 'Windows'
@@ -96,6 +115,34 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run fallback demo (Bash)
-        if: runner.os == 'Linux'
+        if: runner.os != 'Windows'
         shell: bash
         run: node examples/fallback-demo.mjs
+
+  drift:
+    name: Schema and lockfile drift / ${{ matrix.os }}
+    needs: [check]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Set up Node.js 24.22.1
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 24.22.1
+
+      - name: Install strictly from the lockfile
+        run: npm ci --ignore-scripts
+
+      - name: Run contract schema checker
+        run: node --test test/contracts.test.mjs
+
+      - name: Fail on schema or lockfile drift
+        run: git diff --exit-code -- src/contracts/schemas/ package-lock.json

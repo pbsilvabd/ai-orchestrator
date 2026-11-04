@@ -1,8 +1,24 @@
 # Continuous integration
 
-Every pull request and push to `main` runs one dependency-free check gate and then the
-test suite on `windows-latest` and `ubuntu-latest`, using Node.js 24.22.1. Workflows
-declare `permissions: contents: read` per job and never install runtime packages.
+Every pull request and push to `main` runs an ordered pipeline: static checks, then the
+suite with native coverage thresholds, then the fallback demo. The unit and smoke legs
+run on `windows-latest`, `ubuntu-latest` and `macos-latest` with Node.js 24.22.1. Every
+job declares `permissions: contents: read` and never installs runtime packages.
+
+## Pipeline order
+
+| Order | Job | Runs on | Gate |
+| --- | --- | --- | --- |
+| 1 | `check` | `ubuntu-latest` | `npm run check` and `npm audit --audit-level=high` |
+| 2 | `unit` | Windows, Ubuntu, macOS | `npm run coverage` (suite + coverage floors) |
+| 3 | `smoke` | Windows, Ubuntu, macOS | `node examples/fallback-demo.mjs` |
+| 2 | `drift` | Ubuntu, macOS | contract schema checker + `git diff --exit-code` |
+
+`unit` has `needs: [check]`, and `smoke` has `needs: [unit]`, so a failing static gate
+prevents both later stages and a failing suite prevents the demo. `drift` also has
+`needs: [check]` and runs in parallel with `unit` once the static gate passes. The
+`check` job stays Ubuntu-only to keep the fast gate cheap; platform behaviour is
+covered by the `unit` and `smoke` matrices.
 
 ## Single entry point: `npm run check`
 
@@ -15,9 +31,51 @@ works without `npm install`:
 4. `git diff --check` for whitespace errors.
 
 The script collects every failure, prints all of them and exits non-zero; it does not
-stop at the first one. Run it before pushing. The `check` CI job runs it on Ubuntu, and
-the `test` job depends on it (`needs: [check]`), so a failing static gate blocks the
-matrix.
+stop at the first one. Run it before pushing.
+
+## Coverage thresholds
+
+`npm run coverage` runs the suite through Node's built-in coverage and fails the job
+when a floor is crossed:
+
+```bash
+node --experimental-test-coverage --test-coverage-include="src/**" \
+  --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=90 \
+  --test test/
+```
+
+| Metric | Floor |
+| --- | --- |
+| Lines | 85 |
+| Branches | 80 |
+| Functions | 90 |
+
+The floors sit about five points below what the current suite reaches on Node 24.22.1.
+The margin keeps the gate meaningful without making it fragile: the two platform-specific
+tests that skip on one operating system change only a few branches, and the Windows and
+macOS legs must not fail for that reason. Raise a floor when the suite consistently
+covers more; never lower one just to unblock a change.
+
+Coverage is measured over `src/` only (`--test-coverage-include="src/**"`). Test files,
+`scripts/`, `examples/` and `integration/` are excluded: the first three are harness or
+demonstration code, and the OpenCode integration scripts require an external pinned
+binary and are not part of the unit leg. When a floor is missed, Node prints the metric
+and the uncovered locations and exits non-zero, so the failing metric is named in the
+log.
+
+## Drift job
+
+The `drift` job runs on Ubuntu and macOS after `check`:
+
+1. `npm ci --ignore-scripts` installs strictly from `package-lock.json`.
+2. `node --test test/contracts.test.mjs` loads every schema and compares the schema
+   enums with the runtime literals (`TASK_STATUSES`, `EVIDENCE_LEVELS`, `ERROR_CODES`,
+   `SCHEMA_VERSION`), so a hand-edited schema or a changed literal fails.
+3. `git diff --exit-code -- src/contracts/schemas/ package-lock.json` fails when an
+   install or check step rewrote the committed schemas or the lockfile.
+
+The job never regenerates a schema inside CI. A local schema edit is committed or
+reverted by the author; CI only reports that the tree is dirty.
 
 ## Reproducing the toolchain
 
@@ -29,17 +87,33 @@ is committed so installs are reproducible:
 fnm use
 npm ci          # installs strictly from the lockfile; fails on drift
 npm run check
+npm run coverage
 ```
 
 `npm ci` from a clean `node_modules` is the only supported install path in CI and
 review. Do not replace it with `npm install`, which can silently rewrite the lockfile.
 
+## Local pre-push hook
+
+`.githooks/pre-push` runs `npm run check` before Git sends a push and exits non-zero
+with a short message when the gate fails. It uses only `sh` and the existing npm script:
+no network access and no dependency. It is not installed automatically and does not
+duplicate itself; opt in once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Re-running the hook is safe and idempotent: it only runs the check and never writes to
+the hook directory or the repository. Opt out with `git config --unset core.hooksPath`.
+The hook is a convenience, not a replacement for CI; CI remains the authority.
+
 ## Workflows
 
-- `.github/workflows/ci.yml`: the `check` job runs `npm run check` and then
-  `npm audit --audit-level=high`, which fails the job on a high-severity advisory. The
-  `test` job runs the suite and the fallback demo on both operating systems, preserving
-  the PowerShell and Bash pipeline-exit fixtures.
+- `.github/workflows/ci.yml`: the ordered `check` -> `unit` -> `smoke` pipeline plus the
+  `drift` job described above. The `unit` job preserves the PowerShell and Bash
+  pipeline-exit fixtures from B07: a piped native command must expose its non-zero exit
+  on every operating system.
 - `.github/workflows/secret-scan.yml`: downloads the pinned gitleaks 8.28.0 Linux x64
   release, verifies its SHA-256 checksum before running it, and scans Git history with
   `--redact` on pull requests and pushes to `main`. A finding exits non-zero without
@@ -60,25 +134,33 @@ mutable, so a SHA is the only immutable reference.
 Dependabot updates the SHA and the comment together. Review that the new SHA belongs to
 the tagged release before merging.
 
-## Reproduce the test job from PowerShell
+## Reproduce the unit job from PowerShell
 
 ```powershell
 node --test
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-node examples/fallback-demo.mjs
+npm run coverage
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 ```
 
-## Reproduce the test job from Bash
+## Reproduce the unit job from Bash
 
 ```bash
 set -e -o pipefail
 node --test
-node examples/fallback-demo.mjs
+npm run coverage
 ```
 
 The commands are separate so each process exit is visible. If output is piped in
 PowerShell, capture `$LASTEXITCODE` immediately after the pipeline, before a later
 native command can replace it. In Bash use `set -o pipefail` for pipelines.
-The pinned OpenCode smoke and MCP capability gate remain separate opt-in checks that
-need the external OpenCode 2.2.5 binary; CI does not claim host integration.
+
+## Reproduce the smoke job
+
+```bash
+node examples/fallback-demo.mjs
+```
+
+On Windows use PowerShell and check `$LASTEXITCODE` immediately after the command. The
+pinned OpenCode smoke and MCP capability gate remain separate opt-in checks that need
+the external OpenCode 2.2.5 binary; CI does not claim host integration.
