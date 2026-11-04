@@ -1,12 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { resolve } from 'node:path';
+import { lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { join, resolve } from 'node:path';
+import { tmpdir } from 'node:os';
 import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
 
-const fixtureRoot = resolve('opencode-test-fixture');
+const fixtureRoot = mkdtempSync(join(tmpdir(), 'opencode-test-fixture-'));
 const repositoryPath = resolve(fixtureRoot, 'repository');
 const workspacePath = resolve(fixtureRoot, 'workspace');
 const configRoot = resolve(fixtureRoot, 'state');
+mkdirSync(repositoryPath);
+mkdirSync(workspacePath);
+mkdirSync(configRoot);
+test.after(() => rmSync(fixtureRoot, { recursive: true, force: true }));
 const task = (changes = {}) => ({ taskId: '00000000-0000-4000-8000-000000000001',
 baseCommit: '0123456789abcdef0123456789abcdef01234567', request: {
   objective: 'Add a small fixture.',
@@ -70,6 +76,16 @@ test('refuses an advanced or mismatched task workspace before launching the host
     workspacePath: resolve(configRoot, 'worker'), baseCommit: '0123456789abcdef0123456789abcdef01234567',
     head: '0123456789abcdef0123456789abcdef01234567', branch: 'task/fixture',
   } })), denied('invalid_argument'));
+});
+
+test('rejects workspaces containing symlinks or junctions before launching OpenCode', t => {
+  const outside = join(fixtureRoot, 'outside');
+  const link = join(workspacePath, 'src-link');
+  mkdirSync(outside);
+  symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
+  t.after(() => rmSync(link, { force: true }));
+  assert.equal(lstatSync(link).isSymbolicLink(), true);
+  assert.throws(() => buildOpenCodeInvocation(options()), denied('authorization_denied'));
 });
 
 test('rejects a task requesting any model beyond the single trusted model', () => {

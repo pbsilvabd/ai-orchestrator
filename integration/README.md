@@ -125,7 +125,9 @@ The launch builder requires a receipt-verified workspace descriptor at the accep
 base commit, one exact configured model, supported `read`/`edit` tools, exact
 repository-relative writable globs and limits within the configured caps. It denies
 all host permissions by default, then allows reads in the task workspace and edits
-only for accepted globs. `bash` is rejected because shell command permissions cannot
+only for accepted globs. It rejects a workspace containing symlinks or junctions,
+since OpenCode path permissions match lexical paths and a link could redirect an
+allowed edit outside the workspace. `bash` is rejected because shell command permissions cannot
 be confined by file-path globs. Prompt content is serialized as positional JSON data.
 
 The harness creates a temporary Git repository and obtains a real receipt-verified
@@ -134,7 +136,8 @@ provider. It poisons ambient config/credential variables, then asks the fixture 
 to call `write` outside the authorized glob and expand its permissions. It verifies the
 host returned a denied tool result and the forbidden file was not created. A second
 fixture request writes inside `src/**` and verifies the bytes before removing the
-test file. The test does not make an external or paid call.
+test file. A junction/symlink escape fixture also verifies launch rejection and an
+unchanged outside sentinel. The test does not make an external or paid call.
 
 Limitations: the helper is not yet integrated with the task service/scheduler and
 currently accepts only loopback fixture providers. It is not an OS sandbox or

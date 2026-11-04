@@ -885,3 +885,18 @@ loopback fixture model, based on `node --test test/opencode.test.mjs` and the pi
 OpenCode integration command above. It does not support durable task execution,
 production provider authorization or M2b completion, which require the integrated
 scheduler, transport and remaining acceptance experiments.
+
+### PR #23 correction — symlink/junction path escape
+
+Review reproduced a write through `src/link`, a junction to a sibling directory, while
+`src/**` was authorized. The pinned OpenCode 2.2.5 host wrote `ALLOWED_FIXTURE` into
+the external target. The builder now scans the receipt-verified workspace without
+following links and refuses launch if it encounters a symlink or junction. The real
+host integration creates a junction under `src`, verifies the builder rejects the
+launch before any provider request, and checks the outside sentinel remains unchanged.
+
+Validation after correction on Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5:
+`node --test test/opencode.test.mjs` — 9 passed; pinned host integration including
+link rejection — exit 0; `node --test` — 191 passed, 0 failed, 1 POSIX-only skipped;
+fallback demo — 429 then 200; `git diff --check` — clean. Cross-platform CI remains
+pending for the correction commit.

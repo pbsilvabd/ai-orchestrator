@@ -283,7 +283,9 @@ Success without test evidence remains an explicit limitation in get_task_result.
   match a configured relative pattern exactly; broader or absolute patterns are
   rejected. The generated host configuration denies permissions by default, then
   permits repository reads and edits only for the accepted patterns. Ambient OpenCode
-  config, plugins, instructions and skills are isolated or disabled.
+  config, plugins, instructions and skills are isolated or disabled. Because host
+  path permissions are lexical, the builder rejects workspaces containing symbolic
+  links or junctions that could redirect a permitted edit outside the workspace.
 - The current B11 builder supports only a local loopback fixture provider. No external
   or paid provider is authorized by that implementation. Production provider setup and
   service-to-worker dispatch remain future work. Host permission checks are not an OS

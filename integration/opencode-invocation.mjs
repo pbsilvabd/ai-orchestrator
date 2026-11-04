@@ -4,10 +4,10 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync, rmSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
-import { buildOpenCodeInvocation } from '../src/opencode.mjs';
+import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
 import { runSubprocess } from '../src/subprocess.mjs';
 import { createTaskWorkspace, removeTaskWorkspace } from '../src/workspace.mjs';
 
@@ -150,6 +150,33 @@ try {
     `host did not report a denied tool result: ${JSON.stringify(toolResponses)}`);
   assert.equal(requests.every(input => input.model === 'mock'), true);
 
+  const escapedDirectory = join(root, 'outside-workspace');
+  mkdirSync(escapedDirectory);
+  const escapedFile = join(escapedDirectory, 'escaped-output.txt');
+  writeFileSync(escapedFile, 'UNCHANGED_SENTINEL');
+  const workspaceLink = join(workspacePath, 'src', 'link');
+  symlinkSync(escapedDirectory, workspaceLink, process.platform === 'win32' ? 'junction' : 'dir');
+  const requestCountBeforeLinkCheck = requests.length;
+  assert.throws(() => buildOpenCodeInvocation({
+    task: task('B11_LINK_ESCAPE: write src/link/escaped-output.txt with ESCAPED.'),
+    executable: binary,
+    workspace,
+    configRoot,
+    stateRoot,
+    authorizedModel: 'fixture/mock',
+    allowedTools: ['read', 'edit'],
+    writablePaths: ['src/**'],
+    provider: { package: '@opencode/ai/providers/openai-compatible',
+      baseURL: `http://127.0.0.1:${server.address().port}/v1` },
+    providerEnvironment: { FIXTURE_API_KEY: fixtureKey },
+    hostEnvironment,
+    maxBudgetMs: 45_000,
+    maxOutputBytes: 65_536,
+  }), error => error instanceof OpenCodeLaunchError && error.code === 'authorization_denied');
+  assert.equal(requests.length, requestCountBeforeLinkCheck, 'host launched despite a workspace link');
+  assert.equal(readFileSync(escapedFile, 'utf8'), 'UNCHANGED_SENTINEL');
+  rmSync(workspaceLink);
+
   const allowedOutput = join(workspacePath, 'src', 'allowed-output.txt');
   const allowedInvocation = buildOpenCodeInvocation({
     task: task('B11_ALLOWED_WRITE: write src/allowed-output.txt with ALLOWED_FIXTURE.'),
@@ -178,7 +205,7 @@ try {
   assert.equal(workspaceRemoved, true);
   console.log(JSON.stringify({ version: '2.2.5', model: 'fixture/mock', cwd: 'isolated workspace',
     b09ReceiptVerifiedWorkspace: true, ambientConfigIgnored: true, ambientCredentialExcluded: true,
-    deniedWrite: true, allowedWrite: true,
+    deniedWrite: true, workspaceLinkRejected: true, allowedWrite: true,
     providerRequests: requests.length, externalProvider: false }));
 } finally {
   if (server) {

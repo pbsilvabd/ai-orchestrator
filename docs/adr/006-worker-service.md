@@ -72,3 +72,9 @@ not production provider support. The builder is not yet called by the durable ta
 service or scheduler. OpenCode permission rules do not provide an OS sandbox or an
 outbound network boundary; remaining ambient OS variables needed by the host, including
 `PATH`, require a later deployment review.
+
+The launch builder rejects a workspace containing symbolic links or junctions because
+OpenCode's path permissions match lexical workspace paths; a link under an allowed glob
+could otherwise redirect a write outside the authorized workspace. This preflight
+check does not protect against concurrent filesystem changes, so a production worker
+still requires OS-level isolation.

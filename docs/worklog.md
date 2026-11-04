@@ -789,3 +789,9 @@ Template:
 - CI completion: run 41756163116 passed on Ubuntu and Windows at head
   `8eb9ac05fcd407a38ddf728a1051cb945447e47e`. PR conversation comments, reviews and
   inline threads were empty at that head; maintainer review and merge remain pending.
+- PR #23 review correction: reproduced the P1 junction escape with OpenCode 2.2.5;
+  an allowed `src/link/...` write reached a sibling directory outside the workspace.
+  The launch builder now rejects any workspace symlink/junction, with unit and real
+  host fixtures verifying rejection and an unchanged external sentinel. Focused tests
+  9/9, full suite 191 passed/1 POSIX-only skipped, integration/demo/diff checks passed.
+  Fresh cross-platform CI is pending; the finding remains open until re-review.

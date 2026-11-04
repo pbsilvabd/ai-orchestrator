@@ -1,4 +1,5 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
+import { lstatSync, readdirSync } from 'node:fs';
 
 const FIXED_HOST_ENVIRONMENT = new Set([
   'SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC', 'HOME', 'USERPROFILE',
@@ -46,6 +47,7 @@ export function buildOpenCodeInvocation({ task, executable, workspace, configRoo
       !isDisjoint(configRoot, canonicalRepository) || !isWithin(stateRoot, configRoot)) {
     fail('invalid_argument', 'invalid OpenCode launch inputs');
   }
+  rejectWorkspaceLinks(workspacePath);
   if (typeof authorizedModel !== 'string' || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._:-]+$/.test(authorizedModel) ||
       !Array.isArray(authorization.models) || authorization.models.length !== 1 ||
       authorization.models[0] !== authorizedModel) {
@@ -170,6 +172,25 @@ function normalizeGlob(value) {
     fail('authorization_denied', 'writable path escapes the task workspace');
   }
   return normalized;
+}
+
+// OpenCode permission rules match lexical paths. A symlink or junction under an
+// allowed glob can redirect an edit outside the receipt-verified workspace.
+function rejectWorkspaceLinks(root) {
+  const visit = directory => {
+    let entries;
+    try { entries = readdirSync(directory, { withFileTypes: true }); }
+    catch { fail('authorization_denied', 'cannot verify workspace paths for links'); }
+    for (const entry of entries) {
+      const path = resolve(directory, entry.name);
+      let info;
+      try { info = lstatSync(path); }
+      catch { fail('authorization_denied', 'cannot verify workspace paths for links'); }
+      if (info.isSymbolicLink()) fail('authorization_denied', 'workspace contains a symbolic link or junction');
+      if (info.isDirectory()) visit(path);
+    }
+  };
+  visit(root);
 }
 
 function isDisjoint(left, right) {
