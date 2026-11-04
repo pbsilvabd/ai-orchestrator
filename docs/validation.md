@@ -690,6 +690,27 @@ MCP, SQLite or live executor gate was rerun.
   Host gates not rerun: no host/service/store runtime changed. Current-head CI
   must pass before merge. Adoption into service/transport remains B08.
 
+
+## M2b: B09 isolated Git workspace lifecycle — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (system installation); Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/workspace.test.mjs` | Exercise B09 acceptance scenarios against real Git worktrees | 5 passed, 0 failed | 0 |
+| `node --test` | Full suite regression | 147 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Check whitespace in proposed change | no output | 0 |
+
+Result: tests verified the fixed base and unchanged dirty parent bytes, duplicate receipt-verified reuse after worker commits, branch/path collisions, tampered receipts, a moved Windows junction, retained incomplete output and refusal to delete dirty output. Tests use temporary repositories and workspace roots.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store and service behavior in this checkout. Real temporary Git repositories and worktrees validate local workspace behavior; they do not demonstrate the host, the network or production persistence.
+
+Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not add the executor); `node integration/mcp-gate.mjs` (same binary requirement and unresolved gate); executor integration (no executor adapter exists yet).
+
+Claim: This entry supports receipt-bound workspace creation, reuse and conservative cleanup in local Git fixtures, based on `node --test test/workspace.test.mjs`. It does not support worker execution or OpenCode/MCP integration, which require the missing executor and pinned host evidence.
+
 ## M2b: B10 bounded subprocess primitive — 2026-11-03
 
 Executed on Windows x64, Node.js v24.22.1 (system installation); Git 2.55.0.windows.5.
@@ -701,6 +722,59 @@ Date: 2026-11-03.
 | `node --test` | Full suite regression | 147 passed, 0 failed, 0 skipped | 0 |
 | `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
 | `git diff --check` | Check whitespace in proposed change | no output | 0 |
+
+Result: fixtures covered spawn failure, pre-abort without spawn, immediate exit, exit code 7, bounded stdout/stderr tails while both pipes drain, UTF-8 byte boundaries, deadline, abort with partial output and a descendant process whose stop remains unverified.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store and service behavior in this checkout. Child fixtures demonstrate local subprocess behavior; they do not demonstrate the host, the network or production persistence.
+
+Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not change that integration); `node integration/mcp-gate.mjs` (same binary requirement and the gate remains unresolved); executor integration (no executor adapter exists yet).
+
+Claim: This entry supports bounded output, exit status and conservative root/descendant stop reporting for local Node child processes, based on `node --test test/subprocess.test.mjs`. It does not support OpenCode integration or task execution, which require the missing executor and pinned host evidence.
+
+## B09 current-main integration — 2026-11-04
+
+- Integrated current main with B09; preserved both append-only histories. Added a
+  receipt-backed real Git fixture for ignored worker output. Focused/full tests,
+  demo, diff and Windows/Linux CI will be recorded before re-review.
+- Windows x64, Node 24.22.1, Git 2.55.0: `node --test test/workspace.test.mjs`
+  6/6 passed; `node --test` 172/172 passed; demo returned 429 then 200; diff check
+  passed. Regression confirms ignored output bytes and receipt survive refusal;
+  after deleting that fixture output, clean workspace removal succeeds. CI run
+  remains pending after publication.
+
+## B09 Windows CI fixture correction — 2026-11-04
+
+GitHub Actions run `41748264467` passed on Ubuntu but failed on Windows in the
+incomplete-workspace fixture: its manually written receipt used uncanonicalized paths,
+so `createTaskWorkspace` correctly rejected it as a mismatched receipt before reaching
+the intended Git error. The fixture now writes `realpathSync.native` values for the
+repository and workspace paths.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/workspace.test.mjs` | B09-focused Git/worktree tests | 6 passed, 0 failed | 0 |
+| `node --test` | Full suite after fixture correction | 172 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+Windows GitHub Actions must rerun on the corrected head before merge. The Ubuntu CI
+result from the previous head does not verify this new commit.
+
+## B09 integration with merged B10 — 2026-11-04
+
+After PR #17 merged to main, B09 was updated to that main and both append-only
+validation/worklog histories were preserved. The prior B09 CI run `41749352307`
+passed on Windows and Ubuntu before this base update; it does not verify the updated
+merge head.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/workspace.test.mjs` | B09 workspace regressions | 6 passed, 0 failed | 0 |
+| `node --test` | Full suite after integrating B10 | 178 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+Fresh Windows and Ubuntu CI remains required on the updated B09 head before merge.
 
 Result: fixtures covered spawn failure, pre-abort without spawn, immediate exit, exit code 7, bounded stdout/stderr tails while both pipes drain, UTF-8 byte boundaries, deadline, abort with partial output and a descendant process whose stop remains unverified.
 

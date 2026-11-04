@@ -662,6 +662,48 @@ Template:
   after correction, 166/166 pass and demo returns 429 then 200. Reviewed the final
   checker/schema/test diff; runtime consumers remain untouched. No host gates rerun.
 
+
+## 2026-11-03 — M2b: B09 isolated Git workspace lifecycle
+
+- Branch: `task/B09-isolated-worktree`, based on `c07b78e`.
+- Scope: added receipt-bound linked worktrees at the accepted base and branch, with
+  verified idempotent reuse and explicit conservative cleanup. Does not launch workers.
+- Steps: implemented creation, receipt/path/repository/branch verification and cleanup;
+  added real Git acceptance fixtures; reviewed interrupted and dirty-output behavior.
+- Files: `src/workspace.mjs`, `test/workspace.test.mjs`, task contract, ADR-007,
+  backlog, handoff, roadmap, validation and worklog.
+- Validation: focused tests 5/5; full suite 147/147; fallback demo 429 then 200;
+  `git diff --check` clean. Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+- Follow-up: review the published B09 PR. Executor and OpenCode/MCP integration remain
+  separate gated work.
+
+## 2026-11-04 — B09 current-main integration
+
+- Merged current main into the existing B09 branch and reconciled status/handoff
+  while preserving append-only history. Fixed review finding for ignored workspace
+  output and added a real Git preservation regression fixture.
+- Validation: `node --test test/workspace.test.mjs` passed 6/6; full suite passed
+  172/172; fallback demo returned 429 then 200; `git diff --check` passed. Windows
+  x64, Node 24.22.1, Git 2.55.0. Linux CI is pending after push.
+
+## 2026-11-04 — B09 Windows CI fixture correction
+
+- Inspected failed Windows job in CI run `41748264467`; Ubuntu passed. The manually
+  created receipt in the incomplete-workspace fixture did not canonicalize paths,
+  so Windows failed early with `workspace_conflict` instead of reaching the expected
+  Git failure. Updated fixture paths with `realpathSync.native`.
+- Validation on Windows x64 / Node.js v24.22.1: focused workspace tests 6/6; full
+  suite 172/172; fallback demo 429 then 200; `git diff --check` clean. New CI run is
+  required before merge.
+
+## 2026-11-04 — B09 integration with merged B10
+
+- Updated B09 to the main commit that merged B10 and preserved both worklog and
+  validation histories. The earlier CI run `41749352307` passed on Windows/Ubuntu
+  before this base update, so the final merge head still needs fresh CI.
+- Integrated Windows validation: focused workspace tests 6/6; full suite 178 passed,
+  1 POSIX-only skipped; fallback demo 429 then 200; `git diff --check` clean.
+
 ## 2026-11-03 — M2b: B10 bounded subprocess primitive
 
 - Branch: `task/B10-bounded-subprocess`, based on `c07b78e`.

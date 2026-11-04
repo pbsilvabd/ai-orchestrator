@@ -90,6 +90,14 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
 - `repository.branch` must be a legal Git ref format, must not exist locally, and must not
   be checked out in any linked worktree (`invalid_argument`). Submitting against a dirty parent
   working tree is supported and leaves user files unchanged.
+- The B09 workspace helper creates one real linked worktree from `baseCommit` on the accepted
+  `branch`, outside the repository, with a versioned task receipt in the workspace root. Reuse
+  requires an exact receipt match plus verification of path, Git common directory, branch and
+  ancestry from `baseCommit`; an existing path without a valid receipt is never adopted.
+  Cleanup is explicit and only removes a clean worktree still at its base and an unchanged
+  task branch. Dirty or advanced output, moved paths, tampered receipts and uncertain setup
+  failures are retained for inspection. Worktree cleanup does not prove that external effects
+  were reversed or that any worker process stopped.
 - Relative writable globs resolve from `repository.path`, and their static roots must remain
   within a configured root. Absolute writable paths remain accepted only when inside both the
   repository and a configured root.
