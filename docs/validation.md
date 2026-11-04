@@ -874,8 +874,11 @@ task-service/scheduler dispatch.
 
 Not rerun: `node integration/mcp-gate.mjs` (B06 transport gate unchanged; its eight
 isolated pinned-host passes remain recorded earlier); `node integration/opencode-smoke.mjs`
-(tests session/context switching and does not exercise this builder); CI (will run
-after publication). No real provider or paid call was made.
+(tests session/context switching and does not exercise this builder). First PR CI run
+41755592522 on head `a0b84e1` passed Windows and failed Ubuntu in the test suite: the
+new unit fixture used Windows-only absolute paths. The fixture now derives absolute
+paths with the platform path library. The corrected head's CI result is pending.
+No real provider or paid call was made.
 
 Claim: This entry supports the B11 launch-config and denied-write behavior for one
 loopback fixture model, based on `node --test test/opencode.test.mjs` and the pinned

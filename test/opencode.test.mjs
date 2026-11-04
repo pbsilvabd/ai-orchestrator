@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 import { resolve } from 'node:path';
 import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
 
+const fixtureRoot = resolve('opencode-test-fixture');
+const repositoryPath = resolve(fixtureRoot, 'repository');
+const workspacePath = resolve(fixtureRoot, 'workspace');
+const configRoot = resolve(fixtureRoot, 'state');
 const task = (changes = {}) => ({ taskId: '00000000-0000-4000-8000-000000000001',
 baseCommit: '0123456789abcdef0123456789abcdef01234567', request: {
   objective: 'Add a small fixture.',
   acceptanceCriteria: ['node --test passes'],
-  repository: { path: 'C:/repo', baseRef: 'main', branch: 'task/fixture' },
+  repository: { path: repositoryPath, baseRef: 'main', branch: 'task/fixture' },
   authorization: { models: ['fixture/mock'], tools: ['read', 'edit'], writablePaths: ['src/**'] },
   limits: { maxAttempts: 1, budgetMs: 30_000, maxOutputBytes: 65_536 },
   ...changes,
@@ -15,18 +19,18 @@ baseCommit: '0123456789abcdef0123456789abcdef01234567', request: {
 
 const options = (changes = {}) => ({
   task: task(),
-  executable: 'C:/tools/opencode.exe',
-  workspace: { taskId: '00000000-0000-4000-8000-000000000001', repository: 'C:/repo',
-    workspacePath: 'C:/work/task', baseCommit: '0123456789abcdef0123456789abcdef01234567',
+  executable: resolve(fixtureRoot, 'tools', 'opencode'),
+  workspace: { taskId: '00000000-0000-4000-8000-000000000001', repository: repositoryPath,
+    workspacePath, baseCommit: '0123456789abcdef0123456789abcdef01234567',
     head: '0123456789abcdef0123456789abcdef01234567', branch: 'task/fixture' },
-  configRoot: 'C:/state/fixture',
-  stateRoot: 'C:/state/fixture/state',
+  configRoot,
+  stateRoot: resolve(configRoot, 'state'),
   authorizedModel: 'fixture/mock',
   allowedTools: ['read', 'edit'],
   writablePaths: ['src/**'],
   provider: { package: '@opencode/ai/providers/openai-compatible', baseURL: 'http://127.0.0.1:43210/v1' },
   providerEnvironment: { FIXTURE_API_KEY: 'fixture-only' },
-  hostEnvironment: { PATH: 'C:/Windows/System32', SystemRoot: 'C:/Windows' },
+  hostEnvironment: { PATH: process.env.PATH ?? '', SystemRoot: process.env.SystemRoot ?? '' },
   maxBudgetMs: 60_000,
   maxOutputBytes: 100_000,
   ...changes,
@@ -36,8 +40,8 @@ const denied = code => error => error instanceof OpenCodeLaunchError && error.co
 
 test('builds a fixed no-shell launch with one model and a narrow permission ruleset', () => {
   const invocation = buildOpenCodeInvocation(options());
-  assert.equal(invocation.executable, 'C:/tools/opencode.exe');
-  assert.equal(invocation.cwd, 'C:/work/task');
+  assert.equal(invocation.executable, resolve(fixtureRoot, 'tools', 'opencode'));
+  assert.equal(invocation.cwd, workspacePath);
   assert.deepEqual(invocation.args.slice(0, 6), ['run', '--standalone', '--format', 'json', '--model', 'fixture/mock']);
   assert.match(invocation.args[6], /^Execute the authorized task represented by this JSON data/);
   assert.equal(invocation.timeoutMs, 30_000);
@@ -52,18 +56,18 @@ test('builds a fixed no-shell launch with one model and a narrow permission rule
   ]);
   assert.deepEqual(invocation.config.providers.fixture.env, ['FIXTURE_API_KEY']);
   assert.equal(invocation.env.FIXTURE_API_KEY, 'fixture-only');
-  assert.equal(invocation.env.HOME, 'C:/state/fixture');
+  assert.equal(invocation.env.HOME, configRoot);
 });
 
 test('refuses an advanced or mismatched task workspace before launching the host', () => {
   assert.throws(() => buildOpenCodeInvocation(options({ workspace: {
-    taskId: '00000000-0000-4000-8000-000000000002', repository: 'C:/repo',
-    workspacePath: 'C:/work/task', baseCommit: '0123456789abcdef0123456789abcdef01234567',
+    taskId: '00000000-0000-4000-8000-000000000002', repository: repositoryPath,
+    workspacePath, baseCommit: '0123456789abcdef0123456789abcdef01234567',
     head: '1123456789abcdef0123456789abcdef01234567', branch: 'task/fixture',
   } })), denied('invalid_argument'));
   assert.throws(() => buildOpenCodeInvocation(options({ workspace: {
-    taskId: '00000000-0000-4000-8000-000000000001', repository: 'C:/repo',
-    workspacePath: 'C:/state/fixture/worker', baseCommit: '0123456789abcdef0123456789abcdef01234567',
+    taskId: '00000000-0000-4000-8000-000000000001', repository: repositoryPath,
+    workspacePath: resolve(configRoot, 'worker'), baseCommit: '0123456789abcdef0123456789abcdef01234567',
     head: '0123456789abcdef0123456789abcdef01234567', branch: 'task/fixture',
   } })), denied('invalid_argument'));
 });
@@ -106,15 +110,15 @@ test('rejects task budgets above the configured caps', () => {
 
 test('does not inherit ambient configuration, credentials or provider settings', () => {
   const invocation = buildOpenCodeInvocation(options({
-    hostEnvironment: { PATH: 'C:/Windows/System32', OPENCODE_CONFIG_DIR: 'C:/ambient' },
+    hostEnvironment: { PATH: process.env.PATH ?? '', OPENCODE_CONFIG_DIR: resolve(fixtureRoot, 'ambient') },
   }));
-  assert.equal(invocation.env.OPENCODE_CONFIG_DIR, resolve('C:/state/fixture/config'));
-  assert.equal(invocation.env.OPENCODE_CONFIG, resolve('C:/state/fixture/opencode.json'));
+  assert.equal(invocation.env.OPENCODE_CONFIG_DIR, resolve(configRoot, 'config'));
+  assert.equal(invocation.env.OPENCODE_CONFIG, resolve(configRoot, 'opencode.json'));
   assert.equal(invocation.env.OPENCODE_DISABLE_PROJECT_CONFIG, '1');
   assert.equal(invocation.config.plugins.length, 0);
   assert.equal(JSON.stringify(invocation.config).includes('ambient-secret'), false);
   assert.throws(() => buildOpenCodeInvocation(options({ hostEnvironment: {
-    PATH: 'C:/Windows/System32', UNTRUSTED_CREDENTIAL: 'ambient-secret',
+    PATH: process.env.PATH ?? '', UNTRUSTED_CREDENTIAL: 'ambient-secret',
   } })), denied('authorization_denied'));
   assert.throws(() => buildOpenCodeInvocation(options({ providerEnvironment: {
     FIXTURE_API_KEY: 'fixture-only', OPENCODE_CONFIG: 'C:/ambient/opencode.json',

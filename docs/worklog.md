@@ -782,3 +782,7 @@ Template:
   `main`. Initial CI run 41755507739 was queued at publication; check the current PR
   head and review feedback before delivery. Do not merge without task-specific
   maintainer authorization.
+- CI correction: PR run 41755592522 passed Windows but failed Ubuntu because the new
+  unit fixture supplied Windows-only absolute paths. Replaced those fixtures with
+  platform-resolved paths; focused tests passed 8/8 and the full local suite passed
+  190 tests with one POSIX-only skip. The corrected head needs fresh CI verification.
