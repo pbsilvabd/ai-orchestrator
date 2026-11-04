@@ -720,3 +720,21 @@ Claim: This entry supports receipt-bound workspace creation, reuse and conservat
   passed. Regression confirms ignored output bytes and receipt survive refusal;
   after deleting that fixture output, clean workspace removal succeeds. CI run
   remains pending after publication.
+
+## B09 Windows CI fixture correction — 2026-11-04
+
+GitHub Actions run `41748264467` passed on Ubuntu but failed on Windows in the
+incomplete-workspace fixture: its manually written receipt used uncanonicalized paths,
+so `createTaskWorkspace` correctly rejected it as a mismatched receipt before reaching
+the intended Git error. The fixture now writes `realpathSync.native` values for the
+repository and workspace paths.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/workspace.test.mjs` | B09-focused Git/worktree tests | 6 passed, 0 failed | 0 |
+| `node --test` | Full suite after fixture correction | 172 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+Windows GitHub Actions must rerun on the corrected head before merge. The Ubuntu CI
+result from the previous head does not verify this new commit.

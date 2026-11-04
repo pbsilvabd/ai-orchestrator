@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, renameSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createTaskWorkspace, removeTaskWorkspace, WorkspaceError } from '../src/workspace.mjs';
@@ -103,8 +103,8 @@ test('B09-04: incomplete setup and dirty output are retained with a diagnostic',
   mkdirSync(workspacePath);
   writeFileSync(join(workspacePath, 'user-output.txt'), 'do not delete');
   writeFileSync(join(f.workspaceRoot, `${taskId}.workspace.json`), JSON.stringify({
-    version: 1, taskId, repository: f.repositoryPath, baseCommit: f.baseCommit,
-    branch: f.options.branch, workspacePath,
+    version: 1, taskId, repository: realpathSync.native(f.repositoryPath), baseCommit: f.baseCommit,
+    branch: f.options.branch, workspacePath: realpathSync.native(workspacePath),
   }));
   assert.throws(() => createTaskWorkspace(f.options), expected('git_error'));
   assert.equal(readFileSync(join(workspacePath, 'user-output.txt'), 'utf8'), 'do not delete');

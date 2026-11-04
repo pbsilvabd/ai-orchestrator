@@ -684,3 +684,13 @@ Template:
 - Validation: `node --test test/workspace.test.mjs` passed 6/6; full suite passed
   172/172; fallback demo returned 429 then 200; `git diff --check` passed. Windows
   x64, Node 24.22.1, Git 2.55.0. Linux CI is pending after push.
+
+## 2026-11-04 — B09 Windows CI fixture correction
+
+- Inspected failed Windows job in CI run `41748264467`; Ubuntu passed. The manually
+  created receipt in the incomplete-workspace fixture did not canonicalize paths,
+  so Windows failed early with `workspace_conflict` instead of reaching the expected
+  Git failure. Updated fixture paths with `realpathSync.native`.
+- Validation on Windows x64 / Node.js v24.22.1: focused workspace tests 6/6; full
+  suite 172/172; fallback demo 429 then 200; `git diff --check` clean. New CI run is
+  required before merge.
