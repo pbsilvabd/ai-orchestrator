@@ -78,3 +78,12 @@ OpenCode's path permissions match lexical workspace paths; a link under an allow
 could otherwise redirect a write outside the authorized workspace. This preflight
 check does not protect against concurrent filesystem changes, so a production worker
 still requires OS-level isolation.
+
+### Amendment — 2026-11-03: FIX23
+
+Symbolic-link checks alone do not detect hard links. Refuse regular workspace files
+whose link count is not one, preserving private file instances for host edits. The
+current loopback fixture provider accepts only the credential variable FIXTURE_API_KEY;
+an explicit allowlist replaces the incomplete environment denylist. Further providers
+need deliberate credential-name support. These are launch checks, not protection
+against concurrent filesystem mutation or a replacement for OS isolation.

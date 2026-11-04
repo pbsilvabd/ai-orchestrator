@@ -1,6 +1,6 @@
 # Agent backlog — execution contracts
 
-Baseline: `origin/main` at `093e050` (PR #22 merged). Fetch before choosing work.
+Baseline: `origin/main` at `05d5cda` (PR #23 merged). Fetch before choosing work.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -8,10 +8,10 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current task: [B11 — Authorized OpenCode invocation](tasks/B11.md), next after
-FIX17-18 merged in PR #22. B11 is published as [PR #23](https://github.com/pbsilvabd/ai-orchestrator/pull/23)
-from `task/B11-authorized-opencode` at base `093e050`; CI passed on Windows and Ubuntu,
-and review is pending.
+Current corrective task: [FIX23](tasks/FIX23.md), on `task/FIX23-authorization`.
+B11/#23 merged, but post-merge review found hard-link and environment override
+escapes; Windows main CI also exposed a fixture cleanup error. Review FIX23 and its
+current-head CI before treating B11 as accepted or proceeding to B12.
 
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
@@ -42,7 +42,7 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: complete B11 and publish its required acceptance evidence. B06/#20
+Ready choices: review FIX23 post-merge corrections. B06/#20
 and FIX17-18/#22 are merged. Prerequisites below describe ready-for-review
 acceptance; fixture-only preparatory work is not full delivery of a gated card.
 
@@ -63,7 +63,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 merged #22 | B03 |
 | [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 merged #22 | None |
-| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | PR #23 open; CI passed, review pending | B09, B10, pinned host |
+| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23; FIX23 correction requires review | B09, B10, pinned host |
+| [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Review required on task/FIX23-authorization | Merged #23 |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Gated | B12, B13 |

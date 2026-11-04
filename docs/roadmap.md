@@ -30,8 +30,9 @@ the first client and record the reuse/build decision. The B06 MCP capability gat
 corrections passed eight isolated runs against the pinned host; the failure was
 readiness timing, not protocol incompatibility. The task store and service-surface
 corrections are complete. FIX17-18/#22 corrected hidden workspace output and spawn
-error handling. B11 is in progress: its launch builder and pinned-host denied-write
-fixture pass locally. The builder is not connected to the task service/scheduler;
+error handling. B11/#23 is merged; FIX23 corrects post-merge hard-link/environment
+authorization findings and a Windows test-cleanup failure. Review of FIX23 remains
+required. The builder is not connected to the task service/scheduler;
 there is no MCP/API endpoint, durable worker execution, integrated fallback,
 semantic memory or completed self-development workflow yet.
 
