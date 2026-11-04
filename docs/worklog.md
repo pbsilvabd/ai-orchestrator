@@ -968,3 +968,63 @@ Template:
 - Follow-up: exercise the task skill on the next authorized B13 assignment and the
   review skill on an authorized PR review. B13 and M2b/M3 status remain unchanged.
   This local skills delivery does not inherit earlier publication/merge approvals.
+
+## 2026-11-04 — B27: CI foundation
+
+- Branch: `task/B27-ci-foundation`, base `c6bb77a`.
+- Scope: mixed (CI workflows, dependency lockfile, check script, docs); no runtime
+  change under `src/`.
+- Steps:
+  1. Added `packageManager`, `engines` and `package-lock.json`; confirmed `npm ci`
+     installs from the lockfile after removing `node_modules`.
+  2. Added `scripts/check.mjs` (syntax, schema, suite, whitespace) and the npm
+     `check` script; verified it exits 0 clean and non-zero with a seeded defect.
+  3. Pinned checkout/setup-node by SHA with `contents: read` per job, added the
+     `check`/`test` jobs in `.github/workflows/ci.yml`, and added
+     `.github/dependabot.yml` for actions and npm.
+  4. Added `.github/workflows/secret-scan.yml` with gitleaks 8.28.0 pinned by
+     digest, plus `.gitleaks.toml` limiting the allowlist to `idempotencyKey`
+     fixture literals under `test/`; seeded-token run still fails redacted.
+  5. Recorded evidence in `docs/validation.md` and updated `docs/ci.md`.
+- Files: `.gitleaks.toml`, `.github/workflows/ci.yml`,
+  `.github/workflows/secret-scan.yml`, `.github/dependabot.yml`, `package.json`,
+  `package-lock.json`, `scripts/check.mjs`, `docs/ci.md`, `docs/tasks/B27.md`,
+  `docs/validation.md`, `docs/worklog.md`, `test/opencode.test.mjs`.
+- Validation: `npm run check` -> 0 clean and 1 with a seeded defect;
+  `node --test` -> 208 passed, 0 failed, 2 skipped; `npm ci` -> 0;
+  `npm audit --audit-level=high` -> 0; gitleaks with `.gitleaks.toml` -> 0,
+  seeded token -> 1 redacted. Remote CI evidence pending (`https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695`).
+- Follow-up: B28 adds coverage thresholds, job ordering, the macOS leg and the
+  pre-push hook; #31 closes with B28. No publication or merge was performed here.
+
+## 2026-11-04 — B28: CI gates
+
+- Branch: `task/B28-ci-gates`, base B27 `a0d2793`.
+- Scope: mixed (CI workflow, coverage configuration, pre-push hook, drift job and
+  documentation); no runtime change under `src/`.
+- Steps:
+  1. Added native coverage with floors taken from the measured suite baseline:
+     85 lines / 80 branches / 90 functions against 96.06 / 85.26 / 98.62.
+  2. Ordered the pipeline `check -> unit -> smoke` with explicit `needs:` and added the
+     `macos-latest` leg to both matrices; `drift` runs in parallel with `unit`.
+  3. Added `.githooks/pre-push` as an idempotent opt-in local gate that reuses
+     `npm run check` and installs nothing.
+  4. Added the schema/lockfile drift job (`npm ci` plus `git diff --exit-code`) and
+     removed the duplicated contract-schema test step; the suite already runs it.
+  5. Added `npm run check:ci` (`node scripts/check.mjs --no-tests`) for the static CI
+     job, extended the syntax check to `scripts/` and `examples/`, unified test
+     discovery on `test/*.test.mjs`, and made `git diff --check HEAD` include staged
+     changes. The local `npm run check` and the hook still run the full suite.
+  6. Read Node from `.node-version` in every job instead of repeating the literal
+     version, and updated `docs/ci.md` for the new ordering, flags and measured floors.
+- Files: `.githooks/pre-push`, `.github/workflows/ci.yml`, `docs/ci.md`,
+  `docs/tasks/B28.md`, `package.json`, `scripts/check.mjs`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `npm run check` -> 0 on a clean tree; `npm run check:ci` -> 0 with the
+  suite skipped; `npm run coverage` -> 96.06% lines, 85.26% branches, 98.62% functions
+  against 85/80/90; seeded coverage drop -> 1 with the metric named; two pre-push hook
+  runs -> 1/1 without side effects; seeded schema/lockfile drift -> 1 on both legs.
+  Remote CI evidence is pending (`https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695`).
+- Follow-up: record the workflow run URL when the PR runs, confirm the macOS leg and
+  the drift legs there, and open the PR that closes #31. No publication or merge was
+  performed here.

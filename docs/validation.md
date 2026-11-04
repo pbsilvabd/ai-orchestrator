@@ -1143,3 +1143,62 @@ unchanged); paid/real-provider evaluation (not authorized or needed here).
 Claim: this entry supports valid repo-local skill packages with resolved references
 and an unchanged local runtime baseline. Real use on B13/a PR is the next behavioral
 validation; it is not evidence of M2b/M3 completion or independent review.
+
+## B27 CI foundation — 2026-11-04
+
+Executed locally on the `task/B27-ci-foundation` worktree with the Node.js 24.22.1
+toolchain pinned in `.node-version`.
+Date: 2026-11-04. Base: `origin/main` at `c6bb77a`.
+
+| Command | Result | Exit |
+| --- | --- | --- |
+| `npm run check` on a clean tree | Syntax, schema, suite and whitespace gates pass | 0 |
+| `node --test` | 208 passed, 0 failed, 2 skipped | 0 |
+| `npm ci` after removing `node_modules` | Installs from `package-lock.json` only | 0 |
+| `npm audit --audit-level=high` | 0 high-severity advisories | 0 |
+| `./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1` | No leaks; test `idempotencyKey` fixtures excluded by the allowlist | 0 |
+| Same scan with a seeded token outside the allowlist | Redacted finding reported | 1 |
+| GitHub Actions `check`, `test` matrix and `gitleaks` jobs | Run to be recorded — https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695 | TBD |
+
+Result: the lockfile reproduces the dependency set, every action is pinned by SHA
+with `contents: read`, and `npm run check` is the single local gate. The secret scan
+stays fail-closed: the allowlist only suppresses `idempotencyKey` fixture literals
+under `test/`, and the seeded-token run proves an unmatched secret still fails with
+redacted output.
+
+Evidence level: Unit and local integration — the suite, check gate, clean install,
+audit and gitleaks runs execute in this checkout. The allowlist was validated by a
+negative seeded-token run rather than by inspection alone. CI URLs are placeholders
+until the workflow runs complete.
+
+## B28 CI gates — 2026-11-04
+
+Executed locally on the `task/B28-ci-gates` worktree with the Node.js 24.22.1
+toolchain pinned in `.node-version`.
+Date: 2026-11-04. Base: B27 at `a0d2793`.
+
+| Command | Result | Exit |
+| --- | --- | --- |
+| `npm run check` on a clean tree | Syntax over `src`, `scripts`, `examples` and `test`; schema validation; suite; `git diff --check HEAD` pass | 0 |
+| `npm run check:ci` | Same syntax, schema and whitespace gates with `--no-tests`; the suite is skipped intentionally | 0 |
+| `npm run coverage` | 96.06% lines, 85.26% branches and 98.62% functions against floors 85/80/90 | 0 |
+| Seeded coverage drop (B28-01) | Coverage job exits non-zero and names the missed metric | 1 |
+| `.githooks/pre-push` run twice (B28-03) | First run blocks a seeded failure; the second run repeats without installing or writing anything | 1, 1 |
+| Seeded schema/lockfile drift (B28-04) | `git diff --exit-code -- src/contracts/schemas/ package-lock.json` reports the dirty tree on both legs | 1 |
+| GitHub Actions `check`, `unit` matrix, `smoke` matrix and `drift` (B28-02/04) | Run to be recorded — https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695 | TBD |
+
+Result: the pipeline orders `check -> unit -> smoke`, with `drift` running in parallel
+with `unit` after `check`. The `check` job runs `npm run check:ci`, so the suite runs
+only once, with coverage, in `unit`. Coverage floors sit below the measured baseline:
+about 11 points for lines, five for branches and about nine for functions. Schema drift
+is reported by `git diff --exit-code`; the contract schema test itself already runs in
+the `unit` suite and is not duplicated in `drift`.
+
+Evidence level: Unit and local integration — the suite, coverage floors, check gate
+and hook runs execute in this checkout; CI URLs remain placeholders until the workflow
+runs complete.
+
+Not rerun: `node integration/opencode-smoke.mjs` and `node integration/mcp-gate.mjs`
+(no runtime change; both need the pinned OpenCode binary outside the repository);
+Windows-host execution of the PowerShell fixtures (covered by the remote matrix, not
+by this local run).

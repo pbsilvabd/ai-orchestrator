@@ -1,0 +1,15 @@
+#!/bin/sh
+# Local pre-push gate. Opt in once with: git config core.hooksPath .githooks
+# Idempotent: it installs nothing and only runs the existing check script.
+
+set -eu
+
+repository_root=$(git rev-parse --show-toplevel)
+cd "$repository_root"
+
+if ! npm run check; then
+  printf '%s\n' \
+    'pre-push: npm run check failed; push blocked.' \
+    'pre-push: fix the failures above and retry the push.' >&2
+  exit 1
+fi

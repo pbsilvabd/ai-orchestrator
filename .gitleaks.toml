@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "idempotencyKey fixture literals in tests are not credentials"
+regexTarget = "match"
+regexes = ['''idempotencyKey: '[^']*',?''']
+paths = ['''^test/''']

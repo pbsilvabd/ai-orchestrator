@@ -101,7 +101,7 @@ test('rejects workspaces containing symlinks or junctions before launching OpenC
   const link = join(workspacePath, 'src-link');
   mkdirSync(outside);
   symlinkSync(outside, link, process.platform === 'win32' ? 'junction' : 'dir');
-  t.after(() => rmSync(link, { force: true }));
+  t.after(() => rmSync(link, { recursive: true, force: true }));
   assert.equal(lstatSync(link).isSymbolicLink(), true);
   assert.throws(() => buildOpenCodeInvocation(options()), denied('authorization_denied'));
 });
