@@ -865,3 +865,24 @@ Template:
   PR, verify head/CI and complete independent FIX23/B12 review. Then B13 artifacts
   and B14 stop handling; M2b/M3 are not complete. The user restriction overrides
   the repository's usual publish-through-PR protocol. No push/merge was performed.
+
+## 2026-11-04 — M2b: B12 authorized delivery checkpoint
+
+- Branch: `task/B12-durable-scheduler`; runtime reviewed at `69aa920`.
+- Scope: delivery documentation only; no runtime, tests or authority policy changed.
+- Steps:
+  1. Rechecked clean local state, unchanged remote main `488e57a` and absence of
+     another B12 PR before publication.
+  2. Recorded the maintainer's explicit publication/merge authorization following
+     the implementing agent's completed review. No independent review is claimed.
+  3. Updated current status pointers; final published head, feedback and CI must
+     be verified before the already-authorized merge.
+- Files: `AGENTS.md`, `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`,
+  `docs/tasks/B12.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `git diff origin/main..HEAD --check` passed for the reviewed runtime;
+  documentation links and staged whitespace checked for this follow-up. Runtime
+  evidence remains 208 passing tests, one POSIX skip, 26 focused passes and the
+  passing pinned OpenCode harness. Runtime/host suites were not rerun because only
+  documentation changed. New-head remote CI must run after publication.
+- Follow-up: publish the same B12 PR, verify remote head/feedback/Windows/Linux CI
+  and merge under this authorization; then B13 artifacts. M2b/M3 remain incomplete.

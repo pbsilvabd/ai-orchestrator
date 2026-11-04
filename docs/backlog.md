@@ -9,10 +9,11 @@ No M2b/M3 completion is implied.
 ## Delivery rule
 
 Current task: [B12](tasks/B12.md), on `task/B12-durable-scheduler`, implemented and
-validated locally, unpublished under the maintainer's explicit restriction.
+validated locally, now authorized for publication and merge after final checks.
 FIX23/#24 merged; main CI passed. A fresh local source/host review passed its
 hard-link/environment regressions, but no published independent review was found.
-Preserve that prerequisite review gap before accepting B12.
+The maintainer accepted this agent's completed review for the B12 merge decision;
+do not claim a separate independent reviewer.
 
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
@@ -42,7 +43,8 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: review the unpublished B12 checkpoint; B13 has merged B09/B10
+Ready choices: publish/verify and merge B12 under the maintainer's authorization;
+B13 has merged B09/B10
 prerequisites. B06/#20 and FIX17-18/#22 are merged. Prerequisites below describe
 ready-for-review acceptance; fixture-only preparatory work is not full delivery
 of a gated card.
@@ -66,7 +68,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 merged #22 | None |
 | [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23 and FIX23/#24; independent review pending | B09, B10, pinned host |
 | [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Merged #24; main CI passed; independent review unrecorded | Merged #23 |
-| [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Locally validated; unpublished; prerequisite review pending | B04a, B05, B09–B11 |
+| [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Locally validated; publication/merge authorized, pending final CI | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Ready | B09, B10 |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Gated | B12, B13 |
 | [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Gated | B06; B12/B14 for execution acceptance |

@@ -27,8 +27,9 @@ draft/incomplete-work procedure; never claim missing evidence passed.
 Current state (2026-11-04): M2a is complete; B06 passed eight isolated pinned-host
 runs. Main `488e57a` contains B09–B11 and FIX23/#24, with successful main CI.
 B12 adds an opt-in durable scheduler on `task/B12-durable-scheduler`, locally
-validated but unpublished at the maintainer's request. FIX23 has no independently
-published review at this checkpoint. Follow the current handoff and validation;
+validated and authorized for publication/merge after final checks. The maintainer
+accepted the implementing agent's review; no independent review is claimed.
+Follow the current handoff and validation;
 M2b still needs artifacts, stop handling, MCP transport and real-client acceptance.
 
 ## PR feedback

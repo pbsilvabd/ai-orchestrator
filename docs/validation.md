@@ -1002,3 +1002,23 @@ Linux execution of this new code, B13 artifacts, B14 stop proof, MCP task transp
 production provider support or M2b/M3 completion. Explicit user authorization is
 required before push/PR publication and merge; none was inferred from repository
 workflow defaults.
+
+## B12 authorized delivery checkpoint — 2026-11-04
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5.
+Date: 2026-11-04.
+
+The maintainer explicitly authorized publication and merge after the implementing
+agent's completed review. The earlier publication restriction is superseded for
+this B12 delivery. This is not an independent-review claim.
+
+Fetched remote main remains `488e57a`; the working tree was clean at reviewed
+runtime `69aa920`, and no existing B12 PR was found. This follow-up changes only
+AGENTS/status/handoff/evidence documentation. Whitespace and changed-document file
+links are checked before commit. Runtime tests and the pinned host gate were not
+rerun: production code/tests are identical to the previously validated revision
+(208 passed, one POSIX-only skip; 26 focused passes; host/demo passed).
+
+New-head Windows/Linux CI and current PR feedback must be inspected before the
+already-authorized merge. The PR description will record observed CI/head results;
+no CI result is inferred from this documentation checkpoint. M2b/M3 remain pending.
