@@ -10,18 +10,18 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review the B07 CI pull request
+## Next action: review B26 feedback instructions and pending implementation PRs
 
-B03 merged through PR #16 (`c07b78e`). B10 is open as PR #17 and B09 as PR #18.
-B07 is being delivered on `task/B07-cross-platform-ci`, from `origin/main` at
-`c07b78e`. Its credential-free Windows/Linux matrix uses Node 24.22.1, separate
-test/demo steps and an expected exit-7 pipeline fixture. Local Windows suite (142),
-demo and exit-preservation experiment pass. GitHub Actions run #1 passed on Windows
-Server 2025 and Ubuntu 24.04: both ran all 142 tests and the fallback demo, and their
-nonzero pipeline fixtures failed as expected (exit 1 on Windows, 7 on Ubuntu).
+B03/#16 and B07/#19 are merged; current main is `2ff7e5e`. B10/#17, B09/#18
+and B06/#20 remain open. B26 documentation is being delivered on
+`task/B26-pr-review-feedback` from main. Review its instructions independently.
+Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
+read all feedback before resuming development and answer findings with commit/evidence.
+Then review the pending implementation PRs against their task cards.
 
-After review of B07, continue with B06 (MCP capability gate diagnosis). Keep
-executor integration gated on the pinned host evidence described in the task cards.
+The planned two-model development/review cycle requires B11–B20 delegation work,
+then a scoped controller design. See the protocol and roadmap. These instructions
+do not advance a runtime milestone or authorize merge.
 
 ## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
 

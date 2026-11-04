@@ -488,3 +488,26 @@ Template:
 - Corrected `docs/ci.md`: the Bash reproduction now enables `set -e -o pipefail`, so a failing test cannot be masked by a later successful demo. Clarified that subsequent native commands can overwrite PowerShell's `$LASTEXITCODE`.
 - Verified a real exit-7 Node pipeline under Git Bash stops the script before the following command (shell exit 7, no continuation output). Initial standalone Bash attempts could not resolve the transient Node installation (exit 127); the successful experiment used the parent PowerShell process's absolute Node binary.
 - Validation: `git diff --check`; CI will revalidate the updated PR head. No runtime code changed and OpenCode/MCP checks were not rerun.
+
+## 2026-11-03 — Docs: shared PR review feedback (B26)
+
+- Branch: `task/B26-pr-review-feedback`, from main `2ff7e5e`.
+- Scope: documentation and instructions; no runtime or task-contract change.
+- Steps:
+  1. Inspected current code, merged baseline and open implementation PRs.
+  2. Required PR findings, developer feedback intake/replies and re-review of the
+     current commit, including failed publication and stale-review handling.
+  3. Linked the protocol from agent/developer entry points, DoD and PR template.
+  4. Documented current delegation gaps and a future sequential two-model loop.
+- Files: `AGENTS.md`, `CONTRIBUTING.md`, `.github/pull_request_template.md`,
+  `docs/pr-review.md`, `docs/task-execution.md`, `docs/definition-of-done.md`,
+  `docs/tasks/B26.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test` passed 142/142; fallback demo returned 429 then 200;
+  content/link checks and `git diff --check` passed. OpenCode/MCP gates not rerun
+  because runtime files are unchanged.
+- Review: pass 1 checked publication, feedback intake, permissions and failure
+  paths; pass 2 mapped B26-01–04 to instructions and existing code/dependencies.
+  Corrected section placement and stale handoff actions. No blocking findings.
+- Follow-up: independently review this PR, then the open B06/B09/B10 PRs. Runtime
+  automation requires B11–B20 and separate controller design/implementation cards.

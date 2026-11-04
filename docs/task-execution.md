@@ -5,6 +5,12 @@ This is the required delivery protocol for backlog work. Read it with the select
 One executable task ID produces one PR. A parent/umbrella ID is not executable.
 The completed delivery is a published PR ready for review; merged is a separate state.
 
+For existing PRs, read full conversations, submitted reviews and inline threads
+before implementation/correction and before final delivery. Follow
+[the PR feedback protocol](pr-review.md): publish actionable findings on GitHub,
+reply to corrections with commit/evidence and re-review the current head before
+treating a blocking finding as resolved.
+
 ## Start and establish the baseline
 
 1. Read AGENTS and its ordered sources, the selected card and relevant ADRs. Inspect

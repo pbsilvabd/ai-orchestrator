@@ -76,6 +76,16 @@ A merged card is retained as regression/review guidance, not new work.
 | [B24 — Memory reuse evaluation](tasks/B24.md) | P3 | Gated | B20 |
 | [B25 — Offline routing advisor evaluation](tasks/B25.md) | P3 | Gated | B20, B23 |
 
+## Review workflow task
+
+| Additional task | Priority | State | Prerequisites |
+| --- | --- | --- | --- |
+| [B26 — PR feedback protocol](tasks/B26.md) | P2 | Prepared for PR review | Existing execution protocol |
+
+B26 defines developer/reviewer instructions and records the automation gap. The
+future sequential two-model controller needs separate design/implementation cards
+after B20; it is not delivered by B26 or the B25 routing evaluation.
+
 ## Shared safety and integration rules
 
 - Read AGENTS and ordered normative sources before editing. Preserve user changes;

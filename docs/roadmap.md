@@ -104,6 +104,15 @@ M2b. Do not install candidate dependencies because they appear in the reuse tabl
 
 ## Primary acceptance experiment: develop this repository
 
+The maintainer's intended next workflow is a simpler implementation model followed
+by a more capable review model, PR findings, correction and re-review. The
+[PR feedback protocol](pr-review.md) defines today's manual process (B26).
+After B20 proves real delegation, scope a sequential two-model controller with
+durable phase/feedback receipts, exact-commit review and bounded correction rounds.
+This remains planned: it needs a workflow contract/ADR and separate task cards.
+It can run one role at a time before general M5 routing/concurrency; it does not
+require failure-driven fallback to alternate developer and reviewer tasks.
+
 - Choose a small real backlog item, such as a fixture and regression test.
 - First validate the service contract and failures with a simulated worker/provider.
 - Configure one real authorized model and an isolated branch with a recorded base.

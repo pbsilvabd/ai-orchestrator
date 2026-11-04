@@ -515,3 +515,34 @@ The pull-request workflow completed successfully on the PR merge ref. Windows Se
 - Corrected the Bash reproduction in `docs/ci.md` to enable `set -e -o pipefail` and clarified native exit-code capture in PowerShell.
 - Git Bash experiment: `set -e -o pipefail`, followed by an absolute Node v24.22.1 binary running `process.exit(7)` piped to `cat`, then an unreachable print. Observed shell exit 7 with no continuation output. Initial standalone shells could not resolve the transient Node path (exit 127); running Bash from the owning PowerShell process resolved it.
 - Existing PR-head run `41737897011`: both OS jobs successful. The documentation correction will receive its own PR CI run before merge. OpenCode/MCP gates remain outside scope.
+
+## Docs: shared PR review feedback (B26) — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (fnm toolchain).
+Date: 2026-11-03. Branch: `task/B26-pr-review-feedback`; base: `2ff7e5e`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Required regression suite | 142 passed, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo | 429 then 200 | 0 |
+| `git diff --check` | Whitespace validation | No errors | 0 |
+
+Result: content walkthroughs cover B26-01 (PR publication, finding fields and
+self-review refusal fallback), B26-02 (all feedback surfaces, replies and same PR),
+B26-03 (changed head, unresolved disagreement and verified thread resolution), and
+B26-04 (existing modules, open PRs and missing executor/scheduler/MCP/controller).
+Relative Markdown links in changed files were checked with a one-off Node script;
+none were broken. Both review passes inspected entry points, publication failure,
+authority limits and planned-versus-implemented claims. Fixed misplaced section
+headings and the handoff's obsolete B07 next action.
+
+Evidence level: Unit — existing local suite/demo regression only. Documentation
+walkthroughs establish protocol coverage, not model adherence or integration.
+
+Not rerun: OpenCode smoke and MCP capability gate (runtime unchanged); no live
+model or PR-comment fixture was invoked for this documentation-only task.
+
+Claim: these checks support a linked PR feedback protocol with unchanged local
+behavior. They do not establish automatic delegation, model switching, GitHub
+orchestration or first use on this project; those need runtime implementation and
+real acceptance evidence.
