@@ -125,7 +125,7 @@ The hook is a convenience, not a replacement for CI; CI remains the authority.
   release, verifies its SHA-256 checksum before running it, and scans Git history with
   `--redact` on pull requests and pushes to `main`. A finding exits non-zero without
   printing the secret value; the binary is fetched from its GitHub release rather than
-  a third-party action.
+  a third-party action. The scan reads `--config .gitleaks.toml`, whose allowlist exempts the `idempotencyKey` fixture literals under `^test/`.
 - `.github/dependabot.yml`: opens weekly `github-actions` and `npm` pull requests.
 
 ## Pinned actions

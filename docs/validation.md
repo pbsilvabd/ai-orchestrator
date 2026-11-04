@@ -1158,7 +1158,7 @@ Date: 2026-11-04. Base: `origin/main` at `c6bb77a`.
 | `npm audit --audit-level=high` | 0 high-severity advisories | 0 |
 | `./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1` | No leaks; test `idempotencyKey` fixtures excluded by the allowlist | 0 |
 | Same scan with a seeded token outside the allowlist | Redacted finding reported | 1 |
-| GitHub Actions `check`, `test` matrix and `gitleaks` jobs | Run to be recorded — RUN_URL_TBD | TBD |
+| GitHub Actions `check`, `test` matrix and `gitleaks` jobs | Run to be recorded — https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695 | TBD |
 
 Result: the lockfile reproduces the dependency set, every action is pinned by SHA
 with `contents: read`, and `npm run check` is the single local gate. The secret scan
@@ -1185,7 +1185,7 @@ Date: 2026-11-04. Base: B27 at `a0d2793`.
 | Seeded coverage drop (B28-01) | Coverage job exits non-zero and names the missed metric | 1 |
 | `.githooks/pre-push` run twice (B28-03) | First run blocks a seeded failure; the second run repeats without installing or writing anything | 1, 1 |
 | Seeded schema/lockfile drift (B28-04) | `git diff --exit-code -- src/contracts/schemas/ package-lock.json` reports the dirty tree on both legs | 1 |
-| GitHub Actions `check`, `unit` matrix, `smoke` matrix and `drift` (B28-02/04) | Run to be recorded — RUN_URL_TBD | TBD |
+| GitHub Actions `check`, `unit` matrix, `smoke` matrix and `drift` (B28-02/04) | Run to be recorded — https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41874246695 | TBD |
 
 Result: the pipeline orders `check -> unit -> smoke`, with `drift` running in parallel
 with `unit` after `check`. The `check` job runs `npm run check:ci`, so the suite runs
