@@ -689,3 +689,46 @@ MCP, SQLite or live executor gate was rerun.
   current-store compatibility. Unknown-key credentials remain absent from errors.
   Host gates not rerun: no host/service/store runtime changed. Current-head CI
   must pass before merge. Adoption into service/transport remains B08.
+
+## M2b: B10 bounded subprocess primitive — 2026-11-03
+
+Executed on Windows x64, Node.js v24.22.1 (system installation); Git 2.55.0.windows.5.
+Date: 2026-11-03.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/subprocess.test.mjs` | Exercise B10 acceptance scenarios with real Node child processes | 5 passed, 0 failed | 0 |
+| `node --test` | Full suite regression | 147 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Check whitespace in proposed change | no output | 0 |
+
+Result: fixtures covered spawn failure, pre-abort without spawn, immediate exit, exit code 7, bounded stdout/stderr tails while both pipes drain, UTF-8 byte boundaries, deadline, abort with partial output and a descendant process whose stop remains unverified.
+
+Evidence level: Unit — the suite and the demo exercise policy, ledger, runner, task store and service behavior in this checkout. Child fixtures demonstrate local subprocess behavior; they do not demonstrate the host, the network or production persistence.
+
+Not rerun: `node integration/opencode-smoke.mjs` (requires the pinned OpenCode 2.2.5 binary outside the repository; this helper does not change that integration); `node integration/mcp-gate.mjs` (same binary requirement and the gate remains unresolved); executor integration (no executor adapter exists yet).
+
+Claim: This entry supports bounded output, exit status and conservative root/descendant stop reporting for local Node child processes, based on `node --test test/subprocess.test.mjs`. It does not support OpenCode integration or task execution, which require the missing executor and pinned host evidence.
+
+## B10 current-main integration — 2026-11-04
+
+- Integrated current main into B10. Focused subprocess fixtures cover exact byte
+  tails across chunks, UTF-8 boundaries, pre-abort evidence shape, descendants, and
+  POSIX SIGTERM escalation. The POSIX fixture is skipped on Windows and will run in
+  Ubuntu CI. Full suite/demo/diff and Windows/Linux CI follow after publication.
+
+## B10 correction validation — 2026-11-04
+
+Environment: Windows x64, Node.js v24.22.1.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/subprocess.test.mjs` | B10 child process behavior and corrections | 6 passed, 0 failed, 1 POSIX-only test skipped | 0 |
+| `node --test` | Full regression suite after main integration | 172 passed, 0 failed, 1 POSIX-only test skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace/conflict-marker validation | Passed | 0 |
+
+The focused suite verifies exact byte tails across chunks, complete UTF-8 output,
+consistent pre-abort termination fields and bounded termination reporting. The POSIX
+fixture for a child that ignores SIGTERM is skipped on Windows; Ubuntu CI must execute
+it before merge. No executor or external-host integration was exercised.

@@ -661,3 +661,28 @@ Template:
   SHA and legal lifecycle transitions. Initial integrated suite failed 1/166;
   after correction, 166/166 pass and demo returns 429 then 200. Reviewed the final
   checker/schema/test diff; runtime consumers remain untouched. No host gates rerun.
+
+## 2026-11-03 — M2b: B10 bounded subprocess primitive
+
+- Branch: `task/B10-bounded-subprocess`, based on `c07b78e`.
+- Scope: added a no-shell child process helper with scoped environment, separate
+  bounded UTF-8 output tails, deadlines, abort handling and truthful stop evidence.
+  It does not implement the executor or claim descendant termination.
+- Steps: implemented input validation and child lifecycle handling; added real
+  child fixtures for the B10 acceptance rows; reviewed race/cleanup paths.
+- Files: `src/subprocess.mjs`, `test/subprocess.test.mjs`, backlog, handoff,
+  roadmap, validation and worklog.
+- Validation: focused tests 5/5; full suite 147/147; fallback demo 429 then 200;
+  `git diff --check` clean. Windows x64, Node.js v24.22.1.
+- Follow-up: review the published B10 PR. OpenCode/MCP integration remains outside
+  this task and requires the pinned host and a later executor task.
+
+## 2026-11-04 — B10 current-main integration
+
+- Merged current main into the existing B10 branch and preserved append-only
+  histories. Fixed cross-chunk byte-tail trimming, normalized stop evidence, and
+  bounded ignored-signal termination with stream/child detachment. Added split-tail,
+  UTF-8 boundary and POSIX SIGTERM-ignore fixtures.
+- Validation on Windows x64 / Node.js v24.22.1: focused subprocess tests 6 passed,
+  1 POSIX-only skipped; full suite 172 passed, 1 skipped; fallback demo 429 then
+  200; `git diff --check` clean. The ignored-SIGTERM fixture remains for Ubuntu CI.
