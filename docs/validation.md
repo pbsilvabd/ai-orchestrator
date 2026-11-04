@@ -1143,3 +1143,35 @@ unchanged); paid/real-provider evaluation (not authorized or needed here).
 Claim: this entry supports valid repo-local skill packages with resolved references
 and an unchanged local runtime baseline. Real use on B13/a PR is the next behavioral
 validation; it is not evidence of M2b/M3 completion or independent review.
+
+## B27 CI foundation — 2026-11-04
+
+Executed locally on the `task/B27-ci-foundation` worktree with the Node.js 24.22.1
+toolchain pinned in `.node-version`.
+Date: 2026-11-04. Base: `origin/main` at `c6bb77a`.
+
+| Command | Result | Exit |
+| --- | --- | --- |
+| `npm run check` on a clean tree | Syntax, schema, suite and whitespace gates pass | 0 |
+| `node --test` | 208 passed, 0 failed, 2 skipped | 0 |
+| `npm ci` after removing `node_modules` | Installs from `package-lock.json` only | 0 |
+| `npm audit --audit-level=high` | 0 high-severity advisories | 0 |
+| `./gitleaks detect --source . --config .gitleaks.toml --redact --no-banner --exit-code 1` | No leaks; test `idempotencyKey` fixtures excluded by the allowlist | 0 |
+| Same scan with a seeded token outside the allowlist | Redacted finding reported | 1 |
+| GitHub Actions `check`, `test` matrix and `gitleaks` jobs | Run to be recorded — RUN_URL_TBD | TBD |
+
+Result: the lockfile reproduces the dependency set, every action is pinned by SHA
+with `contents: read`, and `npm run check` is the single local gate. The secret scan
+stays fail-closed: the allowlist only suppresses `idempotencyKey` fixture literals
+under `test/`, and the seeded-token run proves an unmatched secret still fails with
+redacted output.
+
+Evidence level: Unit and local integration — the suite, check gate, clean install,
+audit and gitleaks runs execute in this checkout. The allowlist was validated by a
+negative seeded-token run rather than by inspection alone. CI URLs are placeholders
+until the workflow runs complete.
+
+Not rerun: `node integration/opencode-smoke.mjs` and `node integration/mcp-gate.mjs`
+(no runtime change; both need the pinned OpenCode binary outside the repository);
+Windows-host execution of the PowerShell fixtures (covered by the remote matrix, not
+by this local run).
