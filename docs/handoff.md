@@ -10,18 +10,18 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review the B07 CI pull request
+## Next action: review the B06 capability gate pull request
 
-B03 merged through PR #16 (`c07b78e`). B10 is open as PR #17 and B09 as PR #18.
-B07 is being delivered on `task/B07-cross-platform-ci`, from `origin/main` at
-`c07b78e`. Its credential-free Windows/Linux matrix uses Node 24.22.1, separate
-test/demo steps and an expected exit-7 pipeline fixture. Local Windows suite (142),
-demo and exit-preservation experiment pass. GitHub Actions run #1 passed on Windows
-Server 2025 and Ubuntu 24.04: both ran all 142 tests and the fallback demo, and their
-nonzero pipeline fixtures failed as expected (exit 1 on Windows, 7 on Ubuntu).
+B03 merged through PR #16, B07 through PR #19, B10 is open as PR #17 and B09 as PR
+#18. B06 is being delivered on `task/B06-mcp-capability-gate`, from current main at
+`2ff7e5e`. The signed OpenCode 2.2.5 binary matched the published ZIP digest. Eight
+independent Windows launches passed discovery/list/call/result; missing/wrong binary,
+nonzero child, timeout, readiness and cleanup-error experiments all failed closed.
+The earlier intermittent gate was caused by probing before asynchronous MCP startup;
+the warm-up and connection-log wait now pass all eight cold/fresh-state launches.
 
-After review of B07, continue with B06 (MCP capability gate diagnosis). Keep
-executor integration gated on the pinned host evidence described in the task cards.
+After review of B06, review open PRs #17 and #18. Keep executor integration gated on
+the pinned host evidence described in the task cards.
 
 ## B03 checkpoint (2026-11-03, branch `task/B03-repo-identity`)
 
