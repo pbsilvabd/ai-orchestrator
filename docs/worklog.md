@@ -777,5 +777,8 @@ Template:
   allowed the in-glob fixture write; full suite 190 passed, 0 failed, 1 POSIX-only
   skipped; fallback demo 429 then 200;
   diff check clean. Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
-- Follow-up: commit, push and open one B11 PR; inspect its CI. Do not merge without
-  task-specific maintainer authorization.
+- Publication: committed as `af74d75997bb06749271cba0561a5931070500a7`, pushed and
+  opened [PR #23](https://github.com/pbsilvabd/ai-orchestrator/pull/23) against
+  `main`. Initial CI run 41755507739 was queued at publication; check the current PR
+  head and review feedback before delivery. Do not merge without task-specific
+  maintainer authorization.

@@ -9,8 +9,8 @@ No M2b/M3 completion is implied.
 ## Delivery rule
 
 Current task: [B11 — Authorized OpenCode invocation](tasks/B11.md), next after
-FIX17-18 merged in PR #22. B11 is being delivered on
-`task/B11-authorized-opencode` from `093e050`.
+FIX17-18 merged in PR #22. B11 is published as [PR #23](https://github.com/pbsilvabd/ai-orchestrator/pull/23)
+from `task/B11-authorized-opencode` at base `093e050`; review and CI are pending.
 
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
@@ -62,7 +62,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 merged #22 | B03 |
 | [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 merged #22 | None |
-| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | In progress on `task/B11-authorized-opencode` | B09, B10, pinned host |
+| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | PR #23 open; review and CI pending | B09, B10, pinned host |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Gated | B04a, B05, B09–B11 |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Gated | B09, B10 |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Gated | B12, B13 |
