@@ -900,3 +900,27 @@ Validation after correction on Windows x64, Node.js v24.22.1, Git 2.55.0.windows
 link rejection — exit 0; `node --test` — 191 passed, 0 failed, 1 POSIX-only skipped;
 fallback demo — 429 then 200; `git diff --check` — clean. Cross-platform CI remains
 pending for the correction commit.
+
+## FIX23 — Hard links, provider environment and Windows cleanup — 2026-11-03
+
+Base `05d5cda`; Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+
+| Command / scenario | Result | Exit |
+| --- | --- | --- |
+| `node --test test/opencode.test.mjs` before fixes | Two new regressions failed: hard link accepted and config-content variable accepted | 1 |
+| `node --test test/opencode.test.mjs test/subprocess.test.mjs` after fixes | 19 passed, 1 POSIX-only skipped | 0 |
+| `node integration/opencode-invocation.mjs ..\.audit\bin\opencode-2.2.5\opencode.exe` | Pinned 2.2.5: hardlinkRejected and providerOverrideRejected true, external sentinel unchanged, original denied/allowed writes passed, six loopback requests | 0 |
+| `node --test` final code revision | 193 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | 429 then 200 | 0 |
+| `git diff --check` | Clean | 0 |
+
+The hard-link/config override cases are launch rejections, not denied host tool calls.
+The original out-of-glob denial still exercises the real host. B10-04 now waits for a
+descendant readiness marker before aborting the root, and cleanup retries Windows
+filesystem locks within a bounded delay (persistent failures still throw). CI run
+41757914172 on main had exposed EPERM in the old cleanup; fresh Windows/Ubuntu CI
+for FIX23 is required before delivery. No external/paid provider call was made.
+
+Not rerun: unrelated B06 MCP and session-switch smoke gates, whose implementations
+did not change. The launch-time filesystem scan is still not OS isolation against
+concurrent mutation; task-service/scheduler integration remains outside this fix.

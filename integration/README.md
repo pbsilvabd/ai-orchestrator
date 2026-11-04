@@ -139,6 +139,12 @@ fixture request writes inside `src/**` and verifies the bytes before removing th
 test file. A junction/symlink escape fixture also verifies launch rejection and an
 unchanged outside sentinel. The test does not make an external or paid call.
 
+FIX23 adds a regular hard-linked file fixture and an OPENCODE_CONFIG_CONTENT override
+attempt. Both are rejected by the builder before launch; the external sentinel stays
+unchanged and the provider receives no extra requests. Ordinary launches still use
+the pinned host to verify real denied and allowed writes. Only FIXTURE_API_KEY is
+accepted in providerEnvironment for the currently supported loopback fixture.
+
 Limitations: the helper is not yet integrated with the task service/scheduler and
 currently accepts only loopback fixture providers. It is not an OS sandbox or
 outbound network firewall. `PATH` and other required Windows OS variables remain in

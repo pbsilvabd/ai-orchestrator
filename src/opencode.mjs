@@ -8,8 +8,9 @@ const FIXED_HOST_ENVIRONMENT = new Set([
   'OPENCODE_DISABLE_MODELS_FETCH', 'OPENCODE_DISABLE_CLAUDE_CODE',
   'OPENCODE_DISABLE_PROJECT_CONFIG', 'OPENCODE_DISABLE_FILEWATCHER',
 ]);
-const RESERVED_PROVIDER_ENVIRONMENT = new Set([...FIXED_HOST_ENVIRONMENT,
-  'PWD', 'NODE_OPTIONS', 'BUN_INSTALL', 'PATH', 'PATHEXT', 'COMSPEC', 'SystemRoot', 'WINDIR']);
+// The only supported provider is the loopback fixture. Add future credential
+// names deliberately; arbitrary environment entries can reconfigure the host.
+const PROVIDER_CREDENTIAL_ENVIRONMENT = new Set(['FIXTURE_API_KEY']);
 const ALLOWED_TOOLS = new Set(['read', 'edit']);
 
 export class OpenCodeLaunchError extends Error {
@@ -105,7 +106,7 @@ export function buildOpenCodeInvocation({ task, executable, workspace, configRoo
   env.OPENCODE_DISABLE_PROJECT_CONFIG = '1';
   env.OPENCODE_DISABLE_FILEWATCHER = '1';
   for (const [key, value] of Object.entries(providerEnvironment)) {
-    if (!/^[A-Z][A-Z0-9_]{0,63}$/.test(key) || RESERVED_PROVIDER_ENVIRONMENT.has(key) ||
+    if (!PROVIDER_CREDENTIAL_ENVIRONMENT.has(key) ||
         typeof value !== 'string' || value.length > 4096) {
       fail('invalid_argument', 'invalid explicitly supplied provider environment');
     }
@@ -176,6 +177,7 @@ function normalizeGlob(value) {
 
 // OpenCode permission rules match lexical paths. A symlink or junction under an
 // allowed glob can redirect an edit outside the receipt-verified workspace.
+// A regular file with multiple hard links also shares bytes with another path.
 function rejectWorkspaceLinks(root) {
   const visit = directory => {
     let entries;
@@ -187,6 +189,7 @@ function rejectWorkspaceLinks(root) {
       try { info = lstatSync(path); }
       catch { fail('authorization_denied', 'cannot verify workspace paths for links'); }
       if (info.isSymbolicLink()) fail('authorization_denied', 'workspace contains a symbolic link or junction');
+      if (info.isFile() && info.nlink !== 1) fail('authorization_denied', 'workspace contains a multiply linked file');
       if (info.isDirectory()) visit(path);
     }
   };

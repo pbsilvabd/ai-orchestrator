@@ -285,7 +285,10 @@ Success without test evidence remains an explicit limitation in get_task_result.
   permits repository reads and edits only for the accepted patterns. Ambient OpenCode
   config, plugins, instructions and skills are isolated or disabled. Because host
   path permissions are lexical, the builder rejects workspaces containing symbolic
-  links or junctions that could redirect a permitted edit outside the workspace.
+  links, junctions or multiply linked regular files that could redirect/share a
+  permitted edit outside the workspace. The loopback fixture's provider environment
+  accepts only `FIXTURE_API_KEY`; arbitrary host/runtime environment controls are
+  rejected even when explicitly supplied.
 - The current B11 builder supports only a local loopback fixture provider. No external
   or paid provider is authorized by that implementation. Production provider setup and
   service-to-worker dispatch remain future work. Host permission checks are not an OS

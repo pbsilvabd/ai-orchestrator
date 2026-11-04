@@ -1,12 +1,23 @@
 # Continuation point — 2026-11-03
 
-Main is `093e050`, including FIX17-18/#22. M2a is complete; the B06 MCP gate passed
+Main is `05d5cda`, including B11/#23 and FIX17-18/#22. M2a is complete; the B06 MCP gate passed
 eight isolated pinned-host runs after readiness/cleanup corrections. The task store,
 service surface, B09 workspaces and B10 subprocess primitive are merged. M2b remains
 incomplete: no task scheduler, executor dispatch, MCP transport or self-development
 task is integrated.
 
-## Current task: B11 — authorized OpenCode invocation
+## Current task: FIX23 — post-merge B11 corrections
+
+Review `task/FIX23-authorization` under [FIX23](tasks/FIX23.md). It rejects multiply
+linked files before host launch, restricts provider environment to FIXTURE_API_KEY,
+and gives subprocess-test cleanup bounded retries for transient Windows cwd locks.
+Local validation: 193 passed, one POSIX-only skip; pinned OpenCode 2.2.5 harness
+passed hard-link/config-override rejection and original denied/allowed writes.
+Independent review and current-head CI are required before merging this correction.
+Proceed to B12 only after FIX23 is reviewed and merged. No merge is authorized by
+this handoff. The original B11 checkpoint below is historical context.
+
+## B11 checkpoint before FIX23 review
 
 Branch: `task/B11-authorized-opencode`, base `093e050`. The B11 builder and test
 fixture implement one exact configured model, `read`/`edit` only, exact relative

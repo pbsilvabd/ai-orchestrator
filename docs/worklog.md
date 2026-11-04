@@ -795,3 +795,28 @@ Template:
   host fixtures verifying rejection and an unchanged external sentinel. Focused tests
   9/9, full suite 191 passed/1 POSIX-only skipped, integration/demo/diff checks passed.
   Fresh cross-platform CI is pending; the finding remains open until re-review.
+
+## 2026-11-03 — M2b: FIX23 post-merge authorization corrections
+
+- Branch: `task/FIX23-authorization`, base `05d5cda` (merged B11/#23).
+- Scope: reject multiply linked regular files and use a fixed provider credential
+  allowlist (FIXTURE_API_KEY only for the supported local fixture). B10 test cleanup
+  retries transient Windows locks without changing the production subprocess runner.
+- Regression: both new authorization tests failed on the base (exit 1, missing
+  expected exceptions). After the fix, focused tests passed 19 with one POSIX skip;
+  pinned OpenCode 2.2.5 harness rejected both invalid launches, preserving the outside
+  sentinel while original real denied/allowed writes still passed.
+- Review pass 1: checked lstat/link-count behavior without following aliases, the
+  environment allowlist and fixture scope, and cleanup failure propagation. Improved
+  B10-04 to wait for proof that its descendant actually starts before aborting root;
+  final cleanup is bounded and descendantsStopped remains false.
+- Review pass 2: checked the complete diff and FIX23-01..04 against named tests,
+  contract/ADR updates and the remaining launch-time race limitation. No blocking
+  local findings remain. Independent PR review is still required.
+- Files: OpenCode builder, unit/host fixtures, subprocess fixture, FIX23 card,
+  backlog/handoff/roadmap, contract/ADR, integration README and evidence docs.
+- Final local validation: focused 19 passed/1 skipped; full suite 193 passed/1
+  POSIX-only skipped; fallback demo 429 then 200; pinned integration exit 0;
+  diff check clean. Windows x64, Node 24.22.1, Git 2.55.0.windows.5.
+- Publication: one FIX23 PR, replies to original findings with commit/evidence,
+  cross-platform CI and independent review. No merge authorization is inferred.

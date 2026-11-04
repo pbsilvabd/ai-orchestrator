@@ -1,13 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { setTimeout as delay } from 'node:timers/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { runSubprocess } from '../src/subprocess.mjs';
 
 function setup(t) {
   const cwd = mkdtempSync(join(tmpdir(), 'orchestrator-child-'));
-  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  // A deliberately unverified descendant may hold its inherited cwd briefly
+  // after the root exits on Windows. Retry cleanup within a bounded interval;
+  // persistent locks still fail the test rather than hiding leaked fixtures.
+  t.after(() => rmSync(cwd, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   return { executable: process.execPath, cwd, env: {}, timeoutMs: 3000, killGraceMs: 500 };
 }
 
@@ -75,9 +79,22 @@ test('B10-03: deadline and abort settle once with partial output and clean up', 
 });
 
 test('B10-04: Windows process termination reports root exit and leaves descendants unverified', async t => {
-  const result = await runSubprocess({ ...setup(t), timeoutMs: 100, args: ['-e',
-    "const {spawn}=require('node:child_process');spawn(process.execPath,['-e','setTimeout(()=>process.exit(0),500)'],{stdio:'ignore'});process.stdout.write('child-started');setInterval(()=>{},1000)"] });
-  assert.equal(result.termination.reason, 'deadline');
+  const options = setup(t);
+  const marker = join(options.cwd, 'descendant-ready');
+  const controller = new AbortController();
+  const descendant = "require('node:fs').writeFileSync(process.argv[1],'ready');setTimeout(()=>process.exit(0),500)";
+  const pending = runSubprocess({ ...options, signal: controller.signal, args: ['-e',
+    `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(descendant)},${JSON.stringify(marker)}],{stdio:'ignore'});setInterval(()=>{},1000)`] });
+  let result;
+  try {
+    const readinessDeadline = Date.now() + 2500;
+    while (!existsSync(marker) && Date.now() < readinessDeadline) await delay(10);
+    assert.equal(existsSync(marker), true, 'descendant must actually start before root termination');
+  } finally {
+    controller.abort();
+    result = await pending;
+  }
+  assert.equal(result.termination.reason, 'aborted');
   assert.equal(typeof result.termination.rootExitObserved, 'boolean');
   assert.equal(result.termination.descendantsStopped, false);
 });

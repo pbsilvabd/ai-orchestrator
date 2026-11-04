@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync } from 'node:fs';
+import { lstatSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, linkSync, writeFileSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
@@ -86,6 +86,26 @@ test('rejects workspaces containing symlinks or junctions before launching OpenC
   t.after(() => rmSync(link, { force: true }));
   assert.equal(lstatSync(link).isSymbolicLink(), true);
   assert.throws(() => buildOpenCodeInvocation(options()), denied('authorization_denied'));
+});
+
+test('rejects multiply linked regular files before an authorized path can mutate an outside file', t => {
+  const outside = join(fixtureRoot, 'external-file.txt');
+  const link = join(workspacePath, 'hardlink.txt');
+  writeFileSync(outside, 'UNCHANGED');
+  linkSync(outside, link);
+  t.after(() => rmSync(link));
+  assert.equal(lstatSync(link).isSymbolicLink(), false);
+  assert.equal(lstatSync(link).nlink, 2);
+  assert.throws(() => buildOpenCodeInvocation(options()), denied('authorization_denied'));
+  assert.equal(readFileSync(outside, 'utf8'), 'UNCHANGED');
+});
+
+test('provider credentials cannot carry host configuration or runtime control variables', () => {
+  for (const key of ['OPENCODE_CONFIG_CONTENT', 'NODE_OPTIONS', 'LD_PRELOAD', 'UNLISTED_API_KEY']) {
+    assert.throws(() => buildOpenCodeInvocation(options({ providerEnvironment: {
+      FIXTURE_API_KEY: 'fixture-only', [key]: JSON.stringify({ permissions: [{ action: '*', resource: '*', effect: 'allow' }] }),
+    } })), denied('invalid_argument'));
+  }
 });
 
 test('rejects a task requesting any model beyond the single trusted model', () => {

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, unlinkSync, existsSync, rmSync, symlinkSync, linkSync, lstatSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve, join } from 'node:path';
 import { buildOpenCodeInvocation, OpenCodeLaunchError } from '../src/opencode.mjs';
@@ -112,7 +112,7 @@ try {
     if (process.env[key]) hostEnvironment[key] = process.env[key];
   }
   const taskRecord = task();
-  const invocation = buildOpenCodeInvocation({
+  const launchOptions = {
     task: taskRecord,
     executable: binary,
     workspace,
@@ -127,7 +127,8 @@ try {
     hostEnvironment,
     maxBudgetMs: 45_000,
     maxOutputBytes: 65_536,
-  });
+  };
+  const invocation = buildOpenCodeInvocation(launchOptions);
   assert.equal(invocation.env.B11_AMBIENT_CREDENTIAL_SENTINEL, undefined);
   assert.equal(invocation.env.OPENCODE_CONFIG, join(configRoot, 'opencode.json'));
   assert.equal(invocation.env.OPENCODE_CONFIG_DIR, join(configRoot, 'config'));
@@ -177,6 +178,24 @@ try {
   assert.equal(readFileSync(escapedFile, 'utf8'), 'UNCHANGED_SENTINEL');
   rmSync(workspaceLink);
 
+  const hardlink = join(workspacePath, 'src', 'hardlink.txt');
+  linkSync(escapedFile, hardlink);
+  assert.equal(lstatSync(hardlink).nlink, 2);
+  assert.equal(lstatSync(hardlink).isSymbolicLink(), false);
+  assert.throws(() => buildOpenCodeInvocation({ ...launchOptions,
+    task: task('B11_HARDLINK_ESCAPE: overwrite src/hardlink.txt.'),
+  }), error => error instanceof OpenCodeLaunchError && error.code === 'authorization_denied');
+  assert.equal(readFileSync(escapedFile, 'utf8'), 'UNCHANGED_SENTINEL');
+  unlinkSync(hardlink);
+
+  assert.throws(() => buildOpenCodeInvocation({ ...launchOptions,
+    providerEnvironment: { FIXTURE_API_KEY: fixtureKey,
+      OPENCODE_CONFIG_CONTENT: JSON.stringify({ permissions: [{ action: '*', resource: '*', effect: 'allow' }] }),
+    },
+  }), error => error instanceof OpenCodeLaunchError && error.code === 'invalid_argument');
+  assert.equal(requests.length, requestCountBeforeLinkCheck, 'rejected launches reached the provider');
+  assert.equal(existsSync(outsideAllowed), false);
+
   const allowedOutput = join(workspacePath, 'src', 'allowed-output.txt');
   const allowedInvocation = buildOpenCodeInvocation({
     task: task('B11_ALLOWED_WRITE: write src/allowed-output.txt with ALLOWED_FIXTURE.'),
@@ -205,7 +224,8 @@ try {
   assert.equal(workspaceRemoved, true);
   console.log(JSON.stringify({ version: '2.2.5', model: 'fixture/mock', cwd: 'isolated workspace',
     b09ReceiptVerifiedWorkspace: true, ambientConfigIgnored: true, ambientCredentialExcluded: true,
-    deniedWrite: true, workspaceLinkRejected: true, allowedWrite: true,
+    deniedWrite: true, workspaceLinkRejected: true, hardlinkRejected: true,
+    providerOverrideRejected: true, allowedWrite: true,
     providerRequests: requests.length, externalProvider: false }));
 } finally {
   if (server) {
