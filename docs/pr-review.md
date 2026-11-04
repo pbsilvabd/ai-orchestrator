@@ -97,11 +97,13 @@ The reviewer needs repository/test access and PR feedback capability; edits retu
 to the developer role. These instructions also apply to manual model switching.
 
 **Implemented:** this human/client-driven protocol, durable task store, service
-operations, repository identity and local policy/runner. Capability-gate corrections B06/#20 are merged. Workspace B09/#18 and subprocess
-B10/#17 remain open PRs at this checkpoint, not merged dependencies.
+operations, repository identity and local policy/runner. B06/#20, B09/#18,
+B10/#17, B11/#23 with FIX23/#24, and B12/#25 are merged. The opt-in scheduler
+dispatches one configured loopback-fixture worker with durable attempt/workspace
+identity. PR and post-merge Windows/Ubuntu CI passed for B12.
 
-**Required for real delegation:** B11 authorized OpenCode invocation; B12 durable
-scheduler; B13 artifacts; B14 cancellation; B15 MCP adapter; B16/B17 client workflow
+**Still required for real delegation:** B13 artifacts; B14 cancellation/stop
+evidence; B15 MCP adapter; B16/B17 client workflow
 and acceptance; B18 recovery; B20 first supervised use. Exact dependencies are in
 the [backlog](backlog.md). Direct work in a development chat does not satisfy B20.
 

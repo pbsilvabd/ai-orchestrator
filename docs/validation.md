@@ -1053,3 +1053,37 @@ Evidence level: Unit with real temporary Git/filesystem/Node fixtures; OpenCode
 integration for the existing pinned-host dispatch and permission checks. Fresh
 Windows/Linux CI on the corrected head is required before merge. No MCP/session
 smoke rerun, independent reviewer, production isolation or M2b/M3 claim is added.
+
+## Docs: backlog status after B12 merge — 2026-11-04
+
+Executed on Windows x64, Node v24.22.1 (fnm), Git 2.55.0.windows.5.
+Date: 2026-11-04. Branch `docs/backlog-status-after-b12`, base `68d3ea5`.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `git fetch origin` | Compare current main before changing status | main 68d3ea51c0b65ae3aa97d79ed0833d42fbfabe51 | 0 |
+| `gh run list --repo pbsilvabd/ai-orchestrator --branch main --limit 1 --json databaseId,headSha,status,conclusion,url` | Check post-merge main CI evidence | run 41770348768 completed/success at 68d3ea5 | 0 |
+| `node --test --test-reporter=tap` | Required baseline regression for documentation changes | 209 passed, 0 failed, 1 POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Existing demo | mock/preferred 429 then mock/local 200 | 0 |
+| `git diff --check` | Changed-document whitespace | no errors | 0 |
+
+Result: GitHub PR metadata confirmed #25 merged, head 6ed35ad and squash commit
+68d3ea5. No open PR was found before this refresh. Current status pointers now
+identify B12 as delivered and B13 as ready; B14–B17 remain gated, B18 can follow
+B14, and B20/M3 waits for B17/B18 plus an available authorized real model/provider
+and approved task. B08 and B19 remain supporting work, with B19 task history still
+gated by B17. Readiness does not mean implementation or acceptance is complete.
+
+Review pass 1 compared status/dependencies with the task cards, verified GitHub
+merge/CI and retained the documented review provenance. Review pass 2 checked the
+complete documentation diff, links and completed-versus-pending claims. No runtime
+or acceptance row was changed. The B12 completion checklist is supported by its
+published PR and recorded pre/post-merge CI, not this docs-only test run.
+
+Evidence level: Unit for the suite/demo baseline; GitHub metadata for delivery
+status. A one-off Markdown check inspected 11 changed files and 96 relative file
+targets, with zero missing targets.
+Not rerun: OpenCode invocation, MCP capability and session/model gates (no runtime
+change). No new independent-review, provider-support or M2b/M3 completion claim.
+This new documentation branch is a local checkpoint; publication/merge are not
+inferred from the previous B12 authorization.

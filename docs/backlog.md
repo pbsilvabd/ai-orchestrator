@@ -1,6 +1,9 @@
 # Agent backlog — execution contracts
 
-Baseline: `origin/main` at `488e57a` (PR #24 merged). Fetch before choosing work.
+Verified 2026-11-04: `origin/main` at `68d3ea5` (B12/PR #25 merged).
+Windows and Ubuntu passed both the PR checks and the post-merge main run
+[41770348768](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41770348768).
+No open PR was found at this checkpoint. Fetch before choosing work.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -8,12 +11,14 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current task: [B12](tasks/B12.md), on `task/B12-durable-scheduler`, implemented and
-validated locally, now authorized for publication and merge after final checks.
-FIX23/#24 merged; main CI passed. A fresh local source/host review passed its
-hard-link/environment regressions, but no published independent review was found.
-The maintainer accepted this agent's completed review for the B12 merge decision;
-do not claim a separate independent reviewer.
+Next implementation task: [B13 — Verifiable bounded artifacts](tasks/B13.md).
+Its B09/B10 prerequisites are merged. B12 is complete within its card scope and
+must not be assigned again. M2b and M3 remain open milestones.
+
+B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
+the implementing agent's review for the B12 merge. No separate independent review
+is claimed. That authorization applied to B12; future merges require their own
+task-specific authorization.
 
 **One executable task ID = one branch = one PR.** Read
 [task-execution.md](task-execution.md) and the linked card. Continue from implementation
@@ -43,18 +48,38 @@ A later reviewer is an additional check, not a substitute for either self-review
 - B22 is an **umbrella only** and must not become one oversized PR. Its executable
   children B22a, B22b and B22c each deliver one PR in order.
 
-Ready choices: publish/verify and merge B12 under the maintainer's authorization;
-B13 has merged B09/B10
-prerequisites. B06/#20 and FIX17-18/#22 are merged. Prerequisites below describe
-ready-for-review acceptance; fixture-only preparatory work is not full delivery
-of a gated card.
+Delivered foundations: B01–B07 (B04a for lifecycle), B09–B12 and B26, plus
+FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonical
+workspace receipts, duplicate/restart protection and conservative shutdown.
+It does not collect task artifacts or implement the MCP task endpoint.
+
+Ready implementation choices: **B13 is recommended next**; B08 is supporting work
+whose B01/#8 and B03 prerequisites are now merged. B19 can prepare its manual
+capability-gate pulse, but task-history acceptance still waits for B17.
+Prerequisites below describe complete card acceptance; preparatory work does not
+complete a gated card.
+
+## Remaining milestone work
+
+| Milestone | Pending tasks and acceptance |
+| --- | --- |
+| M2b — One-worker delegation MVP | B13 artifacts; B14 cancellation/deadline/stop evidence; B15 four-operation MCP stdio adapter; B16 real pinned-client workflow; B17 executable thirteen-item acceptance matrix. None is complete. |
+| M3 — First supervised development task | B18 maintainer recovery plus B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
+| Supporting work | B08 differential submit-schema adoption; B19 opt-in diagnostic pulse. Neither replaces M2b/M3 acceptance. |
+| Later milestones/decisions | B21 and B22a–c storage evaluation/rollout; B23 safe fallback (M2c); B24 memory (M4); B25 routing evaluation (M5). These are not prerequisites for completing basic one-worker delegation and first use. |
+
+Recommended M2b order: **B13 → B14 → B15 → B16 → B17**. B18 can proceed after
+B14 without waiting for B17; B20 requires both B17 and B18 plus explicit model,
+provider and budget authorization. B13/B14 must preserve the existing task contract
+and safety boundaries. No fallback, memory, multi-worker controller or automatic
+merge is required to prove M3.
 
 ## Queue and detailed cards
 
 P1: required for trustworthy M2b; P2: supporting/M3 work; P3: later decision/gate.
 A merged card is retained as regression/review guidance, not new work.
 
-| ID and detailed contract | Priority | State at baseline | Prerequisites |
+| ID and detailed contract | Priority | Verified status | Prerequisites / remaining gate |
 | --- | --- | --- | --- |
 | [B01 — Safe schema diagnostics](tasks/B01.md) | P1 | Merged #8 | Existing #8 |
 | [B02 — Practical documentation templates](tasks/B02.md) | P2 | Merged / history | Merged #11 |
@@ -63,20 +88,20 @@ A merged card is retained as regression/review guidance, not new work.
 | [B05 — Single service owner per state home](tasks/B05.md) | P1 | Merged / history | Merged #14 |
 | [B06 — Diagnose MCP capability gate instability](tasks/B06.md) | P1 | Merged #20; 8 pinned-host runs passed | Pinned host |
 | [B07 — Credential-free Windows and Linux CI](tasks/B07.md) | P2 | Merged #19 | None |
-| [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Gated | #8 accepted/merged; B03 |
+| [B08 — Differential submit-schema adoption](tasks/B08.md) | P2 | Pending; ready supporting task | B01/#8 and B03 merged; corpus/adoption still to implement |
 | [B09 — Isolated Git workspace lifecycle](tasks/B09.md) | P1 | Merged #18; FIX17-18 merged #22 | B03 |
 | [B10 — Bounded subprocess primitive](tasks/B10.md) | P1 | Merged #17; FIX17-18 merged #22 | None |
-| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23 and FIX23/#24; independent review pending | B09, B10, pinned host |
-| [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Merged #24; main CI passed; independent review unrecorded | Merged #23 |
-| [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Locally validated; publication/merge authorized, pending final CI | B04a, B05, B09–B11 |
-| [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Ready | B09, B10 |
-| [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Gated | B12, B13 |
-| [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Gated | B06; B12/B14 for execution acceptance |
-| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Gated | B12–B15 |
-| [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Gated | B16 |
-| [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Gated | B04a, B05, B14 |
-| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Gated | B06; track 2 after B17 |
-| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Gated | B17, B18, authorized model |
+| [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23; corrected by #24; loopback fixture only | B09/B10 merged; pinned-host evidence recorded |
+| [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Merged #24; CI and repeated host regressions passed | Merged #23; review provenance described above |
+| [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Merged #25 at 68d3ea5; PR and main CI passed | B04a/B05/B09–B11 delivered; no remaining B12 gate |
+| [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Pending; ready; recommended next | B09/B10 merged |
+| [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Pending; gated by B13 | B10/B12 delivered; B13 partial artifacts pending |
+| [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Pending; complete execution acceptance gated by B14 | B06/B12 delivered; B14 pending; protocol preparation may start |
+| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Pending; gated by B13–B15 | B12 delivered; B13/B14/B15 pending |
+| [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Pending; gated by B16 | B16 actual transport/client workflow pending |
+| [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Pending; gated by B14 | B04a/B05 delivered; B14 pending; need not wait for B17 |
+| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Pending; gate pulse preparation ready, task history gated | B06 delivered; task-history track waits for B17 |
+| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |
 | [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Gated | B22a |

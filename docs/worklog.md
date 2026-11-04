@@ -910,3 +910,31 @@ Template:
   relative file links checked. Unchanged MCP/session-switch gates were not rerun.
 - Follow-up: push the correction on PR #25, verify new-head Windows/Ubuntu CI and
   feedback, then execute the maintainer-authorized merge. No merge on failed CI.
+
+## 2026-11-04 — Docs: backlog status after B12 merge
+
+- Branch: `docs/backlog-status-after-b12`, base `68d3ea5`.
+- Scope: documentation only; runtime, permissions, contracts and acceptance
+  scenarios are unchanged. Task ID: DOC-backlog-status.
+- Steps:
+  1. Compared fetched main with GitHub PR #25 and main CI run 41770348768;
+     confirmed B12 merged at `68d3ea5`, green Windows/Ubuntu checks and no open PRs.
+  2. Marked delivered foundations/B12, made B13 the next ready implementation
+     task, and recorded remaining M2b B13–B17 and M3 B18/B20 dependencies.
+  3. Distinguished ready B08 support and B19 gate-pulse preparation from full
+     task-history acceptance; retained all later storage/fallback/memory gates.
+  4. Aligned current AGENTS/handoff/roadmap/review pointers and task-card statuses;
+     preserved append-only evidence and clearly labeled historical checkpoints.
+  5. Reviewed dependency/authority claims, then the full documentation diff against
+     verified remote evidence; corrected stale B12 completion/review wording.
+- Files: `AGENTS.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/pr-review.md`,
+  `docs/roadmap.md`, `docs/tasks/B08.md`, `docs/tasks/B12.md`,
+  `docs/tasks/B13.md`, `docs/tasks/B19.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test --test-reporter=tap` -> 209 passed, zero failed, one
+  POSIX-only skip; `node examples/fallback-demo.mjs` -> 429 then 200; whitespace
+  and relative file links checked. OpenCode/MCP/session integration gates were
+  not rerun because this refresh changes only documentation.
+- Follow-up: publish this documentation branch when authorized; B13 remains the
+  next implementation task. M2b/M3 remain incomplete. No merge authorization is
+  inherited from B12 and no publication/merge was performed at this checkpoint.

@@ -25,12 +25,13 @@ authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
 Current state (2026-11-04): M2a is complete; B06 passed eight isolated pinned-host
-runs. Main `488e57a` contains B09–B11 and FIX23/#24, with successful main CI.
-B12 adds an opt-in durable scheduler on `task/B12-durable-scheduler`, locally
-validated and authorized for publication/merge after final checks. The maintainer
-accepted the implementing agent's review; no independent review is claimed.
-Follow the current handoff and validation;
-M2b still needs artifacts, stop handling, MCP transport and real-client acceptance.
+runs. Main `68d3ea5` includes B12/#25, B09–B11 and FIX23/#24, with successful
+Windows/Ubuntu PR and post-merge CI. B12's durable single-worker scheduler is
+delivered within its card scope. The maintainer accepted implementing-agent review;
+no independent review is claimed. Next task: B13 artifacts. M2b still needs
+B13–B17; M3 needs B18 recovery and B20 first real supervised use. See the current
+handoff/backlog for remaining dependencies; B12 merge approval does not authorize
+merging another task.
 
 ## PR feedback
 
