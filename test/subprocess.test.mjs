@@ -93,6 +93,27 @@ test('B10-03: ignored SIGTERM is escalated within the grace bound', { skip: proc
   assert.ok(Date.now() - started < 1500);
 });
 
+test('synchronous spawn failures preserve their original code without a child', async t => {
+  for (const invalid of [{ executable: 'invalid\u0000path' }, { args: ['invalid\u0000arg'] },
+    { env: { FIXTURE: 'invalid\u0000value' } }]) {
+    const result = await runSubprocess({ ...setup(t), ...invalid });
+    assert.equal(result.spawnErrorCode, 'ERR_INVALID_ARG_VALUE');
+    assert.deepEqual(result.termination, { reason: 'spawn-error', rootExitObserved: false,
+      descendantsStopped: false });
+    assert.equal(result.code, null);
+    assert.equal(result.signal, null);
+    assert.equal(result.stdout, '');
+    assert.equal(result.stderr, '');
+  }
+});
+
+test('Windows command-line overflow returns the original spawn error', { skip: process.platform !== 'win32' }, async t => {
+  const result = await runSubprocess({ ...setup(t), args: ['-e', ' '.repeat(100000)] });
+  assert.equal(result.spawnErrorCode, 'ENAMETOOLONG');
+  assert.deepEqual(result.termination, { reason: 'spawn-error', rootExitObserved: false,
+    descendantsStopped: false });
+});
+
 test('rejects invalid executable, args, env and bounds', async t => {
   const options = setup(t);
   for (const invalid of [{ executable: '' }, { args: ['ok', 1] }, { env: { SECRET: 1 } },

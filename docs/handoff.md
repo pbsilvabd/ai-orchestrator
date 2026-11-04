@@ -10,14 +10,18 @@ and idempotency index) is complete. Step 3 service-surface fixes passed independ
 regression reproductions passed. B04a, B05 and B03 are implemented and covered.
 There is no transport adapter or self-development use yet.
 
-## Next action: review B26 feedback instructions and pending implementation PRs
+## Next action: review FIX17-18 corrections, then resume B11
 
-B03/#16, B07/#19 and B06/#20 are merged; current main is `63e3e6b`.
-B10/#17 and B09/#18 remain open. B26 documentation is being delivered on
-`task/B26-pr-review-feedback` from main. Review its instructions independently.
+B01/#8, B03/#16, B07/#19, B06/#20, B26/#21, B10/#17 and B09/#18 are merged;
+the correction baseline is main `772fe3a`. Task FIX17-18 on
+`task/FIX17-18-post-merge` addresses two post-merge review findings: hidden tracked
+output must survive workspace cleanup, and synchronous spawn failures must retain
+their original error code. Review the regression fixtures and current-head CI.
 Use [the feedback protocol](pr-review.md): publish actionable findings on the PR,
 read all feedback before resuming development and answer findings with commit/evidence.
-Then review the pending implementation PRs against their task cards.
+After these corrections, B11 remains the next executor integration task and needs
+the pinned host and explicit worker authorization. This correction does not prove
+executor or M2b acceptance.
 
 The planned two-model development/review cycle requires B11–B20 delegation work,
 then a scoped controller design. See the protocol and roadmap. These instructions

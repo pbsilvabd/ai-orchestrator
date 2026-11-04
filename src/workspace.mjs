@@ -73,6 +73,12 @@ export function removeTaskWorkspace({ taskId, repositoryPath, baseCommit, branch
   const receipt = readReceipt(receiptPath);
   if (!sameReceipt(receipt, expected)) fail('workspace_conflict', 'workspace receipt does not match the task');
   const workspace = verifyWorkspace(expected, true);
+  // Status can hide modified tracked files behind skip-worktree or
+  // assume-unchanged bits. Refuse cleanup without changing the worker's index.
+  const indexEntries = git(['ls-files', '-v', '-z'], workspace.workspacePath).split('\0');
+  if (indexEntries.some(entry => /^[a-zS] /.test(entry))) {
+    fail('workspace_dirty', 'workspace index flags can hide changes; output and receipt were preserved');
+  }
   // Include ignored files: worktree removal deletes them too, and they may be
   // worker output or local configuration that is absent from the normal status.
   if (git(['status', '--porcelain', '--untracked-files=all', '--ignored'], workspace.workspacePath)) {

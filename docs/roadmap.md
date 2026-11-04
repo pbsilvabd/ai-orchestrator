@@ -63,10 +63,11 @@ See [Definition of Done](definition-of-done.md).
 Execution tracking: [backlog](backlog.md) now indexes detailed per-task contracts.
 Every executable ID delivers one PR after acceptance testing, implementation review,
 completed-diff review and correction/revalidation under [task-execution.md](task-execution.md).
-B04a/#13 and B05/#14 are merged; B01 is corrected on open #8. B03/#16 and B07/#19
-are merged. B10 and B09 are open as #17 and #18. B06 is open as PR #20 on
-`task/B06-mcp-capability-gate`; eight real pinned-host gate runs passed after bounded
-readiness and cleanup handling. B22 is split into sequential B22a/B22b/B22c PRs. These workflow
+B04a/#13, B05/#14, B01/#8, B03/#16, B07/#19, B06/#20, B26/#21,
+B10/#17 and B09/#18 are merged. FIX17-18 corrects post-merge review findings in
+workspace cleanup and synchronous spawn errors before B11 proceeds. Eight real
+pinned-host B06 gate runs passed after bounded readiness and cleanup handling.
+B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
 
 B04a hardening checkpoint (2026-11-02): ordinary store transitions, immutable task
