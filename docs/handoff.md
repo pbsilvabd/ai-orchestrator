@@ -9,23 +9,19 @@ branch uses the actual repository checkout; fetch again before editing.
 M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
 `2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Next implementation task: B13 — verifiable bounded artifacts
+## Current implementation status: B13 ready for review, B14 next
 
-B12 is merged through PR #25, including the canonical-path receipt correction.
+B13 (verifiable bounded artifacts) is implemented on branch `task/B13-bounded-artifacts`
+with 4 acceptance tests in `test/artifacts.test.mjs`, full test suite passing (213 passed,
+1 skipped), fallback demo passing and clean git diff whitespace checks.
+
+B12 was previously merged through PR #25, including the canonical-path receipt correction.
 Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
 serializes new submissions, never requeues duplicates or preexisting records and
 blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
-Its local evidence was 209 passed, zero failed, one POSIX-only skip; 27 focused
-tests, the pinned OpenCode loopback dispatch/authorization fixture and demo passed.
-The merge tree matches tested PR head `6ed35ad`; both remote CI runs above passed.
 
-B13 is pending and ready: B09 workspaces and B10 bounded subprocesses are merged.
-Read its card and define the artifact producer mapping before wiring the existing
-B12 scheduler. Collect fixed-base diff/changed files and real test command/exit
-evidence, including partial failures, byte caps, redaction and explicit limitations.
-No artifact collector or MCP task endpoint exists yet. The current OpenCode worker
-supports only the loopback fixture provider. No real provider is authorized by the
-completed B12 work.
+B14 (cancellation, deadlines and late events) is the next implementation task once B13
+is reviewed and merged.
 
 M2b remaining order: B13 → B14 → B15 → B16 → B17. B18 human recovery can follow
 B14; B20/M3 requires B17/B18 plus an available authorized real model/provider and

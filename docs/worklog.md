@@ -968,3 +968,25 @@ Template:
 - Follow-up: exercise the task skill on the next authorized B13 assignment and the
   review skill on an authorized PR review. B13 and M2b/M3 status remain unchanged.
   This local skills delivery does not inherit earlier publication/merge approvals.
+
+## 2026-11-07 — M2b: B13 verifiable bounded artifacts
+
+- Branch: `task/B13-bounded-artifacts`, base `c6bb77a`.
+- Scope: code, tests and documentation. Task ID: B13.
+- Steps:
+  1. Implemented trusted artifact collector in `src/artifacts.mjs` against fixed base commit,
+     covering committed, staged, unstaged, renamed, deleted and untracked files.
+  2. Handled byte caps on diff and log tails, binary file omission reporting, and
+     workspace containment verification.
+  3. Added secret pattern redaction and multi-byte UTF-8 truncation utilities in `src/redaction.mjs`.
+  4. Wired artifact collection into `src/scheduler.mjs` on completion and updated `src/service.mjs`
+     and `src/tasks.mjs` to validate and project recorded task artifacts.
+  5. Implemented acceptance test suite in `test/artifacts.test.mjs` covering B13-01 to B13-04.
+  6. Verified full regression suite (213 passed, 1 skipped) and fallback demo.
+- Files: `src/artifacts.mjs`, `src/redaction.mjs`, `src/opencode.mjs`, `src/scheduler.mjs`,
+  `src/service.mjs`, `src/tasks.mjs`, `test/artifacts.test.mjs`, `docs/tasks/B13.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: `node --test test/artifacts.test.mjs` -> 4 passed, 0 failed;
+  `node --test` -> 213 passed, 0 failed, 1 POSIX-only skipped; `node examples/fallback-demo.mjs`
+  -> 429 then 200; `git diff --check` -> clean.
+- Follow-up: publish PR for B13, verify CI and request review; B14 follows upon B13 merge.

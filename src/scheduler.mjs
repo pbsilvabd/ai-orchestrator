@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { createTaskWorkspace } from './workspace.mjs';
 import { runSubprocess } from './subprocess.mjs';
+import { collectTaskArtifacts } from './artifacts.mjs';
 
 // Private service-owned queue. The adapter is trusted application code, never task
 // text. It prepares a synchronous invocation; this module alone starts the child.
@@ -92,6 +93,11 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
       }
       // A cancel/shutdown/other terminal decision wins over a late completion.
       if (current.status !== 'running' || current.attempts.at(-1)?.attemptId !== attemptId) return;
+      const remainingForArtifacts = Math.max(0,
+        running.request.limits.budgetMs - Math.ceil(performance.now() - started));
+      const artifact = await collectTaskArtifacts({ task: running, workspace,
+        testCommands: worker.testCommands ?? [], evidenceLevel: worker.evidenceLevel ?? 'unit',
+        remainingBudgetMs: remainingForArtifacts });
       const finishedAt = now();
       if (!knownExit && !spawnFailed) { block(taskId, 'worker-outcome-uncertain'); return; }
       store.updateTask(taskId, draft => {
@@ -102,6 +108,7 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
         attempt.outcome = spawnFailed ? 'spawn-error' : draft.status;
         attempt.exitCode = result.code;
         attempt.spawnErrorCode = result.spawnErrorCode;
+        draft.artifact = artifact;
         draft.progress.push({ at: finishedAt, event: draft.status, detail: null });
       });
     } catch (error) {

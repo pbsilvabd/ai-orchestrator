@@ -53,7 +53,7 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Ready implementation choices: **B13 is recommended next**; B08 is supporting work
+Ready implementation choices: B13 implemented and ready for review; **B14 is recommended next**; B08 is supporting work
 whose B01/#8 and B03 prerequisites are now merged. B19 can prepare its manual
 capability-gate pulse, but task-history acceptance still waits for B17.
 Prerequisites below describe complete card acceptance; preparatory work does not
@@ -94,8 +94,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B11 — Authorized OpenCode invocation](tasks/B11.md) | P1 | Merged #23; corrected by #24; loopback fixture only | B09/B10 merged; pinned-host evidence recorded |
 | [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Merged #24; CI and repeated host regressions passed | Merged #23; review provenance described above |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Merged #25 at 68d3ea5; PR and main CI passed | B04a/B05/B09–B11 delivered; no remaining B12 gate |
-| [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Pending; ready; recommended next | B09/B10 merged |
-| [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Pending; gated by B13 | B10/B12 delivered; B13 partial artifacts pending |
+| [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Ready for review on task/B13-bounded-artifacts | B09/B10 merged |
+| [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Pending; recommended next after B13 review | B10/B12 delivered; B13 ready |
 | [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Pending; complete execution acceptance gated by B14 | B06/B12 delivered; B14 pending; protocol preparation may start |
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Pending; gated by B13–B15 | B12 delivered; B13/B14/B15 pending |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Pending; gated by B16 | B16 actual transport/client workflow pending |

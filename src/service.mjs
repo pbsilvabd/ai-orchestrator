@@ -14,6 +14,7 @@ import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
 import { RepositoryError, validateRepositoryIdentity } from './repository.mjs';
 import { createTaskScheduler } from './scheduler.mjs';
+import { redactSecrets, containsSecretPattern, truncateUtf8, truncateUtf8Tail } from './redaction.mjs';
 
 export const SCHEMA_VERSION = 1;
 export const TASK_STATUSES = ['queued', 'running', 'succeeded', 'failed', 'blocked', 'cancelled'];
@@ -25,12 +26,6 @@ export const ERROR_CODES = ['invalid_argument', 'unknown_task', 'not_owner', 'id
   'authorization_denied', 'limit_exceeded', 'result_not_ready', 'unavailable', 'internal'];
 export const MAX_DIFF_BYTES = 1_048_576; // 1 MiB diff cap from the contract.
 export const MAX_LOG_BYTES = 262_144; // 256 KiB log tail cap from the contract.
-const SECRET_PATTERNS = [
-  /\bBearer\s+[A-Za-z0-9._~+/=-]+/gi,
-  /\bBasic\s+[A-Za-z0-9+/=]+/gi,
-  /\b(authorization\s*[:=]\s*)(?:(?:Bearer|Basic)\s+)?[^\s,;]+/gi,
-  /\b(api[_-]?key|access[_-]?token|refresh[_-]?token|client[_-]?secret)\s*[:=]\s*[^\s,;]+/gi,
-];
 
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 const BRANCH = /^[A-Za-z0-9._/-]{1,128}$/;
@@ -237,7 +232,10 @@ export function createTaskService(options = {}) {
     const task = requireOwned(taskId);
     if (!RESULT_STATUSES.includes(task.status)) fail('result_not_ready', 'task is not finished');
 
-    const runs = (Array.isArray(task.testRuns) ? task.testRuns : []).map(run => ({
+    // Flat fields remain readable for valid v1 records written before B13.
+    const artifact = task.artifact ?? task;
+    const selected = new Set(include ?? INCLUDED_ARTIFACTS);
+    const runs = (Array.isArray(artifact.testRuns) ? artifact.testRuns : []).map(run => ({
       command: redactSecrets(run?.command),
       exitCode: run?.exitCode,
       durationMs: run?.durationMs,
@@ -245,9 +243,9 @@ export function createTaskService(options = {}) {
       outputTail: redactSecrets(run?.outputTail),
       outputTruncated: run?.outputTruncated === true,
     }));
-    const changedFiles = Array.isArray(task.changedFiles) ? task.changedFiles.map(redactSecrets) : [];
-    let diff = typeof task.diff === 'string' ? redactSecrets(task.diff) : null;
-    let diffTruncated = task.diffTruncated === true;
+    const changedFiles = selected.has('diff') && Array.isArray(artifact.changedFiles) ? artifact.changedFiles.map(redactSecrets) : [];
+    let diff = selected.has('diff') && typeof artifact.diff === 'string' ? redactSecrets(artifact.diff) : null;
+    let diffTruncated = selected.has('diff') && artifact.diffTruncated === true;
     let outputBytes = 0;
     const diffLimit = Math.min(MAX_DIFF_BYTES, task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES);
     if (diff !== null && Buffer.byteLength(diff, 'utf8') > diffLimit) {
@@ -259,7 +257,7 @@ export function createTaskService(options = {}) {
     const maxOutputBytes = task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES;
     let remainingLogBytes = Math.min(MAX_LOG_BYTES, Math.max(0, maxOutputBytes - outputBytes));
     const boundedRuns = runs.map(run => {
-      const raw = typeof run.outputTail === 'string' ? run.outputTail : '';
+      const raw = selected.has('log') && typeof run.outputTail === 'string' ? run.outputTail : '';
       if (run.outputTruncated === true) logsTruncated = true;
       const cap = Math.min(remainingLogBytes, Math.max(0, maxOutputBytes - outputBytes));
       const trimmed = truncateUtf8Tail(raw, cap);
@@ -271,10 +269,10 @@ export function createTaskService(options = {}) {
       return { ...run, outputTail: trimmed, outputTruncated: run.outputTruncated === true || didTruncate };
     });
 
-    const limitations = [];
+    const limitations = Array.isArray(artifact.limitations) ? artifact.limitations.map(redactSecrets) : [];
     const passed = runs.some(run => typeof run.command === 'string' && run.command.trim() && run.exitCode === 0);
     if (task.status === 'succeeded' && !passed) {
-      limitations.push('success without a recorded passing test command and exit code');
+      limitations.unshift('success without a recorded passing test command and exit code');
     }
     if ((task.status === 'failed' || task.status === 'blocked') && diff === null) {
       limitations.push('no artifact record for a failed task');
@@ -283,19 +281,19 @@ export function createTaskService(options = {}) {
     // Unit-level local test execution is the evidence source of the M2b worker; the
     // verification state of a success claim is tracked by the recorded runs and the
     // limitations list, never by the level label alone.
-    const evidenceLevel = 'unit';
+    const evidenceLevel = EVIDENCE_LEVELS.includes(artifact.evidenceLevel) ? artifact.evidenceLevel : 'unit';
 
     return {
       schemaVersion: SCHEMA_VERSION,
       taskId: task.taskId,
       status: task.status,
-      baseCommit: redactSecrets(task.baseCommit ?? task.request?.repository?.baseRef ?? null),
-      branch: redactSecrets(task.branch ?? task.request?.repository?.branch ?? null),
-      headCommit: redactSecrets(task.headCommit ?? null),
+      baseCommit: redactSecrets(artifact.baseCommit ?? task.baseCommit ?? task.request?.repository?.baseRef ?? null),
+      branch: redactSecrets(artifact.branch ?? task.request?.repository?.branch ?? null),
+      headCommit: redactSecrets(artifact.headCommit ?? null),
       diff,
       diffTruncated,
       changedFiles,
-      testRuns: boundedRuns,
+      testRuns: selected.has('tests') ? boundedRuns : [],
       logsTruncated,
       attempts: task.attempts.map(attempt => ({
         attemptId: attempt.attemptId,
@@ -305,7 +303,7 @@ export function createTaskService(options = {}) {
         outcome: redactSecrets(attempt.outcome ?? null),
       })),
       limitations,
-      cost: { known: false, amount: null, currency: 'unknown', note: 'cost is unknown until a provider is authorized' },
+      cost: artifact.cost ?? { known: false, amount: null, currency: 'unknown', note: 'cost is unknown until a provider is authorized' },
       evidenceLevel,
       sanitized: true, // Credential-shaped strings were redacted at input/artifact boundaries.
     };
@@ -494,38 +492,4 @@ function validateOperationInput(input, allowed, operation) {
   if (!isPlainObject(input)) fail('invalid_argument', `${operation} requires an object`);
   for (const key of Object.keys(input)) if (!allowed.includes(key)) fail('invalid_argument', `unknown ${operation} field`);
   if (typeof input.taskId !== 'string' || !IDENTIFIER.test(input.taskId)) fail('invalid_argument', 'taskId is not a valid identifier');
-}
-
-function redactSecrets(value) {
-  if (typeof value !== 'string') return value;
-  return SECRET_PATTERNS.reduce((text, pattern) => text.replace(pattern, match => {
-    const separator = match.match(/^([^:=]*[:=]\s*)/);
-    return `${separator?.[1] ?? ''}[REDACTED]`;
-  }), value);
-}
-
-function containsSecretPattern(value) {
-  if (typeof value === 'string') return SECRET_PATTERNS.some(pattern => {
-    pattern.lastIndex = 0;
-    return pattern.test(value);
-  });
-  if (Array.isArray(value)) return value.some(containsSecretPattern);
-  if (isPlainObject(value)) return Object.values(value).some(containsSecretPattern);
-  return false;
-}
-
-function truncateUtf8(value, maxBytes) {
-  const bytes = Buffer.from(value, 'utf8');
-  if (bytes.length <= maxBytes) return value;
-  let end = Math.max(0, maxBytes);
-  while (end > 0 && (bytes[end] & 0xc0) === 0x80) end--;
-  return bytes.subarray(0, end).toString('utf8');
-}
-
-function truncateUtf8Tail(value, maxBytes) {
-  const bytes = Buffer.from(value, 'utf8');
-  if (bytes.length <= maxBytes) return value;
-  let start = bytes.length - maxBytes;
-  while (start < bytes.length && (bytes[start] & 0xc0) === 0x80) start++;
-  return bytes.subarray(start).toString('utf8');
 }
