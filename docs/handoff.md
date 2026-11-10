@@ -1,15 +1,16 @@
-# Continuation point — 2026-11-04
+# Continuation point — 2026-11-09
 
-Verified remote main is `68d3ea51c0b65ae3aa97d79ed0833d42fbfabe51`, including
-B12/#25, FIX23/#24, B11/#23 and FIX17-18/#22. Windows/Ubuntu PR CI run
-41770113686 and post-merge main run 41770348768 passed. No open PR was found
-when this status refresh began; fetch and inspect PRs again before choosing work.
+Verified remote main is `a147d13174371f5cd16685dc3a17fd853b602f85`, including
+B12/#25, B13/#35 and B13 post-merge corrections. B14 is published as
+[PR #37](https://github.com/pbsilvabd/ai-orchestrator/pull/37) from
+`task/B14-cancellation-deadlines`; Windows and Ubuntu checks are pending. Refresh
+GitHub status before taking the next action.
 The mirrored ChatGPT project snapshot is older and is not a Git checkout. This
 branch uses the actual repository checkout; fetch again before editing.
 M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
 `2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Current implementation status: B13 merged, B14 next
+## Current implementation status: B14 PR #37 open
 
 B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
 Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log
@@ -20,10 +21,13 @@ Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
 serializes new submissions, never requeues duplicates or preexisting records and
 blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
 
-B14 (cancellation, deadlines and late events) is the next implementation task after
-the B13 post-merge corrections land.
+B14 now persists active cancellation before signalling the subprocess root, retains
+partial artifacts, halts later dispatch and preserves unknown stop/effect evidence.
+Windows local tests confirm a detached descendant can outlive the root; restart
+reconciliation still blocks and never replays. The implementation does not claim a
+tree-stop proof or add a `running → cancelled` path.
 
-M2b remaining order: B14 → B15 → B16 → B17. B18 human recovery can follow
+M2b remaining order: B14 review/merge → B15 → B16 → B17. B18 human recovery can follow
 B14; B20/M3 requires B17/B18 plus an available authorized real model/provider and
 a small approved task. B08 is ready supporting work; B19's diagnostic pulse can
 be prepared, but its task-history track waits for B17. Do not implement fallback,

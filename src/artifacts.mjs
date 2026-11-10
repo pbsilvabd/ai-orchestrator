@@ -12,7 +12,7 @@ const EVIDENCE_LEVELS = new Set(['unit', 'local-http', 'opencode-integration', '
 
 // Trusted producer for B13. Commands and evidence level come from service-owned
 // worker configuration, never from task text or model output.
-export async function collectTaskArtifacts({ task, workspace, testCommands = [],
+export async function collectTaskArtifacts({ task, workspace, testCommands = [], workerResult,
   evidenceLevel = 'unit', remainingBudgetMs, signal, shouldContinue = () => true,
   onUncertainTest = () => {} } = {}) {
   validateInputs({ task, workspace, testCommands, evidenceLevel, remainingBudgetMs });
@@ -144,6 +144,17 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
   const diffBytes = diff === null ? 0 : Buffer.byteLength(diff, 'utf8');
   let remainingLogs = Math.min(MAX_LOG_BYTES, Math.max(0, outputBudget - diffBytes));
   let logsTruncated = false;
+  let workerLog;
+  if (workerResult && (workerResult.stdoutBytes || workerResult.stderrBytes)) {
+    const output = [workerResult.stdout, workerResult.stderr].filter(Boolean)
+      .map(redactSecrets).join('\n');
+    const outputTail = truncateUtf8Tail(output, remainingLogs);
+    const outputTruncated = workerResult.stdoutTruncated || workerResult.stderrTruncated ||
+      Buffer.byteLength(outputTail, 'utf8') < Buffer.byteLength(output, 'utf8');
+    workerLog = { outputTail, outputTruncated };
+    logsTruncated = outputTruncated;
+    remainingLogs -= Buffer.byteLength(outputTail, 'utf8');
+  }
 
   const processedRuns = [];
   for (const run of testRuns) {
@@ -176,6 +187,7 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
     diffTruncated,
     changedFiles: sanitizedChangedFiles,
     testRuns: processedRuns,
+    ...(workerLog && { workerLog }),
     logsTruncated,
     limitations: sanitizedLimitations,
     cost: { known: false, amount: null, currency: 'unknown',

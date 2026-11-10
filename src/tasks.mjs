@@ -479,8 +479,15 @@ function validateArtifact(artifact) {
     fail('invalid_argument', 'artifact must be an object');
   const required = ['baseCommit', 'branch', 'headCommit', 'diff', 'diffTruncated', 'changedFiles',
     'testRuns', 'logsTruncated', 'limitations', 'cost', 'evidenceLevel'];
-  if (Object.keys(artifact).sort().join(',') !== required.sort().join(','))
+  const keys = Object.keys(artifact).filter(key => key !== 'workerLog');
+  if (keys.sort().join(',') !== required.sort().join(','))
     fail('invalid_argument', 'artifact fields do not match the producer contract');
+  if (Object.hasOwn(artifact, 'workerLog')) {
+    const log = artifact.workerLog;
+    if (!log || typeof log !== 'object' || Array.isArray(log) || Object.keys(log).length !== 2 ||
+        typeof log.outputTail !== 'string' || typeof log.outputTruncated !== 'boolean')
+      fail('invalid_argument', 'artifact worker log is invalid');
+  }
   for (const field of ['baseCommit', 'branch'])
     if (typeof artifact[field] !== 'string' || !artifact[field]) fail('invalid_argument', `artifact ${field} is required`);
   if (artifact.headCommit !== null && (typeof artifact.headCommit !== 'string' || !/^[0-9a-f]{40,64}$/.test(artifact.headCommit)))

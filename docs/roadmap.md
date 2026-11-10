@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-04. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-09. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -34,9 +34,10 @@ error handling. B11/#23 is merged; FIX23 corrects post-merge hard-link/environme
 authorization findings and a Windows test-cleanup failure. FIX23/#24 is merged and
 main CI passed; no published independent review was found. B12 adds a locally
 validated opt-in durable single-worker scheduler connected to the B11 builder,
-merged through PR #25 at main `68d3ea5`. Windows/Ubuntu PR CI run 41770113686
-and post-merge main CI run 41770348768 passed. B13 artifact collection merged
-through PR #35 at `254b5b9`, with passing Windows/Ubuntu post-merge CI.
+merged through PR #25. B13 artifact collection and its post-merge corrections are
+included in main `a147d13`; Windows/Ubuntu checks passed for the merge/follow-up
+deliveries. B14 cancellation/deadline implementation is published for review in PR #37;
+Windows and Ubuntu CI are pending.
 There is no MCP/API endpoint, integrated fallback, semantic
 memory or completed self-development workflow yet.
 
@@ -52,7 +53,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12 and B13 merged; B14–B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12/B13 merged; B14 PR #37 open; B15–B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Pending; B20 requires M2b/B17, B18 and an available authorized real model | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
