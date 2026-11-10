@@ -1,9 +1,9 @@
 # Agent backlog — execution contracts
 
 Verified 2026-11-09: `origin/main` at `a147d13` (B13 post-merge corrections included).
-B14 is in implementation on `task/B14-cancellation-deadlines`; see its task card
-and the validation log for current evidence. Refresh remote status before review or
-choosing the next implementation task.
+B14 is published as [PR #37](https://github.com/pbsilvabd/ai-orchestrator/pull/37)
+from `task/B14-cancellation-deadlines`; Windows and Ubuntu CI are pending. Refresh
+remote status before review or choosing the next implementation task.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.

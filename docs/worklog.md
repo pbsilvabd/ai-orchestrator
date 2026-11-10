@@ -1059,4 +1059,5 @@ Template:
 - Validation: `node --test` → 223 passed, 0 failed, 1 POSIX-only skip;
   `node examples/fallback-demo.mjs` → 429 then 200; `git diff --check` → clean.
   OpenCode/MCP integration gates and Ubuntu CI were not rerun locally.
-- Follow-up: publish the B14 PR, verify its remote head and CI, then request review.
+- Follow-up: monitor Windows/Ubuntu checks and review feedback on PR #37; merge remains
+  a separate maintainer decision.

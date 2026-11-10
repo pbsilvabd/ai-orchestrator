@@ -1,15 +1,16 @@
 # Continuation point — 2026-11-09
 
 Verified remote main is `a147d13174371f5cd16685dc3a17fd853b602f85`, including
-B12/#25, B13/#35 and B13 post-merge corrections. B14 is implemented on
-`task/B14-cancellation-deadlines`; its PR and remote checks are the current review
-checkpoint. Refresh GitHub status before taking the next action.
+B12/#25, B13/#35 and B13 post-merge corrections. B14 is published as
+[PR #37](https://github.com/pbsilvabd/ai-orchestrator/pull/37) from
+`task/B14-cancellation-deadlines`; Windows and Ubuntu checks are pending. Refresh
+GitHub status before taking the next action.
 The mirrored ChatGPT project snapshot is older and is not a Git checkout. This
 branch uses the actual repository checkout; fetch again before editing.
 M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
 `2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Current implementation status: B14 in progress
+## Current implementation status: B14 PR #37 open
 
 B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
 Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log

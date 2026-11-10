@@ -1251,6 +1251,10 @@ Git 2.55.0.windows.5. Base `a147d13174371f5cd16685dc3a17fd853b602f85`, branch
 
 Focused validation during implementation: `node --test test/scheduler.test.mjs test/task-service.test.mjs test/subprocess.test.mjs` passed 54 tests with one platform skip before the final deadline-race and late-success tests were added; the final full-suite run above includes all subsequent changes and those regressions. Targeted final runs of `node --test --test-name-pattern="B14-01|B14-02|B10-04" test/scheduler.test.mjs test/subprocess.test.mjs` and `node --test --test-name-pattern="B14-04" test/scheduler.test.mjs` passed all five selected checks / exit 0.
 
+Publication: [PR #37](https://github.com/pbsilvabd/ai-orchestrator/pull/37), base
+`main`, initial head `6135e3082f408710bc7181675aa1c00ae00607f1`. The branch and PR
+head matched when verified. Windows and Ubuntu CI runs were pending at that checkpoint.
+
 Evidence level: local service, real subprocess, Git/workspace fixtures and a
 Windows detached descendant. The process adapter proves root exit only; descendant
 stop and effect reversal remain unknown, so cancellation/deadline/crash outcomes stay
