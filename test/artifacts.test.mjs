@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { collectTaskArtifacts, MAX_DIFF_BYTES, MAX_LOG_BYTES } from '../src/artifacts.mjs';
 import { createTaskService } from '../src/service.mjs';
+import { validate } from '../src/contracts/validate.mjs';
 
 const git = (repo, ...args) => execFileSync('git', ['-C', repo, ...args],
   { encoding: 'utf8', windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
@@ -181,7 +182,17 @@ test('B13-04: producer redacts credential sentinels before the scheduler persist
     limits: { maxAttempts: 1, budgetMs: 10_000, maxOutputBytes: 1_048_576 } });
   await service.whenIdle();
   const recordText = readFileSync(join(home, 'tasks', `${accepted.taskId}.json`), 'utf8');
-  const resultText = JSON.stringify(service.getTaskResult({ taskId: accepted.taskId }));
+  const recordSchema = JSON.parse(readFileSync(new URL('../src/contracts/schemas/task-record.schema.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validate(recordSchema, JSON.parse(recordText)), { ok: true });
+  const result = service.getTaskResult({ taskId: accepted.taskId });
+  const logs = service.getTaskResult({ taskId: accepted.taskId, include: ['log'] });
+  const tests = service.getTaskResult({ taskId: accepted.taskId, include: ['tests'] });
+  assert.match(logs.testRuns[0].outputTail, /\[REDACTED\]/);
+  assert.equal(logs.testRuns[0].outputTail, result.testRuns[0].outputTail);
+  assert.equal(logs.diff, null);
+  assert.equal(tests.testRuns[0].outputTail, '');
+  assert.equal(tests.testRuns[0].exitCode, 0);
+  const resultText = JSON.stringify(result);
   assert.equal(recordText.includes(sentinel), false);
   assert.equal(resultText.includes(sentinel), false);
   assert.match(recordText, /\[REDACTED\]/);

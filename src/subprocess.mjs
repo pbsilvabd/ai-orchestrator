@@ -3,6 +3,12 @@ import { performance } from 'node:perf_hooks';
 
 const MAX_TIMER_MS = 2_147_483_647;
 
+// Other child errors can also occur during termination of a live process.
+export function isDefiniteSpawnFailure(result) {
+  return result.termination.reason === 'spawn-error' &&
+    ['ENOENT', 'ENAMETOOLONG', 'ERR_INVALID_ARG_VALUE'].includes(result.spawnErrorCode);
+}
+
 // Run one child without a shell. Only the explicitly supplied environment reaches it.
 export function runSubprocess({ executable, args = [], cwd, env = {}, stdoutMaxBytes = 1_048_576,
   stderrMaxBytes = 1_048_576, timeoutMs = 30_000, killGraceMs = 1_000, signal } = {}) {

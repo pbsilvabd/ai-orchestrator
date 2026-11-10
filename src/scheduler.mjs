@@ -3,7 +3,7 @@ import { mkdirSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { createTaskWorkspace } from './workspace.mjs';
-import { runSubprocess } from './subprocess.mjs';
+import { isDefiniteSpawnFailure, runSubprocess } from './subprocess.mjs';
 import { collectTaskArtifacts } from './artifacts.mjs';
 
 // Private service-owned queue. The adapter is trusted application code, never task
@@ -32,6 +32,10 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
     fault = error?.code === 'unavailable' ? 'unavailable' : 'internal';
   };
   const block = (taskId, reason, artifact = undefined) => store.updateTask(taskId, draft => {
+    if (draft.status === 'blocked' && artifact !== undefined) {
+      draft.artifact = artifact;
+      return;
+    }
     if (draft.status !== 'running') return;
     const at = now();
     draft.status = 'blocked';
@@ -83,11 +87,7 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
       const knownExit = result.termination.reason === 'exited' &&
         result.termination.rootExitObserved && Number.isInteger(result.code) &&
         performance.now() - started < running.request.limits.budgetMs;
-      // B10 also observes child errors during termination. Only unambiguous
-      // prelaunch failures authorize advancing the queue; e.g. EPERM could be a
-      // failed kill of a live process and must remain blocked.
-      const spawnFailed = result.termination.reason === 'spawn-error' &&
-        ['ENOENT', 'ENAMETOOLONG', 'ERR_INVALID_ARG_VALUE'].includes(result.spawnErrorCode);
+      const spawnFailed = isDefiniteSpawnFailure(result);
       if ((!knownExit && !spawnFailed) || current.status === 'blocked') {
         uncertain = true;
         stopped = true; // No next worker while an old worker may still be running.
@@ -110,16 +110,26 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
         return;
       }
 
+      let testOutcomeUncertain = false;
       const artifact = await collectTaskArtifacts({ task: running, workspace,
         testCommands: spawnFailed ? [] : (worker.testCommands ?? []),
         evidenceLevel: worker.evidenceLevel ?? 'unit',
         remainingBudgetMs: remainingForArtifacts,
+        signal: active.controller.signal,
+        onUncertainTest: () => { testOutcomeUncertain = true; },
         shouldContinue: () => {
           const latest = store.readTask(taskId);
           return latest.status === 'running' && latest.attempts.at(-1)?.attemptId === attemptId;
         } });
       const afterArtifacts = store.readTask(taskId);
-      if (afterArtifacts.status !== 'running' || afterArtifacts.attempts.at(-1)?.attemptId !== attemptId) return;
+      if (afterArtifacts.attempts.at(-1)?.attemptId !== attemptId) return;
+      if (afterArtifacts.status === 'blocked' || testOutcomeUncertain) {
+        uncertain = true;
+        stopped = true;
+        block(taskId, 'artifact-test-outcome-uncertain', artifact);
+        return;
+      }
+      if (afterArtifacts.status !== 'running') return;
       const finishedAt = now();
       store.updateTask(taskId, draft => {
         draft.status = knownExit && result.code === 0 ? 'succeeded' : 'failed';

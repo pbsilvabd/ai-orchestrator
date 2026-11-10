@@ -9,21 +9,21 @@ branch uses the actual repository checkout; fetch again before editing.
 M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
 `2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
 
-## Current implementation status: B13 ready for review, B14 next
+## Current implementation status: B13 merged, B14 next
 
-B13 (verifiable bounded artifacts) is implemented on branch `task/B13-bounded-artifacts`
-with 4 acceptance tests in `test/artifacts.test.mjs`, full test suite passing (213 passed,
-1 skipped), fallback demo passing and clean git diff whitespace checks.
+B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
+Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log
+for cancellation and deadline handling during artifact tests, log selection and schema checks.
 
 B12 was previously merged through PR #25, including the canonical-path receipt correction.
 Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
 serializes new submissions, never requeues duplicates or preexisting records and
 blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
 
-B14 (cancellation, deadlines and late events) is the next implementation task once B13
-is reviewed and merged.
+B14 (cancellation, deadlines and late events) is the next implementation task after
+the B13 post-merge corrections land.
 
-M2b remaining order: B13 → B14 → B15 → B16 → B17. B18 human recovery can follow
+M2b remaining order: B14 → B15 → B16 → B17. B18 human recovery can follow
 B14; B20/M3 requires B17/B18 plus an available authorized real model/provider and
 a small approved task. B08 is ready supporting work; B19's diagnostic pulse can
 be prepared, but its task-history track waits for B17. Do not implement fallback,

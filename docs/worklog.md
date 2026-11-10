@@ -1016,3 +1016,17 @@ Template:
   OpenCode and MCP integration gates were not rerun.
 - Follow-up: push to the existing PR #35, verify CI at the new head, and request
   re-review. B14 remains next after B13 merges.
+
+## 2026-11-09 — M2b B13 post-merge corrections
+
+- Branch `fix/B13-post-merge` from `254b5b9`. Scoped to the
+  [PR #35 post-merge review](https://github.com/pbsilvabd/ai-orchestrator/pull/35#issuecomment-6755949829).
+- Made artifact subprocesses follow the scheduler's conservative outcome handling.
+  Cancellation and an uncertain test exit halt the queue and retain ownership
+  and partial artifacts. The existing blocked task keeps its original reason.
+- Fixed log-only result projection and updated the declarative task-record schema
+  to accept nested artifacts and the scheduler's persisted attempt fields.
+- Added regressions for queue and ownership behavior during cancellation and
+  deadline, and validated log selection and the schema against a real task record.
+- Updated the task contract, B13 card, handoff, backlog and roadmap. See the
+  validation log for commands, results and evidence limits.
