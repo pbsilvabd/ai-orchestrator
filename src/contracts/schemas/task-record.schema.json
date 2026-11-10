@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Declarative form of the persisted task record. Mirrors the current checks in src/tasks.mjs validateTask (lines 348-409), the shape written by createTask (lines 192-208) and the artifact fields updateTask may add (src/service.mjs:192-224). It is deliberately stricter than today's validateTask at three points, as the adoption target: unknown object keys are rejected, the taskId pattern is the runtime identifier pattern (UUIDv4 is a submit-time product rule, not a store check), and attempts[].outcome must be a non-empty string when present (the store never checks it). The record may also carry branch, which src/service.mjs:207 reads and no runtime writer sets today. Checked by src/contracts/validate.mjs; the meta block is ignored by the checker.",
+  "$comment": "Declarative persisted task record. Accepts optional scheduler dispatch receipts, process outcomes, nested B13 artifacts and legacy flat artifact fields. Cross-field consistency and byte budgets are enforced by runtime code.",
   "meta": {
     "title": "task-record",
-    "source": "src/tasks.mjs:348-409"
+    "source": "src/tasks.mjs validateTask and validateArtifact"
   },
   "type": "object",
   "additionalProperties": false,
@@ -93,6 +93,20 @@
             "description": "Recorded by the executor adapter; the store does not validate it today.",
             "type": ["string", "null"],
             "minLength": 1
+          },
+          "exitCode": { "type": ["integer", "null"] },
+          "spawnErrorCode": { "type": ["string", "null"] },
+          "workspace": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["taskId", "baseCommit", "branch", "workspacePath", "receiptPath"],
+            "properties": {
+              "taskId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+              "baseCommit": { "type": "string", "pattern": "^[a-f0-9]{40,64}$" },
+              "branch": { "type": "string", "minLength": 1 },
+              "workspacePath": { "type": "string", "minLength": 1 },
+              "receiptPath": { "type": "string", "minLength": 1 }
+            }
           }
         }
       }
@@ -150,6 +164,55 @@
           "detail": {
             "type": ["string", "null"]
           }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "baseCommit", "branch", "headCommit", "diff", "diffTruncated", "changedFiles",
+        "testRuns", "logsTruncated", "limitations", "cost", "evidenceLevel"
+      ],
+      "properties": {
+        "baseCommit": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "headCommit": { "type": ["string", "null"], "pattern": "^[a-f0-9]{40,64}$" },
+        "diff": { "type": ["string", "null"] },
+        "diffTruncated": { "type": "boolean" },
+        "changedFiles": { "type": "array", "items": { "type": "string" } },
+        "testRuns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["command", "exitCode", "durationMs", "summary", "outputTail", "outputTruncated"],
+            "properties": {
+              "command": { "type": "string" },
+              "exitCode": { "type": "integer" },
+              "durationMs": { "type": "integer" },
+              "summary": { "type": "string" },
+              "outputTail": { "type": "string" },
+              "outputTruncated": { "type": "boolean" }
+            }
+          }
+        },
+        "logsTruncated": { "type": "boolean" },
+        "limitations": { "type": "array", "items": { "type": "string" } },
+        "cost": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["known", "amount", "currency", "note"],
+          "properties": {
+            "known": { "type": "boolean", "enum": [false] },
+            "amount": { "type": "null" },
+            "currency": { "type": "string" },
+            "note": { "type": "string" }
+          }
+        },
+        "evidenceLevel": {
+          "type": "string",
+          "enum": ["unit", "local-http", "opencode-integration", "use-on-project"]
         }
       }
     },

@@ -235,6 +235,7 @@ export function createTaskService(options = {}) {
     // Flat fields remain readable for valid v1 records written before B13.
     const artifact = task.artifact ?? task;
     const selected = new Set(include ?? INCLUDED_ARTIFACTS);
+    const includeLogs = selected.has('log');
     const runs = (Array.isArray(artifact.testRuns) ? artifact.testRuns : []).map(run => ({
       command: redactSecrets(run?.command),
       exitCode: run?.exitCode,
@@ -257,16 +258,16 @@ export function createTaskService(options = {}) {
     const maxOutputBytes = task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES;
     let remainingLogBytes = Math.min(MAX_LOG_BYTES, Math.max(0, maxOutputBytes - outputBytes));
     const boundedRuns = runs.map(run => {
-      const raw = selected.has('log') && typeof run.outputTail === 'string' ? run.outputTail : '';
-      if (run.outputTruncated === true) logsTruncated = true;
+      const raw = includeLogs && typeof run.outputTail === 'string' ? run.outputTail : '';
       const cap = Math.min(remainingLogBytes, Math.max(0, maxOutputBytes - outputBytes));
       const trimmed = truncateUtf8Tail(raw, cap);
       const didTruncate = Buffer.byteLength(raw, 'utf8') > Buffer.byteLength(trimmed, 'utf8');
-      if (didTruncate) logsTruncated = true;
+      const outputTruncated = includeLogs && (run.outputTruncated || didTruncate);
+      logsTruncated ||= outputTruncated;
       const emittedBytes = Buffer.byteLength(trimmed, 'utf8');
       outputBytes += emittedBytes;
       remainingLogBytes -= emittedBytes;
-      return { ...run, outputTail: trimmed, outputTruncated: run.outputTruncated === true || didTruncate };
+      return { ...run, outputTail: trimmed, outputTruncated };
     });
 
     const limitations = Array.isArray(artifact.limitations) ? artifact.limitations.map(redactSecrets) : [];
@@ -274,7 +275,8 @@ export function createTaskService(options = {}) {
     if (task.status === 'succeeded' && !passed) {
       limitations.unshift('success without a recorded passing test command and exit code');
     }
-    if ((task.status === 'failed' || task.status === 'blocked') && diff === null) {
+    if ((task.status === 'failed' || task.status === 'blocked') &&
+        task.artifact === undefined && typeof task.diff !== 'string') {
       limitations.push('no artifact record for a failed task');
     }
 
@@ -293,7 +295,7 @@ export function createTaskService(options = {}) {
       diff,
       diffTruncated,
       changedFiles,
-      testRuns: selected.has('tests') ? boundedRuns : [],
+      testRuns: selected.has('tests') || includeLogs ? boundedRuns : [],
       logsTruncated,
       attempts: task.attempts.map(attempt => ({
         attemptId: attempt.attemptId,

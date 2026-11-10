@@ -35,8 +35,9 @@ authorization findings and a Windows test-cleanup failure. FIX23/#24 is merged a
 main CI passed; no published independent review was found. B12 adds a locally
 validated opt-in durable single-worker scheduler connected to the B11 builder,
 merged through PR #25 at main `68d3ea5`. Windows/Ubuntu PR CI run 41770113686
-and post-merge main CI run 41770348768 passed. B13 artifact collection is next.
-There is no MCP/API endpoint, artifact collector, integrated fallback, semantic
+and post-merge main CI run 41770348768 passed. B13 artifact collection merged
+through PR #35 at `254b5b9`, with passing Windows/Ubuntu post-merge CI.
+There is no MCP/API endpoint, integrated fallback, semantic
 memory or completed self-development workflow yet.
 
 The existing runner executes an operation; it is not a durable task scheduler.
@@ -51,7 +52,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12 merged #25; B13–B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12 and B13 merged; B14–B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Pending; B20 requires M2b/B17, B18 and an available authorized real model | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -74,7 +75,7 @@ FIX17-18/#22 are merged. Eight real pinned-host B06 gate runs passed after bound
 readiness and cleanup handling. B11's launch builder and denied-write experiment are
 merged through #23/#24. B12 service dispatch is merged through PR #25 and is
 present in main `68d3ea5`, including canonical workspace receipts.
-Both PR and post-merge CI passed. B13 is ready and recommended next.
+Both PR and post-merge CI passed. B14 follows the B13 post-merge corrections.
 B22 is split into sequential B22a/B22b/B22c PRs. These workflow
 requirements do not satisfy a runtime or host-integration gate.
 
@@ -103,13 +104,13 @@ it and nothing beyond it.
    branch, collecting diff, changed files and test evidence; cancellation is advisory.
    B12 scheduling/dispatch is merged through #25, with real Node/Git fixtures,
    a pinned OpenCode service-dispatch fixture and passing Windows/Ubuntu CI.
-   B13 artifacts and B14 cancellation/stop handling remain separate requirements.
+   B13 artifacts are merged. B14 covers cancellation and stop evidence.
 5. **Client integration.** One real submission, poll and result retrieval through the
    pinned client.
 6. **M2b acceptance run.** Execute the acceptance tests in the contract plus one real
    task on a scratch branch, and record the evidence.
 
-The remaining M2b task order is B13 artifacts → B14 cancellation/stop evidence →
+The remaining M2b task order is B14 cancellation/stop evidence →
 B15 MCP adapter → B16 real-client workflow → B17 thirteen-item acceptance matrix.
 B18 human recovery follows B14 and need not wait for B17. M3/B20 then needs
 B17/B18, an authorized available real-model execution path and a real approved

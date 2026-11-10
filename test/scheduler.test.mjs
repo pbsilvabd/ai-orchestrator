@@ -467,10 +467,37 @@ test('cancellation during artifact tests prevents launching the next test comman
       cwd: workspace.workspacePath, env: {}, timeoutMs: 1_000 }),
   } });
   const accepted = service.submitTask(f.request('cancel-artifact-test'));
+  const queued = service.submitTask(f.request('queued-after-cancel'));
   await until(() => existsSync(firstStarted), 'first artifact test starts');
   assert.equal(service.cancelTask({ taskId: accepted.taskId }).status, 'blocked');
   writeFileSync(releaseFirst, 'release');
   await service.whenIdle();
   assert.equal(existsSync(secondStarted), false);
   assert.equal(service.store.readTask(accepted.taskId).status, 'blocked');
+  assert.equal(service.store.readTask(accepted.taskId).artifact.testRuns.length, 1);
+  assert.deepEqual(service.store.readTask(queued.taskId).attempts, []);
+  assert.equal(service.store.readTask(queued.taskId).status, 'queued');
+  assert.equal(service.schedulerStatus().requiresReconciliation, true);
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+});
+
+test('artifact test deadline blocks the task and retains ownership without dispatching queued work', async t => {
+  const f = setup(t);
+  const worker = workerFor('process.exit(0)');
+  worker.testCommands = [{ executable: process.execPath,
+    args: ['-e', 'setInterval(() => {}, 1000)'], label: 'slow fixture', killGraceMs: 100 }];
+  const service = f.start({ worker });
+  const request = f.request('artifact-test-deadline');
+  request.limits.budgetMs = 7_000;
+  const accepted = service.submitTask(request);
+  const queued = service.submitTask(f.request('queued-after-deadline'));
+  await service.whenIdle();
+  const result = service.getTaskResult({ taskId: accepted.taskId });
+  assert.equal(result.status, 'blocked');
+  assert.equal(result.testRuns[0].exitCode, -1);
+  assert.equal(result.testRuns[0].summary, 'failed (deadline)');
+  assert.equal(result.diff, null);
+  assert.equal(service.store.readTask(queued.taskId).status, 'queued');
+  assert.deepEqual(service.store.readTask(queued.taskId).attempts, []);
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
 });

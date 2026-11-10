@@ -2,7 +2,7 @@ import { spawn } from 'node:child_process';
 import { closeSync, lstatSync, openSync, readSync } from 'node:fs';
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { performance } from 'node:perf_hooks';
-import { runSubprocess } from './subprocess.mjs';
+import { isDefiniteSpawnFailure, runSubprocess } from './subprocess.mjs';
 import { redactSecrets, truncateUtf8, truncateUtf8Tail } from './redaction.mjs';
 
 export const MAX_DIFF_BYTES = 1_048_576;
@@ -13,7 +13,8 @@ const EVIDENCE_LEVELS = new Set(['unit', 'local-http', 'opencode-integration', '
 // Trusted producer for B13. Commands and evidence level come from service-owned
 // worker configuration, never from task text or model output.
 export async function collectTaskArtifacts({ task, workspace, testCommands = [],
-  evidenceLevel = 'unit', remainingBudgetMs, shouldContinue = () => true } = {}) {
+  evidenceLevel = 'unit', remainingBudgetMs, signal, shouldContinue = () => true,
+  onUncertainTest = () => {} } = {}) {
   validateInputs({ task, workspace, testCommands, evidenceLevel, remainingBudgetMs });
   const limitations = [];
   const outputBudget = task.request.limits.maxOutputBytes;
@@ -43,9 +44,11 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
     const result = await runSubprocess({ executable: command.executable, args: command.args,
       cwd: workspace.workspacePath, env: command.env ?? {}, timeoutMs: budget,
       stdoutMaxBytes: MAX_LOG_BYTES, stderrMaxBytes: MAX_LOG_BYTES,
-      killGraceMs: command.killGraceMs ?? 1_000 });
+      killGraceMs: command.killGraceMs ?? 1_000, signal });
     const combined = [result.stdout, result.stderr].filter(Boolean).join('\n');
-    const exitCode = Number.isInteger(result.code) ? result.code : -1;
+    const knownExit = result.termination.reason === 'exited' &&
+      result.termination.rootExitObserved && Number.isInteger(result.code);
+    const exitCode = knownExit ? result.code : -1;
     testRuns.push({
       command: command.label,
       exitCode,
@@ -55,6 +58,11 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
       rawTruncated: result.stdoutTruncated || result.stderrTruncated,
     });
     if (exitCode !== 0) limitations.push(`test command failed: ${command.label}`);
+    if (!knownExit && !isDefiniteSpawnFailure(result)) {
+      limitations.push('test outcome uncertain; further test commands were skipped');
+      onUncertainTest();
+      break;
+    }
   }
 
   let headCommit = null;

@@ -1212,3 +1212,23 @@ Re-reviewed head `53c373b` and reproduced two remaining failures. Added and veri
 Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
 Evidence level: local service, Git and subprocess fixtures. Remote OpenCode/MCP gates
 were not rerun. The existing Windows and Ubuntu CI passed at the pre-correction head.
+
+### B13 post-merge corrections — 2026-11-09
+
+Windows x64, Node.js 24.22.1 and Git 2.55.0.windows.5. Base `254b5b9`.
+See the [PR #35 post-merge review](https://github.com/pbsilvabd/ai-orchestrator/pull/35#issuecomment-6755949829)
+for the original reproductions.
+
+| Check | Evidence | Result / exit |
+| --- | --- | --- |
+| Cancellation during a configured test | `test/scheduler.test.mjs` cancellation fixture checks queued work, retained lock and partial artifacts | Pass / 0 |
+| Configured test deadline | `test/scheduler.test.mjs` deadline fixture checks blocked result, recorded deadline, pristine queue and retained lock | Pass / 0 |
+| Log selection and record schema | `test/artifacts.test.mjs` B13-04 compares default, log-only and tests-only output and validates the persisted record | Pass / 0 |
+| `node --test test/contracts.test.mjs` | Schema and legacy compatibility checks | 24 passed / 0 |
+| `node --test` | Full regression suite | 219 passed, 1 POSIX-only skip / 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 / 0 |
+| `git diff --check` | Whitespace check | Clean / 0 |
+
+Evidence is from local Git, service and subprocess fixtures. OpenCode and MCP
+integration gates were not rerun because this follow-up changes the local service
+scheduler, artifact projection and record schema.

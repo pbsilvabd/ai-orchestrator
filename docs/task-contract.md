@@ -156,6 +156,9 @@ Result:
 ```
 
 - Available for terminal states only; otherwise `result_not_ready`.
+- Omitting `include` selects all artifacts. Selecting `log` returns output tails
+  in `testRuns` even when requested on its own. Selecting only `tests` returns
+  run metadata with empty output tails.
 - `failed` and `blocked` tasks return whatever partial artifacts exist, with explicit
   `limitations`.
 - A success claim without a recorded test command and exit code is reported as a
@@ -284,8 +287,10 @@ or production provider is enabled by this option.
   records `failed`. Other child errors can also originate in termination and stay
   blocked. This records process outcome only. It adds no test
   evidence: result limitations still disclose missing test commands/exit codes.
-  Artifact collection is B13. Unknown outcomes, deadlines and setup/completion
-  persistence failures halt the queue and require inspection without replay.
+  Unknown outcomes, deadlines and setup/completion persistence failures halt
+  the queue and require inspection without replay. This also applies to test
+  subprocesses launched during artifact collection. The service blocks the task,
+  retains partial evidence and keeps ownership for reconciliation.
 - Polling and cancellation remain available while a worker runs. Cancellation
   keeps its existing conservative `blocked` outcome; B14 will add stop handling.
   A late child completion never changes a terminal task. If cancelled work has
