@@ -25,10 +25,38 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
     if (!timeoutMs) throw new Error('artifact budget exhausted');
     return git(workspace.workspacePath, args, maxBytes, acceptedCodes, timeoutMs);
   };
+
+  // Run configured test commands before Git collection so workspace modifications
+  // (e.g. build artifacts or test-generated files) are captured in the final diff.
+  const testRuns = [];
+  if (!testCommands.length) limitations.push('no trusted test command was configured');
+  for (const command of testCommands) {
+    const budget = timeLeft();
+    if (!budget) {
+      limitations.push('task budget exhausted before all configured tests ran');
+      break;
+    }
+    const result = await runSubprocess({ executable: command.executable, args: command.args,
+      cwd: workspace.workspacePath, env: command.env ?? {}, timeoutMs: budget,
+      stdoutMaxBytes: MAX_LOG_BYTES, stderrMaxBytes: MAX_LOG_BYTES,
+      killGraceMs: command.killGraceMs ?? 1_000 });
+    const combined = [result.stdout, result.stderr].filter(Boolean).join('\n');
+    const exitCode = Number.isInteger(result.code) ? result.code : -1;
+    testRuns.push({
+      command: command.label,
+      exitCode,
+      durationMs: result.durationMs,
+      summary: exitCode === 0 ? 'passed' : `failed (${result.termination.reason})`,
+      rawOutput: combined,
+      rawTruncated: result.stdoutTruncated || result.stderrTruncated,
+    });
+    if (exitCode !== 0) limitations.push(`test command failed: ${command.label}`);
+  }
+
   let headCommit = null;
   let changedFiles = [];
-  let diff = null;
-  let diffTruncated = false;
+  let combinedDiff = '';
+  let rawDiffTruncated = false;
 
   try {
     headCommit = (await runGit(['rev-parse', 'HEAD'], 256)).stdout.trim();
@@ -45,8 +73,8 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
 
     const trackedDiff = await runGit(
       ['diff', '--no-ext-diff', '--find-renames', '--no-color', task.baseCommit, '--'], diffCap);
-    let combined = trackedDiff.stdout;
-    diffTruncated = trackedDiff.truncated;
+    combinedDiff = trackedDiff.stdout;
+    rawDiffTruncated = trackedDiff.truncated;
     const binary = await runGit(
       ['diff', '--numstat', '-z', task.baseCommit, '--'], 2_000_000);
     for (const path of parseBinaryPaths(binary.stdout)) {
@@ -72,73 +100,74 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
         limitations.push(`binary content omitted from textual diff: ${path}`);
         continue;
       }
-      const remaining = Math.max(0, diffCap - Buffer.byteLength(combined, 'utf8'));
-      if (!remaining) { diffTruncated = true; continue; }
+      const remaining = Math.max(0, diffCap - Buffer.byteLength(combinedDiff, 'utf8'));
+      if (!remaining) { rawDiffTruncated = true; continue; }
       const untrackedDiff = await runGit(
         ['diff', '--no-index', '--no-ext-diff', '--no-color', '--', '/dev/null', path], remaining, [0, 1]);
       if (/^Binary files /m.test(untrackedDiff.stdout)) {
         limitations.push(`binary content omitted from textual diff: ${path}`);
       }
-      combined += untrackedDiff.stdout;
-      diffTruncated ||= untrackedDiff.truncated;
+      combinedDiff += untrackedDiff.stdout;
+      rawDiffTruncated ||= untrackedDiff.truncated;
     }
-    diff = truncateUtf8(combined, diffCap);
-    if (Buffer.byteLength(combined, 'utf8') > Buffer.byteLength(diff, 'utf8')) diffTruncated = true;
   } catch {
     limitations.push('Git artifact collection failed; diff and file evidence may be incomplete');
   }
 
-  const testRuns = [];
-  if (!testCommands.length) limitations.push('no trusted test command was configured');
-  for (const command of testCommands) {
-    const budget = timeLeft();
-    if (!budget) {
-      limitations.push('task budget exhausted before all configured tests ran');
-      break;
+  // Enforce byte caps and truncation flags AFTER secret redaction so secret expansion
+  // (e.g. replacing short tokens with [REDACTED]) cannot cause persisted text to exceed caps.
+  const sanitizedDiffRaw = combinedDiff ? redactSecrets(combinedDiff) : (combinedDiff === '' ? '' : null);
+  let diff = null;
+  let diffTruncated = rawDiffTruncated;
+  if (sanitizedDiffRaw !== null) {
+    diff = truncateUtf8(sanitizedDiffRaw, diffCap);
+    if (Buffer.byteLength(sanitizedDiffRaw, 'utf8') > Buffer.byteLength(diff, 'utf8')) {
+      diffTruncated = true;
     }
-    const result = await runSubprocess({ executable: command.executable, args: command.args,
-      cwd: workspace.workspacePath, env: command.env ?? {}, timeoutMs: budget,
-      stdoutMaxBytes: MAX_LOG_BYTES, stderrMaxBytes: MAX_LOG_BYTES,
-      killGraceMs: command.killGraceMs ?? 1_000 });
-    const combined = [result.stdout, result.stderr].filter(Boolean).join('\n');
-    const outputTail = truncateUtf8Tail(combined, MAX_LOG_BYTES);
-    const outputTruncated = result.stdoutTruncated || result.stderrTruncated ||
-      Buffer.byteLength(combined, 'utf8') > Buffer.byteLength(outputTail, 'utf8');
-    const exitCode = Number.isInteger(result.code) ? result.code : -1;
-    testRuns.push({ command: command.label, exitCode, durationMs: result.durationMs,
-      summary: exitCode === 0 ? 'passed' : `failed (${result.termination.reason})`,
-      outputTail, outputTruncated });
-    if (exitCode !== 0) limitations.push(`test command failed: ${command.label}`);
   }
 
   // Diff consumes the combined output budget before test logs, matching the contract.
-  let remainingLogs = Math.min(MAX_LOG_BYTES,
-    Math.max(0, outputBudget - Buffer.byteLength(diff ?? '', 'utf8')));
+  const diffBytes = diff ? Buffer.byteLength(diff, 'utf8') : 0;
+  let remainingLogs = Math.min(MAX_LOG_BYTES, Math.max(0, outputBudget - diffBytes));
   let logsTruncated = false;
+
+  const processedRuns = [];
   for (const run of testRuns) {
-    const bounded = truncateUtf8Tail(run.outputTail, remainingLogs);
-    if (Buffer.byteLength(bounded, 'utf8') < Buffer.byteLength(run.outputTail, 'utf8')) {
-      run.outputTruncated = true;
-    }
-    run.outputTail = bounded;
-    remainingLogs -= Buffer.byteLength(bounded, 'utf8');
-    logsTruncated ||= run.outputTruncated;
+    const sanitizedCommand = redactSecrets(run.command);
+    const sanitizedSummary = redactSecrets(run.summary);
+    const sanitizedOutput = redactSecrets(run.rawOutput);
+    const boundedTail = truncateUtf8Tail(sanitizedOutput, remainingLogs);
+    const wasTruncated = run.rawTruncated ||
+      Buffer.byteLength(sanitizedOutput, 'utf8') > Buffer.byteLength(boundedTail, 'utf8');
+    if (wasTruncated) logsTruncated = true;
+    remainingLogs -= Buffer.byteLength(boundedTail, 'utf8');
+    processedRuns.push({
+      command: sanitizedCommand,
+      exitCode: run.exitCode,
+      durationMs: run.durationMs,
+      summary: sanitizedSummary,
+      outputTail: boundedTail,
+      outputTruncated: wasTruncated,
+    });
   }
 
-  const sanitized = sanitize({ baseCommit: task.baseCommit,
-    branch: task.request.repository.branch, headCommit, diff, diffTruncated,
-    changedFiles, testRuns, logsTruncated, limitations,
-    cost: { known: false, amount: null, currency: 'unknown',
-      note: 'cost is unknown until a provider is authorized' }, evidenceLevel });
-  return sanitized;
-}
+  const sanitizedChangedFiles = changedFiles.map(redactSecrets);
+  const sanitizedLimitations = limitations.map(redactSecrets);
 
-function sanitize(value) {
-  if (typeof value === 'string') return redactSecrets(value);
-  if (Array.isArray(value)) return value.map(sanitize);
-  if (value && typeof value === 'object') return Object.fromEntries(
-    Object.entries(value).map(([key, entry]) => [key, sanitize(entry)]));
-  return value;
+  return {
+    baseCommit: task.baseCommit,
+    branch: task.request.repository.branch,
+    headCommit: headCommit !== null ? redactSecrets(headCommit) : null,
+    diff,
+    diffTruncated,
+    changedFiles: sanitizedChangedFiles,
+    testRuns: processedRuns,
+    logsTruncated,
+    limitations: sanitizedLimitations,
+    cost: { known: false, amount: null, currency: 'unknown',
+      note: 'cost is unknown until a provider is authorized' },
+    evidenceLevel,
+  };
 }
 
 function validateInputs({ task, workspace, testCommands, evidenceLevel, remainingBudgetMs }) {

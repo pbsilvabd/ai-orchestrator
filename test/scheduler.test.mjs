@@ -412,3 +412,39 @@ test('dispatch workspace receipts use canonical home paths across filesystem ali
   assert.equal(planned.receiptPath, join(actual.workspacePath, '..', `${accepted.taskId}.workspace.json`));
   assert.equal(service.store.readTask(accepted.taskId).status, 'succeeded');
 });
+
+test('worker uncertain exit blocks task with partial artifacts and launches zero test commands', async t => {
+  const f = setup(t);
+  const testMarker = join(f.root, 'test-marker.txt');
+  const service = f.start({
+    worker: {
+      testCommands: [{
+        executable: process.execPath,
+        args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(testMarker)}, 'ran')`],
+        label: 'verify-no-test-launch',
+        env: {},
+      }],
+      prepare({ workspace }) {
+        writeFileSync(join(workspace.workspacePath, 'partial-output.txt'), 'partial\n');
+        return {
+          executable: process.execPath,
+          cwd: workspace.workspacePath,
+          args: ['-e', 'setInterval(()=>{},1000)'],
+          env: {},
+          timeoutMs: 50,
+          killGraceMs: 100,
+        };
+      },
+    },
+  });
+  const accepted = service.submitTask(f.request('uncertain-exit'));
+  await service.whenIdle();
+  const task = service.store.readTask(accepted.taskId);
+  assert.equal(task.status, 'blocked');
+  assert.equal(task.block.reason, 'worker-outcome-uncertain');
+  assert.equal(existsSync(testMarker), false, 'test commands must not be launched when worker outcome is uncertain');
+  assert.ok(task.artifact, 'partial artifact must be retained on blocked task');
+  assert.deepEqual(task.artifact.testRuns, []);
+  assert.ok(task.artifact.changedFiles.includes('partial-output.txt'));
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+});

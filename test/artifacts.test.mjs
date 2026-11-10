@@ -51,6 +51,25 @@ test('B13-01: fixed-base artifacts cover committed, staged, unstaged, renamed, d
   assert.match(artifact.limitations.join('\n'), /no trusted test command/);
 });
 
+test('B13-01: test command generated workspace files are captured in final artifact diff and changed files', async t => {
+  const f = fixture(t);
+  const artifact = await collectTaskArtifacts({
+    task: f.task,
+    workspace: f.workspace,
+    remainingBudgetMs: 10_000,
+    testCommands: [{
+      executable: process.execPath,
+      args: ['-e', "require('node:fs').writeFileSync('generated.txt', 'test output file\\n')"],
+      label: 'node test-generator',
+      env: {},
+    }],
+  });
+  assert.ok(artifact.changedFiles.includes('generated.txt'), 'generated.txt must appear in changedFiles');
+  assert.match(artifact.diff, /generated\.txt/, 'generated.txt diff must be captured in artifact diff');
+  assert.equal(artifact.testRuns.length, 1);
+  assert.equal(artifact.testRuns[0].exitCode, 0);
+});
+
 test('B13-02: real failing test records its command, nonzero exit and limitation', async t => {
   const f = fixture(t);
   const artifact = await collectTaskArtifacts({ task: f.task, workspace: f.workspace,
@@ -79,6 +98,50 @@ test('B13-03: UTF-8 diff/log and binary artifacts stay byte bounded with explici
     <= Math.max(0, 4_096 - Buffer.byteLength(artifact.diff, 'utf8')));
   assert.equal(artifact.logsTruncated, true);
   assert.match(artifact.limitations.join('\n'), /binary content omitted/);
+});
+
+test('B13-03: secret expansion in diff preserves byte caps on both persisted artifact and response', async t => {
+  const f = fixture(t, 4_096);
+  const home = join(f.root, 'home');
+  const config = { clientId: 'owner',
+    authorization: { models: ['fixture/mock'], tools: ['read'], writableRoots: [f.repo] },
+    limits: { maxAttempts: 1, budgetMs: 10_000, maxOutputBytes: 4_096 } };
+  const worker = {
+    evidenceLevel: 'unit',
+    testCommands: [{ executable: process.execPath,
+      args: ['-e', "process.stdout.write('test ok')"],
+      label: 'node test', env: {} }],
+    prepare({ workspace }) {
+      // Write a file with short secrets that expand significantly upon redaction
+      // e.g. 'api_key=1\n' (10 chars) becomes 'api_key=[REDACTED]\n' (19 chars).
+      // 400 lines = 4000 chars raw, expands to 7600 chars sanitized!
+      const code = "require('node:fs').writeFileSync('secret.txt', 'api_key=1\\n'.repeat(400))";
+      return { executable: process.execPath, args: ['-e', code], cwd: workspace.workspacePath,
+        env: {}, timeoutMs: 5_000, stdoutMaxBytes: 1024, stderrMaxBytes: 1024 };
+    },
+  };
+  const service = createTaskService({ home, config, worker });
+  t.after(async () => service.close());
+  const accepted = service.submitTask({ clientId: 'owner', idempotencyKey: 'expansion',
+    objective: 'expansion check', acceptanceCriteria: ['caps preserved'],
+    repository: { path: f.repo, baseRef: f.task.baseCommit, branch: 'task/expansion' },
+    authorization: { models: ['fixture/mock'], tools: ['read'], writablePaths: ['src/**'] },
+    limits: { maxAttempts: 1, budgetMs: 10_000, maxOutputBytes: 4_096 } });
+  await service.whenIdle();
+
+  const record = JSON.parse(readFileSync(join(home, 'tasks', `${accepted.taskId}.json`), 'utf8'));
+  const result = service.getTaskResult({ taskId: accepted.taskId });
+
+  // Stored artifact checks
+  assert.ok(record.artifact, 'artifact must be stored in task record');
+  assert.ok(Buffer.byteLength(record.artifact.diff, 'utf8') <= 4_096, 'persisted artifact diff must be <= 4096 bytes');
+  assert.equal(record.artifact.diffTruncated, true, 'persisted artifact diffTruncated must be true');
+  assert.equal(record.artifact.diff.includes('\uFFFD'), false, 'persisted diff must not split UTF-8');
+
+  // Response projection checks
+  assert.ok(Buffer.byteLength(result.diff, 'utf8') <= 4_096, 'response diff must be <= 4096 bytes');
+  assert.equal(result.diffTruncated, true, 'response diffTruncated must be true');
+  assert.equal(result.diff.includes('\uFFFD'), false, 'response diff must not split UTF-8');
 });
 
 test('B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts', async t => {

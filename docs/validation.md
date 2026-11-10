@@ -1168,3 +1168,26 @@ Date: 2026-11-07. Branch `task/B13-bounded-artifacts`, base `c6bb77a`.
 Evidence level: Unit and local Git/subprocess fixtures.
 Not rerun: `integration/mcp-gate.mjs` and `integration/opencode-smoke.mjs` (unaffected by artifact collection).
 Claim: B13 acceptance criteria are met by executable tests covering every matrix row.
+
+### PR #35 review corrections — 2026-11-09
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5.
+Review feedback at `b9de1af` resolved:
+1. [P1] Gated test execution on a known worker outcome: when worker exit is uncertain,
+   no test commands are launched, partial artifacts are retained on the blocked task, and
+   a regression test asserts zero test launches.
+2. [P2] Enforced byte caps and truncation flags on diff and logs after secret redaction,
+   ensuring secret expansion cannot exceed output budget on persisted artifact or response.
+3. [P2] Executed configured test commands before Git collection, capturing test-generated
+   workspace modifications in the final diff and changed files.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `node --test test/artifacts.test.mjs` | Artifact collector tests including test-generated files and secret expansion | 6 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/scheduler.test.mjs` | Scheduler tests including zero test launch on uncertain outcome | 21 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full regression suite | 216 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing demo | 429 then 200 | 0 |
+| `git diff --check` | Verify no whitespace or conflict markers | Clean | 0 |
+
+Evidence level: Unit and local Git/subprocess fixtures.
+Not rerun: `integration/mcp-gate.mjs` and `integration/opencode-smoke.mjs`.

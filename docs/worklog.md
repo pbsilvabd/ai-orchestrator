@@ -983,10 +983,15 @@ Template:
      and `src/tasks.mjs` to validate and project recorded task artifacts.
   5. Implemented acceptance test suite in `test/artifacts.test.mjs` covering B13-01 to B13-04.
   6. Verified full regression suite (213 passed, 1 skipped) and fallback demo.
+  7. Addressed PR #35 review findings: gated test execution on known worker outcome
+     with zero test launches on uncertain exit; enforced byte caps after redaction;
+     captured workspace modifications after test command executions.
 - Files: `src/artifacts.mjs`, `src/redaction.mjs`, `src/opencode.mjs`, `src/scheduler.mjs`,
-  `src/service.mjs`, `src/tasks.mjs`, `test/artifacts.test.mjs`, `docs/tasks/B13.md`,
-  `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
-- Validation: `node --test test/artifacts.test.mjs` -> 4 passed, 0 failed;
-  `node --test` -> 213 passed, 0 failed, 1 POSIX-only skipped; `node examples/fallback-demo.mjs`
+  `src/service.mjs`, `src/tasks.mjs`, `test/artifacts.test.mjs`, `test/scheduler.test.mjs`,
+  `docs/tasks/B13.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test test/artifacts.test.mjs` -> 6 passed, 0 failed;
+  `node --test test/scheduler.test.mjs` -> 21 passed, 0 failed;
+  `node --test` -> 216 passed, 0 failed, 1 POSIX-only skipped; `node examples/fallback-demo.mjs`
   -> 429 then 200; `git diff --check` -> clean.
 - Follow-up: publish PR for B13, verify CI and request review; B14 follows upon B13 merge.
