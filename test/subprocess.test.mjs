@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, existsSync, readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -78,13 +78,27 @@ test('B10-03: deadline and abort settle once with partial output and clean up', 
   assert.equal(aborted.stdout, 'before');
 });
 
+test('B14-02: a real root exit racing its deadline settles with one immutable outcome', async t => {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const result = await Promise.race([
+      runSubprocess({ ...setup(t), timeoutMs: 100, killGraceMs: 100,
+        args: ['-e', "setTimeout(()=>{process.stdout.write('exit');process.exit(0)},100)"] }),
+      delay(1500).then(() => { throw new Error('deadline/exit race did not settle'); }),
+    ]);
+    assert.ok(['exited', 'deadline'].includes(result.termination.reason));
+    assert.equal(typeof result.termination.rootExitObserved, 'boolean');
+    assert.equal(result.termination.descendantsStopped, false);
+  }
+});
+
 test('B10-04: Windows process termination reports root exit and leaves descendants unverified', async t => {
   const options = setup(t);
   const marker = join(options.cwd, 'descendant-ready');
+  const survived = join(options.cwd, 'descendant-survived-root');
   const controller = new AbortController();
-  const descendant = "require('node:fs').writeFileSync(process.argv[1],'ready');setTimeout(()=>process.exit(0),500)";
+  const descendant = `const fs=require('node:fs');fs.writeFileSync(process.argv[1],String(process.pid));setTimeout(()=>{fs.writeFileSync(${JSON.stringify(survived)},'alive');process.exit(0)},500)`;
   const pending = runSubprocess({ ...options, signal: controller.signal, args: ['-e',
-    `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(descendant)},${JSON.stringify(marker)}],{stdio:'ignore'});setInterval(()=>{},1000)`] });
+    `require('node:child_process').spawn(process.execPath,['-e',${JSON.stringify(descendant)},${JSON.stringify(marker)}],{stdio:'ignore',detached:true}).unref();setInterval(()=>{},1000)`] });
   let result;
   try {
     const readinessDeadline = Date.now() + 2500;
@@ -97,6 +111,16 @@ test('B10-04: Windows process termination reports root exit and leaves descendan
   assert.equal(result.termination.reason, 'aborted');
   assert.equal(typeof result.termination.rootExitObserved, 'boolean');
   assert.equal(result.termination.descendantsStopped, false);
+  const survivalDeadline = Date.now() + 2500;
+  try {
+    while (!existsSync(survived) && Date.now() < survivalDeadline) await delay(10);
+    assert.equal(existsSync(survived), true, 'detached descendant must remain active after root termination');
+  } finally {
+    if (existsSync(marker)) {
+      const pid = Number(readFileSync(marker, 'utf8'));
+      try { process.kill(pid, 'SIGKILL'); } catch { /* descendant already exited */ }
+    }
+  }
 });
 
 test('B10-03: ignored SIGTERM is escalated within the grace bound', { skip: process.platform === 'win32' }, async t => {

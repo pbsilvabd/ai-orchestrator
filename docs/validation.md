@@ -1232,3 +1232,28 @@ for the original reproductions.
 Evidence is from local Git, service and subprocess fixtures. OpenCode and MCP
 integration gates were not rerun because this follow-up changes the local service
 scheduler, artifact projection and record schema.
+
+### B14 — Cancellation, deadlines and late events — 2026-11-09
+
+Environment: Windows x64 (`Microsoft Windows 10.0.26300`), Node.js v24.22.1,
+Git 2.55.0.windows.5. Base `a147d13174371f5cd16685dc3a17fd853b602f85`, branch
+`task/B14-cancellation-deadlines`.
+
+| Card row | Test or experiment | Result / exit |
+| --- | --- | --- |
+| B14-01 | `cancel_task cancels queued work and blocks uncertain running work`; `B10-01: ENOENT, pre-abort, immediate exit and nonzero exit are truthful`; `B14-01: cancellation at the prepared-before-spawn boundary starts no child` | PASS; pristine queued cancel had no attempt, pre-abort launched no process, and cancellation after the durable reservation retained one attempt but started no child. |
+| B14-02 | `B14-02: active cancellation aborts the root and retains partial workspace evidence`; `B14-02: a real root exit racing its deadline settles with one immutable outcome`; `preparation failure and deadline block once and retain ownership...` | PASS; partial file was retained, no artifact test was launched for uncertain worker execution, deadline/exit subprocess races settled once, and uncertain work remained blocked. |
+| B14-03 | `B10-04: Windows process termination reports root exit and leaves descendants unverified`; `B12-03: real service death after-spawn never replays on reopen` | PASS on Windows x64; detached descendant wrote after root termination; crash recovery kept `executionStopped: unknown`, `effectsReverted: false`, blocked the record and did not replay. |
+| B14-04 | `B14-04: cancellation persists its block first and halts the queue before worker return`; `B14-04: a late real zero exit cannot replace an already blocked task`; `late completion cannot unblock work or rewrite terminal lifecycle evidence`; duplicate cancellation assertions in B14 active-cancel test | PASS; first persisted block/cancel evidence remained unchanged, late real zero exit preserved exact record bytes, and duplicate cancel returned `already_terminal`. |
+| Full suite | `node --test` | 223 passed, 0 failed, 1 POSIX-only skip / exit 0. |
+| Demo | `node examples/fallback-demo.mjs` | Mock preferred returned 429, local fallback returned 200 / exit 0. |
+| Diff | `git diff --check` | Clean / exit 0. |
+
+Focused validation during implementation: `node --test test/scheduler.test.mjs test/task-service.test.mjs test/subprocess.test.mjs` passed 54 tests with one platform skip before the final deadline-race and late-success tests were added; the final full-suite run above includes all subsequent changes and those regressions. Targeted final runs of `node --test --test-name-pattern="B14-01|B14-02|B10-04" test/scheduler.test.mjs test/subprocess.test.mjs` and `node --test --test-name-pattern="B14-04" test/scheduler.test.mjs` passed all five selected checks / exit 0.
+
+Evidence level: local service, real subprocess, Git/workspace fixtures and a
+Windows detached descendant. The process adapter proves root exit only; descendant
+stop and effect reversal remain unknown, so cancellation/deadline/crash outcomes stay
+blocked and no automatic replay is allowed. Ubuntu CI is pending PR publication.
+OpenCode and MCP integration gates were not rerun because B14 changes local lifecycle
+and scheduler handling, not the host or transport.

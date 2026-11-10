@@ -1030,3 +1030,33 @@ Template:
   deadline, and validated log selection and the schema against a real task record.
 - Updated the task contract, B13 card, handoff, backlog and roadmap. See the
   validation log for commands, results and evidence limits.
+
+## 2026-11-09 — M2b: B14 cancellation and late-event handling
+
+- Branch: `task/B14-cancellation-deadlines`
+- Scope: code, tests and docs; no process-tree termination or maintainer reconciliation API was added.
+- Steps:
+  1. Read the merged B12/B13 implementation and specified queued, pre-spawn, active,
+     deadline, crash and late-event evidence in the task contract.
+  2. Persisted active cancellation before asking the scheduler to abort the root,
+     halted later dispatch, and retained partial artifacts on the blocked task without
+     starting artifact tests for an uncertain worker outcome.
+  3. Added real subprocess checks for cancellation before spawn, deadline/exit races,
+     detached Windows descendants and restart after process death; retained existing
+     lifecycle immutability checks and a real late-zero-exit regression for late
+     completions.
+  4. During implementation review, found cancellation before spawn halted dispatch
+     without setting the scheduler's reconciliation flag; set uncertainty before
+     abort and verified `close()` retains ownership. A first descendant fixture did
+     not survive root termination; made the child detached and verified its post-root
+     write, with bounded cleanup.
+  5. Re-read the complete final diff, mapped all four B14 rows and reran the full suite,
+     fallback demo and diff check.
+- Files: `src/service.mjs`, `src/scheduler.mjs`, `test/scheduler.test.mjs`,
+  `test/subprocess.test.mjs`, `docs/task-contract.md`, `docs/adr/008-task-store.md`,
+  `docs/tasks/B14.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test` → 223 passed, 0 failed, 1 POSIX-only skip;
+  `node examples/fallback-demo.mjs` → 429 then 200; `git diff --check` → clean.
+  OpenCode/MCP integration gates and Ubuntu CI were not rerun locally.
+- Follow-up: publish the B14 PR, verify its remote head and CI, then request review.

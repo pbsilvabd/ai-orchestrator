@@ -92,6 +92,20 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
         uncertain = true;
         stopped = true; // No next worker while an old worker may still be running.
       }
+      // Cancellation is durably blocked before the abort signal is sent. Once the
+      // root settles, collect only the partial Git snapshot (never launch tests) and
+      // append it to that blocked record without changing its lifecycle evidence.
+      if (current.status === 'blocked' && current.cancel.requestedAt !== null) {
+        let partialArtifact;
+        try {
+          partialArtifact = await collectTaskArtifacts({ task: running, workspace,
+            testCommands: [], evidenceLevel: worker.evidenceLevel ?? 'unit',
+            remainingBudgetMs: Math.max(0,
+              running.request.limits.budgetMs - Math.ceil(performance.now() - started)) });
+        } catch { /* retain the original cancellation record */ }
+        if (partialArtifact !== undefined) block(taskId, current.block.reason, partialArtifact);
+        return;
+      }
       // A cancel/shutdown/other terminal decision wins over a late completion.
       if (current.status !== 'running' || current.attempts.at(-1)?.attemptId !== attemptId) return;
       const remainingForArtifacts = Math.max(0,
@@ -168,6 +182,14 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
   const whenIdle = () => !active && !scheduled ? Promise.resolve() : new Promise(resolve => waiters.push(resolve));
   return {
     enqueue(taskId) { if (!stopped && !queue.includes(taskId) && active?.taskId !== taskId) { queue.push(taskId); pump(); } },
+    requestCancellation(taskId) {
+      if (active?.taskId !== taskId) return false;
+      uncertain = true;
+      stopped = true;
+      queue.length = 0;
+      active.controller.abort();
+      return true;
+    },
     whenIdle,
     snapshot: () => ({ stopped, activeTaskId: active?.taskId ?? null, errorCode: fault, requiresReconciliation: uncertain }),
     close() {

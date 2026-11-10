@@ -123,6 +123,22 @@ does not provide B14 stop proof or B18 recovery tooling. Maintainers must inspec
 processes, workspaces, effects and records before manually removing a retained lock.
 No background retry, stale-lock reclamation, cleanup or new dependency is added.
 
+## Amendment — 2026-11-09: B14 active cancellation and late events
+
+For an active task, `cancel_task` first durably records `blocked` with reason
+`cancelled-uncertain`, request time, `executionStopped: "unknown"` and
+`effectsReverted: false`; only after that write does it signal the scheduler's root
+process with its abort controller. The scheduler halts queued dispatch. When the root
+settles it may attach a bounded partial artifact snapshot, without launching configured
+artifact tests, while preserving the blocked lifecycle fields. Cancellation of pristine
+queued work remains a no-dispatch `cancelled` transition.
+
+The B10 adapter reports root-exit evidence separately and always reports
+`descendantsStopped: false`. B14 does not equate a root exit with a process-tree stop,
+or a stop with effects being reverted. Therefore it adds no generic or public
+`running → cancelled` proof path. Cancellation/deadline/crash uncertainty remains
+blocked and unreplayed; a late success cannot replace a previously persisted block.
+
 ## Revisit triggers
 
 Revisit when: M2b carries

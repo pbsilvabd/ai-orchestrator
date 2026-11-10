@@ -341,6 +341,10 @@ export function createTaskService(options = {}) {
       draft.block = { reason: 'cancelled-uncertain', requiresReconciliation: true };
       draft.progress.push({ at, event: 'blocked', detail: 'cancelled-uncertain' });
     }); } catch (error) { throw toServiceError(error); }
+    // Persist the terminal decision before signalling the worker. The scheduler
+    // aborts only the root process and must keep the queue halted: descendants or
+    // external effects are still unknown even when the root later exits.
+    scheduler?.requestCancellation(task.taskId);
     return { schemaVersion: SCHEMA_VERSION, cancelRequestedAt: at, status: 'blocked', effect: 'requested' };
   };
 

@@ -1,9 +1,9 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-04: `origin/main` at `68d3ea5` (B12/PR #25 merged).
-Windows and Ubuntu passed both the PR checks and the post-merge main run
-[41770348768](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/41770348768).
-No open PR was found at this checkpoint. Fetch before choosing work.
+Verified 2026-11-09: `origin/main` at `a147d13` (B13 post-merge corrections included).
+B14 is in implementation on `task/B14-cancellation-deadlines`; see its task card
+and the validation log for current evidence. Refresh remote status before review or
+choosing the next implementation task.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -11,9 +11,8 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Next implementation task: [B14 — Cancellation, deadlines and late events](tasks/B14.md),
-after the B13 post-merge corrections land. B12 and B13 are merged. M2b and M3
-remain open milestones.
+Current implementation task: [B14 — Cancellation, deadlines and late events](tasks/B14.md).
+B12 and B13 are merged. M2b and M3 remain open milestones.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review

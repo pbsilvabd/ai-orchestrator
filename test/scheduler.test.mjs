@@ -223,6 +223,11 @@ for (const phase of ['before-dispatch', 'after-dispatch', 'after-spawn']) {
     const after = reopened.store.readTask(taskId);
     assert.equal(after.status, phase === 'before-dispatch' ? 'queued' : 'blocked');
     assert.equal(after.attempts.length, before.attempts.length);
+    if (phase !== 'before-dispatch') {
+      assert.equal(after.cancel.executionStopped, 'unknown');
+      assert.equal(after.cancel.effectsReverted, false);
+      assert.equal(after.block.reason, 'service-restart');
+    }
     assert.equal(prepared, 0);
     assert.equal(reopened.submitTask(f.request()).taskId, taskId);
     await reopened.whenIdle();
@@ -287,7 +292,7 @@ test('B12-05: active shutdown blocks before abort, holds ownership and cannot la
   assert.ok(existsSync(join(f.home, 'locks', 'service-owner.lock')));
 });
 
-test('B12-05: cancellation wins over a real late zero exit and halts the queue', async t => {
+test('B14-04: cancellation persists its block first and halts the queue before worker return', async t => {
   const f = setup(t);
   const marker = join(f.root, 'ready');
   const release = join(f.root, 'release');
@@ -300,9 +305,86 @@ test('B12-05: cancellation wins over a real late zero exit and halts the queue',
   const before = service.store.readTask(a.taskId);
   writeFileSync(release, 'exit zero');
   await service.whenIdle();
-  assert.deepEqual(service.store.readTask(a.taskId), before);
+  const after = service.store.readTask(a.taskId);
+  assert.equal(after.status, 'blocked');
+  assert.equal(after.cancel.requestedAt, before.cancel.requestedAt);
+  assert.equal(after.cancel.executionStopped, 'unknown');
+  assert.deepEqual(after.block, before.block);
+  assert.equal(after.finishedAt, before.finishedAt);
   assert.equal(service.store.readTask(b.taskId).status, 'queued');
   assert.equal(service.schedulerStatus().requiresReconciliation, true);
+});
+
+test('B14-04: a late real zero exit cannot replace an already blocked task', async t => {
+  const f = setup(t);
+  const marker = join(f.root, 'ready');
+  const release = join(f.root, 'release');
+  const service = f.start({ worker: workerFor(`const fs=require('node:fs');
+    fs.writeFileSync(${JSON.stringify(marker)},'ready');
+    const timer=setInterval(()=>{if(fs.existsSync(${JSON.stringify(release)})){
+      clearInterval(timer);process.exit(0)}} ,10)`) });
+  const accepted = service.submitTask(f.request('late-success'));
+  await until(() => existsSync(marker), 'worker running');
+  service.store.updateTask(accepted.taskId, draft => {
+    draft.status = 'blocked';
+    draft.finishedAt = Date.now();
+    draft.cancel.executionStopped = 'unknown';
+    draft.block = { reason: 'service-shutdown', requiresReconciliation: true };
+    draft.progress.push({ at: draft.finishedAt, event: 'blocked', detail: 'service-shutdown' });
+  });
+  const blockedBytes = readFileSync(join(f.home, 'tasks', `${accepted.taskId}.json`), 'utf8');
+  writeFileSync(release, 'allow zero exit');
+  await service.whenIdle();
+  assert.equal(service.store.readTask(accepted.taskId).status, 'blocked');
+  assert.equal(readFileSync(join(f.home, 'tasks', `${accepted.taskId}.json`), 'utf8'), blockedBytes);
+  assert.equal(service.schedulerStatus().requiresReconciliation, true);
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+});
+
+test('B14-02: active cancellation aborts the root and retains partial workspace evidence', async t => {
+  const f = setup(t);
+  const marker = join(f.root, 'ready');
+  const service = f.start({ worker: workerFor(`const fs=require('node:fs');
+    fs.writeFileSync(${JSON.stringify(marker)},'ready');
+    fs.writeFileSync('partial-before-cancel.txt','observed');
+    setInterval(()=>{},1000)`) });
+  const accepted = service.submitTask(f.request('active-cancel'));
+  await until(() => existsSync(marker), 'worker running');
+  const first = service.cancelTask({ taskId: accepted.taskId, reason: 'operator request' });
+  assert.equal(first.status, 'blocked');
+  assert.equal(first.effect, 'requested');
+  await service.whenIdle();
+  const task = service.store.readTask(accepted.taskId);
+  assert.equal(task.status, 'blocked');
+  assert.equal(task.cancel.executionStopped, 'unknown');
+  assert.equal(task.cancel.effectsReverted, false);
+  assert.equal(task.block.reason, 'cancelled-uncertain');
+  assert.ok(task.artifact.changedFiles.includes('partial-before-cancel.txt'));
+  assert.deepEqual(task.artifact.testRuns, []);
+  assert.deepEqual(service.cancelTask({ taskId: accepted.taskId }), {
+    schemaVersion: 1, cancelRequestedAt: first.cancelRequestedAt,
+    status: 'blocked', effect: 'already_terminal' });
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+});
+
+test('B14-01: cancellation at the prepared-before-spawn boundary starts no child', async t => {
+  const f = setup(t);
+  const spawned = join(f.root, 'must-not-spawn');
+  let service;
+  service = f.start({ worker: { prepare({ task, workspace }) {
+    service.cancelTask({ taskId: task.taskId, reason: 'cancel at dispatch boundary' });
+    return { executable: process.execPath, args: ['-e',
+      `require('node:fs').writeFileSync(${JSON.stringify(spawned)},'unexpected')`],
+      cwd: workspace.workspacePath, env: {}, timeoutMs: 1000 };
+  } } });
+  const accepted = service.submitTask(f.request('cancel-before-spawn'));
+  await service.whenIdle();
+  const task = service.store.readTask(accepted.taskId);
+  assert.equal(task.status, 'blocked');
+  assert.equal(task.cancel.executionStopped, 'unknown');
+  assert.equal(task.attempts.length, 1, 'the durable dispatch reservation cannot be erased');
+  assert.equal(existsSync(spawned), false, 'cancellation before spawn must start no child');
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
 });
 
 test('known spawn error becomes failed; queued cancellation and idle close start no child', async t => {

@@ -223,7 +223,7 @@ the same task. Repeat work requires a new `submit_task` with a new `idempotencyK
 The diagram describes the target lifecycle. Ordinary `updateTask` currently permits
 `queued → running | cancelled`, dispatched `queued → blocked`, and
 `running → succeeded | failed | blocked`. The guard also runs on startup reconciliation.
-`running → cancelled` requires a future executor stop-proof operation (B14);
+`running → cancelled` requires a dedicated executor stop-proof operation;
 `blocked → failed | cancelled` requires a future maintainer-only operation (B18).
 Neither is permitted through the generic update callback. There is no boolean
 override that grants reconciliation authority.
@@ -251,6 +251,25 @@ override that grants reconciliation authority.
 These guards are not process exclusion, an authorization sandbox or proof of actual
 execution. Persist-before-spawn attempt production is B12; stop proof is B14.
 Success without test evidence remains an explicit limitation in get_task_result.
+
+### Cancellation and finalization evidence (B14)
+
+| Situation | Durable lifecycle | Stop/effect evidence | Scheduling and artifacts |
+| --- | --- | --- | --- |
+| Pristine queued task cancelled before dispatch reservation | `cancelled`; no attempt or `startedAt` | `executionStopped: true` means no dispatch was recorded; `effectsReverted: false` | Never prepare or spawn this task; later queued work may continue. |
+| Dispatch reservation persisted but spawn has not started, including a pre-aborted launch | `blocked` with `cancelled-uncertain` after active cancellation | `executionStopped: unknown`; an attempt is durable, so cancellation cannot claim “not started”; effects remain unknown | Halt the queue; never replay the reservation. |
+| Active cancellation or deadline | `blocked`; first persisted terminal decision wins | Root receives abort/termination request. Even an observed root exit leaves `executionStopped: unknown`, because descendants and external effects are not proven stopped or reverted. | Halt the queue. Keep bounded partial output/Git artifacts when collection succeeds; skip artifact tests after uncertain worker execution. |
+| Root exit races with cancel/deadline | Whichever serialized record update commits first remains final | A normal completion committed first is terminal and a later cancel is idempotent. A block committed first cannot be replaced by late success. | Late events can add permitted artifacts to `blocked`; they cannot rewrite status, timestamps, cancellation, block or attempts. |
+| Service/process crash with a persisted dispatch | Startup reconciliation changes it to `blocked` with `service-restart` | `executionStopped: unknown`; effects are unknown | Keep ownership/reconciliation controls as required; never resume or replay. |
+
+The B10 subprocess adapter can signal and observe the root process only. Its
+`descendantsStopped: false` result is deliberate; `rootExitObserved: true` is not
+tree-stop evidence. B14 therefore does not expose a transition from active work to
+`cancelled`, nor claim `effectsReverted`. Such a transition requires a separate trusted
+proof source and operation. Active cancellation persists `blocked` before signalling
+the root; once it settles, only partial artifact collection without configured test
+commands may update the blocked record. This artifact update does not reopen lifecycle
+state or establish that the workspace stopped changing.
 
 ## Persistence and restart
 
@@ -291,11 +310,11 @@ or production provider is enabled by this option.
   the queue and require inspection without replay. This also applies to test
   subprocesses launched during artifact collection. The service blocks the task,
   retains partial evidence and keeps ownership for reconciliation.
-- Polling and cancellation remain available while a worker runs. Cancellation
-  keeps its existing conservative `blocked` outcome; B14 will add stop handling.
-  A late child completion never changes a terminal task. If cancelled work has
-  completed, the scheduler still halts rather than treating cancellation as stop
-  proof. New submissions to a halted scheduler fail `unavailable`; identical
+- Polling and cancellation remain available while a worker runs. B14 persists
+  `blocked/cancelled-uncertain` before signalling the active subprocess root. The
+  scheduler halts, collects only a partial artifact snapshot after root settlement,
+  and never treats root exit as descendant-stop or effects-reverted proof. A late
+  child completion never changes a terminal task. New submissions to a halted scheduler fail `unavailable`; identical
   idempotent replays remain readable.
 - `whenIdle()` waits for pending scheduling/active child settlement; it is not a
   task-success assertion. `schedulerStatus()` returns sanitized local diagnostics.
