@@ -13,7 +13,7 @@ const EVIDENCE_LEVELS = new Set(['unit', 'local-http', 'opencode-integration', '
 // Trusted producer for B13. Commands and evidence level come from service-owned
 // worker configuration, never from task text or model output.
 export async function collectTaskArtifacts({ task, workspace, testCommands = [],
-  evidenceLevel = 'unit', remainingBudgetMs } = {}) {
+  evidenceLevel = 'unit', remainingBudgetMs, shouldContinue = () => true } = {}) {
   validateInputs({ task, workspace, testCommands, evidenceLevel, remainingBudgetMs });
   const limitations = [];
   const outputBudget = task.request.limits.maxOutputBytes;
@@ -31,6 +31,10 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
   const testRuns = [];
   if (!testCommands.length) limitations.push('no trusted test command was configured');
   for (const command of testCommands) {
+    if (!shouldContinue()) {
+      limitations.push('task left the running state before all configured tests ran');
+      break;
+    }
     const budget = timeLeft();
     if (!budget) {
       limitations.push('task budget exhausted before all configured tests ran');
@@ -56,6 +60,7 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
   let headCommit = null;
   let changedFiles = [];
   let combinedDiff = '';
+  let diffAvailable = false;
   let rawDiffTruncated = false;
 
   try {
@@ -74,6 +79,7 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
     const trackedDiff = await runGit(
       ['diff', '--no-ext-diff', '--find-renames', '--no-color', task.baseCommit, '--'], diffCap);
     combinedDiff = trackedDiff.stdout;
+    diffAvailable = true;
     rawDiffTruncated = trackedDiff.truncated;
     const binary = await runGit(
       ['diff', '--numstat', '-z', task.baseCommit, '--'], 2_000_000);
@@ -116,7 +122,7 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
 
   // Enforce byte caps and truncation flags AFTER secret redaction so secret expansion
   // (e.g. replacing short tokens with [REDACTED]) cannot cause persisted text to exceed caps.
-  const sanitizedDiffRaw = combinedDiff ? redactSecrets(combinedDiff) : (combinedDiff === '' ? '' : null);
+  const sanitizedDiffRaw = diffAvailable ? redactSecrets(combinedDiff) : null;
   let diff = null;
   let diffTruncated = rawDiffTruncated;
   if (sanitizedDiffRaw !== null) {
@@ -127,7 +133,7 @@ export async function collectTaskArtifacts({ task, workspace, testCommands = [],
   }
 
   // Diff consumes the combined output budget before test logs, matching the contract.
-  const diffBytes = diff ? Buffer.byteLength(diff, 'utf8') : 0;
+  const diffBytes = diff === null ? 0 : Buffer.byteLength(diff, 'utf8');
   let remainingLogs = Math.min(MAX_LOG_BYTES, Math.max(0, outputBudget - diffBytes));
   let logsTruncated = false;
 

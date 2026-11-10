@@ -51,6 +51,16 @@ test('B13-01: fixed-base artifacts cover committed, staged, unstaged, renamed, d
   assert.match(artifact.limitations.join('\n'), /no trusted test command/);
 });
 
+test('B13-02: exhausted Git collection budget reports no diff evidence', async t => {
+  const f = fixture(t);
+  writeFileSync(join(f.repo, 'tracked.txt'), 'modified after base\n');
+  const artifact = await collectTaskArtifacts({ task: f.task, workspace: f.workspace,
+    remainingBudgetMs: 0, testCommands: [] });
+  assert.equal(artifact.diff, null);
+  assert.equal(artifact.changedFiles.length, 0);
+  assert.match(artifact.limitations.join('\n'), /Git artifact collection failed/);
+});
+
 test('B13-01: test command generated workspace files are captured in final artifact diff and changed files', async t => {
   const f = fixture(t);
   const artifact = await collectTaskArtifacts({

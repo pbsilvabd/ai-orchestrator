@@ -1191,3 +1191,24 @@ Review feedback at `b9de1af` resolved:
 
 Evidence level: Unit and local Git/subprocess fixtures.
 Not rerun: `integration/mcp-gate.mjs` and `integration/opencode-smoke.mjs`.
+
+### PR #35 follow-up corrections — 2026-11-09
+
+Re-reviewed head `53c373b` and reproduced two remaining failures. Added and verified:
+1. Artifact test collection rechecks that the same task attempt remains running before
+   starting each configured command, and the scheduler discards normal completion if
+   cancellation or shutdown made the task terminal during collection.
+2. Git collection tracks whether it obtained diff evidence. If collection cannot start
+   within budget, the persisted artifact carries `diff: null` and an explicit limitation
+   instead of presenting an empty diff as a clean workspace.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `node --test test/artifacts.test.mjs test/scheduler.test.mjs` | Focused collector and lifecycle regressions | 24 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full regression suite | 218 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace and conflict marker check | Clean | 0 |
+
+Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+Evidence level: local service, Git and subprocess fixtures. Remote OpenCode/MCP gates
+were not rerun. The existing Windows and Ubuntu CI passed at the pre-correction head.

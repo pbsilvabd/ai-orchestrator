@@ -113,7 +113,13 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
       const artifact = await collectTaskArtifacts({ task: running, workspace,
         testCommands: spawnFailed ? [] : (worker.testCommands ?? []),
         evidenceLevel: worker.evidenceLevel ?? 'unit',
-        remainingBudgetMs: remainingForArtifacts });
+        remainingBudgetMs: remainingForArtifacts,
+        shouldContinue: () => {
+          const latest = store.readTask(taskId);
+          return latest.status === 'running' && latest.attempts.at(-1)?.attemptId === attemptId;
+        } });
+      const afterArtifacts = store.readTask(taskId);
+      if (afterArtifacts.status !== 'running' || afterArtifacts.attempts.at(-1)?.attemptId !== attemptId) return;
       const finishedAt = now();
       store.updateTask(taskId, draft => {
         draft.status = knownExit && result.code === 0 ? 'succeeded' : 'failed';
