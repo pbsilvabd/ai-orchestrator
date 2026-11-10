@@ -1061,3 +1061,21 @@ Template:
   OpenCode/MCP integration gates and Ubuntu CI were not rerun locally.
 - Follow-up: monitor Windows/Ubuntu checks and review feedback on PR #37; merge remains
   a separate maintainer decision.
+
+## 2026-11-09 — M2b: B14 review corrections
+
+- Branch: `task/B14-cancellation-deadlines` from reviewed head `17b1f79`.
+- Scope: both B14-02 findings on PR #37.
+- Steps:
+  1. Preserved captured stdout and stderr as an optional worker log, with credential
+     redaction and the existing output cap. Kept worker output separate from tests.
+  2. Replaced the timing-only subprocess test with real service fixtures for both
+     deadline orderings and compared terminal record bytes after settling.
+  3. Reviewed old v1 records, log selection and artifact validation, then checked
+     the final diff against both review threads.
+- Files: scheduler, artifact collector, result projection, task store, artifact
+  schemas, scheduler/subprocess/contract tests, task contract, ADR-008, B14 card,
+  validation and worklog.
+- Validation: focused Windows subprocess and schema checks plus the full suite,
+  demo and diff check. See the validation entry for observed results.
+- Follow-up: recheck the PR head and review feedback before merge.

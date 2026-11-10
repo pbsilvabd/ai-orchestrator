@@ -290,6 +290,9 @@ test('submit request schema rejects the documented invalid shapes', () => {
 
 test('worker artifact schema accepts complete evidence and rejects unvalidated fields', () => {
   assert.deepEqual(validate(artifactSchema, workerArtifact()), { ok: true });
+  const withWorkerLog = { ...workerArtifact(), workerLog: { outputTail: 'partial', outputTruncated: false } };
+  assert.deepEqual(validate(artifactSchema, withWorkerLog), { ok: true });
+  assert.equal(validate(artifactSchema, { ...withWorkerLog, workerLog: { outputTail: 'partial' } }).ok, false);
 
   const numericOutcome = workerArtifact();
   numericOutcome.attempts[0].outcome = 42;
@@ -386,6 +389,15 @@ test('task record schema accepts the artifacts updateTask adds', t => {
   });
 
   assert.deepEqual(validate(recordSchema, store.readTask(task.taskId)), { ok: true });
+  const workerLog = { outputTail: 'partial', outputTruncated: false };
+  const { attempts, ...artifact } = workerArtifact({ headCommit: 'a'.repeat(40), baseCommit: 'd'.repeat(40) });
+  store.updateTask(task.taskId, draft => { draft.artifact = { ...artifact, workerLog }; });
+  const persisted = store.readTask(task.taskId);
+  assert.deepEqual(persisted.artifact.workerLog, workerLog);
+  assert.deepEqual(validate(recordSchema, persisted), { ok: true });
+  assert.throws(() => store.updateTask(task.taskId, draft => {
+    draft.artifact.workerLog = { outputTail: 'partial' };
+  }), { code: 'invalid_argument' });
 });
 
 test('error envelope schema accepts contract errors and rejects unknown codes', () => {

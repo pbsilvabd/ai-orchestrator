@@ -148,6 +148,7 @@ Result:
   schemaVersion: 1, taskId, status, baseCommit, branch, headCommit,
   diff, diffTruncated, changedFiles: [],
   testRuns: [{ command, exitCode, durationMs, summary, outputTail }],
+  workerLog: { outputTail, outputTruncated },  // optional partial worker evidence
   attempts: [...], limitations: [],
   cost: { known: false, amount, currency, note },
   evidenceLevel: "unit|local-http|opencode-integration|use-on-project",
@@ -157,16 +158,17 @@ Result:
 
 - Available for terminal states only; otherwise `result_not_ready`.
 - Omitting `include` selects all artifacts. Selecting `log` returns output tails
-  in `testRuns` even when requested on its own. Selecting only `tests` returns
-  run metadata with empty output tails.
+  in `testRuns` and the optional `workerLog`, even when requested on its own.
+  Selecting only `tests` returns run metadata with empty output tails.
 - `failed` and `blocked` tasks return whatever partial artifacts exist, with explicit
   `limitations`.
 - A success claim without a recorded test command and exit code is reported as a
   limitation, not as verified evidence.
 - Diff is capped at 1 MiB and log tails at 256 KiB. The task's `maxOutputBytes` is a
-  combined UTF-8 byte budget for diff first, then logs in test-run order. Logs retain
-  their tail. `diffTruncated`, per-run `outputTruncated` and `logsTruncated` indicate
-  truncation; UTF-8 sequences are never cut mid-character.
+  combined UTF-8 byte budget for diff first, then the worker log if present, then
+  logs in test-run order. Logs retain their tail. `diffTruncated`,
+  `outputTruncated` on each log and `logsTruncated` indicate truncation.
+  UTF-8 sequences are never cut mid-character.
 
 ### cancel_task
 
@@ -270,6 +272,9 @@ proof source and operation. Active cancellation persists `blocked` before signal
 the root; once it settles, only partial artifact collection without configured test
 commands may update the blocked record. This artifact update does not reopen lifecycle
 state or establish that the workspace stopped changing.
+The partial artifact can include a redacted, bounded tail of output the scheduler
+already captured from the interrupted worker. It can retain this tail after the
+task budget expires, when Git collection can no longer start.
 
 ## Persistence and restart
 

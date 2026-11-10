@@ -100,6 +100,15 @@
     "headCommit": {
       "type": ["string", "null"]
     },
+    "workerLog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outputTail", "outputTruncated"],
+      "properties": {
+        "outputTail": { "type": "string" },
+        "outputTruncated": { "type": "boolean" }
+      }
+    },
     "logsTruncated": {
       "type": "boolean"
     },

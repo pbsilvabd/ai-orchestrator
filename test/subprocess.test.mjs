@@ -78,19 +78,6 @@ test('B10-03: deadline and abort settle once with partial output and clean up', 
   assert.equal(aborted.stdout, 'before');
 });
 
-test('B14-02: a real root exit racing its deadline settles with one immutable outcome', async t => {
-  for (let attempt = 0; attempt < 5; attempt++) {
-    const result = await Promise.race([
-      runSubprocess({ ...setup(t), timeoutMs: 100, killGraceMs: 100,
-        args: ['-e', "setTimeout(()=>{process.stdout.write('exit');process.exit(0)},100)"] }),
-      delay(1500).then(() => { throw new Error('deadline/exit race did not settle'); }),
-    ]);
-    assert.ok(['exited', 'deadline'].includes(result.termination.reason));
-    assert.equal(typeof result.termination.rootExitObserved, 'boolean');
-    assert.equal(result.termination.descendantsStopped, false);
-  }
-});
-
 test('B10-04: Windows process termination reports root exit and leaves descendants unverified', async t => {
   const options = setup(t);
   const marker = join(options.cwd, 'descendant-ready');

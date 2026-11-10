@@ -1261,3 +1261,18 @@ stop and effect reversal remain unknown, so cancellation/deadline/crash outcomes
 blocked and no automatic replay is allowed. Ubuntu CI is pending PR publication.
 OpenCode and MCP integration gates were not rerun because B14 changes local lifecycle
 and scheduler handling, not the host or transport.
+
+### B14-02 — PR #37 review corrections — 2026-11-09
+
+Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5. Reviewed parent `17b1f79`.
+
+| Command | Result |
+| --- | --- |
+| `node --test --test-name-pattern=B14-02 test/scheduler.test.mjs` | 3 passed, exit 0. Active cancellation kept workspace evidence and both output streams. A gated real worker exercised normal exit and task deadline in separate cases. Final task bytes stayed unchanged. The exhausted-budget case retained logs with no Git diff. |
+| `node --test test/contracts.test.mjs` | 24 passed, exit 0. Worker log shape is optional, valid records round trip and malformed logs are rejected. |
+| `node --test` | 224 passed, 0 failed, 1 POSIX-only skip, exit 0. Includes the remaining B14 acceptance rows. |
+| `node examples/fallback-demo.mjs` | 429 then 200, exit 0. |
+| `git diff --check` | Clean, exit 0. |
+
+Evidence uses local Git, the task service and real subprocesses. OpenCode and MCP
+gates were not rerun because the changes affect local artifact and lifecycle handling.

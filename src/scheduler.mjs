@@ -99,7 +99,7 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
         let partialArtifact;
         try {
           partialArtifact = await collectTaskArtifacts({ task: running, workspace,
-            testCommands: [], evidenceLevel: worker.evidenceLevel ?? 'unit',
+            testCommands: [], workerResult: result, evidenceLevel: worker.evidenceLevel ?? 'unit',
             remainingBudgetMs: Math.max(0,
               running.request.limits.budgetMs - Math.ceil(performance.now() - started)) });
         } catch { /* retain the original cancellation record */ }
@@ -117,7 +117,7 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
         let partialArtifact;
         try {
           partialArtifact = await collectTaskArtifacts({ task: running, workspace,
-            testCommands: [], evidenceLevel: worker.evidenceLevel ?? 'unit',
+            testCommands: [], workerResult: result, evidenceLevel: worker.evidenceLevel ?? 'unit',
             remainingBudgetMs: remainingForArtifacts });
         } catch { /* retain original record on collection failure */ }
         block(taskId, 'worker-outcome-uncertain', partialArtifact);

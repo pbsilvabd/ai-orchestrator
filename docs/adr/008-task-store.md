@@ -139,6 +139,11 @@ or a stop with effects being reverted. Therefore it adds no generic or public
 `running → cancelled` proof path. Cancellation/deadline/crash uncertainty remains
 blocked and unreplayed; a late success cannot replace a previously persisted block.
 
+The partial artifact can carry an optional `workerLog` in a v1 record. It contains
+bounded and redacted output the scheduler captured from the interrupted worker,
+even when no task budget remains for Git collection. It is separate from test
+runs and does not change the blocked lifecycle or its stop evidence.
+
 ## Revisit triggers
 
 Revisit when: M2b carries

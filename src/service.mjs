@@ -247,28 +247,27 @@ export function createTaskService(options = {}) {
     const changedFiles = selected.has('diff') && Array.isArray(artifact.changedFiles) ? artifact.changedFiles.map(redactSecrets) : [];
     let diff = selected.has('diff') && typeof artifact.diff === 'string' ? redactSecrets(artifact.diff) : null;
     let diffTruncated = selected.has('diff') && artifact.diffTruncated === true;
-    let outputBytes = 0;
     const diffLimit = Math.min(MAX_DIFF_BYTES, task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES);
     if (diff !== null && Buffer.byteLength(diff, 'utf8') > diffLimit) {
       diff = truncateUtf8(diff, diffLimit);
       diffTruncated = true;
     }
-    if (diff !== null) outputBytes = Buffer.byteLength(diff, 'utf8');
     let logsTruncated = false;
     const maxOutputBytes = task.request?.limits?.maxOutputBytes ?? MAX_DIFF_BYTES;
-    let remainingLogBytes = Math.min(MAX_LOG_BYTES, Math.max(0, maxOutputBytes - outputBytes));
-    const boundedRuns = runs.map(run => {
-      const raw = includeLogs && typeof run.outputTail === 'string' ? run.outputTail : '';
-      const cap = Math.min(remainingLogBytes, Math.max(0, maxOutputBytes - outputBytes));
-      const trimmed = truncateUtf8Tail(raw, cap);
+    let remainingLogBytes = Math.min(MAX_LOG_BYTES,
+      Math.max(0, maxOutputBytes - Buffer.byteLength(diff ?? '', 'utf8')));
+    const boundLog = log => {
+      const raw = includeLogs && typeof log.outputTail === 'string' ? log.outputTail : '';
+      const trimmed = truncateUtf8Tail(raw, remainingLogBytes);
       const didTruncate = Buffer.byteLength(raw, 'utf8') > Buffer.byteLength(trimmed, 'utf8');
-      const outputTruncated = includeLogs && (run.outputTruncated || didTruncate);
+      const outputTruncated = includeLogs && (log.outputTruncated === true || didTruncate);
       logsTruncated ||= outputTruncated;
-      const emittedBytes = Buffer.byteLength(trimmed, 'utf8');
-      outputBytes += emittedBytes;
-      remainingLogBytes -= emittedBytes;
-      return { ...run, outputTail: trimmed, outputTruncated };
-    });
+      remainingLogBytes -= Buffer.byteLength(trimmed, 'utf8');
+      return { outputTail: trimmed, outputTruncated };
+    };
+    const workerLog = includeLogs && task.artifact?.workerLog ?
+      boundLog({ ...artifact.workerLog, outputTail: redactSecrets(artifact.workerLog.outputTail) }) : undefined;
+    const boundedRuns = runs.map(run => ({ ...run, ...boundLog(run) }));
 
     const limitations = Array.isArray(artifact.limitations) ? artifact.limitations.map(redactSecrets) : [];
     const passed = runs.some(run => typeof run.command === 'string' && run.command.trim() && run.exitCode === 0);
@@ -296,6 +295,7 @@ export function createTaskService(options = {}) {
       diffTruncated,
       changedFiles,
       testRuns: selected.has('tests') || includeLogs ? boundedRuns : [],
+      ...(workerLog && { workerLog }),
       logsTruncated,
       attempts: task.attempts.map(attempt => ({
         attemptId: attempt.attemptId,

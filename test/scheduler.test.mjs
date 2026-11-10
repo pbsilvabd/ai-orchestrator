@@ -341,12 +341,34 @@ test('B14-04: a late real zero exit cannot replace an already blocked task', asy
   assert.deepEqual(await service.close(), { releaseOwnership: false });
 });
 
-test('B14-02: active cancellation aborts the root and retains partial workspace evidence', async t => {
+function assertPartialWorkerLog(service, taskId) {
+  const task = service.store.readTask(taskId);
+  const persisted = task.artifact.workerLog;
+  assert.match(persisted.outputTail, /worker stdout/);
+  assert.match(persisted.outputTail, /worker stderr/);
+  assert.match(persisted.outputTail, /\[REDACTED\]/);
+  assert.doesNotMatch(JSON.stringify(task), /B14_FIXTURE_SECRET/);
+  assert.equal(persisted.outputTruncated, true);
+  const result = service.getTaskResult({ taskId, include: ['log'] });
+  assert.deepEqual(result.workerLog, persisted);
+  assert.deepEqual(result.testRuns, []);
+  assert.equal(result.logsTruncated, true);
+  assert.equal('workerLog' in service.getTaskResult({ taskId, include: ['tests'] }), false);
+  const all = service.getTaskResult({ taskId });
+  assert.ok(Buffer.byteLength((all.diff ?? '') + all.workerLog.outputTail, 'utf8') <=
+    task.request.limits.maxOutputBytes);
+}
+
+const workerWritesLog = `process.stdout.write('😀'.repeat(1200) + 'worker stdout api_key=B14_FIXTURE_SECRET',
+  () => process.stderr.write('worker stderr', () => fs.writeFileSync(readyPath, String(process.pid))));`;
+
+test('B14-02: active cancellation preserves bounded worker logs and partial workspace evidence', async t => {
   const f = setup(t);
   const marker = join(f.root, 'ready');
   const service = f.start({ worker: workerFor(`const fs=require('node:fs');
-    fs.writeFileSync(${JSON.stringify(marker)},'ready');
     fs.writeFileSync('partial-before-cancel.txt','observed');
+    const readyPath = ${JSON.stringify(marker)};
+    ${workerWritesLog}
     setInterval(()=>{},1000)`) });
   const accepted = service.submitTask(f.request('active-cancel'));
   await until(() => existsSync(marker), 'worker running');
@@ -361,11 +383,64 @@ test('B14-02: active cancellation aborts the root and retains partial workspace 
   assert.equal(task.block.reason, 'cancelled-uncertain');
   assert.ok(task.artifact.changedFiles.includes('partial-before-cancel.txt'));
   assert.deepEqual(task.artifact.testRuns, []);
+  assertPartialWorkerLog(service, accepted.taskId);
   assert.deepEqual(service.cancelTask({ taskId: accepted.taskId }), {
     schemaVersion: 1, cancelRequestedAt: first.cancelRequestedAt,
     status: 'blocked', effect: 'already_terminal' });
   assert.deepEqual(await service.close(), { releaseOwnership: false });
 });
+
+for (const winner of ['root exit', 'deadline']) {
+  test(`B14-02: ${winner} wins at the durable task boundary`, { timeout: 25_000 }, async t => {
+    const f = setup(t);
+    const marker = join(f.root, 'ready');
+    const release = join(f.root, 'release');
+    const exited = join(f.root, 'exited');
+    const deadlineWins = winner === 'deadline';
+    const worker = workerFor(`const fs = require('node:fs');
+      const readyPath = ${JSON.stringify(marker)};
+      ${workerWritesLog}
+      const timer = setInterval(() => {
+        if (!fs.existsSync(${JSON.stringify(release)})) return;
+        clearInterval(timer);
+        fs.writeFileSync(${JSON.stringify(exited)}, 'zero');
+        process.exit(0);
+      }, 10);`);
+    const invocationTimeout = 4_000;
+    const service = f.start({ worker: {
+      prepare(input) {
+        return { ...worker.prepare(input), timeoutMs: deadlineWins ? 10_000 : invocationTimeout };
+      },
+    } });
+    const accepted = service.submitTask(f.request(`deadline-order-${deadlineWins}`));
+    await until(() => existsSync(marker), 'worker is ready and has emitted its output');
+    if (!deadlineWins) writeFileSync(release, 'exit normally before the deadline');
+    await service.whenIdle();
+    const task = service.store.readTask(accepted.taskId);
+    assert.equal(task.status, deadlineWins ? 'blocked' : 'succeeded');
+    assert.equal(task.attempts.length, 1);
+    assert.equal(existsSync(exited), !deadlineWins);
+    if (deadlineWins) {
+      assert.equal(task.block.reason, 'worker-outcome-uncertain');
+      assert.equal(task.cancel.executionStopped, 'unknown');
+      assert.equal(task.cancel.effectsReverted, false);
+      assert.equal(task.artifact.diff, null, 'the task budget was exhausted');
+      assertPartialWorkerLog(service, accepted.taskId);
+    } else {
+      assert.equal(task.attempts[0].exitCode, 0);
+      assert.equal(task.block, null);
+    }
+    const recordPath = join(f.home, 'tasks', `${accepted.taskId}.json`);
+    const finalBytes = read(recordPath);
+    if (deadlineWins) {
+      await until(() => !isAlive(Number(read(marker))), 'fixture root exited after the deadline');
+      writeFileSync(release, 'offer normal exit after the deadline');
+    } else await delay(invocationTimeout);
+    assert.equal(service.cancelTask({ taskId: accepted.taskId }).effect, 'already_terminal');
+    assert.equal(existsSync(exited), !deadlineWins);
+    assert.equal(read(recordPath), finalBytes);
+  });
+}
 
 test('B14-01: cancellation at the prepared-before-spawn boundary starts no child', async t => {
   const f = setup(t);
