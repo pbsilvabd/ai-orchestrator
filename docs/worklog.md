@@ -968,3 +968,51 @@ Template:
 - Follow-up: exercise the task skill on the next authorized B13 assignment and the
   review skill on an authorized PR review. B13 and M2b/M3 status remain unchanged.
   This local skills delivery does not inherit earlier publication/merge approvals.
+
+## 2026-11-07 — M2b: B13 verifiable bounded artifacts
+
+- Branch: `task/B13-bounded-artifacts`, base `c6bb77a`.
+- Scope: code, tests and documentation. Task ID: B13.
+- Steps:
+  1. Implemented trusted artifact collector in `src/artifacts.mjs` against fixed base commit,
+     covering committed, staged, unstaged, renamed, deleted and untracked files.
+  2. Handled byte caps on diff and log tails, binary file omission reporting, and
+     workspace containment verification.
+  3. Added secret pattern redaction and multi-byte UTF-8 truncation utilities in `src/redaction.mjs`.
+  4. Wired artifact collection into `src/scheduler.mjs` on completion and updated `src/service.mjs`
+     and `src/tasks.mjs` to validate and project recorded task artifacts.
+  5. Implemented acceptance test suite in `test/artifacts.test.mjs` covering B13-01 to B13-04.
+  6. Verified full regression suite (213 passed, 1 skipped) and fallback demo.
+  7. Addressed PR #35 review findings: gated test execution on known worker outcome
+     with zero test launches on uncertain exit; enforced byte caps after redaction;
+     captured workspace modifications after test command executions.
+- Files: `src/artifacts.mjs`, `src/redaction.mjs`, `src/opencode.mjs`, `src/scheduler.mjs`,
+  `src/service.mjs`, `src/tasks.mjs`, `test/artifacts.test.mjs`, `test/scheduler.test.mjs`,
+  `docs/tasks/B13.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test test/artifacts.test.mjs` -> 6 passed, 0 failed;
+  `node --test test/scheduler.test.mjs` -> 21 passed, 0 failed;
+  `node --test` -> 216 passed, 0 failed, 1 POSIX-only skipped; `node examples/fallback-demo.mjs`
+  -> 429 then 200; `git diff --check` -> clean.
+- Follow-up: publish PR for B13, verify CI and request review; B14 follows upon B13 merge.
+
+## 2026-11-09 — M2b: B13 follow-up review corrections
+
+- Branch: `task/B13-bounded-artifacts`, base `c6bb77a`; corrected reviewed head `53c373b`.
+- Scope: resolve remaining PR #35 review findings.
+- Steps:
+  1. Rechecked task state before every configured artifact test and before persisting
+     scheduler completion, preventing a later test launch after cancellation/shutdown.
+  2. Kept Git diff evidence null when collection could not obtain it, with an explicit
+     limitation distinct from a successfully collected empty workspace.
+  3. Added local service/Git/subprocess regressions for cancellation during artifact
+     collection and a zero-budget Git collection.
+  4. Reviewed the final correction diff and reran focused and full validation.
+- Files: `src/artifacts.mjs`, `src/scheduler.mjs`, `test/artifacts.test.mjs`,
+  `test/scheduler.test.mjs`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused suite -> 24 passed, 0 failed; `node --test` -> 218 passed,
+  0 failed, 1 POSIX-only skipped; demo -> 429 then 200; `git diff --check` -> clean.
+- Limits: Windows local evidence; existing Ubuntu/Windows CI was for the parent head.
+  OpenCode and MCP integration gates were not rerun.
+- Follow-up: push to the existing PR #35, verify CI at the new head, and request
+  re-review. B14 remains next after B13 merges.

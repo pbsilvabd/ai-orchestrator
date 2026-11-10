@@ -471,6 +471,38 @@ function validateTask(task) {
     if (entry.detail !== null && entry.detail !== undefined && typeof entry.detail !== 'string')
       fail('invalid_argument', 'progress detail must be a string or null');
   }
+  if (task.artifact !== undefined) validateArtifact(task.artifact);
+}
+
+function validateArtifact(artifact) {
+  if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact))
+    fail('invalid_argument', 'artifact must be an object');
+  const required = ['baseCommit', 'branch', 'headCommit', 'diff', 'diffTruncated', 'changedFiles',
+    'testRuns', 'logsTruncated', 'limitations', 'cost', 'evidenceLevel'];
+  if (Object.keys(artifact).sort().join(',') !== required.sort().join(','))
+    fail('invalid_argument', 'artifact fields do not match the producer contract');
+  for (const field of ['baseCommit', 'branch'])
+    if (typeof artifact[field] !== 'string' || !artifact[field]) fail('invalid_argument', `artifact ${field} is required`);
+  if (artifact.headCommit !== null && (typeof artifact.headCommit !== 'string' || !/^[0-9a-f]{40,64}$/.test(artifact.headCommit)))
+    fail('invalid_argument', 'artifact headCommit is invalid');
+  if (artifact.diff !== null && typeof artifact.diff !== 'string') fail('invalid_argument', 'artifact diff is invalid');
+  if (typeof artifact.diffTruncated !== 'boolean' || typeof artifact.logsTruncated !== 'boolean')
+    fail('invalid_argument', 'artifact truncation flags are required');
+  for (const field of ['changedFiles', 'testRuns', 'limitations'])
+    if (!Array.isArray(artifact[field])) fail('invalid_argument', `artifact ${field} must be an array`);
+  if (artifact.changedFiles.some(path => typeof path !== 'string') || artifact.limitations.some(value => typeof value !== 'string'))
+    fail('invalid_argument', 'artifact text lists are invalid');
+  for (const run of artifact.testRuns) {
+    if (!run || typeof run !== 'object' || Array.isArray(run) || typeof run.command !== 'string' ||
+        !Number.isInteger(run.exitCode) || !Number.isInteger(run.durationMs) || run.durationMs < 0 ||
+        typeof run.summary !== 'string' || typeof run.outputTail !== 'string' || typeof run.outputTruncated !== 'boolean')
+      fail('invalid_argument', 'artifact test run is invalid');
+  }
+  if (!artifact.cost || typeof artifact.cost !== 'object' || artifact.cost.known !== false ||
+      artifact.cost.amount !== null || typeof artifact.cost.currency !== 'string' || typeof artifact.cost.note !== 'string')
+    fail('invalid_argument', 'artifact cost is invalid');
+  if (!['unit', 'local-http', 'opencode-integration', 'use-on-project'].includes(artifact.evidenceLevel))
+    fail('invalid_argument', 'artifact evidence level is invalid');
 }
 
 function validateUpdate(previous, next) {

@@ -15,11 +15,11 @@ const ALLOWED_TOOLS = new Set(['read', 'edit']);
 
 // Explicit opt-in service adapter. Configuration is supplied by the maintainer,
 // copied once and never derived from task text. Only loopback fixtures are supported.
-export function createOpenCodeWorker({ runtimeRoot, ...options } = {}) {
+export function createOpenCodeWorker({ runtimeRoot, testCommands = [], evidenceLevel = 'opencode-integration', ...options } = {}) {
   if (typeof runtimeRoot !== 'string' || !isAbsolute(runtimeRoot))
     fail('invalid_argument', 'worker runtimeRoot must be absolute');
   const configured = structuredClone(options);
-  return { prepare({ task, workspace }) {
+  return { testCommands: structuredClone(testCommands), evidenceLevel, prepare({ task, workspace }) {
     const attemptId = task?.attempts?.at(-1)?.attemptId;
     const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
     if (!uuid.test(task?.taskId ?? '') || !uuid.test(attemptId ?? ''))

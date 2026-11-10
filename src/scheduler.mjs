@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { performance } from 'node:perf_hooks';
 import { createTaskWorkspace } from './workspace.mjs';
 import { runSubprocess } from './subprocess.mjs';
+import { collectTaskArtifacts } from './artifacts.mjs';
 
 // Private service-owned queue. The adapter is trusted application code, never task
 // text. It prepares a synchronous invocation; this module alone starts the child.
@@ -30,13 +31,14 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
     // Never surface adapter exceptions, prompts, paths or provider output.
     fault = error?.code === 'unavailable' ? 'unavailable' : 'internal';
   };
-  const block = (taskId, reason) => store.updateTask(taskId, draft => {
+  const block = (taskId, reason, artifact = undefined) => store.updateTask(taskId, draft => {
     if (draft.status !== 'running') return;
     const at = now();
     draft.status = 'blocked';
     draft.finishedAt = at;
     draft.cancel.executionStopped = 'unknown';
     draft.block = { reason, requiresReconciliation: true };
+    if (artifact !== undefined) draft.artifact = artifact;
     draft.progress.push({ at, event: 'blocked', detail: reason });
   });
 
@@ -92,8 +94,33 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
       }
       // A cancel/shutdown/other terminal decision wins over a late completion.
       if (current.status !== 'running' || current.attempts.at(-1)?.attemptId !== attemptId) return;
+      const remainingForArtifacts = Math.max(0,
+        running.request.limits.budgetMs - Math.ceil(performance.now() - started));
+
+      // Gate test execution on a known worker outcome: never launch tests when the
+      // worker outcome is uncertain, but collect available partial Git artifacts.
+      if (!knownExit && !spawnFailed) {
+        let partialArtifact;
+        try {
+          partialArtifact = await collectTaskArtifacts({ task: running, workspace,
+            testCommands: [], evidenceLevel: worker.evidenceLevel ?? 'unit',
+            remainingBudgetMs: remainingForArtifacts });
+        } catch { /* retain original record on collection failure */ }
+        block(taskId, 'worker-outcome-uncertain', partialArtifact);
+        return;
+      }
+
+      const artifact = await collectTaskArtifacts({ task: running, workspace,
+        testCommands: spawnFailed ? [] : (worker.testCommands ?? []),
+        evidenceLevel: worker.evidenceLevel ?? 'unit',
+        remainingBudgetMs: remainingForArtifacts,
+        shouldContinue: () => {
+          const latest = store.readTask(taskId);
+          return latest.status === 'running' && latest.attempts.at(-1)?.attemptId === attemptId;
+        } });
+      const afterArtifacts = store.readTask(taskId);
+      if (afterArtifacts.status !== 'running' || afterArtifacts.attempts.at(-1)?.attemptId !== attemptId) return;
       const finishedAt = now();
-      if (!knownExit && !spawnFailed) { block(taskId, 'worker-outcome-uncertain'); return; }
       store.updateTask(taskId, draft => {
         draft.status = knownExit && result.code === 0 ? 'succeeded' : 'failed';
         draft.finishedAt = finishedAt;
@@ -102,6 +129,7 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
         attempt.outcome = spawnFailed ? 'spawn-error' : draft.status;
         attempt.exitCode = result.code;
         attempt.spawnErrorCode = result.spawnErrorCode;
+        draft.artifact = artifact;
         draft.progress.push({ at: finishedAt, event: draft.status, detail: null });
       });
     } catch (error) {

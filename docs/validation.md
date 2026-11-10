@@ -1143,3 +1143,72 @@ unchanged); paid/real-provider evaluation (not authorized or needed here).
 Claim: this entry supports valid repo-local skill packages with resolved references
 and an unchanged local runtime baseline. Real use on B13/a PR is the next behavioral
 validation; it is not evidence of M2b/M3 completion or independent review.
+
+## B13 — Verifiable bounded artifacts — 2026-11-07
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5.
+Date: 2026-11-07. Branch `task/B13-bounded-artifacts`, base `c6bb77a`.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `node --test test/artifacts.test.mjs` | Focused acceptance test suite covering B13-01 to B13-04 | 4 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full regression suite | 213 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Verify existing fallback behavior | 429 then 200, sessionId demo-session | 0 |
+| `git diff --check` | Verify no whitespace or conflict markers | Clean (no output) | 0 |
+
+### Acceptance Matrix Evidence
+
+| ID | Scenario | Result | Evidence |
+| --- | --- | --- | --- |
+| B13-01 | Added/deleted/renamed/untracked and staged/committed mix | PASS | `test/artifacts.test.mjs` ("B13-01: fixed-base artifacts cover committed, staged, unstaged, renamed, deleted and untracked files"): verified exact changedFiles array and diff presence against base; files outside workspace ignored. |
+| B13-02 | Tests fail or omit command evidence | PASS | `test/artifacts.test.mjs` ("B13-02: real failing test records its command, nonzero exit and limitation"): command label, exit code 7, stderr tail and limitation recorded. |
+| B13-03 | Oversized UTF-8 diff/log and binary data | PASS | `test/artifacts.test.mjs` ("B13-03: UTF-8 diff/log and binary artifacts stay byte bounded with explicit flags"): diff byte length <= budget, diffTruncated true, logsTruncated true, binary file omission limitation reported. |
+| B13-04 | Credential sentinel in every artifact field | PASS | `test/artifacts.test.mjs` ("B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts"): fake sentinel redacted to `[REDACTED]` in persisted task file and result envelope. |
+
+Evidence level: Unit and local Git/subprocess fixtures.
+Not rerun: `integration/mcp-gate.mjs` and `integration/opencode-smoke.mjs` (unaffected by artifact collection).
+Claim: B13 acceptance criteria are met by executable tests covering every matrix row.
+
+### PR #35 review corrections — 2026-11-09
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5.
+Review feedback at `b9de1af` resolved:
+1. [P1] Gated test execution on a known worker outcome: when worker exit is uncertain,
+   no test commands are launched, partial artifacts are retained on the blocked task, and
+   a regression test asserts zero test launches.
+2. [P2] Enforced byte caps and truncation flags on diff and logs after secret redaction,
+   ensuring secret expansion cannot exceed output budget on persisted artifact or response.
+3. [P2] Executed configured test commands before Git collection, capturing test-generated
+   workspace modifications in the final diff and changed files.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `node --test test/artifacts.test.mjs` | Artifact collector tests including test-generated files and secret expansion | 6 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/scheduler.test.mjs` | Scheduler tests including zero test launch on uncertain outcome | 21 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full regression suite | 216 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing demo | 429 then 200 | 0 |
+| `git diff --check` | Verify no whitespace or conflict markers | Clean | 0 |
+
+Evidence level: Unit and local Git/subprocess fixtures.
+Not rerun: `integration/mcp-gate.mjs` and `integration/opencode-smoke.mjs`.
+
+### PR #35 follow-up corrections — 2026-11-09
+
+Re-reviewed head `53c373b` and reproduced two remaining failures. Added and verified:
+1. Artifact test collection rechecks that the same task attempt remains running before
+   starting each configured command, and the scheduler discards normal completion if
+   cancellation or shutdown made the task terminal during collection.
+2. Git collection tracks whether it obtained diff evidence. If collection cannot start
+   within budget, the persisted artifact carries `diff: null` and an explicit limitation
+   instead of presenting an empty diff as a clean workspace.
+
+| Command | Purpose | Result | Exit |
+| --- | --- | --- | --- |
+| `node --test test/artifacts.test.mjs test/scheduler.test.mjs` | Focused collector and lifecycle regressions | 24 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full regression suite | 218 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | 429 then 200 | 0 |
+| `git diff --check` | Whitespace and conflict marker check | Clean | 0 |
+
+Environment: Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5.
+Evidence level: local service, Git and subprocess fixtures. Remote OpenCode/MCP gates
+were not rerun. The existing Windows and Ubuntu CI passed at the pre-correction head.
