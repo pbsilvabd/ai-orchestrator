@@ -9,7 +9,7 @@ ChatGPT project snapshot is older and is not a Git checkout; this branch uses th
 actual repository checkout. M2a is complete, and ADR-007 still selects MCP stdio
 revision `2026-07-28`; the B06 capability gate passed eight isolated host runs.
 
-## Current implementation status: B15 adapter ready for publication
+## Current implementation status: B15 PR under review
 
 B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
 Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log
@@ -27,13 +27,16 @@ identity, rejects oversized/malformed input without reflecting payloads, and clo
 idle ownership cleanly on EOF. The pinned-host gate confirmed discovery of all four
 tools and one persisted queued submission whose result reached model context.
 
-## Next action: publish B15 for review
+## Next action: complete B15 review
 
-1. Commit the complete B15 branch diff and push `task/B15-mcp-stdio-adapter`.
-2. Open the task PR against `main`, map B15-01 through B15-04 to the recorded
-   tests/experiment, and verify that the remote head matches the local SHA.
-3. Read PR feedback and Windows/Ubuntu CI at the published head; merge only with
-   task-specific maintainer authorization. After merge, proceed to B16.
+1. Review [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38), open against
+   `main` from `task/B15-mcp-stdio-adapter`; published head is `8adb7b25` and matches
+   the remote branch.
+2. No review comments or inline threads exist yet. GitHub Actions CI run
+   `43131490538` was `in_progress` at the published head when checked; refresh the
+   PR checks before proceeding.
+3. Merge only with task-specific maintainer authorization. After merge, proceed to
+   B16.
 
 B16 must exercise a real client submission, polling and result retrieval. M2b/M3
 remain incomplete; no production provider, remote transport, fallback, memory,

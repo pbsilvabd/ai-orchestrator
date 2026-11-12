@@ -95,8 +95,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Merged #25 at 68d3ea5; PR and main CI passed | B04a/B05/B09–B11 delivered; no remaining B12 gate |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Merged #35 at `254b5b9`; post-merge CI passed | B09/B10 merged |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Merged #37 at `dc757c1`; Windows/Ubuntu checks passed | B10/B12/B13 merged |
-| [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Implementation and pinned-host gate complete locally; PR publication pending | B06/B12/B14 merged; B13 artifacts available |
-| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Pending; gated by B13–B15 | B12 delivered; B13/B14/B15 pending |
+| [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | PR #38 open at `8adb7b2`; CI in progress, review pending | B06/B12/B14 merged; B13 artifacts available |
+| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Pending; gated by B13–B15 | B12 delivered; B13/B14 merged; B15 under review |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Pending; gated by B16 | B16 actual transport/client workflow pending |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Pending; gated by B14 | B04a/B05 delivered; B14 pending; need not wait for B17 |
 | [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Pending; gate pulse preparation ready, task history gated | B06 delivered; task-history track waits for B17 |
