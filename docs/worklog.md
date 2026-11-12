@@ -1188,3 +1188,23 @@ Template:
   replied to all six review findings with the checks performed. Current-head CI run
   `43149559100` is in progress; request re-review after checks complete. Leave merge to
   separate task-specific authorization; PR #39 remains open.
+
+## 2026-11-12 — B16 second re-review follow-ups
+
+- Review identified three remaining defects on PR #39: Windows Git environment keys
+  were filtered case-sensitively; primary polling used the durable disk ID instead of
+  the client-facing submit reply and terminal result identity was not asserted; startup
+  cleanup skipped descendants when their leader exited before readiness.
+- Corrected the fixture Git environment with an allowlist and per-repository pinned
+  Git directory/worktree. Added uppercase/lowercase/mixed-case hostile canaries.
+- Primary polls now use the parsed ID from the submit reply seen by the provider. The
+  terminal MCP result and provider-facing status/result pair each assert both task IDs,
+  plus lifecycle and artifact evidence.
+- Cleanup now signals POSIX process groups after leader exit and on Windows tracks and
+  terminates fixture-owned descendant PIDs independently. Added a parent-exits-first
+  readiness regression case.
+- Validation: pinned OpenCode 2.2.5 gate → 15 MCP calls, all B16 rows passed; full suite
+  → 254 tests, 253 passed, 0 failed, one POSIX-only skip. Four fault-injection copies
+  (case-sensitive Git filtering, lost submit ID, wrong terminal ID, skipped cleanup
+  after leader exit) each failed as required. `node --check` and `git diff --check`
+  clean. Publication and current-head CI/re-review are next; PR #39 remains open.

@@ -31,19 +31,24 @@ function inside(parent, child) {
   return relative === '' || (!relative.startsWith(`..${sep}`) && relative !== '..' && !isAbsolute(relative));
 }
 
-const gitEnv = { ...process.env };
-for (const key of Object.keys(gitEnv)) if (key.startsWith('GIT_')) delete gitEnv[key];
+const gitEnv = {};
+for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC', 'HOME', 'USERPROFILE', 'TEMP', 'TMP'])
+  if (process.env[key]) gitEnv[key] = process.env[key];
 Object.assign(gitEnv, {
   GIT_CONFIG_NOSYSTEM: '1', GIT_CONFIG_GLOBAL: join(root, 'gitconfig'),
   GIT_TEMPLATE_DIR: join(root, 'git-template'),
 });
 mkdirSync(gitEnv.GIT_TEMPLATE_DIR, { recursive: true });
 writeFileSync(gitEnv.GIT_CONFIG_GLOBAL, '');
-function fixtureGit(args) {
-  return execFileSync('git', args, { env: gitEnv, stdio: 'ignore', windowsHide: true });
+function gitEnvFor(repository) {
+  return { ...gitEnv, GIT_DIR: join(repository, '.git'), GIT_WORK_TREE: repository };
+}
+function fixtureGit(args, targetEnv = gitEnv) {
+  return execFileSync('git', args, { env: targetEnv, stdio: 'ignore', windowsHide: true });
 }
 
-function canarySnapshot(canary, canaryEnv) {
+function canarySnapshot(canary) {
+  const canaryEnv = gitEnvFor(canary);
   const git = args => execFileSync('git', ['-C', canary, ...args], {
     env: canaryEnv, encoding: 'utf8', windowsHide: true,
   }).trim();
@@ -62,28 +67,34 @@ async function verifyGitIsolation() {
   const canary = join(root, 'git-canary');
   mkdirSync(canary);
   fixtureGit(['init', '--initial-branch=main', canary]);
-  fixtureGit(['-C', canary, 'config', 'user.name', 'B16 Canary']);
-  fixtureGit(['-C', canary, 'config', 'user.email', 'b16-canary@example.invalid']);
+  const canaryEnv = gitEnvFor(canary);
+  fixtureGit(['-C', canary, 'config', 'user.name', 'B16 Canary'], canaryEnv);
+  fixtureGit(['-C', canary, 'config', 'user.email', 'b16-canary@example.invalid'], canaryEnv);
   writeFileSync(join(canary, 'tracked.txt'), 'base');
-  fixtureGit(['-C', canary, 'add', 'tracked.txt']);
-  fixtureGit(['-C', canary, 'commit', '-m', 'Canary base']);
-  fixtureGit(['-C', canary, 'switch', '-c', 'feature']);
+  fixtureGit(['-C', canary, 'add', 'tracked.txt'], canaryEnv);
+  fixtureGit(['-C', canary, 'commit', '-m', 'Canary base'], canaryEnv);
+  fixtureGit(['-C', canary, 'switch', '-c', 'feature'], canaryEnv);
   writeFileSync(join(canary, 'staged.txt'), 'staged');
-  fixtureGit(['-C', canary, 'add', 'staged.txt']);
-  const canaryEnv = { ...gitEnv, GIT_DIR: join(canary, '.git'), GIT_WORK_TREE: canary };
-  const before = canarySnapshot(canary, canaryEnv);
-  const child = spawnSync(process.execPath,
-    [resolve('integration/mcp-client-workflow.mjs'), `${binary}.missing-canary`], {
-      cwd: process.cwd(), env: { ...process.env, GIT_DIR: canaryEnv.GIT_DIR,
-        GIT_WORK_TREE: canaryEnv.GIT_WORK_TREE, B16_GIT_CANARY_CHILD: '1' },
-      encoding: 'utf8', windowsHide: true, timeout: 30_000,
-    });
-  assert.notEqual(child.status, 0, 'Missing-binary canary run must fail');
-  assert.match(child.stderr, /ENOENT/, 'Missing-binary canary run must fail at executable launch');
-  const after = canarySnapshot(canary, canaryEnv);
-  for (const key of ['config', 'index']) assert.deepEqual(after[key], before[key], `Canary ${key} must remain byte-identical`);
-  for (const key of ['head', 'main', 'feature', 'status', 'branch'])
-    assert.equal(after[key], before[key], `Canary ${key} must remain unchanged`);
+  fixtureGit(['-C', canary, 'add', 'staged.txt'], canaryEnv);
+  const before = canarySnapshot(canary);
+  const hostileVariants = [
+    { GIT_DIR: join(canary, '.git'), GIT_WORK_TREE: canary },
+    { git_dir: join(canary, '.git'), git_work_tree: root },
+    { GiT_DiR: join(canary, '.git'), GiT_WoRk_TrEe: root },
+  ];
+  for (const hostile of hostileVariants) {
+    const child = spawnSync(process.execPath,
+      [resolve('integration/mcp-client-workflow.mjs'), `${binary}.missing-canary`], {
+        cwd: process.cwd(), env: { ...process.env, ...hostile, B16_GIT_CANARY_CHILD: '1' },
+        encoding: 'utf8', windowsHide: true, timeout: 30_000,
+      });
+    assert.notEqual(child.status, 0, 'Missing-binary canary run must fail');
+    assert.match(child.stderr, /ENOENT/, 'Missing-binary canary run must fail at executable launch');
+    const after = canarySnapshot(canary);
+    for (const key of ['config', 'index']) assert.deepEqual(after[key], before[key], `Canary ${key} must remain byte-identical`);
+    for (const key of ['head', 'main', 'feature', 'status', 'branch'])
+      assert.equal(after[key], before[key], `Canary ${key} must remain unchanged`);
+  }
 }
 
 const env = {};
@@ -105,19 +116,20 @@ Object.assign(env, {
 });
 
 fixtureGit(['init', work]);
-const gitTop = execFileSync('git', ['-C', work, 'rev-parse', '--show-toplevel'], { env: gitEnv, encoding: 'utf8', windowsHide: true }).trim();
-const gitDir = execFileSync('git', ['-C', work, 'rev-parse', '--absolute-git-dir'], { env: gitEnv, encoding: 'utf8', windowsHide: true }).trim();
+const workGitEnv = gitEnvFor(work);
+const gitTop = execFileSync('git', ['-C', work, 'rev-parse', '--show-toplevel'], { env: workGitEnv, encoding: 'utf8', windowsHide: true }).trim();
+const gitDir = execFileSync('git', ['-C', work, 'rev-parse', '--absolute-git-dir'], { env: workGitEnv, encoding: 'utf8', windowsHide: true }).trim();
 assert.ok(inside(root, resolve(gitTop)), 'Fixture Git worktree must resolve inside its temporary root');
 assert.ok(inside(root, resolve(gitDir)), 'Fixture Git directory must resolve inside its temporary root');
 assert.equal(resolve(gitTop), resolve(work), 'Fixture Git worktree must be the scratch repository');
 assert.equal(resolve(gitDir), resolve(work, '.git'), 'Fixture Git metadata must stay in the scratch repository');
-fixtureGit(['-C', work, 'config', 'user.name', 'B16 Fixture']);
-fixtureGit(['-C', work, 'config', 'user.email', 'b16-fixture@example.invalid']);
+fixtureGit(['-C', work, 'config', 'user.name', 'B16 Fixture'], workGitEnv);
+fixtureGit(['-C', work, 'config', 'user.email', 'b16-fixture@example.invalid'], workGitEnv);
 writeFileSync(join(work, 'README.md'), '# B16 MCP fixture\n');
 writeFileSync(join(work, 'src', 'README.md'), 'Fixture source directory.\n');
-fixtureGit(['-C', work, 'add', '.']);
-fixtureGit(['-C', work, 'commit', '-m', 'Initial fixture']);
-fixtureGit(['-C', work, 'branch', '-M', 'main']);
+fixtureGit(['-C', work, 'add', '.'], workGitEnv);
+fixtureGit(['-C', work, 'commit', '-m', 'Initial fixture'], workGitEnv);
+fixtureGit(['-C', work, 'branch', '-M', 'main'], workGitEnv);
 writeFileSync(configPath, JSON.stringify({
   clientId: 'opencode-primary',
   authorization: { models: ['fixture/mock'], tools: ['read', 'edit'], writableRoots: [work] },
@@ -154,9 +166,13 @@ function start(file, args, cwd, { processGroup = false } = {}) {
     detached: processGroup && process.platform !== 'win32' });
   child.processGroup = processGroup;
   let stdout = '', stderr = '';
-  child.stdout.on('data', data => { stdout += data; });
+  const descendantPids = new Set();
+  child.stdout.on('data', data => {
+    stdout += data;
+    for (const match of stdout.matchAll(/B16_DESCENDANT_PID:(\d+)/g)) descendantPids.add(Number(match[1]));
+  });
   child.stderr.on('data', data => { stderr += data; });
-  return { child, output: () => ({ stdout, stderr }) };
+  return { child, descendantPids, output: () => ({ stdout, stderr }) };
 }
 
 function waitForClose(child, maxWait = 5000) {
@@ -169,32 +185,44 @@ function waitForClose(child, maxWait = 5000) {
   });
 }
 
-async function stop(child) {
-  if (child.exitCode !== null || child.signalCode !== null) return;
+async function killWindowsPid(pid, tree) {
+  const killer = spawn('taskkill.exe', ['/PID', String(pid), ...(tree ? ['/T'] : []), '/F'], { windowsHide: true });
+  const code = await new Promise((resolveCode, rejectCode) => {
+    const timer = setTimeout(() => rejectCode(new Error(`taskkill timed out for process ${pid}`)), 5000);
+    killer.once('error', error => { clearTimeout(timer); rejectCode(error); });
+    killer.once('close', value => { clearTimeout(timer); resolveCode(value); });
+  });
+  if (code !== 0 && pidIsAlive(pid)) throw new Error(`taskkill failed to stop process ${pid}`);
+}
+
+async function stop(proc) {
+  const { child, descendantPids } = proc;
   if (process.platform === 'win32') {
-    const killer = spawn('taskkill.exe', ['/PID', String(child.pid), '/T', '/F'], { windowsHide: true });
-    const code = await new Promise((resolveCode, rejectCode) => {
-      const timer = setTimeout(() => rejectCode(new Error('taskkill timed out')), 5000);
-      killer.once('error', error => { clearTimeout(timer); rejectCode(error); });
-      killer.once('close', value => { clearTimeout(timer); resolveCode(value); });
-    });
-    if (code !== 0 && child.exitCode === null && child.signalCode === null && !await waitForClose(child, 1000))
-      throw new Error('taskkill failed to stop host process tree');
+    if (child.exitCode === null && child.signalCode === null) await killWindowsPid(child.pid, true);
+    // taskkill /T cannot discover children after their leader has exited. Kill any
+    // descendants explicitly reported by the owned startup fixture as a fallback.
+    for (const pid of descendantPids) if (pidIsAlive(pid)) await killWindowsPid(pid, true);
   } else if (child.processGroup) {
+    // The process-group ID remains the leader PID after the leader exits; signal the
+    // group anyway so an orphaned descendant cannot outlive startup cleanup.
     try { process.kill(-child.pid, 'SIGKILL'); }
     catch (error) { if (error.code !== 'ESRCH') throw error; }
-  } else if (!child.kill('SIGKILL')) throw new Error('Could not signal OpenCode');
+  } else if (child.exitCode === null && child.signalCode === null && !child.kill('SIGKILL')) {
+    throw new Error('Could not signal OpenCode');
+  }
   if (!await waitForClose(child)) throw new Error('OpenCode did not close within five seconds');
+  for (const pid of descendantPids) await waitForExit(pid);
 }
 
 function run(file, args, cwd, timeout = timeoutMs) {
-  const { child, output } = start(file, args, cwd);
+  const proc = start(file, args, cwd);
+  const { child, output } = proc;
   child.stdin.end();
   return new Promise((resolveRun, rejectRun) => {
     let timedOut = false;
     const timer = setTimeout(() => {
       timedOut = true;
-      stop(child).then(() => rejectRun(new Error(`Timed out: ${args.join(' ')}\n${redact(output().stderr)}`)), rejectRun);
+      stop(proc).then(() => rejectRun(new Error(`Timed out: ${args.join(' ')}\n${redact(output().stderr)}`)), rejectRun);
     }, timeout);
     child.once('error', error => { clearTimeout(timer); rejectRun(error); });
     child.once('close', code => { clearTimeout(timer); if (!timedOut) resolveRun({ code, ...output() }); });
@@ -230,6 +258,15 @@ async function waitForTask(key, predicate, timeout = 5000) {
   }
   assert.ok(task && predicate(task), `Timed out waiting for task evidence: ${key}`);
   return task;
+}
+
+function providerToolPayloads(requestSlice) {
+  return requestSlice.flatMap(request => request.messages ?? [])
+    .filter(message => message.role === 'tool' && typeof message.content === 'string')
+    .flatMap(message => {
+      try { return [JSON.parse(message.content)]; }
+      catch { return []; }
+    });
 }
 
 function mcpCallNames() {
@@ -271,6 +308,7 @@ let provider;
 let gateFailure;
 let successResult;
 let mode = 'warmup';
+let primaryClientTaskId;
 const hosts = [];
 const requests = [];
 const generated = new Map();
@@ -280,7 +318,7 @@ const interruptRequest = requestFor('b16-interrupt-task', 'Exercise host interru
 
 function codeFor(currentMode) {
   if (currentMode === 'submit') return `const accepted=await tools.orchestrator.submit_task(${JSON.stringify(primary)}); return JSON.stringify(accepted);`;
-  if (currentMode === 'poll') return `const status=await tools.orchestrator.get_task_status({taskId:${JSON.stringify(taskRecordFor('b16-primary-task')?.taskId)}}); const result=status.resultAvailable?await tools.orchestrator.get_task_result({taskId:status.taskId,include:['diff','tests']}):null; return JSON.stringify({status,result});`;
+  if (currentMode === 'poll') return `const taskId=${JSON.stringify(primaryClientTaskId)}; const status=await tools.orchestrator.get_task_status({taskId}); const result=status.resultAvailable?await tools.orchestrator.get_task_result({taskId,include:['diff','tests']}):null; return JSON.stringify({status,result});`;
   if (currentMode === 'duplicate') return `const request=${JSON.stringify(primary)}; const first=await tools.orchestrator.submit_task(request); const second=await tools.orchestrator.submit_task(request); const status=await tools.orchestrator.get_task_status({taskId:first.taskId}); return JSON.stringify({first,second,status});`;
   if (currentMode === 'cancelSubmit') return `const accepted=await tools.orchestrator.submit_task(${JSON.stringify(cancelRequest)}); return JSON.stringify(accepted);`;
   if (currentMode === 'cancel') { const taskId = taskRecordFor('b16-cancel-task')?.taskId; return `const status=await tools.orchestrator.get_task_status({taskId:${JSON.stringify(taskId)}}); const cancel=await tools.orchestrator.cancel_task({taskId:${JSON.stringify(taskId)},reason:'B16 active cancellation fixture'}); const after=await tools.orchestrator.get_task_status({taskId:${JSON.stringify(taskId)}}); return JSON.stringify({status,cancel,after});`; }
@@ -303,7 +341,7 @@ async function startHost(endpoint, { executable = binary, args, readinessTimeout
     }
     return proc;
   } catch (error) {
-    await stop(proc.child);
+    await stop(proc);
     throw error;
   }
 }
@@ -337,16 +375,31 @@ try {
   // A live child that never reports readiness must be stopped before startup fails.
   await assert.rejects(startHost('http://127.0.0.1:1', {
     executable: process.execPath,
-    args: ['-e', "const child=require('node:child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'}); console.log(child.pid); setInterval(()=>{},1000)"],
+    args: ['-e', "const child=require('node:child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'}); console.log('B16_DESCENDANT_PID:'+child.pid); setInterval(()=>{},1000)"],
     readinessTimeoutMs: 200,
   }), /did not listen/);
   const failedStartupHost = hosts.at(-1);
   assert.ok(failedStartupHost.child.exitCode !== null || failedStartupHost.child.signalCode !== null,
     'Failed host startup must stop and reap the spawned process before returning');
-  const failedStartupDescendant = Number(failedStartupHost.output().stdout.trim());
+  const failedStartupDescendant = Number(failedStartupHost.output().stdout.match(/B16_DESCENDANT_PID:(\d+)/)?.[1]);
   assert.ok(Number.isInteger(failedStartupDescendant) && failedStartupDescendant > 0,
     'The failed host must have spawned a live descendant for cleanup verification');
   await waitForExit(failedStartupDescendant);
+
+  // If the leader exits before readiness, cleanup still owns and terminates its
+  // descendant. On POSIX this exercises signalling a process group with an exited
+  // leader; on Windows the marker lets cleanup kill the child independently.
+  await assert.rejects(startHost('http://127.0.0.1:1', {
+    executable: process.execPath,
+    args: ['-e', "const {spawn}=require('node:child_process'); const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',detached:process.platform==='win32'}); child.unref(); console.log('B16_DESCENDANT_PID:'+child.pid); process.exit(19)"],
+    readinessTimeoutMs: 5000,
+  }), /exited during startup/);
+  const exitedStartupHost = hosts.at(-1);
+  assert.equal(exitedStartupHost.child.exitCode, 19, 'The readiness fixture leader must exit before cleanup');
+  const exitedStartupDescendant = Number(exitedStartupHost.output().stdout.match(/B16_DESCENDANT_PID:(\d+)/)?.[1]);
+  assert.ok(Number.isInteger(exitedStartupDescendant) && exitedStartupDescendant > 0,
+    'The exited readiness fixture must report its owned descendant PID');
+  await waitForExit(exitedStartupDescendant);
 
   // A nonexistent executable must fail at host startup instead of passing on path truthiness.
   await assert.rejects(run(`${binary}.missing`, ['--version'], work, 10_000), error => error.code === 'ENOENT');
@@ -402,12 +455,21 @@ try {
   assert.ok(warm.stdout.includes('warm-up-ok'), redact(warm.stderr + warm.stdout));
   await waitForMcp(host);
 
+  const beforePrimarySubmitRequest = requests.length;
   await runClient(endpoint, 'submit', 'Submit the B16 task through MCP and return the stable task ID.');
+  const primaryClientAcceptances = providerToolPayloads(requests.slice(beforePrimarySubmitRequest))
+    .filter(payload => payload?.status === 'queued');
+  assert.equal(primaryClientAcceptances.length, 1, 'Pinned client must receive one parsed primary submit reply');
+  const primaryClientAcceptance = primaryClientAcceptances[0];
+  assert.equal(typeof primaryClientAcceptance.taskId, 'string', 'Pinned client submit reply must include the task ID');
+  primaryClientTaskId = primaryClientAcceptance.taskId;
   let primaryTask = taskRecordFor('b16-primary-task');
   assert.ok(primaryTask, 'MCP submit did not persist the task');
   assert.equal(primaryTask.clientId, 'opencode-primary');
   assert.equal(primaryTask.request.repository.branch, 'task/b16-primary');
   const primaryAccepted = replyPayload(mcpReplies().find(reply => reply.name === 'submit_task'));
+  assert.equal(primaryClientTaskId, primaryAccepted.taskId,
+    'Pinned client must receive the task ID returned by the correlated MCP submit');
   assert.equal(primaryAccepted.taskId, primaryTask.taskId);
   assert.equal(primaryAccepted.status, 'queued');
   assert.equal(primaryAccepted.idempotentReplay, false);
@@ -437,15 +499,29 @@ try {
   const finalReplies = mcpReplies().slice(beforeFinalPoll);
   const finalStatus = replyPayload(finalReplies.find(reply => reply.name === 'get_task_status'));
   const finalResult = replyPayload(finalReplies.find(reply => reply.name === 'get_task_result'));
-  assert.equal(finalStatus.taskId, primaryTask.taskId);
+  assert.equal(finalStatus.taskId, primaryClientTaskId);
   assert.equal(finalStatus.status, 'succeeded');
+  assert.equal(finalResult.taskId, primaryClientTaskId, 'Terminal result must independently return the submitted task ID');
   assert.ok(finalResult.diff.includes('+B16_FIXTURE_OUTPUT'));
   assert.ok(finalResult.changedFiles.includes('src/b16-output.txt'));
   assert.equal(finalResult.testRuns[0].command, 'verify B16 fixture output');
   assert.equal(finalResult.testRuns[0].exitCode, 0);
+  const clientTerminalReplies = providerToolPayloads(requests.slice(beforeFinalProviderRequest))
+    .filter(payload => payload?.status?.status === 'succeeded' && payload?.result);
+  assert.equal(clientTerminalReplies.length, 1, 'Pinned client must receive the parsed terminal status/result pair');
+  const clientTerminalReply = clientTerminalReplies[0];
+  assert.equal(clientTerminalReply.status.taskId, primaryClientTaskId,
+    'Terminal status in provider context must carry the submitted task ID');
+  assert.equal(clientTerminalReply.result.taskId, primaryClientTaskId,
+    'Terminal result in provider context must carry the submitted task ID');
+  assert.equal(clientTerminalReply.result.status, 'succeeded');
+  assert.ok(clientTerminalReply.result.diff.includes('+B16_FIXTURE_OUTPUT'));
+  assert.ok(clientTerminalReply.result.changedFiles.includes('src/b16-output.txt'));
+  assert.equal(clientTerminalReply.result.testRuns[0].command, 'verify B16 fixture output');
+  assert.equal(clientTerminalReply.result.testRuns[0].exitCode, 0);
   const clientToolContext = requests.slice(beforeFinalProviderRequest)
     .flatMap(request => request.messages ?? [])
-    .find(message => message.role === 'tool' && message.content.includes(primaryTask.taskId) &&
+    .find(message => message.role === 'tool' && message.content.includes(primaryClientTaskId) &&
       message.content.includes('"status":"succeeded"'));
   assert.ok(clientToolContext, 'The pinned client must pass the correlated success reply into its provider context');
   assert.ok(clientToolContext.content.includes('+B16_FIXTURE_OUTPUT'));
@@ -513,7 +589,7 @@ try {
   // a fresh home so the recovery path can prove it never dispatches the old attempt.
   const firstLockPath = join(stateHome, 'locks', 'service-owner.lock');
   const firstLock = JSON.parse(readFileSync(firstLockPath, 'utf8'));
-  await stop(host.child); host = undefined;
+  await stop(host); host = undefined;
   assert.equal(pidIsAlive(firstLock.pid), false, 'The first MCP service process must stop before handoff');
   unlinkSync(firstLockPath);
   stateHome = join(root, 'interrupt-state');
@@ -535,7 +611,7 @@ try {
   assert.equal(interruptCount, 1, 'The interruption worker must start once before restart');
   const lockPath = join(stateHome, 'locks', 'service-owner.lock');
   const lock = JSON.parse(readFileSync(lockPath, 'utf8'));
-  await stop(host.child); host = undefined;
+  await stop(host); host = undefined;
   assert.equal(pidIsAlive(lock.pid), false, 'The interrupted MCP service process must be stopped');
   unlinkSync(lockPath); // fixture-only stale lock cleanup after proving its owning PID is dead
   host = await startHost(endpoint); // Dispatch remains enabled; startup must reconcile without replay.
@@ -579,10 +655,11 @@ try {
   gateFailure ??= error;
 } finally {
   const cleanupErrors = [];
-  if (host) try { await stop(host.child); } catch (error) { cleanupErrors.push(error); }
+  if (host) try { await stop(host); } catch (error) { cleanupErrors.push(error); }
   for (const proc of hosts) {
-    if (proc.child.exitCode !== null || proc.child.signalCode !== null) continue;
-    try { await stop(proc.child); } catch (error) { cleanupErrors.push(error); }
+    if (proc.child.exitCode !== null && ![...proc.descendantPids].some(pidIsAlive)) continue;
+    if (proc.child.signalCode !== null && ![...proc.descendantPids].some(pidIsAlive)) continue;
+    try { await stop(proc); } catch (error) { cleanupErrors.push(error); }
   }
   if (provider) try { await new Promise((resolveClose, rejectClose) => provider.close(error => error ? rejectClose(error) : resolveClose())); }
     catch (error) { cleanupErrors.push(error); }

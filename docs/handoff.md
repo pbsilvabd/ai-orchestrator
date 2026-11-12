@@ -4,9 +4,9 @@ Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merge
 B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
 workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
 real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
-reconciliation, preserved workspace files and missing-binary diagnosis. Six review
-findings are corrected and published at
-`1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`; current-head CI and re-review remain.
+reconciliation, preserved workspace files and missing-binary diagnosis. The initial six
+review findings are corrected and published; three blocking re-review follow-ups
+are corrected locally and await publication, current-head CI and re-review.
 M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
 quality or production-provider support. The mirrored ChatGPT project snapshot is not
 a Git checkout; development uses the actual repository checkout. M2a is complete and
@@ -18,17 +18,19 @@ The corrected B16 harness starts the pinned client against the B15 MCP adapter a
 temporary service with a harmless local worker. It validates request-correlated MCP
 replies, the running/succeeded lifecycle and returned test evidence, replay IDs, worker
 termination on active cancellation, and restart reconciliation with dispatch enabled.
-An active-branch/staged-file canary checks Git environment isolation, and a live
-host/descendant pair checks startup-failure cleanup. The restart scenario preserves
+Active-branch/staged-file canaries cover uppercase, lowercase and mixed-case Git
+environment overrides. Startup cleanup covers both live-leader timeout and an exited
+leader with a live descendant; primary polls use the submit reply ID and terminal results
+assert their own task ID. The restart scenario preserves
 workspace output but correctly reports that no diff was collected after restart. No
 real model or paid request is used. See `docs/validation.md` for the full evidence.
 
 ## Next action: re-review B16 PR #39 at the corrected head
 
-1. Re-read the PR head, feedback threads and Linux/Windows CI after the published
-   correction at `1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`; all six findings have
-   evidence-backed replies. CI run `43149559100` is still in progress.
-2. Request a fresh review and address any remaining findings on that same PR.
+1. Publish the three blocking re-review follow-ups to the existing PR branch; then
+   update their review threads with current-head evidence.
+2. Check current-head Windows/Ubuntu CI and inspect the updated head and threads for any
+   further findings.
 3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
    only after the B16 delivery is reviewed and merged.
 

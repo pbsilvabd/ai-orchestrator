@@ -1420,3 +1420,25 @@ All six review findings have evidence-backed replies. Workflow run
 [43149559100](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/43149559100)
 was `in_progress` at the time of this check; no current-head CI conclusion or fresh
 independent re-review is claimed. The PR remains open and unmerged.
+
+## B16 second re-review corrections — 2026-11-12
+
+Executed on Windows 11 x64 with Node.js v24.22.1, Git 2.55.0.windows.5 and pinned
+OpenCode 2.2.5. The pinned B16 gate passed with 15 MCP calls and all four acceptance
+rows. The full suite passed 253/254 (one POSIX-only skip). Syntax and diff checks were
+clean.
+
+The Git environment is allowlisted and explicitly pins each initialized fixture's Git
+dir/worktree. The hostile canary now exercises uppercase, lowercase and mixed-case
+variable spellings while asserting unchanged config/index/refs/branch/status. The
+primary submit's provider-facing tool reply supplies the ID used for later polls; the
+terminal provider tool response separately verifies status.taskId and result.taskId,
+plus status and artifact/test evidence. Startup cleanup now covers a leader that exits
+before readiness while a child remains alive: POSIX process-group cleanup signals the
+group after leader exit, and Windows cleanup tracks the fixture-reported child PID.
+
+Four isolated fault injections each failed as expected: reverting to uppercase-only Git
+filtering, discarding the client-facing submit ID, changing only the terminal result ID,
+and skipping descendant cleanup after leader exit. The injection driver completed
+successfully after observing all four expected failures. The new code has not yet been
+published; current-head CI and independent re-review remain outstanding.

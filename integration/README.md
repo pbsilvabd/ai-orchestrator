@@ -115,9 +115,15 @@ and the counter stays at one. The result explicitly has no collected diff after 
 the gate does not imply that startup collected artifacts. Fixture-only stale service
 locks are removed only after checking that the owning process is dead.
 
-A separate startup-failure case spawns a live host plus descendant that never reports
-readiness. `startHost()` owns termination, and the gate confirms both processes exited
-before temporary fixture cleanup.
+Startup-failure coverage exercises both a live host plus descendant that time out and a
+leader that exits before readiness while its descendant stays alive. Process-group
+cleanup signals the POSIX group after leader exit; on Windows, startup fixtures report
+their owned descendant PID so cleanup can terminate it independently of the leader.
+Both paths must reap the descendant before temporary fixture cleanup. Git canaries also
+inject uppercase, lowercase and mixed-case Git directory/worktree overrides; the fixture
+uses an allowlisted environment and pins resolved Git paths inside each scratch repo.
+The primary client carries the task ID from its submit tool reply into every poll, and
+the terminal tool response independently checks both status.taskId and result.taskId.
 
 Set `B16_DEBUG=1` to retain the temporary tree and last sanitized provider request
 for diagnosis. No real model, paid call or external provider credential is used. The
