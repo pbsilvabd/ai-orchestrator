@@ -5,8 +5,9 @@ B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-clie
 workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
 real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
 reconciliation, preserved workspace files and missing-binary diagnosis. Six review
-findings are corrected in the task branch; updated-head review and CI remain. M2b/M3
-remain incomplete; the fixture provider/worker proves integration behavior, not model
+findings are corrected and published at
+`1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`; current-head CI and re-review remain.
+M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
 quality or production-provider support. The mirrored ChatGPT project snapshot is not
 a Git checkout; development uses the actual repository checkout. M2a is complete and
 ADR-007 still selects MCP stdio revision `2026-07-28`.
@@ -24,10 +25,10 @@ real model or paid request is used. See `docs/validation.md` for the full eviden
 
 ## Next action: re-review B16 PR #39 at the corrected head
 
-1. Publish the six review corrections to the existing branch and reply to every review
-   finding with the correction commit and observed evidence.
-2. Re-read the PR head, feedback threads and Linux/Windows CI. Request a fresh review
-   and address any remaining findings on that same PR.
+1. Re-read the PR head, feedback threads and Linux/Windows CI after the published
+   correction at `1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`; all six findings have
+   evidence-backed replies. CI run `43149559100` is still in progress.
+2. Request a fresh review and address any remaining findings on that same PR.
 3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
    only after the B16 delivery is reviewed and merged.
 

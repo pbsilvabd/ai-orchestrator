@@ -1412,3 +1412,11 @@ fixture; no production provider, paid request, model-quality or M3 claim is made
 CI and a separate Ubuntu pinned-host run were not observed in this local session; CI
 must be checked on the published correction head. The standalone B06 gate, B15-only
 gate and OpenCode session/model smoke were not changed and were not rerun.
+
+## B16 corrected-head publication — 2026-11-12
+
+Corrections are published on PR #39 at `1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`.
+All six review findings have evidence-backed replies. Workflow run
+[43149559100](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/43149559100)
+was `in_progress` at the time of this check; no current-head CI conclusion or fresh
+independent re-review is claimed. The PR remains open and unmerged.

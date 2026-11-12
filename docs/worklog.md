@@ -1184,6 +1184,7 @@ Template:
   replay ID, omitted cancellation signal) each failed as required; `node --test` →
   254 tests, 253 passed, 0 failed, 1 POSIX-only skip; fallback demo → 429 then 200;
   Node syntax checks and `git diff --check` clean.
-- Follow-up: publish the corrections to PR #39, reply to all six review findings with
-  commit/evidence, then check current-head CI and request re-review. Leave merge to a
+- Follow-up: corrections were pushed as `1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`;
+  replied to all six review findings with the checks performed. Current-head CI run
+  `43149559100` is in progress; request re-review after checks complete. Leave merge to
   separate task-specific authorization; PR #39 remains open.
