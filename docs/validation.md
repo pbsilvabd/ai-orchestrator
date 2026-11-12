@@ -1313,3 +1313,25 @@ pinned-client submission path, based on `node --test --test-reporter=tap` and
 `node integration/mcp-task-gate.mjs`. It does not support the B16 end-to-end polling
 and result workflow or M2b completion, which require the remaining pinned-client
 workflow and acceptance matrix.
+
+## B15 review correction — 2026-11-12
+
+Environment: Windows x64, Node.js v24.22.1. Local correction on
+`task/B15-mcp-stdio-adapter`, based on the finding against PR #38 head `255d18c`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=dot test/mcp-server.test.mjs` | Focused MCP envelope and operation regressions | Passed, including invalid-ID no-dispatch and malformed-envelope correlation cases | 0 |
+| `node --test` | Full regression suite | 254 tests: 253 passed, 0 failed, 1 POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `git diff --check` | Whitespace and conflict-marker check | clean | 0 |
+
+Targeted reproduction against a temporary Git repository and actual task service:
+`tools/call` with `id: null` now returns `-32600`, creates no task and preserves the
+next valid request's response. The overflowing ID `1e999` is rejected before service
+dispatch. Malformed envelopes with missing or invalid method receive `-32600` with a
+null ID; an envelope with an extra top-level field retains its valid request ID.
+
+The pinned OpenCode gate was not rerun because the correction changes malformed
+envelope validation while preserving the supported request path. Fresh Windows and
+Ubuntu CI must pass on the corrected PR head before merge.

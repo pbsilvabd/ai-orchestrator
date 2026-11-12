@@ -27,17 +27,15 @@ identity, rejects oversized/malformed input without reflecting payloads, and clo
 idle ownership cleanly on EOF. The pinned-host gate confirmed discovery of all four
 tools and one persisted queued submission whose result reached model context.
 
-## Next action: complete B15 review
+## Next action: verify the B15 review correction
 
-1. Review [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38), open against
-   `main` from `task/B15-mcp-stdio-adapter`; the PR head matched the remote branch
-   after the documentation follow-up was pushed.
-2. No review comments or inline threads exist yet. GitHub Actions CI run
-   `43131490538` was `in_progress` on the implementation commit before the
-   docs-only follow-up. The connected checks endpoint did not return a current run
-   for the latest head; refresh the PR checks before proceeding.
-3. Merge only with task-specific maintainer authorization. After merge, proceed to
-   B16.
+1. Push and verify the B15 request-envelope correction on
+   [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38), then reply to Sol's
+   inline finding with the correction commit and test results.
+2. Review the new PR head, all feedback and CI. The prior CI at `255d18c` passed on
+   Windows and Ubuntu; the correction requires fresh checks.
+3. Keep PR #38 open until the correction is reviewed and CI passes. After authorized
+   merge, proceed to B16.
 
 B16 must exercise a real client submission, polling and result retrieval. M2b/M3
 remain incomplete; no production provider, remote transport, fallback, memory,

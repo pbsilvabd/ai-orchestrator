@@ -131,6 +131,10 @@ function hasOnlyKeys(value, allowed) {
   return Object.keys(value).every(key => allowed.includes(key));
 }
 
+function isRequestId(value) {
+  return typeof value === 'string' || Number.isSafeInteger(value);
+}
+
 // Dispatch a tool call to the matching service operation. The service layer owns
 // all validation and authorization; this layer maps the result/error into wire form.
 function dispatchTool(name, args, service) {
@@ -254,9 +258,10 @@ export function createMcpServer(options = {}) {
     if (!message || typeof message !== 'object' || Array.isArray(message) ||
         message.jsonrpc !== '2.0' || typeof message.method !== 'string' ||
         Object.keys(message).some(key => !['jsonrpc', 'id', 'method', 'params'].includes(key)) ||
-        (message.id !== undefined && message.id !== null &&
-          typeof message.id !== 'string' && typeof message.id !== 'number')) {
-      if (message?.id !== undefined) send(protocolError(null, -32600, 'invalid request'));
+        (message.id !== undefined && !isRequestId(message.id))) {
+      const responseId = message && typeof message === 'object' && !Array.isArray(message) &&
+        isRequestId(message.id) ? message.id : null;
+      send(protocolError(responseId, -32600, 'invalid request'));
       return;
     }
 

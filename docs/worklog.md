@@ -1112,3 +1112,20 @@ Template:
   and no review feedback existed at the last check. Refresh checks and review before
   authorized merge; then continue with B16, the pinned-client task polling/result
   workflow.
+
+## 2026-11-12 — B15 review correction
+
+- Branch: `task/B15-mcp-stdio-adapter`; corrected the blocking request-envelope
+  finding on PR #38 at the reviewed head `255d18c`.
+- Change: reject null, non-finite and non-integer numeric request IDs before tool
+  dispatch; answer malformed request envelopes with bounded invalid-request errors;
+  retain readable valid IDs when returning envelope errors.
+- Tests: added coverage that invalid submit IDs do not call the service and malformed
+  envelopes receive correlated or null-ID errors. Existing valid notification test
+  remains in place.
+- Validation: focused MCP adapter tests and full `node --test` passed on Node.js
+  v24.22.1. Full suite: 254 tests, 253 passed, 0 failed, 1 POSIX-only skip. The
+  fallback demo printed 429 then 200; `git diff --check` passed. Pinned OpenCode gate
+  was not rerun because the correction affects malformed JSON-RPC envelope handling.
+- Follow-up: push the correction, reply to Sol's review finding with the new SHA and
+  validation, then re-review the new PR head and CI. PR #38 remains open and unmerged.

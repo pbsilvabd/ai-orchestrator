@@ -328,6 +328,38 @@ test('B15-02d: invalid object request IDs are not reflected in the response', as
   assert.equal(JSON.stringify(msg).includes('private-id'), false);
 });
 
+test('B15-02d: invalid call IDs are rejected before service dispatch', async t => {
+  let calls = 0;
+  const { send, collect } = makeServer(t, {
+    submitTask() { calls++; return { status: 'queued' }; },
+  });
+  const args = { idempotencyKey: 'b15-invalid-id', clientId: 'opencode-primary' };
+
+  send({ jsonrpc: '2.0', id: null, method: 'tools/call', params: { _meta: META, name: 'submit_task', arguments: args } });
+  send({ jsonrpc: '2.0', id: 1e999, method: 'tools/call', params: { _meta: META, name: 'submit_task', arguments: args } });
+  const [nullId, infiniteId] = await waitForOutput(collect, 2);
+
+  assert.equal(nullId.error.code, -32600);
+  assert.equal(nullId.id, null);
+  assert.equal(infiniteId.error.code, -32600);
+  assert.equal(infiniteId.id, null);
+  assert.equal(calls, 0);
+});
+
+test('B15-02d: malformed envelopes receive bounded errors with readable IDs', async t => {
+  const { input, collect } = makeServer(t, {
+    getTaskStatus() { throw new Error('must not dispatch'); },
+  });
+
+  input.push('{}\n');
+  input.push('{"jsonrpc":"2.0","method":42}\n');
+  input.push('{"jsonrpc":"2.0","id":"request-7","method":"server/discover","extra":true,"params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28"}}}\n');
+  const responses = await waitForOutput(collect, 3);
+
+  assert.deepEqual(responses.map(response => response.id), [null, null, 'request-7']);
+  assert.ok(responses.every(response => response.error.code === -32600));
+});
+
 test('B15-02d: circular service result is serialized as a sanitized protocol error', async t => {
   const circular = {};
   circular.self = circular;
