@@ -1276,3 +1276,62 @@ Windows x64, Node.js v24.22.1, Git 2.55.0.windows.5. Reviewed parent `17b1f79`.
 
 Evidence uses local Git, the task service and real subprocesses. OpenCode and MCP
 gates were not rerun because the changes affect local artifact and lifecycle handling.
+
+## M2b: B15 MCP stdio adapter — 2026-11-11
+
+Executed on Microsoft Windows 10.0.26300 x64, Node.js v24.22.1 (fnm), Git
+2.55.0.windows.5, OpenCode 2.2.5. Base `dc757c19ccc9aaabe1347b51191a43ca33e825bb`,
+branch `task/B15-mcp-stdio-adapter`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=tap` | Full regression suite, including B15 operation, framing, ownership, active-worker and disconnect tests | 252 tests: 251 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node integration/mcp-task-gate.mjs C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe` | Exercise the B15 server with pinned OpenCode and a loopback fixture provider | OpenCode 2.2.5 discovered all four tools, called `submit_task`, and observed the persisted queued result | 0 |
+| `node examples/fallback-demo.mjs` | Regression check for the existing fallback demo | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `git diff --check` | Check whitespace and conflict markers in the task diff | no output | 0 |
+
+Result: all 252 suite tests completed with 251 passed, no failures and one
+POSIX-only skip. The pinned client completed discovery and a real MCP tool call to
+the task service over stdio; the temporary task record retained the configured
+client identity and queued status. The fallback demo printed 429 then 200, and the
+diff check was clean.
+
+Evidence level: OpenCode integration — demonstrates hooks, queue, context,
+permissions and failures in the pinned host; does not demonstrate real model
+quality/cost. This gate supports B15 tool discovery, submission and result delivery
+with a fixture provider. It does not demonstrate the B16 polling/result workflow,
+production-provider behavior or completion of M2b.
+
+Not rerun: `node integration/mcp-gate.mjs` (B06's standalone fixture gate was not
+changed; the B15 gate exercised the actual task server through the same pinned host);
+`node integration/opencode-smoke.mjs` (session/model switching is outside the B15
+transport change); `node integration/opencode-invocation.mjs` (executor invocation was
+not changed).
+
+Claim: This entry supports the B15 four-operation MCP transport, bounded framing and
+pinned-client submission path, based on `node --test --test-reporter=tap` and
+`node integration/mcp-task-gate.mjs`. It does not support the B16 end-to-end polling
+and result workflow or M2b completion, which require the remaining pinned-client
+workflow and acceptance matrix.
+
+## B15 review correction — 2026-11-12
+
+Environment: Windows x64, Node.js v24.22.1. Local correction on
+`task/B15-mcp-stdio-adapter`, based on the finding against PR #38 head `255d18c`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test --test-reporter=dot test/mcp-server.test.mjs` | Focused MCP envelope and operation regressions | Passed, including invalid-ID no-dispatch and malformed-envelope correlation cases | 0 |
+| `node --test` | Full regression suite | 254 tests: 253 passed, 0 failed, 1 POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `git diff --check` | Whitespace and conflict-marker check | clean | 0 |
+
+Targeted reproduction against a temporary Git repository and actual task service:
+`tools/call` with `id: null` now returns `-32600`, creates no task and preserves the
+next valid request's response. The overflowing ID `1e999` is rejected before service
+dispatch. Malformed envelopes with missing or invalid method receive `-32600` with a
+null ID; an envelope with an extra top-level field retains its valid request ID.
+
+The pinned OpenCode gate was not rerun because the correction changes malformed
+envelope validation while preserving the supported request path. Fresh Windows and
+Ubuntu CI must pass on the corrected PR head before merge.
