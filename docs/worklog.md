@@ -1106,7 +1106,9 @@ Template:
   submission returned to context; fallback demo → 429 then 200; `git diff --check`
   → clean. OpenCode session/model smoke, standalone B06 gate and executor invocation
   were not rerun.
-- Follow-up: review [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38)
-  at published head `8adb7b25`; CI run `43131490538` was in progress and no review
-  feedback existed at publication check. After authorized merge, continue with B16,
-  the pinned-client task polling/result workflow.
+- Follow-up: review [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38).
+  CI run `43131490538` was in progress on the implementation commit before the
+  docs-only publication follow-up; no current run was returned for the latest head,
+  and no review feedback existed at the last check. Refresh checks and review before
+  authorized merge; then continue with B16, the pinned-client task polling/result
+  workflow.

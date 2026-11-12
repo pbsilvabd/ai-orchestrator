@@ -30,11 +30,12 @@ tools and one persisted queued submission whose result reached model context.
 ## Next action: complete B15 review
 
 1. Review [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38), open against
-   `main` from `task/B15-mcp-stdio-adapter`; published head is `8adb7b25` and matches
-   the remote branch.
+   `main` from `task/B15-mcp-stdio-adapter`; the PR head matched the remote branch
+   after the documentation follow-up was pushed.
 2. No review comments or inline threads exist yet. GitHub Actions CI run
-   `43131490538` was `in_progress` at the published head when checked; refresh the
-   PR checks before proceeding.
+   `43131490538` was `in_progress` on the implementation commit before the
+   docs-only follow-up. The connected checks endpoint did not return a current run
+   for the latest head; refresh the PR checks before proceeding.
 3. Merge only with task-specific maintainer authorization. After merge, proceed to
    B16.
 
