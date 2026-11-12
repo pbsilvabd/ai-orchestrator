@@ -1208,3 +1208,13 @@ Template:
   (case-sensitive Git filtering, lost submit ID, wrong terminal ID, skipped cleanup
   after leader exit) each failed as required. `node --check` and `git diff --check`
   clean. Publication and current-head CI/re-review are next; PR #39 remains open.
+
+
+## 2026-11-12 — B16 second re-review corrections published
+
+- Published the follow-up fix and documentation in commit
+  `8a23b51a62e230bf643d61c72c86531f90ae5c70` on the existing PR #39 branch. Replied to
+  the three new inline findings with the targeted evidence; the earlier six findings
+  also remain answered.
+- Verified that local and remote branch heads match. Current-head CI run 43152221875
+  passed on Windows and Ubuntu. The PR remains open; independent re-review is pending.

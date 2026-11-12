@@ -1442,3 +1442,12 @@ filtering, discarding the client-facing submit ID, changing only the terminal re
 and skipping descendant cleanup after leader exit. The injection driver completed
 successfully after observing all four expected failures. The new code has not yet been
 published; current-head CI and independent re-review remain outstanding.
+
+
+## B16 corrected-head publication and CI — 2026-11-12
+
+The three re-review follow-ups were published on PR #39 at
+`8a23b51a62e230bf643d61c72c86531f90ae5c70`. Windows CI and Ubuntu CI both passed on
+that head in run [43152221875](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/43152221875).
+All three follow-up inline threads have evidence-backed replies. Independent re-review
+remains outstanding; PR #39 stays open and unmerged.

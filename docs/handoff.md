@@ -4,9 +4,9 @@ Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merge
 B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
 workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
 real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
-reconciliation, preserved workspace files and missing-binary diagnosis. The initial six
-review findings are corrected and published; three blocking re-review follow-ups
-are corrected locally and await publication, current-head CI and re-review.
+reconciliation, preserved workspace files and missing-binary diagnosis. All nine review findings have been corrected and published at
+`8a23b51a62e230bf643d61c72c86531f90ae5c70`. Current-head Windows/Ubuntu CI passed;
+independent re-review remains outstanding.
 M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
 quality or production-provider support. The mirrored ChatGPT project snapshot is not
 a Git checkout; development uses the actual repository checkout. M2a is complete and
@@ -27,10 +27,9 @@ real model or paid request is used. See `docs/validation.md` for the full eviden
 
 ## Next action: re-review B16 PR #39 at the corrected head
 
-1. Publish the three blocking re-review follow-ups to the existing PR branch; then
-   update their review threads with current-head evidence.
-2. Check current-head Windows/Ubuntu CI and inspect the updated head and threads for any
-   further findings.
+1. Re-read the PR head and review threads after the nine evidence-backed replies; the
+   current-head Windows/Ubuntu CI has passed.
+2. Address any additional review findings on the existing PR.
 3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
    only after the B16 delivery is reviewed and merged.
 
