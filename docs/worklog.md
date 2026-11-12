@@ -1129,3 +1129,30 @@ Template:
   was not rerun because the correction affects malformed JSON-RPC envelope handling.
 - Follow-up: push the correction, reply to Sol's review finding with the new SHA and
   validation, then re-review the new PR head and CI. PR #38 remains open and unmerged.
+
+## 2026-11-11 — M2b: B16 pinned-client task workflow
+
+- Branch: `task/B16-pinned-client-workflow`, based on merged B15 head `491de18`.
+- Scope: pinned OpenCode client, real MCP stdio calls, fixture worker/provider and
+  B16 evidence; no production provider, paid call or automatic merge.
+- Steps:
+  1. Added a B16 fixture service using the actual task service and MCP adapter, plus a
+     real local Node worker and a redacted operation-name transport trace.
+  2. Added pinned OpenCode flows for submit, running polls, terminal artifact retrieval,
+     duplicate replay on a reconnect, active cancellation and host-process interruption
+     followed by startup reconciliation.
+  3. Added a missing-binary ENOENT check and assertions for stable identity, one
+     attempt/workspace, unknown stop evidence, preserved artifacts and no replay.
+  4. Reviewed the implementation, fixed readiness/polling and scenario-isolation issues,
+     then reviewed the complete diff against B16-01–04 and updated the handoff, backlog,
+     roadmap, requirements, task card, validation and integration instructions.
+- Files: `integration/mcp-client-workflow.mjs`,
+  `integration/fixtures/b16-mcp-server.mjs`, `integration/README.md`,
+  `docs/backlog.md`, `docs/roadmap.md`, `docs/requirements.md`, `docs/tasks/B16.md`,
+  `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`.
+- Validation: pinned OpenCode gate exited 0 with 28 transport calls and every B16 row
+  observed; full suite 254 tests (253 passed, 0 failed, 1 POSIX-only skipped),
+  fallback demo 429 then 200, and diff check clean. See `docs/validation.md` for
+  command details and evidence limits.
+- Follow-up: publish one B16 PR, verify CI and remote head, then wait for task-specific
+  maintainer review/merge before B17.

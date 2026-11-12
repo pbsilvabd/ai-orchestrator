@@ -1335,3 +1335,37 @@ null ID; an envelope with an extra top-level field retains its valid request ID.
 The pinned OpenCode gate was not rerun because the correction changes malformed
 envelope validation while preserving the supported request path. Fresh Windows and
 Ubuntu CI must pass on the corrected PR head before merge.
+
+## M2b: B16 pinned-client task workflow — 2026-11-11
+
+Environment: Microsoft Windows 11 Pro 10.0.26300 x64, Node.js v24.22.1 (fnm), Git
+2.55.0.windows.5, pinned OpenCode 2.2.5. Base `491de18efabdc1a49852e39996ab4a729f4be6db`,
+branch `task/B16-pinned-client-workflow`.
+
+| Row | Command / experiment | Observed result | Exit |
+| --- | --- | --- | --- |
+| B16-01 | `node integration/mcp-client-workflow.mjs C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe` | Final clean run: OpenCode discovered four tools and made 28 actual MCP calls. `submit_task`, running-state polls and `get_task_result` returned the persisted task; its useful diff added `src/b16-output.txt`, and its configured real Node test command exited 0. | 0 |
+| B16-02 | Same pinned-client experiment; a separate OpenCode CLI process reconnects and repeats the identical submission twice | All three submissions returned the same task ID; the duplicate responses reached the client, while the durable record retained one worker attempt and one workspace. | 0 |
+| B16-03a | Same experiment; submit a 30-second fixture worker and cancel after observing `running` | Service returned `blocked`, with `cancel.requestedAt` set and `executionStopped: "unknown"`; attempt and workspace remained available for inspection. | 0 |
+| B16-03b | Same experiment; terminate the real OpenCode host/MCP process tree while a fixture task is running, then reconnect to a newly started service | Startup reconciliation returned `blocked`, `executionStopped: "unknown"`, preserved the single attempt/workspace and did not replay dispatch. Fixture lock cleanup occurred only after confirming its recorded PID had exited. | 0 |
+| B16-04 | Same experiment; launch a deliberately nonexistent OpenCode executable before the pinned binary | Host startup rejected with `ENOENT`; the negative path could not pass from a truthy path check. The pinned executable separately reported exactly `opencode v2.2.5`. | 0 |
+| Regression | `node --test` | 254 tests: 253 passed, 0 failed, 1 POSIX-only skip. | 0 |
+| Demo | `node examples/fallback-demo.mjs` | `mock/preferred` returned 429, then `mock/local` returned 200. | 0 |
+| Diff | `git diff --check` | Clean. | 0 |
+
+Evidence level: pinned OpenCode integration using the actual stdio adapter, durable
+task service, Git workspaces and real local worker/test subprocesses. The loopback
+provider supplies tool calls; this does not establish real-model quality, paid
+provider behavior or use on this repository. B16-01 through B16-04 were each
+exercised by the named integration command, rather than inferred from unit coverage.
+
+Implementation review corrected the poll timing to give the worker time to transition
+between separate client runs and isolated host-interruption testing from cancellation,
+which correctly halts its scheduler. The final diff review found no remaining issue in
+the four acceptance rows. The gate and complete suite/demo passed on the final code
+revision.
+
+Not rerun: standalone B06 discovery gate, B15 submission-only gate and OpenCode
+session/model smoke; B16 reused their pinned host/protocol paths while extending the
+task lifecycle, without changing those independent behaviors. No Ubuntu host run is
+claimed; CI results on the published B16 PR will be recorded after publication.

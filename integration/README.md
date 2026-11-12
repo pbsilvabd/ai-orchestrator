@@ -80,6 +80,31 @@ Observed on 2026-11-11 (Windows x64, Node.js v24.22.1): the pinned OpenCode 2.2.
 client discovered the four tools, called `submit_task`, and received the persisted
 `queued` result in model context; the gate exited 0.
 
+## B16 pinned-client task workflow
+
+Run the full task lifecycle through OpenCode 2.2.5, the B15 stdio adapter and a
+temporary task service configured with a harmless local Node worker:
+
+```sh
+node integration/mcp-client-workflow.mjs /absolute/path/opencode.exe
+```
+
+The gate verifies the pinned binary version and explicitly checks that a missing
+binary fails with `ENOENT`. A loopback fixture provider drives actual Code Mode MCP
+calls for a scratch Git repository: submit, poll while running, fetch the terminal
+diff and passing test evidence, reconnect and submit an identical request twice,
+cancel a running task, then kill the OpenCode host/MCP process tree and restart the
+service to observe an uncertain task reconciled as blocked. It checks the stable task
+ID, one attempt/workspace after duplicate submission, requested-versus-stopped
+cancellation state, and preservation/no replay after interruption. Fixture-only stale
+service locks are removed only after checking that the owning process is dead.
+
+Set `B16_DEBUG=1` to retain the temporary tree and last sanitized provider request
+for diagnosis. No real model, paid call or external provider credential is used. The
+gate validates the pinned client/transport/service lifecycle with a fixture worker;
+it does not establish production-provider behavior, model quality or use on this
+repository.
+
 ## Session/model smoke test
 
 Run separately from local tests, using Node 24 and a pinned official binary:

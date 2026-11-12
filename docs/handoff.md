@@ -1,50 +1,36 @@
 # Continuation point — 2026-11-11
 
-Remote `main` is `dc757c19ccc9aaabe1347b51191a43ca33e825bb`; B12–B14 are merged.
-B15's four-operation MCP stdio adapter is implemented on
-`task/B15-mcp-stdio-adapter` and passed local tests plus the pinned OpenCode 2.2.5
-fixture-provider submission gate. M2b/M3 remain incomplete; no production provider
-or real-model execution path is available in the current adapter. The mirrored
-ChatGPT project snapshot is older and is not a Git checkout; this branch uses the
-actual repository checkout. M2a is complete, and ADR-007 still selects MCP stdio
-revision `2026-07-28`; the B06 capability gate passed eight isolated host runs.
+Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merged.
+B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
+workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
+real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
+reconciliation, preserved workspace evidence and missing-binary diagnosis. M2b/M3
+remain incomplete; the fixture provider/worker proves integration behavior, not model
+quality or production-provider support. The mirrored ChatGPT project snapshot is not
+a Git checkout; development uses the actual repository checkout. M2a is complete and
+ADR-007 still selects MCP stdio revision `2026-07-28`.
 
-## Current implementation status: B15 PR under review
+## Current implementation status: B16 PR cycle
 
-B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
-Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log
-for cancellation and deadline handling during artifact tests, log selection and schema checks.
+The B16 harness starts the pinned client against the B15 MCP adapter and a temporary
+service with a harmless local worker. It observes all four operations over transport,
+the terminal diff and passing test command, duplicate reuse of one task ID/attempt/
+workspace, active cancellation with an unknown stop result, and host interruption
+reconciled as blocked after restart without replay. No real model or paid request is
+used. Local validation and detailed row-to-evidence mapping are in `docs/validation.md`.
 
-B12 was previously merged through PR #25, including the canonical-path receipt correction.
-Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
-serializes new submissions, never requeues duplicates or preexisting records and
-blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
+## Next action: publish and verify B16
 
-B14 persists active cancellation before signalling the subprocess root, retains
-partial artifacts, halts later dispatch and preserves unknown stop/effect evidence.
-The B15 stdio server now binds the four task operations to the configured service
-identity, rejects oversized/malformed input without reflecting payloads, and closes
-idle ownership cleanly on EOF. The pinned-host gate confirmed discovery of all four
-tools and one persisted queued submission whose result reached model context.
+1. Commit and push `task/B16-pinned-client-workflow`, open the single B16 PR, and
+   verify its base/head and remote SHA.
+2. Inspect PR feedback and CI on that head, fix any findings, then re-review and
+   revalidate the correction.
+3. Leave merge to task-specific maintainer authorization. After the B16 PR is reviewed
+   and merged, proceed to B17's executable acceptance matrix.
 
-## Next action: verify the B15 review correction
-
-1. Push and verify the B15 request-envelope correction on
-   [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38), then reply to Sol's
-   inline finding with the correction commit and test results.
-2. Review the new PR head, all feedback and CI. The prior CI at `255d18c` passed on
-   Windows and Ubuntu; the correction requires fresh checks.
-3. Keep PR #38 open until the correction is reviewed and CI passes. After authorized
-   merge, proceed to B16.
-
-B16 must exercise a real client submission, polling and result retrieval. M2b/M3
-remain incomplete; no production provider, remote transport, fallback, memory,
-multi-worker routing or automatic merge is in scope for B15.
-
-The maintainer accepted implementing-agent review for B12; no separate independent
-review is claimed. That task-specific merge approval does not carry forward to a
-new task. Historical checkpoints below retain their original statuses; the verified
-summary above and current remote are the continuation reference.
+The PR #38 merge authorization applied only to B15. Do not carry it forward. The
+current adapter still has no production-provider path, and B16 does not complete M2b
+or authorize a real-model self-development task.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 
