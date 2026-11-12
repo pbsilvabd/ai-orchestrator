@@ -1158,3 +1158,32 @@ Template:
   against `main`; remote branch matched head `ee019b844d1bc5f6df1e6fa2c4e7185076f79d31`.
   Windows and Ubuntu CI were pending at publication. Await task-specific maintainer
   review/merge before B17.
+
+## 2026-11-12 — M2b: B16 review corrections
+
+- Branch: `task/B16-pinned-client-workflow`, based on `491de18`.
+- Scope: pinned-client gate, fixture service, documentation; no service contract change.
+- Steps:
+  1. Isolated fixture Git commands from inherited `GIT_*` variables and added an
+     active-branch/staged-file canary that proves the missing-binary path leaves a
+     separate repository unchanged.
+  2. Logged correlated MCP response frames and asserted the actual submitted,
+     running, succeeded, duplicate, cancellation and restart replies.
+  3. Gated primary worker completion on a real `running` poll; waited for worker-written
+     partial files before cancellation/interruption; checked worker exit, retained
+     evidence and a no-replay counter after restart with dispatch enabled.
+  4. Made host startup own cleanup and tested a live parent/descendant pair that never
+     reports readiness; updated B16 task, integration, backlog, roadmap, requirements,
+     validation and handoff documentation.
+- Files: `integration/mcp-client-workflow.mjs`,
+  `integration/fixtures/b16-mcp-server.mjs`, `integration/README.md`,
+  `docs/tasks/B16.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/requirements.md`,
+  `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`.
+- Validation: pinned OpenCode 2.2.5 gate → 15 MCP calls and all B16 rows passed;
+  four temporary regression injections (delayed poll, omitted test runs, mismatched
+  replay ID, omitted cancellation signal) each failed as required; `node --test` →
+  254 tests, 253 passed, 0 failed, 1 POSIX-only skip; fallback demo → 429 then 200;
+  Node syntax checks and `git diff --check` clean.
+- Follow-up: publish the corrections to PR #39, reply to all six review findings with
+  commit/evidence, then check current-head CI and request re-review. Leave merge to a
+  separate task-specific authorization; PR #39 remains open.

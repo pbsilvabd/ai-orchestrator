@@ -90,14 +90,34 @@ node integration/mcp-client-workflow.mjs /absolute/path/opencode.exe
 ```
 
 The gate verifies the pinned binary version and explicitly checks that a missing
-binary fails with `ENOENT`. A loopback fixture provider drives actual Code Mode MCP
-calls for a scratch Git repository: submit, poll while running, fetch the terminal
-diff and passing test evidence, reconnect and submit an identical request twice,
-cancel a running task, then kill the OpenCode host/MCP process tree and restart the
-service to observe an uncertain task reconciled as blocked. It checks the stable task
-ID, one attempt/workspace after duplicate submission, requested-versus-stopped
-cancellation state, and preservation/no replay after interruption. Fixture-only stale
-service locks are removed only after checking that the owning process is dead.
+binary fails with `ENOENT`. Git fixture setup clears inherited `GIT_*` overrides,
+uses temporary-only configuration and templates, and verifies the resolved worktree
+and Git directory. A canary with an active branch and staged file is snapshotted
+before a child run inherits hostile `GIT_DIR`/`GIT_WORK_TREE`; the run must fail at the
+missing-binary phase while the canary config, index, refs, branch and status remain
+unchanged.
+
+A loopback fixture provider drives actual Code Mode MCP calls for a scratch repository.
+The harness records request IDs and parsed response frames, then checks the correlated
+`queued`, `running` and `succeeded` replies, returned changed path, diff, test command
+and exit code. The primary worker waits until the client has received `running` before
+it can finish. A separate CLI process repeats the exact submission twice; both returned
+IDs and replay flags are checked against the original acceptance, along with one attempt
+and one workspace.
+
+For cancellation, the harness waits for the worker to write a start marker and partial
+workspace output, then cancels it. It checks the transport response, `unknown` stop
+evidence, worker-root exit and preserved partial diff. For host interruption, it waits
+for worker-written output and an append-only invocation counter, terminates the OpenCode
+process group, and restarts the service with dispatch enabled. MCP must report
+`blocked/service-restart` with unknown stop evidence, the same workspace output remains,
+and the counter stays at one. The result explicitly has no collected diff after restart;
+the gate does not imply that startup collected artifacts. Fixture-only stale service
+locks are removed only after checking that the owning process is dead.
+
+A separate startup-failure case spawns a live host plus descendant that never reports
+readiness. `startHost()` owns termination, and the gate confirms both processes exited
+before temporary fixture cleanup.
 
 Set `B16_DEBUG=1` to retain the temporary tree and last sanitized provider request
 for diagnosis. No real model, paid call or external provider credential is used. The

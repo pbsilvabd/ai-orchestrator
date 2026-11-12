@@ -28,7 +28,9 @@ scope. No universal web compatibility or continuous background supervision is pr
 B12 local implementation adds an explicitly configured single-worker queue with
 durable dispatch, no duplicate scheduling and conservative shutdown/ownership.
 B13 artifacts, B14 stop handling and B15 MCP stdio transport are merged. B16's
-pinned OpenCode 2.2.5 fixture-provider workflow is in its PR cycle; B17's executable
+pinned OpenCode 2.2.5 fixture-provider workflow has local corrections for six PR
+findings, including returned MCP evidence, active cancellation and dispatch-enabled
+restart. The updated head still needs publication, review and CI; B17's executable
 acceptance matrix remains required for M2b. A normal worker exit without recorded
 test evidence is reported with a limitation.
 

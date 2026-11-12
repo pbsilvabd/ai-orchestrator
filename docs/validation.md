@@ -1371,3 +1371,44 @@ task lifecycle, without changing those independent behaviors. No Ubuntu host run
 claimed. PR #39 was opened against `main` at base `491de18`; Windows and Ubuntu CI
 were pending at publication. The PR URL and latest remote head/checks are verified
 in the delivery report.
+
+## B16 review corrections — 2026-11-12
+
+Executed on Microsoft Windows 11 Pro 10.0.26300 x64, Node.js v24.22.1 (fnm), Git
+2.55.0.windows.5 and pinned OpenCode 2.2.5. Base `491de18efabdc1a49852e39996ab4a729f4be6db`,
+branch `task/B16-pinned-client-workflow`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check integration/mcp-client-workflow.mjs` | Parse the revised pinned-client gate | no output | 0 |
+| `node --check integration/fixtures/b16-mcp-server.mjs` | Parse the revised fixture service | no output | 0 |
+| `node integration/mcp-client-workflow.mjs C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe` | Run B16-01–04, canary Git isolation and readiness cleanup through the actual pinned client | OpenCode 2.2.5; four tools; 15 MCP calls; all four B16 rows passed | 0 |
+| Temporary fault-injection copies of the B16 harness/service | Prove delayed polling, missing `testRuns`, a wrong replay ID, and omitted cancellation signalling are rejected | All four injected regressions exited 1 at their specific assertions | 0 for the experiment driver; 1 expected for each injected run |
+| `node --test` | Full regression suite | 254 tests: 253 passed, 0 failed, 1 POSIX-only skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `git diff --check` | Whitespace and conflict-marker check | clean | 0 |
+
+The B16 gate now validates parsed MCP response frames correlated with request IDs.
+The primary worker waits until a transport poll returns `running`; the final response
+contains the expected task ID, changed path, useful diff, test command and exit code,
+and those fields appear in the pinned client's tool context. Both replay responses
+match the initial task ID and carry `idempotentReplay: true`. The active cancellation
+scenario waits for actual worker-written output, checks that the worker root exits,
+and verifies the retained partial diff plus `blocked/unknown` response. Restart runs
+with dispatch enabled: the worker has started and written partial output before host
+termination, the MCP status reports `service-restart`, and an append-only counter stays
+at one. The restart result honestly reports `diff: null`; startup reconciliation does
+not collect artifacts.
+
+The gate's canary has an active `feature` branch and staged file. It runs a child copy
+with hostile `GIT_DIR`/`GIT_WORK_TREE` and a missing OpenCode executable. The child
+fails at `ENOENT`; the canary config/index bytes, refs, active branch and staged status
+remain unchanged. A separate readiness case launches a live parent and descendant that
+never reports the server-ready line and checks both have exited before fixture cleanup.
+
+Evidence level: OpenCode integration through the pinned host, real MCP stdio, the task
+service, Git workspaces and local worker/test subprocesses. The loopback provider is a
+fixture; no production provider, paid request, model-quality or M3 claim is made. Linux
+CI and a separate Ubuntu pinned-host run were not observed in this local session; CI
+must be checked on the published correction head. The standalone B06 gate, B15-only
+gate and OpenCode session/model smoke were not changed and were not rerun.

@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-11. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-12. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -42,8 +42,9 @@ deliveries. B14 cancellation/deadline handling merged in PR #37 at `dc757c1`, wi
 Windows and Ubuntu checks passed on the reviewed head. B15 implements the four-tool
 MCP stdio server; OpenCode 2.2.5 discovered all four tools and submitted a fixture
 task whose queued result reached the model context. B15/#38 is merged at `491de18`.
-B16's pinned-client integration now covers result polling, duplicate replay, active
-cancellation and interrupted-host recovery on its task branch; PR review is pending.
+B16's pinned-client integration now checks correlated MCP replies, replay IDs, active
+worker cancellation, dispatch-enabled restart and Git-environment isolation; six PR
+review findings are corrected locally and head-specific CI/re-review remain pending.
 There is no production provider, integrated fallback, semantic memory or completed
 self-development workflow yet.
 
@@ -59,7 +60,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12–B15 merged; B16 in PR; B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12–B15 merged; B16 review corrections pending publication/re-review; B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Pending; B20 requires M2b/B17, B18 and an available authorized real model | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |

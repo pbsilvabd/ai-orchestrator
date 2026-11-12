@@ -1,10 +1,11 @@
-# Continuation point — 2026-11-11
+# Continuation point — 2026-11-12
 
 Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merged.
 B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
 workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
 real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
-reconciliation, preserved workspace evidence and missing-binary diagnosis. M2b/M3
+reconciliation, preserved workspace files and missing-binary diagnosis. Six review
+findings are corrected in the task branch; updated-head review and CI remain. M2b/M3
 remain incomplete; the fixture provider/worker proves integration behavior, not model
 quality or production-provider support. The mirrored ChatGPT project snapshot is not
 a Git checkout; development uses the actual repository checkout. M2a is complete and
@@ -12,20 +13,23 @@ ADR-007 still selects MCP stdio revision `2026-07-28`.
 
 ## Current implementation status: B16 PR #39 open
 
-The B16 harness starts the pinned client against the B15 MCP adapter and a temporary
-service with a harmless local worker. It observes all four operations over transport,
-the terminal diff and passing test command, duplicate reuse of one task ID/attempt/
-workspace, active cancellation with an unknown stop result, and host interruption
-reconciled as blocked after restart without replay. No real model or paid request is
-used. Local validation and detailed row-to-evidence mapping are in `docs/validation.md`.
+The corrected B16 harness starts the pinned client against the B15 MCP adapter and a
+temporary service with a harmless local worker. It validates request-correlated MCP
+replies, the running/succeeded lifecycle and returned test evidence, replay IDs, worker
+termination on active cancellation, and restart reconciliation with dispatch enabled.
+An active-branch/staged-file canary checks Git environment isolation, and a live
+host/descendant pair checks startup-failure cleanup. The restart scenario preserves
+workspace output but correctly reports that no diff was collected after restart. No
+real model or paid request is used. See `docs/validation.md` for the full evidence.
 
-## Next action: verify B16 PR #39
+## Next action: re-review B16 PR #39 at the corrected head
 
-1. Confirm the latest branch SHA and wait for the pending Linux/Windows CI results.
-2. Inspect PR feedback and checks on the latest head, fix any findings, then re-review
-   and revalidate the correction.
-3. Leave merge to task-specific maintainer authorization. After the B16 PR is reviewed
-   and merged, proceed to B17's executable acceptance matrix.
+1. Publish the six review corrections to the existing branch and reply to every review
+   finding with the correction commit and observed evidence.
+2. Re-read the PR head, feedback threads and Linux/Windows CI. Request a fresh review
+   and address any remaining findings on that same PR.
+3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
+   only after the B16 delivery is reviewed and merged.
 
 The PR #38 merge authorization applied only to B15. Do not carry it forward. The
 current adapter still has no production-provider path, and B16 does not complete M2b
