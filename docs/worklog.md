@@ -1079,3 +1079,32 @@ Template:
 - Validation: focused Windows subprocess and schema checks plus the full suite,
   demo and diff check. See the validation entry for observed results.
 - Follow-up: recheck the PR head and review feedback before merge.
+
+## 2026-11-11 — M2b: B15 MCP stdio adapter
+
+- Branch: `task/B15-mcp-stdio-adapter` from merged B14 head `dc757c1`.
+- Scope: code, tests and docs; no provider support, service-contract changes or
+  automatic merge.
+- Steps:
+  1. Inspected the existing B15 implementation and confirmed B14 had merged before
+     continuing the branch.
+  2. Replaced unbounded line accumulation with incremental UTF-8 framing capped at
+     1 MiB, and made malformed, oversized, unknown-field and serialization errors
+     bounded and sanitized.
+  3. Added foreign-owner, live-worker polling, partial-disconnect, and graceful idle
+     shutdown checks while preserving the four service-owned operations.
+  4. Added a pinned OpenCode 2.2.5 task-server gate using a loopback fixture provider;
+     it discovers four tools, submits one task and observes the queued result.
+  5. Reviewed the changed code against all B15 rows and updated the run, validation,
+     backlog, roadmap and handoff documentation.
+- Files: `README.md`, `docs/backlog.md`, `docs/requirements.md`, `docs/roadmap.md`,
+  `docs/tasks/B15.md`, `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`,
+  `integration/README.md`, `integration/mcp-task-gate.mjs`, `mcp-server.mjs`,
+  `src/mcp-server.mjs`, `test/mcp-server.test.mjs`.
+- Validation: `node --test --test-reporter=tap` → 251 passed, 0 failed, 1
+  POSIX-only skip; pinned OpenCode task gate → four tools discovered and queued
+  submission returned to context; fallback demo → 429 then 200; `git diff --check`
+  → clean. OpenCode session/model smoke, standalone B06 gate and executor invocation
+  were not rerun.
+- Follow-up: publish the B15 branch for review; after merge, continue with B16, the
+  pinned-client task polling/result workflow.

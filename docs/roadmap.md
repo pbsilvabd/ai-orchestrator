@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-09. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-11. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -16,7 +16,8 @@ runs tests, and returns a diff and report for review. No automatic merge.
 
 OpenCode 2.2.5 is the selected first worker executor and supervising client.
 ADR-007 selects MCP over stdio as the first transport; the loopback HTTP fallback
-was not selected. Neither task transport is implemented yet.
+was not selected. The B15 stdio adapter is implemented on its task branch and has
+passed a pinned-client fixture-provider submission check; B16/B17 acceptance remains.
 See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
@@ -36,10 +37,12 @@ main CI passed; no published independent review was found. B12 adds a locally
 validated opt-in durable single-worker scheduler connected to the B11 builder,
 merged through PR #25. B13 artifact collection and its post-merge corrections are
 included in main `a147d13`; Windows/Ubuntu checks passed for the merge/follow-up
-deliveries. B14 cancellation/deadline implementation is published for review in PR #37;
-Windows and Ubuntu CI are pending.
-There is no MCP/API endpoint, integrated fallback, semantic
-memory or completed self-development workflow yet.
+deliveries. B14 cancellation/deadline handling merged in PR #37 at `dc757c1`, with
+Windows and Ubuntu checks passed on the reviewed head. B15 implements the four-tool
+MCP stdio server; OpenCode 2.2.5 discovered all four tools and submitted a fixture
+task whose queued result reached the model context. B15 still awaits PR review/merge.
+There is no production provider, completed real-client workflow, integrated fallback,
+semantic memory or completed self-development workflow yet.
 
 The existing runner executes an operation; it is not a durable task scheduler.
 Its budget is per invocation, and its ledger does not persist task artifacts or
@@ -53,7 +56,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12/B13 merged; B14 PR #37 open; B15–B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12–B14 merged; B15 in progress; B16/B17 pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Pending; B20 requires M2b/B17, B18 and an available authorized real model | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |

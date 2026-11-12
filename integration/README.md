@@ -57,6 +57,29 @@ stdio MCP tool over revision `2026-07-28` with Code Mode routing. It does not
 validate the task contract, lifecycle, durability, ownership or the executor
 adapter. A future protocol revision or a different host is not covered.
 
+## B15 task adapter gate
+
+Run the actual task service over stdio through the pinned client and a local fixture
+provider:
+
+```sh
+node integration/mcp-task-gate.mjs /absolute/path/opencode.exe
+```
+
+The gate first starts `mcp-server.mjs` as a child and verifies idle stdin EOF releases
+service ownership without writing non-protocol data to stdout. It then creates a
+temporary Git repository and state home, starts OpenCode 2.2.5 with the B15 server,
+confirms that all four tools are catalogued, submits one fixture task through
+`submit_task`, and confirms the queued response reaches the model context and durable
+task record. The provider is a loopback fixture; no real model, paid call or external
+credential is used. The command reports the protocol revision, client version, tool
+discovery and submitted task ID. It does not exercise the B16 polling/result workflow
+or prove production-provider behavior.
+
+Observed on 2026-11-11 (Windows x64, Node.js v24.22.1): the pinned OpenCode 2.2.5
+client discovered the four tools, called `submit_task`, and received the persisted
+`queued` result in model context; the gate exited 0.
+
 ## Session/model smoke test
 
 Run separately from local tests, using Node 24 and a pinned official binary:

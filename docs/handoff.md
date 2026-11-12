@@ -1,16 +1,15 @@
-# Continuation point — 2026-11-09
+# Continuation point — 2026-11-11
 
-Verified remote main is `a147d13174371f5cd16685dc3a17fd853b602f85`, including
-B12/#25, B13/#35 and B13 post-merge corrections. B14 is published as
-[PR #37](https://github.com/pbsilvabd/ai-orchestrator/pull/37) from
-`task/B14-cancellation-deadlines`; Windows and Ubuntu checks are pending. Refresh
-GitHub status before taking the next action.
-The mirrored ChatGPT project snapshot is older and is not a Git checkout. This
-branch uses the actual repository checkout; fetch again before editing.
-M2a is complete; ADR-007 still selects OpenCode 2.2.5 and MCP stdio revision
-`2026-07-28`. B06 passed eight isolated pinned-host runs; HTTP was not selected.
+Remote `main` is `dc757c19ccc9aaabe1347b51191a43ca33e825bb`; B12–B14 are merged.
+B15's four-operation MCP stdio adapter is implemented on
+`task/B15-mcp-stdio-adapter` and passed local tests plus the pinned OpenCode 2.2.5
+fixture-provider submission gate. M2b/M3 remain incomplete; no production provider
+or real-model execution path is available in the current adapter. The mirrored
+ChatGPT project snapshot is older and is not a Git checkout; this branch uses the
+actual repository checkout. M2a is complete, and ADR-007 still selects MCP stdio
+revision `2026-07-28`; the B06 capability gate passed eight isolated host runs.
 
-## Current implementation status: B14 PR #37 open
+## Current implementation status: B15 adapter ready for publication
 
 B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
 Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log
@@ -21,22 +20,29 @@ Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
 serializes new submissions, never requeues duplicates or preexisting records and
 blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
 
-B14 now persists active cancellation before signalling the subprocess root, retains
+B14 persists active cancellation before signalling the subprocess root, retains
 partial artifacts, halts later dispatch and preserves unknown stop/effect evidence.
-Windows local tests confirm a detached descendant can outlive the root; restart
-reconciliation still blocks and never replays. The implementation does not claim a
-tree-stop proof or add a `running → cancelled` path.
+The B15 stdio server now binds the four task operations to the configured service
+identity, rejects oversized/malformed input without reflecting payloads, and closes
+idle ownership cleanly on EOF. The pinned-host gate confirmed discovery of all four
+tools and one persisted queued submission whose result reached model context.
 
-M2b remaining order: B14 review/merge → B15 → B16 → B17. B18 human recovery can follow
-B14; B20/M3 requires B17/B18 plus an available authorized real model/provider and
-a small approved task. B08 is ready supporting work; B19's diagnostic pulse can
-be prepared, but its task-history track waits for B17. Do not implement fallback,
-memory or a multi-model controller as part of B13.
+## Next action: publish B15 for review
+
+1. Commit the complete B15 branch diff and push `task/B15-mcp-stdio-adapter`.
+2. Open the task PR against `main`, map B15-01 through B15-04 to the recorded
+   tests/experiment, and verify that the remote head matches the local SHA.
+3. Read PR feedback and Windows/Ubuntu CI at the published head; merge only with
+   task-specific maintainer authorization. After merge, proceed to B16.
+
+B16 must exercise a real client submission, polling and result retrieval. M2b/M3
+remain incomplete; no production provider, remote transport, fallback, memory,
+multi-worker routing or automatic merge is in scope for B15.
 
 The maintainer accepted implementing-agent review for B12; no separate independent
 review is claimed. That task-specific merge approval does not carry forward to a
-new task. Historical checkpoints below retain their original pending statuses;
-the verified summary above and current remote are the continuation reference.
+new task. Historical checkpoints below retain their original statuses; the verified
+summary above and current remote are the continuation reference.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 

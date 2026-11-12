@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
@@ -74,7 +74,7 @@ async function waitForOutput(collect, minLines = 1, timeoutMs = 3000) {
   throw new Error(`timeout waiting for ${minLines} output line(s)`);
 }
 
-function makeFixture(t) {
+function makeFixture(t, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'mcp-b15-'));
   t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
   initGitRepo(dir);
@@ -86,6 +86,7 @@ function makeFixture(t) {
       limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
     },
     now: 1_000,
+    ...options,
   });
   t.after(() => service.close());
   return { dir, service };
@@ -252,6 +253,35 @@ test('B15-02b: oversized frame is rejected with bounded error message', async t 
   assert.ok(msg.error.message.length < 200, 'error message is short');
 });
 
+test('B15-02b: streamed oversized frames are discarded incrementally and the next frame remains usable', async t => {
+  const { service } = makeFixture(t);
+  const { input, collect } = makeServer(t, service, { maxFrameBytes: 128 });
+
+  input.push(Buffer.alloc(1024, 0x61));
+  input.push(Buffer.from('\n'));
+  input.push(Buffer.from(JSON.stringify({ jsonrpc: '2.0', id: 31, method: 'server/discover', params: { _meta: META } }) + '\n'));
+  const [oversized, valid] = await waitForOutput(collect, 2);
+
+  assert.equal(oversized.error.code, -32600);
+  assert.equal(oversized.error.message, 'frame too large');
+  assert.equal(JSON.stringify(oversized).includes('a'.repeat(20)), false);
+  assert.equal(valid.id, 31);
+  assert.deepEqual(valid.result.supportedVersions, [VERSION]);
+});
+
+test('B15-02b: invalid UTF-8 is rejected without terminating the transport', async t => {
+  const { service } = makeFixture(t);
+  const { input, collect } = makeServer(t, service);
+
+  input.push(Buffer.from([0x7b, 0x22, 0xff, 0x22, 0x7d, 0x0a]));
+  input.push(Buffer.from(JSON.stringify({ jsonrpc: '2.0', id: 32, method: 'server/discover', params: { _meta: META } }) + '\n'));
+  const [malformed, valid] = await waitForOutput(collect, 2);
+
+  assert.equal(malformed.error.code, -32700);
+  assert.equal(malformed.error.message, 'parse error');
+  assert.equal(valid.id, 32);
+});
+
 test('B15-02c: missing protocol version in _meta produces an error', async t => {
   const { service } = makeFixture(t);
   const { send, collect } = makeServer(t, service);
@@ -267,11 +297,50 @@ test('B15-02d: unsupported protocol version returns version error with supported
   const { service } = makeFixture(t);
   const { send, collect } = makeServer(t, service);
 
-  send({ jsonrpc: '2.0', id: 51, method: 'tools/list', params: { _meta: { 'io.modelcontextprotocol/protocolVersion': '1900-01-01' } } });
+  send({ jsonrpc: '2.0', id: 51, method: 'tools/list', params: { _meta: { 'io.modelcontextprotocol/protocolVersion': 'private-secret-probe' } } });
   const [msg] = await waitForOutput(collect);
 
   assert.equal(msg.error.code, -32022);
   assert.deepEqual(msg.error.data?.supported, [VERSION]);
+  assert.equal(JSON.stringify(msg).includes('private-secret-probe'), false);
+});
+
+test('B15-02d: unknown protocol parameter fields are rejected without reflecting values', async t => {
+  const { service } = makeFixture(t);
+  const { send, collect } = makeServer(t, service);
+
+  send({ jsonrpc: '2.0', id: 56, method: 'server/discover', params: { _meta: META, privateField: 'secret-field' } });
+  const [msg] = await waitForOutput(collect);
+
+  assert.equal(msg.error.code, -32602);
+  assert.equal(JSON.stringify(msg).includes('secret-field'), false);
+});
+
+test('B15-02d: invalid object request IDs are not reflected in the response', async t => {
+  const { service } = makeFixture(t);
+  const { send, collect } = makeServer(t, service);
+
+  send({ jsonrpc: '2.0', id: { secret: 'private-id' }, method: 'server/discover', params: { _meta: META } });
+  const [msg] = await waitForOutput(collect);
+
+  assert.equal(msg.id, null);
+  assert.equal(msg.error.code, -32600);
+  assert.equal(JSON.stringify(msg).includes('private-id'), false);
+});
+
+test('B15-02d: circular service result is serialized as a sanitized protocol error', async t => {
+  const circular = {};
+  circular.self = circular;
+  const { send, collect } = makeServer(t, {
+    getTaskStatus() { return circular; },
+  });
+
+  send({ jsonrpc: '2.0', id: 57, method: 'tools/call', params: { _meta: META, name: 'get_task_status', arguments: { taskId: '00000000-0000-4000-8000-000000000000' } } });
+  const [msg] = await waitForOutput(collect);
+
+  assert.equal(msg.error.code, -32603);
+  assert.equal(msg.error.message, 'internal error');
+  assert.equal(JSON.stringify(msg).includes('self'), false);
 });
 
 test('B15-02e: unknown method returns method-not-found error', async t => {
@@ -327,16 +396,32 @@ test('B15-02h: non-object tool arguments are rejected', async t => {
 
 // ─── B15-03: Foreign task, concurrent polling and disconnect ─────────────────
 
-test('B15-03a: foreign task ID returns unknown_task error without exposing info', async t => {
-  const { service } = makeFixture(t);
-  const { send, collect } = makeServer(t, service);
+test('B15-03a: foreign task IDs are hidden from the configured client', async t => {
+  const { dir, service: original } = makeFixture(t);
+  await original.close();
+  const config = clientId => ({
+    clientId,
+    authorization: { models: ['mock/a'], tools: ['read', 'edit'], writableRoots: [dir] },
+    limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
+  });
+  const foreign = createTaskService({ home: dir, config: config('other-client'), now: 1_000 });
+  const request = validRequest(dir);
+  request.clientId = 'other-client';
+  request.idempotencyKey = 'goal-b15-03a-foreign';
+  request.repository.branch = 'task/b15-foreign-owner';
+  const { taskId } = foreign.submitTask(request);
+  await foreign.close();
 
-  send({ jsonrpc: '2.0', id: 60, method: 'tools/call', params: { _meta: META, name: 'get_task_status', arguments: { taskId: '00000000-0000-4000-8000-000000000000' } } });
+  const owner = createTaskService({ home: dir, config: config('opencode-primary'), now: 1_000 });
+  t.after(() => owner.close());
+  const { send, collect } = makeServer(t, owner);
+  send({ jsonrpc: '2.0', id: 60, method: 'tools/call', params: { _meta: META, name: 'get_task_status', arguments: { taskId } } });
   const [msg] = await waitForOutput(collect);
 
   assert.equal(msg.result.isError, true);
   const payload = JSON.parse(msg.result.content[0].text);
   assert.ok(['unknown_task', 'not_owner'].includes(payload.error.code));
+  assert.equal(JSON.stringify(payload).includes(taskId), false);
 });
 
 test('B15-03b: multiple sequential polls use the same service instance (no second owner)', async t => {
@@ -362,6 +447,57 @@ test('B15-03b: multiple sequential polls use the same service instance (no secon
   }
 });
 
+test('B15-03b: concurrent status polls remain available while a real fixture worker runs', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'mcp-b15-active-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 }));
+  const repo = join(dir, 'repo');
+  const home = join(dir, 'home');
+  execFileSync('git', ['init', repo], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', repo, 'config', 'user.name', 'Test Runner'], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', repo, 'config', 'user.email', 'test@example.com'], { stdio: 'ignore', windowsHide: true });
+  writeFileSync(join(repo, 'README.md'), '# Test\n');
+  execFileSync('git', ['-C', repo, 'add', '.'], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', repo, 'commit', '-m', 'Initial commit'], { stdio: 'ignore', windowsHide: true });
+  execFileSync('git', ['-C', repo, 'branch', '-M', 'main'], { stdio: 'ignore', windowsHide: true });
+  const marker = join(dir, 'worker-running');
+  const worker = { prepare({ workspace }) { return {
+    executable: process.execPath,
+    args: ['-e', `require('node:fs').writeFileSync(${JSON.stringify(marker)},'ready');setTimeout(()=>process.exit(0),1500)`],
+    cwd: workspace.workspacePath, env: {}, timeoutMs: 5_000, stdoutMaxBytes: 4096, stderrMaxBytes: 4096,
+  }; } };
+  const service = createTaskService({
+    home,
+    config: { clientId: 'opencode-primary', authorization: { models: ['mock/a'], tools: ['read'], writableRoots: [repo] },
+      limits: { maxAttempts: 1, budgetMs: 600_000, maxOutputBytes: 4096 } },
+    worker,
+  });
+  t.after(() => service.close());
+  const transport = makeTransport();
+  const server = createMcpServer({ service, input: transport.input, output: transport.output });
+  t.after(() => server.close());
+  const req = { ...validRequest(repo), idempotencyKey: 'goal-b15-active-worker', repository: { path: repo, baseRef: 'main', branch: 'task/b15-active-worker' } };
+  req.authorization.tools = ['read'];
+  req.limits.maxAttempts = 1;
+  req.limits.maxOutputBytes = 4096;
+  transport.send({ jsonrpc: '2.0', id: 61, method: 'tools/call', params: { _meta: META, name: 'submit_task', arguments: req } });
+  const [submit] = await waitForOutput(transport.collect);
+  assert.equal(submit.result.isError, false, submit.result.content?.[0]?.text);
+  const { taskId } = JSON.parse(submit.result.content[0].text);
+  const deadline = Date.now() + 5000;
+  while (!existsSync(marker) && Date.now() < deadline) await new Promise(resolveWait => setTimeout(resolveWait, 10));
+  assert.equal(existsSync(marker), true, 'the real worker subprocess should be active');
+
+  transport.send({ jsonrpc: '2.0', id: 62, method: 'tools/call', params: { _meta: META, name: 'get_task_status', arguments: { taskId } } });
+  transport.send({ jsonrpc: '2.0', id: 63, method: 'tools/call', params: { _meta: META, name: 'get_task_status', arguments: { taskId } } });
+  const responses = await waitForOutput(transport.collect, 2);
+  assert.deepEqual(responses.map(response => response.id).sort(), [62, 63]);
+  for (const response of responses) {
+    assert.equal(response.result.isError, false);
+    assert.equal(JSON.parse(response.result.content[0].text).status, 'running');
+  }
+  await service.whenIdle();
+});
+
 test('B15-03c: notifications (no id) receive no response', async t => {
   const { service } = makeFixture(t);
   const { input, collect } = makeServer(t, service);
@@ -373,9 +509,10 @@ test('B15-03c: notifications (no id) receive no response', async t => {
   assert.equal(lines.length, 0, 'no response for a notification');
 });
 
-test('B15-03d: stdin close causes the readline interface to close cleanly', async t => {
+test('B15-03d: stdin close discards a partial frame cleanly', async t => {
   const { service } = makeFixture(t);
-  const { closeInput, collect } = makeServer(t, service);
+  const { input, closeInput, collect } = makeServer(t, service);
+  input.push(Buffer.from('{"jsonrpc":"2.0","id":99'));
   closeInput();
   await new Promise(r => setTimeout(r, 50));
   // No crash; output is empty.

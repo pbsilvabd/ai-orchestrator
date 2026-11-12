@@ -9,10 +9,10 @@
 //   Results/errors are a single JSON text content block; errors set isError: true.
 //   Error envelopes: { error: { code, message } } — no stack, no private data.
 //
-// Frame budget: MCP_MAX_FRAME_BYTES (default 1 MiB) limits each raw input line.
+// Frame budget: maxFrameBytes (default 1 MiB) limits each raw input line.
 // Oversized lines are rejected with a bounded error; no partial content is parsed.
 
-import { createInterface } from 'node:readline';
+import { TextDecoder } from 'node:util';
 import { createTaskService, ServiceError, errorEnvelope } from './service.mjs';
 
 const VERSION = '2026-07-28';
@@ -117,9 +117,18 @@ const TOOLS = [
 // Retrieve the protocol version from request metadata (revision 2026-07-28 carries
 // it in params._meta rather than a dedicated initialize handshake).
 function requestedVersion(params) {
-  const meta = params?._meta;
-  if (!meta || typeof meta !== 'object') return undefined;
+  if (!isPlainObject(params)) return undefined;
+  const meta = params._meta;
+  if (!isPlainObject(meta)) return undefined;
   return meta['io.modelcontextprotocol/protocolVersion'];
+}
+
+function isPlainObject(value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function hasOnlyKeys(value, allowed) {
+  return Object.keys(value).every(key => allowed.includes(key));
 }
 
 // Dispatch a tool call to the matching service operation. The service layer owns
@@ -142,12 +151,19 @@ function dispatchTool(name, args, service) {
 // Build a JSON-RPC success result envelope for the MCP wire format.
 // Results are always a single text content block carrying the JSON payload.
 function toolResult(id, payload) {
+  let text;
+  try {
+    text = JSON.stringify(payload);
+  } catch {
+    return protocolError(id, -32603, 'internal error');
+  }
+  if (typeof text !== 'string') return protocolError(id, -32603, 'internal error');
   return {
     jsonrpc: '2.0',
     id,
     result: {
       resultType: 'complete',
-      content: [{ type: 'text', text: JSON.stringify(payload) }],
+      content: [{ type: 'text', text }],
       isError: false,
     },
   };
@@ -192,13 +208,31 @@ export function createMcpServer(options = {}) {
 
   const input  = options.input  ?? process.stdin;
   const output = options.output ?? process.stdout;
-  const maxFrameBytes = typeof options.maxFrameBytes === 'number' && options.maxFrameBytes > 0
-    ? options.maxFrameBytes
+  const requestedMaxFrameBytes = options.maxFrameBytes;
+  const maxFrameBytes = Number.isSafeInteger(requestedMaxFrameBytes) && requestedMaxFrameBytes > 0
+    ? Math.min(requestedMaxFrameBytes, DEFAULT_MAX_FRAME_BYTES)
     : DEFAULT_MAX_FRAME_BYTES;
+
+  let closed = false;
+  let onData;
+  let onEnd;
+  let onOutputError;
 
   // Send a single JSON-RPC message; stdout carries protocol only — no debug text.
   function send(message) {
-    output.write(JSON.stringify(message) + '\n');
+    let frame;
+    try {
+      frame = JSON.stringify(message);
+    } catch {
+      const id = message?.id;
+      const safeId = id === null || typeof id === 'string' || typeof id === 'number' ? id : null;
+      frame = JSON.stringify(protocolError(safeId, -32603, 'internal error'));
+    }
+    try {
+      output.write(frame + '\n');
+    } catch {
+      close();
+    }
   }
 
   function handleMessage(raw) {
@@ -218,8 +252,11 @@ export function createMcpServer(options = {}) {
 
     // Basic JSON-RPC envelope validation.
     if (!message || typeof message !== 'object' || Array.isArray(message) ||
-        message.jsonrpc !== '2.0' || typeof message.method !== 'string') {
-      if (message?.id !== undefined) send(protocolError(message.id, -32600, 'invalid request'));
+        message.jsonrpc !== '2.0' || typeof message.method !== 'string' ||
+        Object.keys(message).some(key => !['jsonrpc', 'id', 'method', 'params'].includes(key)) ||
+        (message.id !== undefined && message.id !== null &&
+          typeof message.id !== 'string' && typeof message.id !== 'number')) {
+      if (message?.id !== undefined) send(protocolError(null, -32600, 'invalid request'));
       return;
     }
 
@@ -235,13 +272,16 @@ export function createMcpServer(options = {}) {
       return;
     }
     if (!SUPPORTED.includes(version)) {
-      send(protocolError(id, -32022, 'unsupported protocol version',
-        { supported: SUPPORTED, requested: version }));
+      send(protocolError(id, -32022, 'unsupported protocol version', { supported: SUPPORTED }));
       return;
     }
 
     switch (message.method) {
       case 'server/discover':
+        if (!isPlainObject(message.params) || !hasOnlyKeys(message.params, ['_meta'])) {
+          send(protocolError(id, -32602, 'invalid params'));
+          return;
+        }
         send({
           jsonrpc: '2.0',
           id,
@@ -255,6 +295,10 @@ export function createMcpServer(options = {}) {
         return;
 
       case 'tools/list':
+        if (!isPlainObject(message.params) || !hasOnlyKeys(message.params, ['_meta'])) {
+          send(protocolError(id, -32602, 'invalid params'));
+          return;
+        }
         send({
           jsonrpc: '2.0',
           id,
@@ -268,6 +312,10 @@ export function createMcpServer(options = {}) {
         return;
 
       case 'tools/call': {
+        if (!isPlainObject(message.params) || !hasOnlyKeys(message.params, ['_meta', 'name', 'arguments'])) {
+          send(protocolError(id, -32602, 'invalid params'));
+          return;
+        }
         const name = message.params?.name;
         const args = message.params?.arguments;
 
@@ -311,21 +359,91 @@ export function createMcpServer(options = {}) {
     }
   }
 
-  const rl = createInterface({ input, crlfDelay: Infinity });
-  rl.on('line', line => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-    handleMessage(trimmed);
-  });
+  let frameBytes = 0;
+  let frameChunks = [];
+  let discardingFrame = false;
+  const decoder = new TextDecoder('utf-8', { fatal: true });
 
-  let closed = false;
-  const close = () => {
-    if (closed) return;
-    closed = true;
-    rl.close();
+  function appendFramePart(part) {
+    if (discardingFrame) return;
+    if (frameBytes + part.length > maxFrameBytes) {
+      frameChunks = [];
+      frameBytes = 0;
+      discardingFrame = true;
+      return;
+    }
+    if (part.length) {
+      frameChunks.push(Buffer.from(part));
+      frameBytes += part.length;
+    }
+  }
+
+  function finishFrame() {
+    if (discardingFrame) {
+      send(protocolError(null, -32600, 'frame too large'));
+    } else if (frameBytes) {
+      let line;
+      try {
+        line = decoder.decode(Buffer.concat(frameChunks, frameBytes));
+      } catch {
+        send(protocolError(null, -32700, 'parse error'));
+        frameChunks = [];
+        frameBytes = 0;
+        return;
+      }
+      const trimmed = line.trim();
+      if (trimmed) handleMessage(trimmed);
+    }
+    frameChunks = [];
+    frameBytes = 0;
+    discardingFrame = false;
+  }
+
+  // Do not use readline here: it buffers a complete line before emitting it, so a
+  // malicious peer could allocate an unbounded frame before the size check runs.
+  onData = function onData(chunk) {
+    const bytes = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    let start = 0;
+    for (let index = 0; index < bytes.length; index++) {
+      if (bytes[index] !== 0x0a) continue;
+      appendFramePart(bytes.subarray(start, index));
+      finishFrame();
+      start = index + 1;
+    }
+    appendFramePart(bytes.subarray(start));
   };
 
-  rl.on('close', () => { closed = true; });
+  input.on('data', onData);
+
+  onEnd = function onEnd() {
+    // A final unterminated frame is not a JSON-RPC message.
+    frameChunks = [];
+    frameBytes = 0;
+    discardingFrame = false;
+  };
+  input.on('end', onEnd);
+  input.on('close', onEnd);
+  input.on('error', close);
+  onOutputError = () => {
+    close();
+    input.destroy?.();
+  };
+  output.on('error', onOutputError);
+
+  function close() {
+    if (closed) return;
+    closed = true;
+    if (onData) input.off('data', onData);
+    if (onEnd) {
+      input.off('end', onEnd);
+      input.off('close', onEnd);
+    }
+    frameChunks = [];
+    frameBytes = 0;
+    discardingFrame = false;
+    input.off('error', close);
+    if (onOutputError) output.off('error', onOutputError);
+  }
 
   return { close };
 }

@@ -1,9 +1,9 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-09: `origin/main` at `a147d13` (B13 post-merge corrections included).
-B14 is published as [PR #37](https://github.com/pbsilvabd/ai-orchestrator/pull/37)
-from `task/B14-cancellation-deadlines`; Windows and Ubuntu CI are pending. Refresh
-remote status before review or choosing the next implementation task.
+Verified 2026-11-11: `origin/main` at `dc757c1` (B14/#37 merged; Windows and
+Ubuntu checks passed on the reviewed head). B15 is in progress on
+`task/B15-mcp-stdio-adapter`; refresh remote status before review or choosing the
+next implementation task.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -11,8 +11,8 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current implementation task: [B14 — Cancellation, deadlines and late events](tasks/B14.md).
-B12 and B13 are merged. M2b and M3 remain open milestones.
+Current implementation task: [B15 — Four-operation MCP stdio adapter](tasks/B15.md).
+B12–B14 are merged. M2b and M3 remain open milestones.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -52,7 +52,7 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Ready implementation choices: **B14 is recommended next**; B08 is supporting work
+Ready implementation choices: **B15 is the current implementation task**; B08 is supporting work
 whose B01/#8 and B03 prerequisites are now merged. B19 can prepare its manual
 capability-gate pulse, but task-history acceptance still waits for B17.
 Prerequisites below describe complete card acceptance; preparatory work does not
@@ -62,7 +62,7 @@ complete a gated card.
 
 | Milestone | Pending tasks and acceptance |
 | --- | --- |
-| M2b — One-worker delegation MVP | B14 cancellation/deadline/stop evidence; B15 four-operation MCP stdio adapter; B16 real pinned-client workflow; B17 executable thirteen-item acceptance matrix. |
+| M2b — One-worker delegation MVP | B14 cancellation/deadline/stop evidence is merged; B15 four-operation MCP stdio adapter is in progress; B16 real pinned-client workflow; B17 executable thirteen-item acceptance matrix. |
 | M3 — First supervised development task | B18 maintainer recovery plus B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
 | Supporting work | B08 differential submit-schema adoption; B19 opt-in diagnostic pulse. Neither replaces M2b/M3 acceptance. |
 | Later milestones/decisions | B21 and B22a–c storage evaluation/rollout; B23 safe fallback (M2c); B24 memory (M4); B25 routing evaluation (M5). These are not prerequisites for completing basic one-worker delegation and first use. |
@@ -94,8 +94,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [FIX23 — Post-merge B11 corrections](tasks/FIX23.md) | P1 | Merged #24; CI and repeated host regressions passed | Merged #23; review provenance described above |
 | [B12 — Single-worker scheduler with durable dispatch](tasks/B12.md) | P1 | Merged #25 at 68d3ea5; PR and main CI passed | B04a/B05/B09–B11 delivered; no remaining B12 gate |
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Merged #35 at `254b5b9`; post-merge CI passed | B09/B10 merged |
-| [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Pending; recommended next after B13 corrections | B10/B12/B13 merged |
-| [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Pending; complete execution acceptance gated by B14 | B06/B12 delivered; B14 pending; protocol preparation may start |
+| [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Merged #37 at `dc757c1`; Windows/Ubuntu checks passed | B10/B12/B13 merged |
+| [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Implementation and pinned-host gate complete locally; PR publication pending | B06/B12/B14 merged; B13 artifacts available |
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Pending; gated by B13–B15 | B12 delivered; B13/B14/B15 pending |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Pending; gated by B16 | B16 actual transport/client workflow pending |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Pending; gated by B14 | B04a/B05 delivered; B14 pending; need not wait for B17 |

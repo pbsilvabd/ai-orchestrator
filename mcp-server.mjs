@@ -5,9 +5,7 @@
 // Environment variables:
 //   AI_ORCHESTRATOR_HOME   - Required. Path to the task state directory.
 //   AI_ORCHESTRATOR_CONFIG - Optional. Path to a JSON config file. When absent, the
-//                            service starts with the default (empty allowlists); only
-//                            idempotency-key round trips and status/result fetches are
-//                            usable without a configured client identity and allowlists.
+//                            default empty authorization allowlists reject new tasks.
 //
 // Config file schema (all fields optional):
 //   {
@@ -25,7 +23,7 @@
 //   }
 //
 // The server runs until stdin closes. On SIGINT/SIGTERM it closes the service
-// (finishing any in-flight scheduler work) and exits with code 0.
+// (finishing in-flight work or retaining ownership when its outcome is uncertain).
 
 import { readFileSync } from 'node:fs';
 import { createTaskService } from './src/service.mjs';
@@ -42,8 +40,8 @@ const configPath = process.env.AI_ORCHESTRATOR_CONFIG;
 if (configPath) {
   try {
     config = JSON.parse(readFileSync(configPath, 'utf8'));
-  } catch (err) {
-    process.stderr.write(`Failed to read AI_ORCHESTRATOR_CONFIG: ${err.message}\n`);
+  } catch {
+    process.stderr.write('Failed to read AI_ORCHESTRATOR_CONFIG\n');
     process.exit(1);
   }
 }
@@ -51,21 +49,31 @@ if (configPath) {
 let service;
 try {
   service = createTaskService({ home, config });
-} catch (err) {
-  process.stderr.write(`Failed to start task service: ${err.message}\n`);
+} catch {
+  process.stderr.write('Failed to start task service\n');
   process.exit(1);
 }
 
 const server = createMcpServer({ service });
 
-async function shutdown() {
-  server.close();
-  try {
-    await service.close();
-  } catch {
-    // Best-effort cleanup; still exit cleanly.
-  }
-  process.exit(0);
+let shutdownPromise;
+function shutdown() {
+  shutdownPromise ??= (async () => {
+    server.close();
+    try {
+      const result = await service.close();
+      if (result?.releaseOwnership === false) {
+        process.stderr.write('Task service stopped with unresolved work; ownership retained for reconciliation\n');
+        process.exitCode = 2;
+      }
+    } catch {
+      process.stderr.write('Task service shutdown failed; state retained for reconciliation\n');
+      process.exitCode = 1;
+    } finally {
+      if (!process.stdin.destroyed) process.stdin.destroy();
+    }
+  })();
+  return shutdownPromise;
 }
 
 process.on('SIGINT',  shutdown);

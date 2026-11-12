@@ -72,8 +72,12 @@ decision. The task store (`src/tasks.mjs`) and service (`src/service.mjs`) are
 implemented. B12 adds an opt-in serial scheduler (`src/scheduler.mjs`) that persists
 one attempt before creating an isolated worktree and launching a configured worker.
 The B11 adapter supports only a loopback fixture provider. Local process/host
-evidence is recorded in [validation](docs/validation.md); no task endpoint,
-MCP adapter, production provider or complete delegation MVP is delivered yet.
+evidence is recorded in [validation](docs/validation.md). B15 adds the four-operation
+MCP stdio adapter (`mcp-server.mjs`), with bounded framing and sanitized protocol
+errors. The pinned OpenCode 2.2.5 fixture gate discovers all four tools, submits a
+task and observes its queued result in model context. This does not provide a
+production provider or complete delegation MVP; B16/B17 real-client acceptance
+remains.
 
 A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
 and a simulated local provider. It validates session continuity, context, explicit
@@ -109,6 +113,12 @@ node examples/fallback-demo.mjs
 No npm install is required. The demo produces two records: `mock/preferred`
 returns 429 and `mock/local` returns 200 in the same session. These are in-memory
 responses, not HTTP servers or real models.
+
+The local MCP task server starts with `node mcp-server.mjs`. Set
+`AI_ORCHESTRATOR_HOME` to a trusted state directory and point
+`AI_ORCHESTRATOR_CONFIG` to a JSON file containing the client identity, model/tool
+allowlists, writable roots and limits. The server writes only protocol messages to
+stdout; startup and shutdown diagnostics go to stderr.
 
 ## Minimal policy
 
@@ -164,8 +174,8 @@ for status, dependencies and acceptance gates.
 
 ## Next steps
 
-1. Run the MCP capability gate against the pinned host (M2b step 1).
-2. Implement the task store, the four operations and one executor adapter (M2b).
+1. Complete B15 review and merge, then run the B16 pinned-client task workflow.
+2. Complete the B17 thirteen-item M2b acceptance matrix.
 3. Complete a real self-development task with a diff, tests and human review (M3).
 4. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.
 
