@@ -1154,5 +1154,7 @@ Template:
   observed; full suite 254 tests (253 passed, 0 failed, 1 POSIX-only skipped),
   fallback demo 429 then 200, and diff check clean. See `docs/validation.md` for
   command details and evidence limits.
-- Follow-up: publish one B16 PR, verify CI and remote head, then wait for task-specific
-  maintainer review/merge before B17.
+- Publication: [PR #39](https://github.com/pbsilvabd/ai-orchestrator/pull/39) opened
+  against `main`; remote branch matched head `ee019b844d1bc5f6df1e6fa2c4e7185076f79d31`.
+  Windows and Ubuntu CI were pending at publication. Await task-specific maintainer
+  review/merge before B17.

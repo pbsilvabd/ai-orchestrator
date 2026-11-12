@@ -1368,4 +1368,6 @@ revision.
 Not rerun: standalone B06 discovery gate, B15 submission-only gate and OpenCode
 session/model smoke; B16 reused their pinned host/protocol paths while extending the
 task lifecycle, without changing those independent behaviors. No Ubuntu host run is
-claimed; CI results on the published B16 PR will be recorded after publication.
+claimed. PR #39 was opened against `main` at base `491de18`; Windows and Ubuntu CI
+were pending at publication. The PR URL and latest remote head/checks are verified
+in the delivery report.

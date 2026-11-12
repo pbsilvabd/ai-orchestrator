@@ -95,7 +95,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Merged #35 at `254b5b9`; post-merge CI passed | B09/B10 merged |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Merged #37 at `dc757c1`; Windows/Ubuntu checks passed | B10/B12/B13 merged |
 | [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Merged #38 at `491de18`; correction and CI verified | B06/B12/B14 merged; B13 artifacts available |
-| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | PR in progress on `task/B16-pinned-client-workflow`; pinned-client matrix exercised locally | B12–B15 merged; trusted OpenCode 2.2.5 available |
+| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | PR #39 open on `task/B16-pinned-client-workflow`; Linux/Windows CI pending at publication | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Pending; gated by B16 | B16 PR review/merge pending |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Pending; gated by B14 | B04a/B05 delivered; B14 pending; need not wait for B17 |
 | [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Pending; gate pulse preparation ready, task history gated | B06 delivered; task-history track waits for B17 |

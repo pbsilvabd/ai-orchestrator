@@ -10,7 +10,7 @@ quality or production-provider support. The mirrored ChatGPT project snapshot is
 a Git checkout; development uses the actual repository checkout. M2a is complete and
 ADR-007 still selects MCP stdio revision `2026-07-28`.
 
-## Current implementation status: B16 PR cycle
+## Current implementation status: B16 PR #39 open
 
 The B16 harness starts the pinned client against the B15 MCP adapter and a temporary
 service with a harmless local worker. It observes all four operations over transport,
@@ -19,12 +19,11 @@ workspace, active cancellation with an unknown stop result, and host interruptio
 reconciled as blocked after restart without replay. No real model or paid request is
 used. Local validation and detailed row-to-evidence mapping are in `docs/validation.md`.
 
-## Next action: publish and verify B16
+## Next action: verify B16 PR #39
 
-1. Commit and push `task/B16-pinned-client-workflow`, open the single B16 PR, and
-   verify its base/head and remote SHA.
-2. Inspect PR feedback and CI on that head, fix any findings, then re-review and
-   revalidate the correction.
+1. Confirm the latest branch SHA and wait for the pending Linux/Windows CI results.
+2. Inspect PR feedback and checks on the latest head, fix any findings, then re-review
+   and revalidate the correction.
 3. Leave merge to task-specific maintainer authorization. After the B16 PR is reviewed
    and merged, proceed to B17's executable acceptance matrix.
 
