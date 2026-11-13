@@ -1245,3 +1245,21 @@ Template:
   evidence.
 - CI run 43344816865 passed on Windows and Ubuntu. PR #39 remains open and unmerged;
   independent re-review is pending.
+
+## 2026-11-12 — M2b: B16 Windows host containment
+
+- Branch: `task/B16-pinned-client-workflow`, based on `491de18`.
+- Scope: Windows cleanup in the opt-in B16 integration harness.
+- Steps:
+  1. Replaced ancestry sampling with a temporary launcher that attaches the host
+     to a Windows Job Object at creation and verifies zero active job members.
+  2. Removed the canary barrier so the parent exits immediately after creating
+     the child. Retained the unrelated-sibling assertion.
+  3. Reviewed process and handle ownership during implementation, then checked
+     the complete PR diff and repeated the pinned gate and regression checks.
+- Files: B16 harness, Windows launcher fixture, integration README, ADR-007,
+  B16 card, validation, worklog, backlog, handoff, requirements and roadmap.
+- Validation: pinned OpenCode 2.2.5 gate passed with 15 MCP calls. Removing
+  creation-time job assignment in an isolated run failed the fast-exit case.
+  The suite, fallback demo, syntax and diff checks passed. See `docs/validation.md`.
+- Follow-up: verify PR #39 on its current head and await independent review.

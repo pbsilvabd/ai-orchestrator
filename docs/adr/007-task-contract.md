@@ -110,6 +110,14 @@ helper does not change the worker's index to make cleanup appear safe.
   `cost.known: false` rather than estimate.
 - The contract can change only with the code and the tests in the same change.
 
+### Amendment — 2026-11-12: Windows host containment for the B16 fixture
+
+The opt-in B16 Windows harness builds a temporary launcher with the inbox .NET
+Framework C# compiler. The launcher uses Windows 10+ creation-time Job Object
+assignment and owns the job handle. It confirms the job is empty before the harness
+removes its fixtures. This decision applies to test host teardown. The service still
+reports uncertain task execution according to the task contract.
+
 ## Revisit triggers
 
 Revisit this ADR when: the capability gate fails; M2b cannot meet an acceptance test

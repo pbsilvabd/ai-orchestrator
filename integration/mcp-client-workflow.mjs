@@ -4,9 +4,9 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { once } from 'node:events';
 import { spawn, execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, existsSync, unlinkSync, appendFileSync } from 'node:fs';
-import { PassThrough } from 'node:stream';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, readdirSync, rmSync, existsSync, unlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 import { resolve, join, relative as relativePath, sep, isAbsolute } from 'node:path';
 
 const binary = resolve(process.argv[2] ?? '');
@@ -161,15 +161,35 @@ async function verifyGracefulStdioShutdown() {
   assert.equal(existsSync(lock), false, 'safe idle shutdown should release service ownership');
 }
 
+let windowsJobLauncher;
+
+function getWindowsJobLauncher() {
+  if (windowsJobLauncher) return windowsJobLauncher;
+  const compiler = join(env.SystemRoot ?? env.WINDIR, 'Microsoft.NET', 'Framework', 'v4.0.30319', 'csc.exe');
+  const source = fileURLToPath(new URL('./fixtures/b16-windows-job.cs', import.meta.url));
+  const executable = join(root, 'b16-windows-job.exe');
+  try {
+    execFileSync(compiler, ['/nologo', '/target:exe', '/platform:anycpu', '/out:' + executable, source],
+      { cwd: root, env, windowsHide: true, timeout: 30_000, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (error) {
+    throw new Error('Could not compile the B16 Windows job launcher: ' + redact(error.stdout || error.stderr || error.message),
+      { cause: error });
+  }
+  windowsJobLauncher = executable;
+  return executable;
+}
+
 function start(file, args, cwd, { processGroup = false } = {}) {
-  const child = spawn(file, args, { cwd, env, windowsHide: true,
-    detached: processGroup && process.platform !== 'win32' });
-  child.processGroup = processGroup;
+  const windowsJob = process.platform === 'win32' && processGroup;
+  const child = spawn(windowsJob ? getWindowsJobLauncher() : file, windowsJob ? [file, ...args] : args, {
+    cwd, env, windowsHide: true, detached: processGroup && !windowsJob,
+  });
   let stdout = '', stderr = '';
   child.stdout.on('data', data => { stdout += data; });
   child.stderr.on('data', data => { stderr += data; });
-  const proc = { child, output: () => ({ stdout, stderr }) };
-  if (process.platform === 'win32' && processGroup) proc.treeMonitor = startWindowsProcessTreeMonitor(child.pid);
+  const proc = { child, processGroup, windowsJob, output: () => ({ stdout, stderr }) };
+  child.on('error', error => { proc.error = error; });
+  proc.closed = new Promise(resolveClose => child.once('close', resolveClose));
   return proc;
 }
 
@@ -183,123 +203,34 @@ function waitForClose(child, maxWait = 5000) {
   });
 }
 
-function windowsProcessSnapshot() {
-  const script = "$ErrorActionPreference='Stop'; $rows=@(Get-CimInstance -ClassName Win32_Process | ForEach-Object { [pscustomobject]@{pid=[int]$_.ProcessId; parent=[int]$_.ParentProcessId; created=$_.CreationDate.ToUniversalTime().ToString('o')} }); ConvertTo-Json -InputObject $rows -Compress";
-  const output = execFileSync('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script],
-    { encoding: 'utf8', windowsHide: true, timeout: 10_000, stdio: ['ignore', 'pipe', 'ignore'] }).trim();
-  const rows = JSON.parse(output || '[]');
-  return new Map((Array.isArray(rows) ? rows : [rows]).map(row => [Number(row.pid), {
-    parent: Number(row.parent), created: String(row.created),
-  }]));
-}
-
-function startWindowsProcessTreeMonitor(rootPid) {
-  const script = "$ErrorActionPreference='SilentlyContinue'; while ($true) { $rows=@(Get-CimInstance -ClassName Win32_Process | ForEach-Object { [pscustomobject]@{pid=[int]$_.ProcessId; parent=[int]$_.ParentProcessId; created=$_.CreationDate.ToUniversalTime().ToString('o')} }); [Console]::Out.WriteLine((ConvertTo-Json -InputObject $rows -Compress)); [Console]::Out.Flush(); Start-Sleep -Milliseconds 25 }";
-  const child = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', script], {
-    windowsHide: true, stdio: ['ignore', 'pipe', 'ignore'],
-  });
-  const monitor = { child, rootPid, rootCreated: undefined, current: new Map(), owned: new Map() };
-  child.on('error', error => { monitor.error = error; });
-  let pending = '';
-  child.stdout.on('data', chunk => {
-    pending += chunk.toString('utf8');
-    let newline;
-    while ((newline = pending.indexOf('\n')) !== -1) {
-      const line = pending.slice(0, newline).trim(); pending = pending.slice(newline + 1);
-      if (!line) continue;
-      try {
-        const raw = JSON.parse(line);
-        const rows = (Array.isArray(raw) ? raw : [raw]).map(row => ({
-          pid: Number(row.pid), parent: Number(row.parent), created: String(row.created),
-        }));
-        monitor.current = new Map(rows.map(row => [row.pid, row]));
-        const root = monitor.current.get(rootPid);
-        if (root) monitor.rootCreated ??= root.created;
-        if (!monitor.rootCreated) continue;
-        for (const row of rows) {
-          if (row.pid === rootPid) continue;
-          const directChild = row.parent === rootPid && root?.created === monitor.rootCreated;
-          const parentOwned = directChild || (() => {
-            const knownParent = monitor.owned.get(row.parent);
-            const liveParent = monitor.current.get(row.parent);
-            return knownParent && liveParent?.created === knownParent.created;
-          })();
-          if (parentOwned) monitor.owned.set(row.pid, { parent: row.parent, created: row.created });
-        }
-      } catch { /* Ignore incomplete or malformed monitor frames. */ }
-    }
-  });
-  return monitor;
-}
-
-function processDepth(owned, pid) {
-  let depth = 0;
-  const seen = new Set([pid]);
-  let current = owned.get(pid);
-  while (current && owned.has(current.parent) && !seen.has(current.parent)) {
-    seen.add(current.parent); depth++; current = owned.get(current.parent);
-  }
-  return depth;
-}
-
-async function waitForOwnedWindowsProcesses(monitor, timeout = 5000) {
-  const deadline = Date.now() + timeout;
-  while (Date.now() < deadline) {
-    const current = windowsProcessSnapshot();
-    const alive = [...monitor.owned.entries()].some(([pid, identity]) => current.get(pid)?.created === identity.created);
-    if (!alive) return;
-    await new Promise(resolveWait => setTimeout(resolveWait, 100));
-  }
-  throw new Error('Owned Windows descendants remained alive after process-tree cleanup');
-}
-
-function stopWindowsProcessTreeMonitor(monitor) {
-  if (!monitor || monitor.child.exitCode !== null || monitor.child.signalCode !== null) return Promise.resolve();
-  return new Promise((resolveClose, rejectClose) => {
-    const timer = setTimeout(() => rejectClose(new Error('Windows process-tree monitor did not stop')), 5000);
-    monitor.child.once('error', error => { clearTimeout(timer); rejectClose(error); });
-    monitor.child.once('close', () => { clearTimeout(timer); resolveClose(); });
-    monitor.child.kill();
-  });
-}
-
-async function killWindowsPid(pid, tree) {
-  const killer = spawn('taskkill.exe', ['/PID', String(pid), ...(tree ? ['/T'] : []), '/F'], { windowsHide: true });
-  const code = await new Promise((resolveCode, rejectCode) => {
-    const timer = setTimeout(() => rejectCode(new Error(`taskkill timed out for process ${pid}`)), 5000);
-    killer.once('error', error => { clearTimeout(timer); rejectCode(error); });
-    killer.once('close', value => { clearTimeout(timer); resolveCode(value); });
-  });
-  if (code !== 0 && pidIsAlive(pid)) throw new Error(`taskkill failed to stop process ${pid}`);
-}
-
 async function stop(proc) {
   const { child } = proc;
-  if (process.platform === 'win32') {
+  if (proc.stopped) return;
+  if (proc.error) {
+    await proc.closed;
+    proc.stopped = true; // Spawn failed before creating a process.
+    return;
+  }
+  if (proc.windowsJob) {
+    // Only the launcher receives this pipe. It terminates its job and waits for zero active members.
+    child.stdin.on('error', () => { /* Launcher exit is checked below. */ });
+    child.stdin.end();
+    let timer;
     try {
-      if (child.exitCode === null && child.signalCode === null) await killWindowsPid(child.pid, true);
-      const monitor = proc.treeMonitor;
-      if (monitor?.rootCreated) {
-        const current = windowsProcessSnapshot();
-        const descendants = [...monitor.owned.entries()]
-          .filter(([pid, identity]) => current.get(pid)?.created === identity.created)
-          .sort((a, b) => processDepth(monitor.owned, b[0]) - processDepth(monitor.owned, a[0]));
-        for (const [pid, identity] of descendants) {
-          const fresh = windowsProcessSnapshot();
-          if (fresh.get(pid)?.created === identity.created) await killWindowsPid(pid, true);
-        }
-        await waitForOwnedWindowsProcesses(monitor);
-      }
-    } finally {
-      await stopWindowsProcessTreeMonitor(proc.treeMonitor);
-    }
-  } else if (child.processGroup) {
-    // The process-group ID remains the leader PID after the leader exits; signal the
-    // group anyway so an orphaned descendant cannot outlive startup cleanup.
+      await Promise.race([proc.closed, new Promise((resolveWait, rejectWait) => {
+        timer = setTimeout(() => {
+          child.kill('SIGKILL'); // The last job handle closes even if the launcher is stuck.
+          rejectWait(new Error('Windows job launcher did not confirm process-tree cleanup'));
+        }, 7000);
+      })]);
+    } finally { clearTimeout(timer); }
+    if (child.signalCode !== null || child.exitCode === 125)
+      throw new Error('Windows job launcher did not confirm cleanup: ' + redact(proc.output().stderr));
+  } else if (proc.processGroup && child.pid !== undefined) {
     try { process.kill(-child.pid, 'SIGKILL'); }
     catch (error) { if (error.code !== 'ESRCH') throw error; }
-  } else if (child.exitCode === null && child.signalCode === null && !child.kill('SIGKILL')) {
-    throw new Error('Could not signal OpenCode');
+  } else if (child.pid !== undefined && child.exitCode === null && child.signalCode === null) {
+    if (!child.kill('SIGKILL')) throw new Error('Could not signal OpenCode');
   }
   if (!await waitForClose(child)) throw new Error('OpenCode did not close within five seconds');
   proc.stopped = true;
@@ -418,16 +349,18 @@ function codeFor(currentMode) {
   return undefined;
 }
 
-async function startHost(endpoint, { executable = binary, args, readinessTimeoutMs = 30_000, onSpawn } = {}) {
+async function startHost(endpoint, { executable = binary, args, readinessTimeoutMs = 30_000 } = {}) {
   const proc = start(executable, args ?? ['serve', '--hostname', '127.0.0.1', '--port', String(new URL(endpoint).port), '--print-logs', '--log-level', 'info'], work,
     { processGroup: true });
   hosts.push(proc);
   try {
-    if (onSpawn) await onSpawn(proc);
     const deadline = Date.now() + readinessTimeoutMs;
     while (!proc.output().stdout.includes(`server listening on ${endpoint}`)) {
-      if (proc.child.exitCode !== null || proc.child.signalCode !== null)
+      if (proc.error) throw proc.error;
+      if (proc.child.exitCode !== null || proc.child.signalCode !== null) {
+        if (proc.windowsJob) await proc.closed;
         throw new Error(`OpenCode exited during startup: ${redact(proc.output().stderr)}`);
+      }
       if (Date.now() >= deadline) throw new Error(`OpenCode did not listen: ${redact(proc.output().stderr)}`);
       await new Promise(resolveWait => setTimeout(resolveWait, 25));
     }
@@ -468,8 +401,8 @@ try {
     // A live child that never reports readiness must be stopped before startup fails.
     await assert.rejects(startHost('http://127.0.0.1:1', {
       executable: process.execPath,
-      args: ['-e', "const child=require('node:child_process').spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore'}); console.log('B16_DESCENDANT_PID:'+child.pid); setInterval(()=>{},1000)"],
-      readinessTimeoutMs: 200,
+      args: ['-e', "const child=require('node:child_process').spawn(process.execPath,['-e','setTimeout(()=>{},15000)'],{stdio:'ignore',windowsHide:true}); console.log('B16_DESCENDANT_PID:'+child.pid); setInterval(()=>{},1000)"],
+      readinessTimeoutMs: 2000,
     }), /did not listen/);
     const failedStartupHost = hosts.at(-1);
     assert.ok(failedStartupHost.child.exitCode !== null || failedStartupHost.child.signalCode !== null,
@@ -479,42 +412,31 @@ try {
       'The failed host must have spawned a live descendant for cleanup verification');
     await waitForExit(failedStartupDescendant);
 
-    // The leader exits before readiness; process ownership comes from OS ancestry,
-    // never from diagnostic stdout. A sibling PID printed in the same stream must live.
+    // The leader exits immediately after spawning. A sibling PID printed in its diagnostics must live.
     const unrelated = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)'], { stdio: 'ignore', windowsHide: true });
-    const releaseExitedLeader = join(root, 'release-exited-leader');
     const exitedLeaderChildInfo = join(root, 'exited-leader-child-info.json');
     try {
       await assert.rejects(startHost('http://127.0.0.1:1', {
         executable: process.execPath,
-        args: ['-e', `const {spawn}=require('node:child_process'); const fs=require('node:fs'); const child=spawn(process.execPath,['-e','setInterval(()=>{},1000)'],{stdio:'ignore',detached:process.platform==='win32'}); child.unref(); fs.writeFileSync(${JSON.stringify(exitedLeaderChildInfo)},JSON.stringify({pid:child.pid})); console.log('B16_DESCENDANT_PID:${unrelated.pid}'); const release=${JSON.stringify(releaseExitedLeader)}; const wait=new Int32Array(new SharedArrayBuffer(4)); while(!fs.existsSync(release)) Atomics.wait(wait,0,0,10); process.exit(19)`],
+        args: ['-e', `
+          const { spawn } = require('node:child_process');
+          const fs = require('node:fs');
+          const child = spawn(process.execPath, ['-e', 'setTimeout(()=>{},15000)'], {
+            stdio: 'ignore', detached: process.platform === 'win32', windowsHide: true,
+          });
+          child.unref();
+          fs.writeFileSync(${JSON.stringify(exitedLeaderChildInfo)}, JSON.stringify({ pid: child.pid }));
+          process.stdout.write('B16_DESCENDANT_PID:${unrelated.pid}\\n', () => process.exit(19));
+        `],
         readinessTimeoutMs: 5000,
-        onSpawn: async proc => {
-          const deadline = Date.now() + 5000;
-          let descendantPid;
-          while (Date.now() < deadline) {
-            descendantPid = existsSync(exitedLeaderChildInfo)
-              ? Number(JSON.parse(readFileSync(exitedLeaderChildInfo, 'utf8')).pid) : undefined;
-            const output = proc.output().stdout;
-            const identity = proc.treeMonitor?.owned.get(descendantPid);
-            if (descendantPid > 0 && output.includes(`B16_DESCENDANT_PID:${unrelated.pid}`) &&
-                (process.platform !== 'win32' || identity)) break;
-            await new Promise(resolveWait => setTimeout(resolveWait, 25));
-          }
-          assert.ok(descendantPid > 0 && proc.output().stdout.includes(`B16_DESCENDANT_PID:${unrelated.pid}`),
-            'Readiness fixture must expose its child through the assertion channel and emit an unrelated PID diagnostic');
-          if (process.platform === 'win32')
-            assert.ok(proc.treeMonitor.owned.has(descendantPid), 'OS process ancestry must record the child before its leader exits');
-          writeFileSync(releaseExitedLeader, 'release');
-        },
       }), /exited during startup/);
       const exitedStartupHost = hosts.at(-1);
       assert.equal(exitedStartupHost.child.exitCode, 19, 'The readiness fixture leader must exit before cleanup');
       const exitedStartupDescendant = Number(JSON.parse(readFileSync(exitedLeaderChildInfo, 'utf8')).pid);
       assert.ok(Number.isInteger(exitedStartupDescendant) && exitedStartupDescendant > 0,
         'The exited readiness fixture must report its owned descendant PID for observation');
-      assert.equal(exitedStartupHost.treeMonitor?.owned.has(unrelated.pid), false,
-        'A PID in ordinary stdout must not become an owned termination target');
+      assert.ok(exitedStartupHost.output().stdout.includes('B16_DESCENDANT_PID:' + unrelated.pid),
+        'The readiness fixture must emit the unrelated PID as a diagnostic');
       await waitForExit(exitedStartupDescendant);
       assert.equal(pidIsAlive(unrelated.pid), true, 'Cleanup must leave the unrelated sibling alive');
     } finally {

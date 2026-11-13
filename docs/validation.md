@@ -1476,3 +1476,26 @@ The process-ownership correction was published at
 `d4c0206c247aeb207a03f9720045f3c7100d26e2`. Workflow run
 [43344816865](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/43344816865)
 passed on Windows and Ubuntu. The PR remains open; independent re-review is outstanding.
+
+## B16 Windows host containment — 2026-11-12
+
+Executed on Windows 11 Pro 10.0.26300 x64, Node.js v24.22.1 (fnm),
+Git 2.55.0.windows.5 and OpenCode 2.2.5. Base `491de18`.
+Date: 2026-11-12.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node integration/mcp-client-workflow.mjs C:/Users/paulo/.codex/.chatgpt-projects/g-p-6ae821acff7081918d46286e2c833b07/.audit/bin/opencode-2.2.5/opencode.exe` | B16-01–04 and Windows startup cleanup | 15 MCP calls. Immediate-exit child reaped and unrelated sibling alive. | 0 |
+| `node --test` | Full regression suite | 253 passed, one POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo | 429 then 200 | 0 |
+| `node --check integration/mcp-client-workflow.mjs` | Parse the harness | Passed | 0 |
+| `node --check integration/fixtures/b16-mcp-server.mjs` | Parse the stdio fixture | Passed | 0 |
+| `git diff --check` | Diff whitespace check | Clean | 0 |
+
+Evidence level: OpenCode integration.
+
+The Windows fixture starts a detached child, records its PID for observation,
+writes an unrelated sibling PID to stdout, and exits with code 19 immediately.
+Removing only the creation-time Job Object attribute in an isolated regression
+experiment left the child alive and failed the fast-exit assertion (exit 1). The
+experiment terminated its own child. The Ubuntu pinned-client gate was not rerun.

@@ -117,11 +117,13 @@ locks are removed only after checking that the owning process is dead.
 
 Startup-failure coverage exercises both a live host plus descendant that time out and a
 leader that exits before readiness while its descendant stays alive. POSIX cleanup
-signals the process group after leader exit. On Windows, a PowerShell monitor samples
-Win32 process IDs, parent IDs and creation times while the host runs; cleanup uses that
-verified ancestry and rechecks creation identity before terminating descendants. The
-fixture reports its child PID through a separate file only for assertions. A misleading
-PID in ordinary stdout is ignored, and the unrelated sibling must remain alive. Git canaries also
+signals the process group after leader exit. The Windows gate uses the inbox .NET
+Framework C# compiler to build a temporary launcher. On Windows 10 and later,
+`CreateProcessW` assigns the host to a Job Object at creation. The launcher terminates
+the job and checks for zero active members before returning. The regression lets the
+leader exit immediately, reads the detached child PID from an assertion-only file,
+and checks that the child exits and an unrelated sibling named in stdout stays alive.
+Git canaries also
 inject uppercase, lowercase and mixed-case Git directory/worktree overrides; the fixture
 uses an allowlisted environment and pins resolved Git paths inside each scratch repo.
 The primary client carries the task ID from its submit tool reply into every poll, and
