@@ -1536,3 +1536,9 @@ rerun; the local suite's one POSIX-only skip is reported above.
 Claim: This entry supports the thirteen B17 contract criteria on this Windows
 checkout, based on `npm run acceptance` and `node --test`. It does not support M2b
 or M3 completion, which requires the remaining milestone gates and supervised use.
+
+Publication: PR [#40](https://github.com/pbsilvabd/ai-orchestrator/pull/40) is open
+at `6447b9a9a6e11fd2098946d46e8f3c5777e8c790`, based on `main` at
+`681f0a6cce3c2160c578cc92a0ab038ff5cfce01`. CI run #74 was in progress at the
+first remote check; no PR comments or reviews were present. Recheck CI against the
+final pushed documentation commit before treating this publication record as current.

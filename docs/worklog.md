@@ -1287,5 +1287,8 @@ Template:
   one POSIX-only skip; fallback demo → 429 then 200; `git diff --check` → clean;
   changed Markdown links → 6 files, 58 targets, 0 broken. The Ubuntu pinned-client
   workflow was not rerun.
-- Follow-up: review the complete diff, publish the B17 PR, and verify its remote
-  head and CI. Merge requires separate task-specific authorization.
+- Publication: [PR #40](https://github.com/pbsilvabd/ai-orchestrator/pull/40)
+  is open at `6447b9a9a6e11fd2098946d46e8f3c5777e8c790`, based on current `main`
+  (`681f0a6cce3c2160c578cc92a0ab038ff5cfce01`). Remote CI run #74 was in progress
+  at the first remote check; no review submissions, inline threads or comments exist.
+  Merge requires separate task-specific authorization.
