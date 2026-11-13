@@ -4,9 +4,10 @@ Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merge
 B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
 workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
 real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
-reconciliation, preserved workspace files and missing-binary diagnosis. All nine review findings have been corrected and published at
-`8a23b51a62e230bf643d61c72c86531f90ae5c70`. Current-head Windows/Ubuntu CI passed;
-independent re-review remains outstanding.
+reconciliation, preserved workspace files and missing-binary diagnosis. Nine review findings were corrected and published at
+`8a23b51a62e230bf643d61c72c86531f90ae5c70`. One follow-up to process ownership is
+corrected locally: Windows cleanup now records and verifies OS process ancestry rather
+than trusting stdout. Local gate/regressions pass; publication and current-head CI remain.
 M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
 quality or production-provider support. The mirrored ChatGPT project snapshot is not
 a Git checkout; development uses the actual repository checkout. M2a is complete and
@@ -20,16 +21,17 @@ replies, the running/succeeded lifecycle and returned test evidence, replay IDs,
 termination on active cancellation, and restart reconciliation with dispatch enabled.
 Active-branch/staged-file canaries cover uppercase, lowercase and mixed-case Git
 environment overrides. Startup cleanup covers both live-leader timeout and an exited
-leader with a live descendant; primary polls use the submit reply ID and terminal results
+leader with a live descendant tracked by OS process ancestry on Windows; ordinary stdout
+is never a termination source. Primary polls use the submit reply ID and terminal results
 assert their own task ID. The restart scenario preserves
 workspace output but correctly reports that no diff was collected after restart. No
 real model or paid request is used. See `docs/validation.md` for the full evidence.
 
 ## Next action: re-review B16 PR #39 at the corrected head
 
-1. Re-read the PR head and review threads after the nine evidence-backed replies; the
-   current-head Windows/Ubuntu CI has passed.
-2. Address any additional review findings on the existing PR.
+1. Publish the process-ownership follow-up to the existing PR branch and reply to its
+   review thread with evidence.
+2. Check current-head Windows/Ubuntu CI and re-read the PR head and review threads.
 3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
    only after the B16 delivery is reviewed and merged.
 

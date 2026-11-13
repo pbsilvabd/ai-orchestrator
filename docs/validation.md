@@ -1451,3 +1451,20 @@ The three re-review follow-ups were published on PR #39 at
 that head in run [43152221875](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/43152221875).
 All three follow-up inline threads have evidence-backed replies. Independent re-review
 remains outstanding; PR #39 stays open and unmerged.
+
+
+## B16 process-ownership follow-up — 2026-11-12
+
+Executed on Windows 11 x64, Node.js v24.22.1, Git 2.55.0.windows.5 and OpenCode 2.2.5.
+The pinned-client gate passed with 15 MCP calls and all B16 rows; `node --test` passed
+253/254 (one POSIX-only skip); the fallback demo, `node --check` and `git diff --check`
+also passed.
+
+Windows cleanup now samples Win32 process IDs, parent IDs and creation timestamps while
+the owned host runs, records descendants through verified ancestry, and checks creation
+identity again before terminating them after leader exit. The readiness fixture reports
+a descendant PID only through an assertion file; it emits an unrelated sibling PID in
+stdout. The gate verifies the unmarked descendant is reaped and the unrelated sibling
+remains alive. Two isolated fault injections—removing process-tree ownership and trusting
+the stdout PID—each caused the gate to fail as expected. The code is not yet published;
+current-head CI and review follow-up remain.

@@ -29,9 +29,9 @@ B12 local implementation adds an explicitly configured single-worker queue with
 durable dispatch, no duplicate scheduling and conservative shutdown/ownership.
 B13 artifacts, B14 stop handling and B15 MCP stdio transport are merged. B16's
 pinned OpenCode 2.2.5 fixture-provider workflow has nine review findings corrected and
-published at `8a23b51a62e230bf643d61c72c86531f90ae5c70`, including case-insensitive Git
-environment isolation, client-carried task IDs and cleanup after host-leader exit.
-Windows/Ubuntu CI passed; independent re-review remains. B17's executable acceptance
+published. One process-ownership follow-up is now corrected locally: Windows cleanup
+tracks verified process ancestry and ignores stdout as a termination source. Local
+gate/regressions pass; publication, current-head CI and independent re-review remain. B17's executable acceptance
 matrix remains required for M2b. A normal worker exit without recorded
 test evidence is reported with a limitation.
 

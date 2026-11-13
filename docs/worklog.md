@@ -1218,3 +1218,21 @@ Template:
   also remain answered.
 - Verified that local and remote branch heads match. Current-head CI run 43152221875
   passed on Windows and Ubuntu. The PR remains open; independent re-review is pending.
+
+
+## 2026-11-12 — B16 process-ownership re-review follow-up
+
+- The remaining review finding showed stdout-derived PIDs could both miss an unmarked
+  descendant and target an unrelated process. Removed stdout from process ownership.
+- On Windows a PowerShell monitor records Win32 process IDs, parent IDs and creation
+  timestamps while the host runs. Cleanup follows only verified ancestry and rechecks
+  creation identity before terminating descendants, even after the leader exits. POSIX
+  cleanup signals the owned group after leader exit.
+- The regression fixture writes its child PID only to an assertion file, prints a
+  misleading unrelated sibling PID to stdout, exits its leader before readiness, and
+  requires the child to be reaped while the sibling remains alive.
+- Validation: pinned OpenCode gate → 15 MCP calls and all B16 rows passed; full suite →
+  254 tests, 253 passed, 0 failed, one POSIX-only skip; fallback demo → 429 then 200.
+  Two isolated fault injections (no ownership tracking; trust stdout PID) each failed
+  as expected. Node syntax and diff checks were clean. Publish, check current-head CI,
+  and reply to the review thread; PR #39 remains open.
