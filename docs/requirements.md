@@ -27,10 +27,11 @@ scope. No universal web compatibility or continuous background supervision is pr
 
 B12 local implementation adds an explicitly configured single-worker queue with
 durable dispatch, no duplicate scheduling and conservative shutdown/ownership.
-The B15 branch implements the selected MCP stdio transport and has passed a pinned
-OpenCode 2.2.5 fixture-provider submission check. B13 artifacts and B14 stop handling
-are merged; B16/B17 real-client workflow and acceptance remain required for M2b. A
-normal worker exit without recorded test evidence is reported with a limitation.
+B13 artifacts, B14 stop handling and B15 MCP stdio transport are merged. B16's
+pinned OpenCode 2.2.5 fixture-provider workflow uses a Windows Job Object to contain
+the test host and its descendants from process creation. B17's executable acceptance
+matrix remains required for M2b. A normal worker exit without recorded
+test evidence is reported with a limitation.
 
 ## Delivery 0: scaffold (current)
 

@@ -80,6 +80,61 @@ Observed on 2026-11-11 (Windows x64, Node.js v24.22.1): the pinned OpenCode 2.2.
 client discovered the four tools, called `submit_task`, and received the persisted
 `queued` result in model context; the gate exited 0.
 
+## B16 pinned-client task workflow
+
+Run the full task lifecycle through OpenCode 2.2.5, the B15 stdio adapter and a
+temporary task service configured with a harmless local Node worker:
+
+```sh
+node integration/mcp-client-workflow.mjs /absolute/path/opencode.exe
+```
+
+The gate verifies the pinned binary version and explicitly checks that a missing
+binary fails with `ENOENT`. Git fixture setup clears inherited `GIT_*` overrides,
+uses temporary-only configuration and templates, and verifies the resolved worktree
+and Git directory. A canary with an active branch and staged file is snapshotted
+before a child run inherits hostile `GIT_DIR`/`GIT_WORK_TREE`; the run must fail at the
+missing-binary phase while the canary config, index, refs, branch and status remain
+unchanged.
+
+A loopback fixture provider drives actual Code Mode MCP calls for a scratch repository.
+The harness records request IDs and parsed response frames, then checks the correlated
+`queued`, `running` and `succeeded` replies, returned changed path, diff, test command
+and exit code. The primary worker waits until the client has received `running` before
+it can finish. A separate CLI process repeats the exact submission twice; both returned
+IDs and replay flags are checked against the original acceptance, along with one attempt
+and one workspace.
+
+For cancellation, the harness waits for the worker to write a start marker and partial
+workspace output, then cancels it. It checks the transport response, `unknown` stop
+evidence, worker-root exit and preserved partial diff. For host interruption, it waits
+for worker-written output and an append-only invocation counter, terminates the OpenCode
+process group, and restarts the service with dispatch enabled. MCP must report
+`blocked/service-restart` with unknown stop evidence, the same workspace output remains,
+and the counter stays at one. The result explicitly has no collected diff after restart;
+the gate does not imply that startup collected artifacts. Fixture-only stale service
+locks are removed only after checking that the owning process is dead.
+
+Startup-failure coverage exercises both a live host plus descendant that time out and a
+leader that exits before readiness while its descendant stays alive. POSIX cleanup
+signals the process group after leader exit. The Windows gate uses the inbox .NET
+Framework C# compiler to build a temporary launcher. On Windows 10 and later,
+`CreateProcessW` assigns the host to a Job Object at creation. The launcher terminates
+the job and checks for zero active members before returning. The regression lets the
+leader exit immediately, reads the detached child PID from an assertion-only file,
+and checks that the child exits and an unrelated sibling named in stdout stays alive.
+Git canaries also
+inject uppercase, lowercase and mixed-case Git directory/worktree overrides; the fixture
+uses an allowlisted environment and pins resolved Git paths inside each scratch repo.
+The primary client carries the task ID from its submit tool reply into every poll, and
+the terminal tool response independently checks both status.taskId and result.taskId.
+
+Set `B16_DEBUG=1` to retain the temporary tree and last sanitized provider request
+for diagnosis. No real model, paid call or external provider credential is used. The
+gate validates the pinned client/transport/service lifecycle with a fixture worker;
+it does not establish production-provider behavior, model quality or use on this
+repository.
+
 ## Session/model smoke test
 
 Run separately from local tests, using Node 24 and a pinned official binary:

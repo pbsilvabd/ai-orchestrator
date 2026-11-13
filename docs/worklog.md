@@ -1129,3 +1129,137 @@ Template:
   was not rerun because the correction affects malformed JSON-RPC envelope handling.
 - Follow-up: push the correction, reply to Sol's review finding with the new SHA and
   validation, then re-review the new PR head and CI. PR #38 remains open and unmerged.
+
+## 2026-11-11 — M2b: B16 pinned-client task workflow
+
+- Branch: `task/B16-pinned-client-workflow`, based on merged B15 head `491de18`.
+- Scope: pinned OpenCode client, real MCP stdio calls, fixture worker/provider and
+  B16 evidence; no production provider, paid call or automatic merge.
+- Steps:
+  1. Added a B16 fixture service using the actual task service and MCP adapter, plus a
+     real local Node worker and a redacted operation-name transport trace.
+  2. Added pinned OpenCode flows for submit, running polls, terminal artifact retrieval,
+     duplicate replay on a reconnect, active cancellation and host-process interruption
+     followed by startup reconciliation.
+  3. Added a missing-binary ENOENT check and assertions for stable identity, one
+     attempt/workspace, unknown stop evidence, preserved artifacts and no replay.
+  4. Reviewed the implementation, fixed readiness/polling and scenario-isolation issues,
+     then reviewed the complete diff against B16-01–04 and updated the handoff, backlog,
+     roadmap, requirements, task card, validation and integration instructions.
+- Files: `integration/mcp-client-workflow.mjs`,
+  `integration/fixtures/b16-mcp-server.mjs`, `integration/README.md`,
+  `docs/backlog.md`, `docs/roadmap.md`, `docs/requirements.md`, `docs/tasks/B16.md`,
+  `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`.
+- Validation: pinned OpenCode gate exited 0 with 28 transport calls and every B16 row
+  observed; full suite 254 tests (253 passed, 0 failed, 1 POSIX-only skipped),
+  fallback demo 429 then 200, and diff check clean. See `docs/validation.md` for
+  command details and evidence limits.
+- Publication: [PR #39](https://github.com/pbsilvabd/ai-orchestrator/pull/39) opened
+  against `main`; remote branch matched head `ee019b844d1bc5f6df1e6fa2c4e7185076f79d31`.
+  Windows and Ubuntu CI were pending at publication. Await task-specific maintainer
+  review/merge before B17.
+
+## 2026-11-12 — M2b: B16 review corrections
+
+- Branch: `task/B16-pinned-client-workflow`, based on `491de18`.
+- Scope: pinned-client gate, fixture service, documentation; no service contract change.
+- Steps:
+  1. Isolated fixture Git commands from inherited `GIT_*` variables and added an
+     active-branch/staged-file canary that proves the missing-binary path leaves a
+     separate repository unchanged.
+  2. Logged correlated MCP response frames and asserted the actual submitted,
+     running, succeeded, duplicate, cancellation and restart replies.
+  3. Gated primary worker completion on a real `running` poll; waited for worker-written
+     partial files before cancellation/interruption; checked worker exit, retained
+     evidence and a no-replay counter after restart with dispatch enabled.
+  4. Made host startup own cleanup and tested a live parent/descendant pair that never
+     reports readiness; updated B16 task, integration, backlog, roadmap, requirements,
+     validation and handoff documentation.
+- Files: `integration/mcp-client-workflow.mjs`,
+  `integration/fixtures/b16-mcp-server.mjs`, `integration/README.md`,
+  `docs/tasks/B16.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/requirements.md`,
+  `docs/validation.md`, `docs/worklog.md`, `docs/handoff.md`.
+- Validation: pinned OpenCode 2.2.5 gate → 15 MCP calls and all B16 rows passed;
+  four temporary regression injections (delayed poll, omitted test runs, mismatched
+  replay ID, omitted cancellation signal) each failed as required; `node --test` →
+  254 tests, 253 passed, 0 failed, 1 POSIX-only skip; fallback demo → 429 then 200;
+  Node syntax checks and `git diff --check` clean.
+- Follow-up: corrections were pushed as `1ef2b3f1b807c2138acfec528271d9fb2d59bb9d`;
+  replied to all six review findings with the checks performed. Current-head CI run
+  `43149559100` is in progress; request re-review after checks complete. Leave merge to
+  separate task-specific authorization; PR #39 remains open.
+
+## 2026-11-12 — B16 second re-review follow-ups
+
+- Review identified three remaining defects on PR #39: Windows Git environment keys
+  were filtered case-sensitively; primary polling used the durable disk ID instead of
+  the client-facing submit reply and terminal result identity was not asserted; startup
+  cleanup skipped descendants when their leader exited before readiness.
+- Corrected the fixture Git environment with an allowlist and per-repository pinned
+  Git directory/worktree. Added uppercase/lowercase/mixed-case hostile canaries.
+- Primary polls now use the parsed ID from the submit reply seen by the provider. The
+  terminal MCP result and provider-facing status/result pair each assert both task IDs,
+  plus lifecycle and artifact evidence.
+- Cleanup now signals POSIX process groups after leader exit and on Windows tracks and
+  terminates fixture-owned descendant PIDs independently. Added a parent-exits-first
+  readiness regression case.
+- Validation: pinned OpenCode 2.2.5 gate → 15 MCP calls, all B16 rows passed; full suite
+  → 254 tests, 253 passed, 0 failed, one POSIX-only skip. Four fault-injection copies
+  (case-sensitive Git filtering, lost submit ID, wrong terminal ID, skipped cleanup
+  after leader exit) each failed as required. `node --check` and `git diff --check`
+  clean. Publication and current-head CI/re-review are next; PR #39 remains open.
+
+
+## 2026-11-12 — B16 second re-review corrections published
+
+- Published the follow-up fix and documentation in commit
+  `8a23b51a62e230bf643d61c72c86531f90ae5c70` on the existing PR #39 branch. Replied to
+  the three new inline findings with the targeted evidence; the earlier six findings
+  also remain answered.
+- Verified that local and remote branch heads match. Current-head CI run 43152221875
+  passed on Windows and Ubuntu. The PR remains open; independent re-review is pending.
+
+
+## 2026-11-12 — B16 process-ownership re-review follow-up
+
+- The remaining review finding showed stdout-derived PIDs could both miss an unmarked
+  descendant and target an unrelated process. Removed stdout from process ownership.
+- On Windows a PowerShell monitor records Win32 process IDs, parent IDs and creation
+  timestamps while the host runs. Cleanup follows only verified ancestry and rechecks
+  creation identity before terminating descendants, even after the leader exits. POSIX
+  cleanup signals the owned group after leader exit.
+- The regression fixture writes its child PID only to an assertion file, prints a
+  misleading unrelated sibling PID to stdout, exits its leader before readiness, and
+  requires the child to be reaped while the sibling remains alive.
+- Validation: pinned OpenCode gate → 15 MCP calls and all B16 rows passed; full suite →
+  254 tests, 253 passed, 0 failed, one POSIX-only skip; fallback demo → 429 then 200.
+  Two isolated fault injections (no ownership tracking; trust stdout PID) each failed
+  as expected. Node syntax and diff checks were clean. Publish, check current-head CI,
+  and reply to the review thread; PR #39 remains open.
+
+
+## 2026-11-12 — B16 process-ownership fix published
+
+- Published `d4c0206c247aeb207a03f9720045f3c7100d26e2` to the existing PR #39 branch and
+  replied to the remaining process-ownership finding with the OS-identity regression
+  evidence.
+- CI run 43344816865 passed on Windows and Ubuntu. PR #39 remains open and unmerged;
+  independent re-review is pending.
+
+## 2026-11-12 — M2b: B16 Windows host containment
+
+- Branch: `task/B16-pinned-client-workflow`, based on `491de18`.
+- Scope: Windows cleanup in the opt-in B16 integration harness.
+- Steps:
+  1. Replaced ancestry sampling with a temporary launcher that attaches the host
+     to a Windows Job Object at creation and verifies zero active job members.
+  2. Removed the canary barrier so the parent exits immediately after creating
+     the child. Retained the unrelated-sibling assertion.
+  3. Reviewed process and handle ownership during implementation, then checked
+     the complete PR diff and repeated the pinned gate and regression checks.
+- Files: B16 harness, Windows launcher fixture, integration README, ADR-007,
+  B16 card, validation, worklog, backlog, handoff, requirements and roadmap.
+- Validation: pinned OpenCode 2.2.5 gate passed with 15 MCP calls. Removing
+  creation-time job assignment in an isolated run failed the fast-exit case.
+  The suite, fallback demo, syntax and diff checks passed. See `docs/validation.md`.
+- Follow-up: verify PR #39 on its current head and await independent review.

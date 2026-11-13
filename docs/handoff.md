@@ -1,50 +1,41 @@
-# Continuation point — 2026-11-11
+# Continuation point — 2026-11-12
 
-Remote `main` is `dc757c19ccc9aaabe1347b51191a43ca33e825bb`; B12–B14 are merged.
-B15's four-operation MCP stdio adapter is implemented on
-`task/B15-mcp-stdio-adapter` and passed local tests plus the pinned OpenCode 2.2.5
-fixture-provider submission gate. M2b/M3 remain incomplete; no production provider
-or real-model execution path is available in the current adapter. The mirrored
-ChatGPT project snapshot is older and is not a Git checkout; this branch uses the
-actual repository checkout. M2a is complete, and ADR-007 still selects MCP stdio
-revision `2026-07-28`; the B06 capability gate passed eight isolated host runs.
+Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merged.
+B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
+workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
+real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
+reconciliation, preserved workspace files and missing-binary diagnosis. The final
+Windows cleanup follow-up uses creation-time Job Object containment. The local pinned
+harness and fast-parent-exit regression passed.
+M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
+quality or production-provider support. The mirrored ChatGPT project snapshot is not
+a Git checkout; development uses the actual repository checkout. M2a is complete and
+ADR-007 still selects MCP stdio revision `2026-07-28`.
 
-## Current implementation status: B15 PR under review
+## Current implementation status: B16 PR #39 open
 
-B13 (verifiable bounded artifacts) merged in PR #35 at `254b5b9`.
-Windows and Ubuntu passed post-merge CI. See the B13 follow-up in the validation log
-for cancellation and deadline handling during artifact tests, log selection and schema checks.
+The corrected B16 harness starts the pinned client against the B15 MCP adapter and a
+temporary service with a harmless local worker. It validates request-correlated MCP
+replies, the running/succeeded lifecycle and returned test evidence, replay IDs, worker
+termination on active cancellation, and restart reconciliation with dispatch enabled.
+Active-branch/staged-file canaries cover uppercase, lowercase and mixed-case Git
+environment overrides. Startup cleanup covers both live-leader timeout and an exited
+leader that exits immediately after spawning a detached child. Windows contains the
+host and descendants in a Job Object. Primary polls use the submit reply ID and terminal results
+assert their own task ID. The restart scenario preserves
+workspace output but correctly reports that no diff was collected after restart. No
+real model or paid request is used. See `docs/validation.md` for the full evidence.
 
-B12 was previously merged through PR #25, including the canonical-path receipt correction.
-Its opt-in scheduler persists attempt/workspace identity before setup/spawn,
-serializes new submissions, never requeues duplicates or preexisting records and
-blocks uncertain outcomes. Active shutdown retains ownership when stop is unknown.
+## Next action: re-review B16 PR #39 at the corrected head
 
-B14 persists active cancellation before signalling the subprocess root, retains
-partial artifacts, halts later dispatch and preserves unknown stop/effect evidence.
-The B15 stdio server now binds the four task operations to the configured service
-identity, rejects oversized/malformed input without reflecting payloads, and closes
-idle ownership cleanly on EOF. The pinned-host gate confirmed discovery of all four
-tools and one persisted queued submission whose result reached model context.
+1. Re-read the PR head, the Job Object correction reply and the current-head CI.
+2. Address any additional review findings on the existing PR.
+3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
+   only after the B16 delivery is reviewed and merged.
 
-## Next action: verify the B15 review correction
-
-1. Push and verify the B15 request-envelope correction on
-   [PR #38](https://github.com/pbsilvabd/ai-orchestrator/pull/38), then reply to Sol's
-   inline finding with the correction commit and test results.
-2. Review the new PR head, all feedback and CI. The prior CI at `255d18c` passed on
-   Windows and Ubuntu; the correction requires fresh checks.
-3. Keep PR #38 open until the correction is reviewed and CI passes. After authorized
-   merge, proceed to B16.
-
-B16 must exercise a real client submission, polling and result retrieval. M2b/M3
-remain incomplete; no production provider, remote transport, fallback, memory,
-multi-worker routing or automatic merge is in scope for B15.
-
-The maintainer accepted implementing-agent review for B12; no separate independent
-review is claimed. That task-specific merge approval does not carry forward to a
-new task. Historical checkpoints below retain their original statuses; the verified
-summary above and current remote are the continuation reference.
+The PR #38 merge authorization applied only to B15. Do not carry it forward. The
+current adapter still has no production-provider path, and B16 does not complete M2b
+or authorize a real-model self-development task.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 
