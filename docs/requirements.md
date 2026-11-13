@@ -28,10 +28,10 @@ scope. No universal web compatibility or continuous background supervision is pr
 B12 local implementation adds an explicitly configured single-worker queue with
 durable dispatch, no duplicate scheduling and conservative shutdown/ownership.
 B13 artifacts, B14 stop handling and B15 MCP stdio transport are merged. B16's
-pinned OpenCode 2.2.5 fixture-provider workflow has nine review findings corrected and
-published. One process-ownership follow-up is now corrected locally: Windows cleanup
-tracks verified process ancestry and ignores stdout as a termination source. Local
-gate/regressions pass; publication, current-head CI and independent re-review remain. B17's executable acceptance
+pinned OpenCode 2.2.5 fixture-provider workflow has ten review findings corrected and
+published at `d4c0206c247aeb207a03f9720045f3c7100d26e2`. Windows cleanup tracks verified
+process ancestry and ignores stdout as a termination source. Current-head Windows/Ubuntu
+CI passed; independent re-review remains. B17's executable acceptance
 matrix remains required for M2b. A normal worker exit without recorded
 test evidence is reported with a limitation.
 

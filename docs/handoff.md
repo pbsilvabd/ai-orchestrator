@@ -4,10 +4,9 @@ Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merge
 B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
 workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
 real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
-reconciliation, preserved workspace files and missing-binary diagnosis. Nine review findings were corrected and published at
-`8a23b51a62e230bf643d61c72c86531f90ae5c70`. One follow-up to process ownership is
-corrected locally: Windows cleanup now records and verifies OS process ancestry rather
-than trusting stdout. Local gate/regressions pass; publication and current-head CI remain.
+reconciliation, preserved workspace files and missing-binary diagnosis. Ten review findings were corrected and published at
+`d4c0206c247aeb207a03f9720045f3c7100d26e2`. Windows/Ubuntu CI run 43344816865 passed;
+independent re-review remains outstanding.
 M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
 quality or production-provider support. The mirrored ChatGPT project snapshot is not
 a Git checkout; development uses the actual repository checkout. M2a is complete and
@@ -29,9 +28,9 @@ real model or paid request is used. See `docs/validation.md` for the full eviden
 
 ## Next action: re-review B16 PR #39 at the corrected head
 
-1. Publish the process-ownership follow-up to the existing PR branch and reply to its
-   review thread with evidence.
-2. Check current-head Windows/Ubuntu CI and re-read the PR head and review threads.
+1. Re-read the PR head and the process-ownership review reply; current-head Windows and
+   Ubuntu CI have passed.
+2. Address any additional review findings on the existing PR.
 3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
    only after the B16 delivery is reviewed and merged.
 

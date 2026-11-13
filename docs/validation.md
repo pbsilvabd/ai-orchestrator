@@ -1468,3 +1468,11 @@ stdout. The gate verifies the unmarked descendant is reaped and the unrelated si
 remains alive. Two isolated fault injections—removing process-tree ownership and trusting
 the stdout PID—each caused the gate to fail as expected. The code is not yet published;
 current-head CI and review follow-up remain.
+
+
+## B16 process-ownership CI result — 2026-11-12
+
+The process-ownership correction was published at
+`d4c0206c247aeb207a03f9720045f3c7100d26e2`. Workflow run
+[43344816865](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/43344816865)
+passed on Windows and Ubuntu. The PR remains open; independent re-review is outstanding.

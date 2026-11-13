@@ -1236,3 +1236,12 @@ Template:
   Two isolated fault injections (no ownership tracking; trust stdout PID) each failed
   as expected. Node syntax and diff checks were clean. Publish, check current-head CI,
   and reply to the review thread; PR #39 remains open.
+
+
+## 2026-11-12 — B16 process-ownership fix published
+
+- Published `d4c0206c247aeb207a03f9720045f3c7100d26e2` to the existing PR #39 branch and
+  replied to the remaining process-ownership finding with the OS-identity regression
+  evidence.
+- CI run 43344816865 passed on Windows and Ubuntu. PR #39 remains open and unmerged;
+  independent re-review is pending.
