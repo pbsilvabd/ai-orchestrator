@@ -1,37 +1,30 @@
 # Continuation point — 2026-11-12
 
-Remote `main` is `491de18efabdc1a49852e39996ab4a729f4be6db`; B12–B15 are merged.
-B16 is on `task/B16-pinned-client-workflow`, based on that head. The pinned-client
-workflow passed locally on Windows x64 with Node.js v24.22.1 and OpenCode 2.2.5:
-real stdio submit/poll/result, duplicate replay, active cancellation, interrupted-host
-reconciliation, preserved workspace files and missing-binary diagnosis. The final
-Windows cleanup follow-up uses creation-time Job Object containment. The local pinned
-harness and fast-parent-exit regression passed.
-M2b/M3 remain incomplete; the fixture provider/worker proves integration behavior, not model
-quality or production-provider support. The mirrored ChatGPT project snapshot is not
-a Git checkout; development uses the actual repository checkout. M2a is complete and
-ADR-007 still selects MCP stdio revision `2026-07-28`.
+Remote `main` is `681f0a6cce3c2160c578cc92a0ab038ff5cfce01`; B12–B16 are merged.
+B17 is published on `task/B17-executable-acceptance-matrix`. The executable matrix
+observed all 13 normative M2b acceptance items pass on Windows x64 with Node.js
+v24.22.1, Git 2.55.0.windows.5 and the pinned OpenCode 2.2.5 client. B17 adds a
+separate cancellation ownership assertion. M2b/M3 remain incomplete; the fixture
+provider proves transport/service behavior, not model quality or production-provider
+support. ADR-007 still selects MCP stdio revision `2026-07-28`.
 
-## Current implementation status: B16 PR #39 open
+## Current implementation status: B17 PR open
 
-The corrected B16 harness starts the pinned client against the B15 MCP adapter and a
-temporary service with a harmless local worker. It validates request-correlated MCP
-replies, the running/succeeded lifecycle and returned test evidence, replay IDs, worker
-termination on active cancellation, and restart reconciliation with dispatch enabled.
-Active-branch/staged-file canaries cover uppercase, lowercase and mixed-case Git
-environment overrides. Startup cleanup covers both live-leader timeout and an exited
-leader that exits immediately after spawning a detached child. Windows contains the
-host and descendants in a Job Object. Primary polls use the submit reply ID and terminal results
-assert their own task ID. The restart scenario preserves
-workspace output but correctly reports that no diff was collected after restart. No
-real model or paid request is used. See `docs/validation.md` for the full evidence.
+The B17 acceptance runner launches named tests separately, captures TAP counts and
+reports `pass`, `fail` or `not_run` for each contract criterion. It runs the B16
+pinned-client workflow once and validates the real MCP task result and provider
+context. Missing host/test evidence or skipped required cases cannot produce overall
+success. The latest local matrix run reports 13/13 pass; exact commands and versions
+are in `docs/validation.md`. No external or paid model was used.
 
-## Next action: re-review B16 PR #39 at the corrected head
+## Next action: review and merge B17 PR
 
-1. Re-read the PR head, the Job Object correction reply and the current-head CI.
-2. Address any additional review findings on the existing PR.
-3. Keep PR #39 open. Merge requires separate task-specific authorization; B17 follows
-   only after the B16 delivery is reviewed and merged.
+1. Inspect B17 PR feedback and CI at its published head; correct findings on the same
+   branch and rerun the affected scenarios.
+2. Keep B17 open until its review and CI gates pass. Merge requires separate
+   task-specific authorization.
+3. After B17 is merged, choose the next ready task from `docs/backlog.md`; B18
+   maintainer recovery can proceed after B14 without waiting for B17.
 
 The PR #38 merge authorization applied only to B15. Do not carry it forward. The
 current adapter still has no production-provider path, and B16 does not complete M2b

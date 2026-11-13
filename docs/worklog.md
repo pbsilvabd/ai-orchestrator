@@ -1263,3 +1263,29 @@ Template:
   creation-time job assignment in an isolated run failed the fast-exit case.
   The suite, fallback demo, syntax and diff checks passed. See `docs/validation.md`.
 - Follow-up: verify PR #39 on its current head and await independent review.
+
+
+## 2026-11-12 — M2b: executable thirteen-item acceptance matrix
+
+- Branch: `task/B17-executable-acceptance-matrix`
+- Scope: code, tests and docs; no task-service behavior or provider authority changed.
+- Steps:
+  1. Added an acceptance runner that reads the normative criteria, pins their
+     content fingerprint and executes mapped local tests plus the real B16 client
+     workflow, returning a machine-readable result for each item.
+  2. Added reporter regressions for failed assertions, missing/skipped cases,
+     contract drift and incomplete matrices; added a non-owner cancellation
+     assertion with persisted-state checks.
+  3. Published the 13-item result JSON and updated the backlog, roadmap, handoff
+     and integration instructions.
+- Files: `integration/acceptance-matrix.mjs`, `test/acceptance-matrix.test.mjs`,
+  `test/task-service.test.mjs`, `package.json`, `integration/README.md`,
+  `docs/evidence/B17-acceptance-matrix.json`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`
+- Validation: `npm run acceptance` → 13 pass, 0 fail, 0 not_run; missing-host
+  injection → 7 pass, 6 not_run, exit 1; `node --test` → 258 passed, 0 failed,
+  one POSIX-only skip; fallback demo → 429 then 200; `git diff --check` → clean;
+  changed Markdown links → 6 files, 58 targets, 0 broken. The Ubuntu pinned-client
+  workflow was not rerun.
+- Follow-up: review the complete diff, publish the B17 PR, and verify its remote
+  head and CI. Merge requires separate task-specific authorization.

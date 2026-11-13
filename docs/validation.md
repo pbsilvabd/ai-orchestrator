@@ -1499,3 +1499,40 @@ writes an unrelated sibling PID to stdout, and exits with code 19 immediately.
 Removing only the creation-time Job Object attribute in an isolated regression
 experiment left the child alive and failed the fast-exit assertion (exit 1). The
 experiment terminated its own child. The Ubuntu pinned-client gate was not rerun.
+
+
+## B17 executable acceptance matrix — 2026-11-12
+
+Executed on Windows 11 Pro 10.0.26300 x64, Node.js v24.22.1 (fnm), Git
+2.55.0.windows.5 and the verified OpenCode 2.2.5 binary. Base commit:
+`681f0a6cce3c2160c578cc92a0ab038ff5cfce01`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `npm run acceptance -- --opencode C:/Users/paulo/.codex/.chatgpt-projects/g-p-6ae821acff7081918d46286e2c833b07/.audit/bin/opencode-2.2.5/opencode.exe --report docs/evidence/B17-acceptance-matrix.json` | B17-01–04; all 13 normative contract criteria | 13 pass, 0 fail, 0 not_run. Pinned client observed the correlated submit/poll/result lifecycle, duplicate replay, cancellation, restart without replay and result in provider context. | 0 |
+| `npm run acceptance -- --report <temporary JSON path>` | Missing-host fault injection for B17-02 | 7 pass, 6 not_run (M2b-02/04/05/07/08/13), success false | 1 |
+| `node --test test/acceptance-matrix.test.mjs` | Reporter failures, skipped/missing cases, missing matrix item and contract drift | 5 passed, 0 failed | 0 |
+| `node --test` | Full regression suite | 258 passed, 0 failed, 1 POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo | 429 from preferred model, then 200 from local model | 0 |
+| `node --check integration/acceptance-matrix.mjs` | Parse the B17 runner | no output | 0 |
+| `git diff --check` | Whitespace check | clean | 0 |
+
+One-off relative-link check using the local deliverables checker (not versioned): six
+changed Markdown files, 58 relative links, zero missing targets.
+
+The published JSON report maps each item to its contract wording, named test or
+experiment, command, exit code and observed status. The reporter fails closed if the
+13-item contract text changes, any required test is absent or skipped, the host is
+missing, an assertion fails, or an item is missing from the final matrix. The missing
+host experiment deliberately returned a nonzero exit and marked all host-dependent
+criteria `not_run`.
+
+Evidence level: local test processes and pinned OpenCode integration with the
+loopback fixture provider; no external or paid model was used. This supports the B17
+acceptance matrix on Windows. It does not support production-provider behavior,
+model quality or completion of M2b/M3. The Ubuntu pinned-client workflow was not
+rerun; the local suite's one POSIX-only skip is reported above.
+
+Claim: This entry supports the thirteen B17 contract criteria on this Windows
+checkout, based on `npm run acceptance` and `node --test`. It does not support M2b
+or M3 completion, which requires the remaining milestone gates and supervised use.

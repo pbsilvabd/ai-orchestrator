@@ -294,6 +294,9 @@ test('get_task_status enforces ownership and unknown tasks', t => {
   const ownerService = createTaskService({ store, config: service.config, now: 1_000 });
   t.after(() => ownerService.close());
   assert.throws(() => ownerService.getTaskStatus({ taskId: foreign.taskId }), expected('not_owner'));
+  assert.throws(() => ownerService.cancelTask({ taskId: foreign.taskId }), expected('not_owner'));
+  assert.equal(store.readTask(foreign.taskId).status, 'queued', 'a non-owner cancellation must not change task state');
+  assert.equal(store.readTask(foreign.taskId).cancel.requestedAt, null, 'a denied cancellation must not persist a request');
 });
 
 test('get_task_result returns terminal artifacts, truncation flags and limitations', t => {

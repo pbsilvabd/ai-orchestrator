@@ -135,6 +135,31 @@ gate validates the pinned client/transport/service lifecycle with a fixture work
 it does not establish production-provider behavior, model quality or use on this
 repository.
 
+## B17 executable M2b acceptance matrix
+
+Run all thirteen normative items in `docs/task-contract.md` and emit one JSON report
+with `pass`, `fail` or `not_run` for each item:
+
+```sh
+node integration/acceptance-matrix.mjs --opencode /absolute/path/opencode.exe --report /path/to/b17-report.json
+```
+
+The local items launch their named Node tests separately and require an observed TAP
+test, zero skipped cases and a zero process exit. The pinned-client items run the
+full B16 workflow once and validate its machine-readable summary, including the
+queued/running/succeeded MCP lifecycle, duplicate replay, actual result in provider
+context, cancellation and restart without replay. Omitting the binary, a missing
+scenario, or a skipped required test is recorded as `not_run`; any missing or
+non-passing item makes the overall process exit nonzero. The optional report path
+must not already exist. The report omits raw test output and local binary paths.
+
+The pinned client must be the trusted OpenCode 2.2.5 binary described below. This
+fixture provider is loopback-only and does not use a paid or external model. Passing
+the matrix is M2b acceptance evidence; it does not demonstrate model quality,
+production-provider support or M3 use on this repository.
+The current local report is committed at
+[docs/evidence/B17-acceptance-matrix.json](../docs/evidence/B17-acceptance-matrix.json).
+
 ## Session/model smoke test
 
 Run separately from local tests, using Node 24 and a pinned official binary:
