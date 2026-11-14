@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { canonicalPayload, DEFAULT_RETENTION_MS, defaultHome, openTaskStore } from '../src/tasks.mjs';
+import { canonicalPayload, DEFAULT_RETENTION_MS, defaultHome, openTaskMaintenance, openTaskStore } from '../src/tasks.mjs';
 
 function startTask(store, taskId) {
   if (store.readTask(taskId).status === 'queued') {
@@ -39,6 +39,10 @@ const submit = (store, overrides = {}) => store.createTask({
   now: 1_000,
   ...overrides,
 });
+const reconcileUnderMaintenance = (home, now) => {
+  const maintenance = openTaskMaintenance({ home, now });
+  try { return maintenance.reconcile({ now }); } finally { maintenance.close(); }
+};
 
 test('createTask persists the record and the index before returning', t => {
   const dir = fixture(t);
@@ -146,7 +150,7 @@ test('reconcile blocks running work and queued work that already dispatched', t 
   });
 
   store = openTaskStore({ home: dir }); // Restart.
-  const result = store.reconcile({ now: 5_000 });
+  const result = reconcileUnderMaintenance(dir, 5_000);
 
   assert.deepEqual(result.blocked.sort(), [dispatched.taskId, running.taskId].sort());
   for (const taskId of result.blocked) {
@@ -168,7 +172,7 @@ test('reconcile rebuilds a missing idempotency entry from the persisted record',
   unlinkSync(join(dir, 'idempotency', indexFiles(dir)[0]));
 
   store = openTaskStore({ home: dir });
-  const result = store.reconcile({ now: 2_000 });
+  const result = reconcileUnderMaintenance(dir, 2_000);
   assert.deepEqual(result.repaired, [task.taskId]);
   assert.deepEqual(result.conflicts, []);
   assert.equal(indexFiles(dir).length, 1);
@@ -229,7 +233,7 @@ test('a failed index write leaves no orphan record behind', t => {
   // submit replays instead of starting duplicate work.
   rmSync(idempotency);
   const repaired = openTaskStore({ home: dir });
-  const result = repaired.reconcile({ now: 2_000 });
+  const result = reconcileUnderMaintenance(dir, 2_000);
   assert.deepEqual(result.repaired, [first.task.taskId]);
   assert.deepEqual(result.blocked, []);
 
@@ -305,13 +309,16 @@ test('prune keeps blocked records and removes expired terminal ones', t => {
   const oldBlocked = make('old-blocked', 'blocked', 0);
   const recent = make('recent', 'succeeded', DEFAULT_RETENTION_MS);
 
-  const { removed } = store.prune({ now: DEFAULT_RETENTION_MS + 1 });
+  const maintenance = openTaskMaintenance({ home: dir, now: DEFAULT_RETENTION_MS + 1 });
+  let removed;
+  try { ({ removed } = maintenance.prune({ now: DEFAULT_RETENTION_MS + 1 })); }
+  finally { maintenance.close(); }
   assert.deepEqual(removed.sort(),
     [oldSucceeded.taskId, oldFailed.taskId, oldCancelled.taskId].sort());
   assert.equal(taskFiles(dir).length, 2);
   assert.equal(store.readTask(oldBlocked.taskId).status, 'blocked');
   assert.equal(store.readTask(recent.taskId).status, 'succeeded');
-  assert.equal(indexFiles(dir).length, 2);
+  assert.equal(indexFiles(dir).length, 5); // Three durable replay tombstones plus blocked/recent mappings.
 });
 
 test('defaultHome follows the platform convention and the explicit override', t => {
@@ -330,13 +337,15 @@ test('defaultHome follows the platform convention and the explicit override', t 
   assert.equal(taskFiles(override).length, 0);
 });
 
-test('the store creates only the directories it uses', t => {
+test('the store prepares the task, index and cooperative owner-lock directories', t => {
   const dir = fixture(t);
   const store = openTaskStore({ home: dir });
   submit(store);
-  assert.deepEqual(readdirSync(dir).sort(), ['idempotency', 'tasks']);
+  assert.deepEqual(readdirSync(dir).sort(), ['idempotency', 'locks', 'tasks']);
   assert.equal(store.paths.tasks, join(dir, 'tasks'));
-  assert.equal('locks' in store.paths, false);
+  assert.equal('locks' in store.paths, false); // Lock authority remains private to maintenance/service.
+  assert.equal(openTaskStore({ home: dir, retentionMs: 1 }).home, dir);
+  assert.throws(() => openTaskStore({ home: dir, retentionMs: -1 }), expected('invalid_argument'));
 });
 
 test('canonicalPayload is key-order independent and drops clientSessionId', t => {
@@ -398,7 +407,7 @@ test('a reopened store reads records written by another store instance', t => {
   assert.equal(read.startedAt, 1_500);
   assert.equal(read.attempts.length, 1);
 
-  const result = reader.reconcile({ now: 2_000 });
+  const result = reconcileUnderMaintenance(dir, 2_000);
   assert.deepEqual(result.blocked, [created.taskId]);
   assert.equal(reader.readTask(created.taskId).block.reason, 'service-restart');
   assert.equal(writer.readTask(created.taskId).status, 'blocked');

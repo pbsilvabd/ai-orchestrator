@@ -10,7 +10,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync, existsSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable, Writable } from 'node:stream';
@@ -397,6 +397,37 @@ test('B15-02f: unknown tool name returns invalid_argument via isError result', a
   const payload = JSON.parse(msg.result.content[0].text);
   assert.equal(payload.error.code, 'invalid_argument');
   assert.doesNotMatch(payload.error.message, /destroy_everything/); // name not echoed
+});
+
+test('B18-04: real MCP wire exposes exactly four tools and rejects maintainer recovery without state changes', async t => {
+  const { dir, service } = makeFixture(t);
+  const { send, collect } = makeServer(t, service);
+  const request = validRequest(dir);
+  request.idempotencyKey = 'b18-wire-blocked';
+  request.repository.branch = 'task/b18-wire';
+  const submitted = service.submitTask(request);
+  service.store.updateTask(submitted.taskId, draft => {
+    draft.status = 'running'; draft.startedAt = 1_100;
+    draft.attempts.push({ attemptId: 'attempt-b18-wire', model: 'mock/a', startedAt: 1_100,
+      finishedAt: null, outcome: null });
+  });
+  service.store.updateTask(submitted.taskId, draft => {
+    draft.status = 'blocked'; draft.finishedAt = 1_200;
+    draft.cancel.executionStopped = 'unknown';
+    draft.block = { reason: 'service-restart', requiresReconciliation: true };
+  });
+  const recordPath = join(dir, 'tasks', `${submitted.taskId}.json`);
+  const before = readFileSync(recordPath);
+  send({ jsonrpc: '2.0', id: 900, method: 'tools/list', params: { _meta: META } });
+  const [listed] = await waitForOutput(collect);
+  assert.deepEqual(listed.result.tools.map(tool => tool.name).sort(),
+    ['cancel_task', 'get_task_result', 'get_task_status', 'submit_task']);
+  send({ jsonrpc: '2.0', id: 901, method: 'tools/call', params: { _meta: META,
+    name: 'reconcile_blocked', arguments: { taskId: submitted.taskId, decision: 'failed' } } });
+  const [rejected] = await waitForOutput(collect);
+  assert.equal(rejected.result.isError, true);
+  assert.equal(JSON.parse(rejected.result.content[0].text).error.code, 'invalid_argument');
+  assert.deepEqual(readFileSync(recordPath), before);
 });
 
 test('B15-02g: submit_task with unknown extra field is rejected with invalid_argument', async t => {

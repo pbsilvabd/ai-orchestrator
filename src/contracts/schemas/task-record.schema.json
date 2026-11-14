@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$comment": "Declarative persisted task record. Accepts optional scheduler dispatch receipts, process outcomes, nested B13 artifacts and legacy flat artifact fields. Cross-field consistency and byte budgets are enforced by runtime code.",
+  "$comment": "Declarative persisted task record. Accepts optional scheduler dispatch receipts, process outcomes, maintainer reconciliation audit, nested B13 artifacts and legacy flat artifact fields. Cross-field consistency and byte budgets are enforced by runtime code.",
   "meta": {
     "title": "task-record",
     "source": "src/tasks.mjs validateTask and validateArtifact"
@@ -144,6 +144,48 @@
         "requiresReconciliation": {
           "type": "boolean",
           "enum": [true]
+        }
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actor", "reason", "decision", "fromStatus", "recordDigest", "evidenceDigest", "priorBlock", "administrativeOutcome", "evidence", "reconciledAt"],
+      "properties": {
+        "actor": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "reason": { "type": "string", "minLength": 1, "maxLength": 1000 },
+        "decision": { "type": "string", "enum": ["failed", "cancelled"] },
+        "fromStatus": { "type": "string", "enum": ["blocked"] },
+        "recordDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "evidenceDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "administrativeOutcome": { "type": "string", "enum": ["known-failure", "unknown", "cancel-request"] },
+        "priorBlock": {
+          "type": "object", "additionalProperties": false,
+          "required": ["reason", "requiresReconciliation"],
+          "properties": {
+            "reason": { "type": "string", "minLength": 1 },
+            "requiresReconciliation": { "type": "boolean", "enum": [true] }
+          }
+        },
+        "reconciledAt": { "type": "integer" },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["taskId", "fromStatus", "decision", "recordDigest", "observation", "outcomeAssessment", "workerStopped", "processTreeChecked", "inventoryComplete", "inventorySource", "liveWorkerPids", "observedAt"],
+          "properties": {
+            "taskId": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,128}$" },
+            "fromStatus": { "type": "string", "enum": ["blocked"] },
+            "decision": { "type": "string", "enum": ["failed", "cancelled"] },
+            "recordDigest": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "observation": { "type": "string", "minLength": 1, "maxLength": 2000 },
+            "outcomeAssessment": { "type": "string", "enum": ["known-failure", "unknown", "cancel-request"] },
+            "workerStopped": { "type": "boolean", "enum": [true] },
+            "processTreeChecked": { "type": "boolean", "enum": [true] },
+            "inventoryComplete": { "type": "boolean", "enum": [true] },
+            "inventorySource": { "type": "string", "minLength": 1, "maxLength": 500 },
+            "liveWorkerPids": { "type": "array", "maxItems": 0, "items": { "type": "integer" } },
+            "observedAt": { "type": "integer" }
+          }
         }
       }
     },

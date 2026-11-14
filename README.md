@@ -11,12 +11,12 @@ diffs and test evidence while respecting authorized models, tools and budgets.
 
 **The primary acceptance test is developing AI Orchestrator itself:** delegate a
 small backlog task to one worker, retrieve its diff and test report, and review
-before merging. This workflow has not been implemented yet.
+before merging. The supervised use milestone remains pending.
 
 OpenCode 2.2.5 is the first worker executor and selected supervising client.
 MCP over stdio is the selected first transport under ADR-007.
-Neither endpoint exists yet. Reuse existing infrastructure before building new
-routing, task or memory systems. See [ADR-006](docs/adr/006-worker-service.md).
+The MCP endpoint and one-worker service are implemented. See the current gates and
+limitations in the [roadmap](docs/roadmap.md) and [handoff](docs/handoff.md).
 
 The diagram shows the **target architecture**, not a completed integration.
 Green marks local implemented components or the verified host smoke; yellow marks
@@ -59,10 +59,10 @@ nor worker results grant permissions. The first workflow has no automatic merge.
 ## Current status
 
 Implemented: pure fallback policy, HTTP/Retry-After normalization, local checkpoint
-ledger, operation runner, an in-memory demo and dependency-free local tests,
-including loopback HTTP transport. **This is not an installed plugin or an
-integrated OpenCode MVP.** No AI calls, keys, provider accounts or paid APIs are
-required for these tests.
+ledger, durable task store, serial service scheduler, artifacts, cancellation,
+four-operation MCP stdio adapter and pinned-client acceptance harness. **M2b and M3
+are not complete.** The OpenCode worker remains fixture-provider-only; no AI calls,
+keys, provider accounts or paid APIs are required for local tests.
 
 M2a is complete as a specification: the normative [task contract](docs/task-contract.md)
 and [ADR-007](docs/adr/007-task-contract.md) define the four task operations,
@@ -75,9 +75,10 @@ The B11 adapter supports only a loopback fixture provider. Local process/host
 evidence is recorded in [validation](docs/validation.md). B15 adds the four-operation
 MCP stdio adapter (`mcp-server.mjs`), with bounded framing and sanitized protocol
 errors. The pinned OpenCode 2.2.5 fixture gate discovers all four tools, submits a
-task and observes its queued result in model context. This does not provide a
-production provider or complete delegation MVP; B16/B17 real-client acceptance
-remains.
+task and observes its queued result in model context. B16/B17 client workflow and
+acceptance work is merged (#40 at `190370f`), but this does not provide a
+production provider or complete delegation MVP. B18 maintainer recovery is delivered
+for PR review; it does not advance M2b/M3 by itself.
 
 A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
 and a simulated local provider. It validates session continuity, context, explicit
@@ -113,6 +114,14 @@ node examples/fallback-demo.mjs
 No npm install is required. The demo produces two records: `mock/preferred`
 returns 429 and `mock/local` returns 200 in the same session. These are in-memory
 responses, not HTTP servers or real models.
+
+## Local task maintenance
+
+The maintainer-only CLI supports inspection, explicit blocked-task reconciliation and
+30-day pruning. It is excluded from the service and MCP tools. Stop workers, back up
+the state home, and follow the Windows-specific stale-owner/process-tree procedure
+before recovery: [task maintenance](docs/task-maintenance.md). PID absence alone does
+not prove descendants stopped or effects reverted; ambiguity must remain blocked.
 
 The local MCP task server starts with `node mcp-server.mjs`. Set
 `AI_ORCHESTRATOR_HOME` to a trusted state directory and point
@@ -174,10 +183,10 @@ for status, dependencies and acceptance gates.
 
 ## Next steps
 
-1. Complete B15 review and merge, then run the B16 pinned-client task workflow.
-2. Complete the B17 thirteen-item M2b acceptance matrix.
-3. Complete a real self-development task with a diff, tests and human review (M3).
-4. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.
+1. Review the B18 PR and current-head CI; merging requires a maintainer decision.
+2. Resolve remaining M2b gates and then, with explicit provider/model/budget approval,
+   run B20's supervised project task.
+3. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.
 
 `src/http-failure.mjs` accepts Retry-After as integer seconds or canonical
 IMF-fixdate. Invalid values, overflow and obsolete formats are conservatively

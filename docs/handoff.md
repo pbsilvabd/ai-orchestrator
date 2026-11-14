@@ -1,34 +1,38 @@
-# Continuation point — 2026-11-12
+# Continuation point — 2026-11-14
 
-Remote `main` is `681f0a6cce3c2160c578cc92a0ab038ff5cfce01`; B12–B16 are merged.
-B17 is published on `task/B17-executable-acceptance-matrix`. The executable matrix
-observed all 13 normative M2b acceptance items pass on Windows x64 with Node.js
-v24.22.1, Git 2.55.0.windows.5 and the pinned OpenCode 2.2.5 client. B17 adds a
-separate cancellation ownership assertion. M2b/M3 remain incomplete; the fixture
-provider proves transport/service behavior, not model quality or production-provider
-support. ADR-007 still selects MCP stdio revision `2026-07-28`.
+Remote `main` is `190370fae1fe44272dbaed22889156397f143c2f`; B12–B17 are merged.
+B17/#40's Windows and Ubuntu PR checks passed. M2b/M3 remain incomplete; the worker
+provider is fixture-only, not production model-quality/provider evidence. B18 is
+delivered for PR review on `task/B18-maintainer-recovery`, not merged. Supervisor
+review and local acceptance passed after correction rounds. The base post-merge
+Windows check passed in Actions run `43568386630`.
+ADR-007 still selects MCP stdio revision `2026-07-28`.
 
-## Current implementation status: B17 PR open
+## Current implementation status: B18 PR open
 
-The B17 acceptance runner launches named tests separately, captures TAP counts and
-reports `pass`, `fail` or `not_run` for each contract criterion. It runs the B16
-pinned-client workflow once and validates the real MCP task result and provider
-context. Missing host/test evidence or skipped required cases cannot produce overall
-success. The latest local matrix run reports 13/13 pass; exact commands and versions
-are in `docs/validation.md`. No external or paid model was used.
+The B18 implementation adds a maintainer-only local store handle/CLI, service-owner
+interlock, evidence-bound blocked reconciliation and journaled retention cleanup.
+Focused Windows tests use temporary stores, a real service worker subprocess and a
+child killed between prune record/index removal. Durable tombstones prevent key reuse.
+GPT-6 Luna high implemented the changes; GPT-6.1 Sol independently reviewed the
+complete diff and verified the returned corrections. Final local evidence: 139 focused
+tests passed; full suite 284 passed with one existing POSIX-only skip; demo, syntax
+and whitespace checks passed. The Windows PowerShell 5.1 file-input procedure ran
+against real subprocesses. Exact evidence/limits are in `docs/validation.md`.
+No provider calls or credentials were used, and no B20/M3 service use is claimed.
 
-## Next action: review and merge B17 PR
+## Next action: maintainer review of the B18 PR
 
-1. Inspect B17 PR feedback and CI at its published head; correct findings on the same
-   branch and rerun the affected scenarios.
-2. Keep B17 open until its review and CI gates pass. Merge requires separate
-   task-specific authorization.
-3. After B17 is merged, choose the next ready task from `docs/backlog.md`; B18
-   maintainer recovery can proceed after B14 without waiting for B17.
+1. Read the B18 PR's exact head, CI and all feedback under `docs/pr-review.md`.
+   The supervisor publishes the local review/corrections and observes current-head CI;
+   GitHub is the authoritative publication/check receipt.
+2. Correct further findings on the same branch/PR and revalidate before any decision.
+   The maintainer decides merge; no B18 merge is authorized by this session.
+3. After a separately approved B18 merge, B20 still needs an explicitly authorized
+   real model/provider/budget path. B08/B19 remain optional supporting work.
 
-The PR #38 merge authorization applied only to B15. Do not carry it forward. The
-current adapter still has no production-provider path, and B16 does not complete M2b
-or authorize a real-model self-development task.
+The supervisor was authorized to commit, push and publish this single B18 PR, but not
+merge it. The fixture-only provider does not authorize a real-model project task.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 
@@ -118,6 +122,9 @@ HTTP fallback is not selected; change transport only through a new ADR-007 amend
   conflict. No silent duplicate work.
 - `blocked` is terminal until a human reconciles it; nothing resumes automatically
   after a restart, and a persisted dispatch is never replayed.
+- Only the dedicated B18 maintenance path can reconcile `blocked`; generic updates and
+  transports have no override. Recovery evidence, retention and lock limits are in
+  [ADR-008](adr/008-task-store.md) and the [maintenance procedure](task-maintenance.md).
 - Cancellation is a request. `executionStopped` is `unknown` after abort/crash and
   `effectsReverted` stays `false`.
 - Task text and artifacts never grant permissions; authorization is clamped to the
@@ -150,7 +157,10 @@ without migration.
 The smoke test proved session/context continuity, explicit model switching and denied
 writes against the pinned host. SDK retry changes retry/delay, not the readonly model.
 Close `child.stdin` because the run waits for EOF. Abort does not undo effects.
-Locks left by a crash require manual reconciliation and are never removed automatically.
+`openTaskMaintenance({ home })` in `src/tasks.mjs` provides exclusive local maintenance,
+evidence-bound blocked recovery and journaled pruning; use the CLI/procedure instead of
+direct file edits. Locks left by a crash require explicit PID/process-tree inspection
+and audited recovery; PID absence alone does not prove descendants stopped.
 
 There is no event authentication, exactly-once guarantee or power-loss guarantee.
 Ledger scope is a trusted local directory with cooperative writers; network

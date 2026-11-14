@@ -24,14 +24,15 @@ Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
 authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
-Current state (2026-11-04): M2a is complete; B06 passed eight isolated pinned-host
-runs. Main `68d3ea5` includes B12/#25, B09–B11 and FIX23/#24, with successful
-Windows/Ubuntu PR and post-merge CI. B12's durable single-worker scheduler is
-delivered within its card scope. The maintainer accepted implementing-agent review;
-no independent review is claimed. Next task: B13 artifacts. M2b still needs
-B13–B17; M3 needs B18 recovery and B20 first real supervised use. See the current
-handoff/backlog for remaining dependencies; B12 merge approval does not authorize
-merging another task.
+Current state (2026-11-14): main `190370f` includes B12–B17; B17/#40 PR and
+post-merge checks passed on Windows/Ubuntu. B18 maintainer recovery and retention
+is delivered for PR review on `task/B18-maintainer-recovery`, not merged. GPT-6 Luna
+high implemented it; GPT-6.1 Sol reviewed the complete diff, returned blockers and
+verified the corrections with local filesystem/process and Windows PowerShell 5.1
+evidence. This development-chat workflow is not B20/M3 service use. Next action:
+inspect the B18 PR/head/CI and decide whether to merge; no B18 merge is authorized.
+B20 still needs B18 and an authorized real-model/provider/budget path. See the
+handoff/backlog; earlier task-specific merge approvals do not carry forward.
 
 ## Repository maintenance skills (Codex)
 
