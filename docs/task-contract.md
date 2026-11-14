@@ -499,22 +499,32 @@ gate's local loopback fixture.
 guarantee detection of arbitrary sensitive data. Callers must still avoid producing
 secrets in host output.
 
-The optional history track requires the tracked B17 matrix to pass, and reads only one
-explicitly selected task record. It may inspect the identity/lifecycle fields needed to
-refuse unsafe records plus existing attempts, test runs and limitations. It does not
-open the task store, reconcile, write state, schedule work, execute task commands or
-replay any task. Blocked or uncertain work (including administrative closure retaining
-unknown attempts) is refused. Missing recorded test evidence remains `not_run` even
-for terminal `succeeded`; terminal status and empty arrays are not evidence of success.
-`observed` means test command/exit metadata was found, not that the tests passed or the
-task succeeded.
-History strings are sanitized and bounded before artifact persistence. The record is
-read only from the explicit path; the default developer state home is not consulted.
+History is a separate reader/report mode, selected by `--history-home`, `--task-id`
+and `--output`; it cannot be combined with a pulse binary, retry, injection or timeout
+options. It requires the tracked B17 matrix to pass, reads one regular task record
+within the explicitly selected home, validates it through the store's pure record
+validator and conservative history invariants, and writes an exclusive report outside
+that home. It does not open or mutate the store, reconcile, schedule work, launch a
+gate, execute task commands or replay any task. Blocked, uncertain or incoherent work
+(including administrative closure with unknown outcomes) is refused; coherent
+known-failure reconciliation can be observed. Missing recorded test evidence remains
+`not_run` even for terminal `succeeded`; terminal status and empty arrays are not
+evidence of success. `observed` means test command/exit metadata was found, not that
+the tests passed or the task succeeded. History strings are sanitized and bounded;
+the default developer state home is never consulted.
 
-The B10 subprocess primitive proves only root-process exit and reports
-`descendantsStopped: false`. The pulse does not claim process-tree cleanup. On an
-uncertain timeout it preserves its owned phase scratch instead of deleting it while a
-child may still be active. If a raw stream hit its retention cap, that stream is
-omitted rather than storing a tail that could start midway through a credential. This
-manual diagnostic boundary is not service execution, M2b completion, M3 use or
+Pulse process containment is distinct from the B10 root-only subprocess primitive.
+Windows starts the gate in the existing B16 creation-time Job Object helper and
+requires a confirmed empty-job marker. POSIX starts a dedicated process group and
+performs bounded TERM/KILL teardown and empty-group verification. The report records
+root exit and cleanup verification separately; root exit alone never proves the tree
+stopped. POSIX verification covers only members still in that process group; a
+descendant that deliberately calls `setsid` or otherwise escapes the group may remain
+and cannot be claimed stopped. Any timeout or unverified teardown halts original
+samples, marks remaining slots `not_run`, suppresses all diagnostic retries and
+retains owned scratch. The gate also records
+original phase separately from cleanup phase/status, so cleanup failure cannot replace
+the probe/startup result. If a raw stream hit its retention cap, that stream is omitted
+rather than storing a tail that could start midway through a credential. This manual
+diagnostic boundary is not service execution, M2b completion, M3 use or
 production-provider evidence.

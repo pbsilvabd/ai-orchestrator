@@ -174,33 +174,43 @@ overwritten:
 node integration/harness-pulse.mjs --binary /absolute/path/opencode.exe --version 2.2.5 --output docs/pulses/<new-report>.json
 ```
 
-Each original slot records `pass`, `fail` or `not_run`, its current gate phase, actual
-child exit/signal/termination observation, duration, a sanitized UTF-8-bounded
-transcript and truncation flag. Missing binary/version preserves all eight slots as
-`not_run` and exits nonzero. `--timeout-ms` is bounded to 130 seconds. To exercise
+Each original slot records `pass`, `fail` or `not_run`, the original gate phase, a
+separate cleanup phase/status, root-exit and containment observations, duration, a
+sanitized UTF-8-bounded transcript and truncation flag. Windows launches the gate
+inside the existing B16 creation-time Job Object helper and requires its empty-job
+marker. POSIX launches it in a dedicated process group and performs bounded TERM/KILL
+teardown with group-empty verification. This proves only that members of the original
+group are gone; a descendant that uses `setsid` or otherwise leaves the group may
+remain. Root exit alone is never treated as proof that descendants stopped. Any timeout
+or unverified teardown preserves that original
+outcome, marks remaining slots `not_run`, and suppresses all retries for the pulse.
+Missing binary/version preserves all eight slots as `not_run` and exits nonzero.
+`--timeout-ms` is bounded to 130 seconds. To exercise
 failure preservation, `--inject-failure-index 1..8 --retry-failed` injects a failure
 in that original probe slot and records a separate diagnostic retry; the original
 denominator remains eight and the original failure is never replaced. Retries are not
 counted as original outcomes.
 
 The gate runs its local loopback fixture provider only, with a fake local fixture key;
-there is no real/external provider credential, task dispatch, model ranking or
-scheduled monitor. Every pulse child has an explicit environment allowlist and uses
-the B10 subprocess primitive. That primitive
-observes/kills only the root; descendants remain reported as not proven stopped. On
-timeout the pulse retains its phase scratch rather than deleting files while a child
-outcome is uncertain; the report exposes the scratch basename and whether it lives in
-the OS temp directory or report directory, never an absolute path. A truncated raw
-stream is omitted entirely to avoid leaking a credential whose prefix fell outside the
-retained tail.
+no real/external provider credential or task dispatch is involved. It preserves its
+original gate phase separately from cleanup phase/status, including when probe and
+cleanup both fail. On timeout or unverifiable process cleanup the pulse retains scratch
+rather than deleting files while execution is uncertain; the report exposes the scratch
+basename and whether it lives in the OS temp directory or report directory, never an
+absolute path. A truncated raw stream is omitted entirely to avoid leaking a credential
+whose prefix fell outside the retained tail.
 
-Optional `--history-home <explicit-temp-or-approved-home> --task-id <id>` adds a
-read-only history projection after the tracked B17 evidence passes. It reads only the
-selected record's identity/lifecycle metadata, attempts, test runs and limitations;
-it does not open the store, reconcile, write, schedule or replay. Blocked, unknown,
-administratively recovered-with-unknown-attempt, malformed or missing history is
-`not_run`. Task status alone never implies successful tests. Do not point this option
-at a developer's default state directory; tests use explicit temporary homes.
+History is a distinct reader/report mode, not an option layered onto a capability
+pulse. Invoke it with `--history-home <explicit-home> --task-id <id> --output
+<new-report.json>` (no binary, version or pulse flags). It requires passing tracked B17
+evidence, reads one regular task file within that home, validates it with the store's
+pure record/lifecycle validator plus conservative history checks, and writes only the
+new report outside the selected home. It does not open or mutate the store, reconcile,
+schedule, launch a gate or replay a task. Blocked, unknown, incoherent or malformed
+history is `not_run`; known-failure reconciliation may be observed when lifecycle and
+attempt evidence are coherent. Task status alone never implies successful tests. Do
+not point this option at a developer's default state directory; tests use temporary
+homes.
 
 B19 evidence and its acceptance-row mapping are in
 [`docs/pulses/README.md`](../docs/pulses/README.md). The pulse is diagnostic support,

@@ -32,13 +32,17 @@ const work = join(root, 'work'); mkdirSync(work);
 const mcpLog = join(root, 'mcp.jsonl');
 const mcpCalls = join(root, 'calls.jsonl');
 let currentPhase = 'startup';
+let cleanupPhase = 'pending';
+let cleanupStatus = 'pending';
 let phaseWriteFailure = null;
-function setPhase(value) {
-  currentPhase = value;
+function writePhaseMetadata() {
   if (process.env.MCP_GATE_PHASE_FILE) try {
-    writeFileSync(process.env.MCP_GATE_PHASE_FILE, value, { flag: 'w' });
+    writeFileSync(process.env.MCP_GATE_PHASE_FILE, JSON.stringify({
+      phase: currentPhase, cleanupPhase, cleanupStatus,
+    }), { flag: 'w' });
   } catch (failure) { phaseWriteFailure ??= failure; }
 }
+function setPhase(value) { currentPhase = value; writePhaseMetadata(); }
 
 const env = {};
 for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC'])
@@ -271,7 +275,9 @@ try {
 } catch (failure) {
   gateFailure = failure;
 } finally {
-  if (gateFailure) setPhase(`failure:${currentPhase}`);
+  if (gateFailure) currentPhase = `failure:${currentPhase}`;
+  cleanupPhase = 'cleanup';
+  writePhaseMetadata();
   const cleanupFailures = [];
   if (host) try { await stop(host.child); } catch (failure) { cleanupFailures.push(failure); }
   try {
@@ -287,9 +293,10 @@ try {
     try { rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
     catch (failure) { cleanupFailures.push(failure); }
   }
+  cleanupStatus = cleanupFailures.length ? 'failed' : (process.env.MCP_GATE_DEBUG ? 'retained_debug' : 'complete');
+  writePhaseMetadata();
 
   if (cleanupFailures.length) {
-    setPhase('cleanup');
     if (existsSync(root)) console.error(`Temporary fixture retained for diagnosis: ${root}`);
     const cleanupMessage = cleanupFailures.map(failure => `${failure.name}: ${failure.message}`).join('; ');
     if (gateFailure) {

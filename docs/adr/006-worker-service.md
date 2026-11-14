@@ -99,11 +99,23 @@ denominator. It uses only the gate's local loopback fixture provider; it adds no
 provider configuration, scheduling, model ranking or task executable surface.
 
 The optional task-history track is available only when tracked B17 evidence passes.
-It reads one explicit record for history fields without opening the store or invoking
-reconciliation, writes, scheduling or task replay. Blocked/uncertain work, including
-administrative closure with unknown attempts, remains refused. Terminal state is not
-substituted for missing test evidence. All returned text is sanitized/bounded before
-persistence. B10 observes/kills only the subprocess root; descendants are never
-claimed stopped, and uncertain timeout scratch is retained rather than cleaned up.
-This diagnostic evidence does not establish M2b/M3 completion or production-provider
+It is a distinct read-only report mode: it reads one explicit regular task record
+without opening the store or invoking reconciliation, writes, scheduling, gate launch
+or task replay. It uses the pure store record validator plus conservative lifecycle
+checks. Blocked/uncertain work, including administrative closure with unknown
+outcomes, remains refused; coherent known-failure reconciliation may be observed.
+Terminal state is not substituted for missing test evidence. Returned text is
+sanitized/bounded before persistence, and the exclusive report must be outside the
+selected task home.
+
+Pulse launches are contained independently of the B10 root-only subprocess primitive.
+Windows uses the existing B16 creation-time Job Object helper and verifies an empty
+job; POSIX uses a dedicated process group with bounded TERM/KILL teardown and
+empty-group verification. POSIX verification covers only members remaining in the
+group; a `setsid`/otherwise escaped descendant may remain and is not claimed stopped.
+Root exit is recorded separately and never proves the tree stopped. Timeout or
+unverified cleanup halts samples, suppresses all pulse retries, marks the remaining
+original slots `not_run`, and retains scratch. The gate preserves original phase and
+cleanup phase/status independently even if both probe and cleanup fail. This
+diagnostic evidence does not establish M2b/M3 completion or production-provider
 behavior.

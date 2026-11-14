@@ -27,12 +27,13 @@ draft/incomplete-work procedure; never claim missing evidence passed.
 Current state (2026-11-14): main `c268239` includes B12–B18. B17/#40 checks passed
 on Windows/Ubuntu; B18/#41 post-merge Windows checks passed. B19's manual opt-in
 harness pulse and read-only history track are implemented locally on
-`task/B19-opt-in-harness-pulse`, based on `c268239`; supervisor review/publication is
-pending. The implementation has local full-suite and pinned OpenCode 2.2.5 loopback
-fixture evidence, not all-pass B06, M2b/M3 service use or real-provider evidence. This
-development-chat workflow is not B20/M3 service use. Next action: supervisor reviews
-the complete B19 diff/evidence and decides publication. The implementer is not
-authorized to commit, push, create a PR or merge. B20 still needs M2b acceptance and an
+`task/B19-opt-in-harness-pulse`, based on `c268239`; supervisor review and correction
+verification passed locally. Publication/current-head CI are the remaining gates.
+The implementation has local full-suite and pinned OpenCode 2.2.5 loopback fixture
+evidence, not an all-pass B06 gate, M2b/M3 service use or real-provider evidence.
+The current supervisor has B19-only merge authorization contingent on acceptance,
+reviewed-head CI and resolved feedback; this grants no future session or other task
+merge authority. B20 still needs M2b acceptance and an
 authorized real-model/provider/budget path. See the handoff/backlog; earlier
 task-specific authorizations do not carry forward.
 

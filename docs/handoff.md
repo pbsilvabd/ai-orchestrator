@@ -6,24 +6,38 @@ B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
 not production model-quality/provider evidence. ADR-007 still selects MCP stdio
 revision `2026-07-28`.
 
-## Current implementation status: B19 local, unpublished
+## Current implementation status: B19 reviewed locally, publication pending
 
 The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
-`c268239`. It runs eight isolated bounded capability-gate subprocesses, retains each
-original outcome/phase/sanitized transcript, and records diagnostic retries
-separately. Its optional task-history track is explicit-home and read-only, gated on
-passing B17 evidence, and refuses blocked/uncertain records. Local pinned-host
-evidence uses OpenCode 2.2.5 and the loopback fixture provider only. Review,
-publication and any merge decision belong to supervisor/maintainer; this task
-delegation authorizes no commit, push, PR creation or merge by the implementer.
+`c268239`, with correction work on top of supervisor checkpoint `91e43e4`. It uses
+Windows creation-time Job Object or POSIX process-group containment, halts on timeout
+or unverified cleanup, and records original and cleanup phases separately. Retry
+eligibility now requires the whole originals run to remain certain; an uncertain retry
+produces one `not_run` result for each remaining candidate. POSIX settlement is bounded
+and explicitly limited to process-group members (escaped descendants may remain).
+History is a distinct B17-gated read-only mode using store validation and an exclusive
+report outside the selected home. R5 focused tests passed twice, the full suite and
+demo passed, B16's shared-helper workflow was rerun successfully, and the new
+`docs/pulses/B19-r5-final.json` pinned-host artifact passed its assertions. The earlier
+pinned-host artifacts remain unchanged. The supervisor's earlier focused-test failure
+is recorded with its cause still unconfirmed because termination details were not
+provided.
+GPT-6.1 Sol verified the Luna high corrections and reviewed the complete diff and all
+four acceptance rows. Independent final checks: six focused tests passed; full suite
+290 passed with one existing POSIX-only skip; demo, syntax and diff checks passed.
+Current-code B17 passed 13/13, including the changed shared Windows helper. The
+supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected original
+fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
+real provider/project service use is claimed.
 
-## Next action: supervisor review and publication decision for B19
+## Next action: publish B19 and verify exact-head CI/feedback
 
-1. Review the complete B19 diff, both self-review notes and all row-mapped evidence
-   under `docs/pr-review.md`; reproduce any finding and verify corrections at the
-   current local head before publication.
-2. If ready, the supervisor owns commit/push/PR/remote checks under this assignment's
-   explicit division of authority. Merge requires task-specific maintainer approval.
+1. Commit/push this single branch and publish its single B19 PR, including the
+   SHA-specific findings, correction commits, verified re-review and row evidence.
+2. The current supervisor has B19-only merge authorization after all acceptance,
+   reviewed-head CI and blocking-feedback gates pass. Recheck head immediately before
+   merge; any changed head requires renewed review/validation. Verify origin/main and
+   post-merge CI. No other task/session inherits this authorization.
 3. B20 remains gated on M2b acceptance and an explicitly authorized real
    model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
 

@@ -47,9 +47,12 @@ worker cancellation, dispatch-enabled restart and Git isolation. The Windows gat
 uses a Job Object for host cleanup. B16/#39 is merged at `681f0a6`; Windows/Ubuntu CI
 passed. B17/#40 is merged at `190370f`; its post-merge Windows check passed in
 Actions run `43568386630`. B18/#41 is merged at `c268239`; its post-merge Windows
-check passed in Actions run `43589015912`. B19's manual opt-in pulse is implemented
-locally on `task/B19-opt-in-harness-pulse`, with pinned-host fixture evidence and
-supervisor review/publication pending. No production provider is enabled.
+check passed in Actions run `43589015912`. B19's manual opt-in pulse and local
+supervisor corrections are on `task/B19-opt-in-harness-pulse`; focused correction
+tests and final pinned-host evidence are complete locally. GPT-6.1 Sol independently
+verified the corrections, all four rows, the full suite and current-code B17 matrix;
+publication/current-head CI are pending.
+No production provider is enabled.
 There is no production provider, integrated fallback, semantic memory or completed
 self-development workflow yet.
 

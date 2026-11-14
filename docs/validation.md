@@ -1772,3 +1772,148 @@ OpenCode 2.2.5 fixture pulse with preserved 7/1/0 outcomes, based on the named B
 tests, the recorded pulse and the report assertions. It does not support an all-pass
 eight-run B06 capability gate, M2b/M3 completion, real-provider behavior or use of the
 task service on this project; those require separate evidence and authorization.
+
+## M2b: B19 supervisor corrections — 2026-11-14
+
+Executed on Windows 11 x64, Node.js v24.22.1 (fnm).
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/harness-pulse.test.mjs` | Exercise all B19 correction acceptance boundaries | 4 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full regression suite | 289 tests: 288 passed, 0 failed, 1 existing POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo regression | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `node --check integration/harness-pulse.mjs` | Check pulse CLI syntax | no output | 0 |
+| `node --check integration/mcp-gate.mjs` | Check gate syntax | no output | 0 |
+| `node --check src/tasks.mjs` | Check exported pure record validator syntax | no output | 0 |
+| `node --check test/harness-pulse.test.mjs` | Check B19 regression test syntax | no output | 0 |
+| PowerShell invocation of `node integration/mcp-gate.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` with `MCP_GATE_INJECT_FAILURE_PHASE=probe`, `MCP_GATE_FORCE_CLEANUP_ERROR=1` and `MCP_GATE_PHASE_FILE=<new temp marker>` | Force both probe and cleanup failure to verify independent phase preservation | `failure:probe`, cleanup phase `cleanup`, cleanup status `failed`; expected nonzero gate exit | 1 (expected) |
+| `node integration/harness-pulse.mjs --binary C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --version 2.2.5 --output docs/pulses/B19-final-containment.json --inject-failure-index 4 --retry-failed` | Run the final-code pinned OpenCode 2.2.5 loopback fixture pulse | 7 pass, 1 injected fail, 0 not_run; slot 4 retains `failure:probe`, cleanup is `cleanup/complete`, one separate retry passes; exit 1 is expected for the original failure | 1 (expected) |
+| PowerShell assertions on `docs/pulses/B19-final-containment.json` | Check denominator/status/retry, original phase and cleanup metadata, root exit and verified Job Object cleanup | assertions passed: `failure:probe`, `cleanup/complete`, 7/1/0, retry pass | 0 |
+| `git diff --check` | Check working diff for whitespace errors | no output | 0 |
+
+Result: B19 focused acceptance and the full suite passed. The final pinned-host artifact
+is separate from and does not modify `docs/pulses/B19-pinned-host.json`. The forced
+cleanup fixture directly verifies that a probe failure remains `failure:probe` while
+cleanup independently records `cleanup/failed`; the pinned pulse validates the Windows
+Job Object path and successful cleanup marker. This remains a local fixture-provider diagnostic,
+not an all-pass B06 gate, production-provider behavior, M2b/M3 completion or use of the
+task service on this project.
+
+Evidence level: OpenCode integration — demonstrates hooks, queue, context, permissions
+and failures in the pinned host; does not demonstrate real model quality/cost. Here the
+real pinned host demonstrates the local MCP gate and Windows Job Object cleanup;
+temporary-filesystem tests cover history read-only boundaries and uncertain-stop
+accounting.
+
+Not rerun: POSIX process-group teardown and Ubuntu pinned-host integration (only this
+Windows host was available); the OpenCode smoke test and B16 task workflow (not changed
+by this correction); real/paid provider use and project task delegation (not authorized).
+
+Claim: The correction tests and new pinned-host report support the B19 containment,
+stop-on-uncertainty, history-only and phase-preservation changes. They do not claim
+tree termination from root exit alone, an all-pass B06 gate, production-provider
+behavior, M2b/M3 completion or task-service use on this project.
+
+## M2b: B19 R5 supervisor corrections — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5. Local
+corrections remain uncommitted and unpublished over checkpoint `91e43e4`.
+
+| Command / experiment | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| Supervisor-reported `node --test test/harness-pulse.test.mjs` on the completed correction snapshot | Preserve the external failing result; diagnose the two reported assertions | FAILED: 2 passed, 2 failed. B19-01 reported `summary.fail` 2 instead of 1; B19-02 oversized-output fixture reported `fail` instead of `pass`. Per-test termination records from that run were not supplied, so its exact cause remains unconfirmed. | 1 |
+| Local 1,000 ms child-fixture diagnosis for B19-01-style and oversized-output-style runs | Test the proposed too-tight fixture-budget explanation using captured outcomes | Did not reproduce: all eight originals settled; injected slot had `reason=exit_7`, root exit observed and Windows Job Object empty marker verified; separate retry passed. Oversized output slot passed, cleanup verified, duration 175 ms. This does not establish the cause of the supervisor's distinct run. | 0 |
+| `node C:\Users\paulo\AppData\Local\Temp\opencode\b19-supervisor-retry-repro.mjs` | Reproduce both retry-accounting reports | Case A: 3 calls, 3 fail/5 not_run, 0 retries. Case B: 9 calls, 8 original failures, exactly 8 retry records with unique indices 1–8 (first fail, remaining seven not_run). | 0 |
+| `node --test test/harness-pulse.test.mjs` (two sequential runs) | Repeat focused B19 coverage including original uncertainty, retry uncertainty, timeout, output, and injected POSIX signal failure | Both runs: 6 tests, 6 passed, 0 failed, 0 skipped. | 0 |
+| `node --test` | Full local regression suite | 291 tests: 290 passed, 0 failed, 1 existing POSIX-only skip. | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | `mock/preferred` returned 429, then `mock/local` returned 200. | 0 |
+| `node integration/mcp-client-workflow.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Revalidate B16 because `integration/fixtures/b16-windows-job.cs` is shared and changed | Passed: OpenCode 2.2.5, four tools, 16 transport calls; submit/poll, duplicate identity, cancellation and interruption checks passed; unavailable-host path diagnosed as `ENOENT`. | 0 |
+| `node integration/harness-pulse.mjs --binary C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --version 2.2.5 --output docs/pulses/B19-r5-final.json --inject-failure-index 4 --retry-failed` | Fresh pinned-host loopback fixture evidence after R5 changes | 7 pass, 1 injected original fail, 0 not_run; original slot 4 phase `failure:probe`, cleanup `cleanup/complete`, root exit and Job Object empty marker observed; separate slot-4 retry passed. Exit 1 is expected because the original failure remains authoritative. Original pinned-host artifacts were not overwritten. | 1 (expected) |
+| PowerShell assertions on `docs/pulses/B19-r5-final.json` | Validate counts, phase/cleanup, Job Object evidence and retry mapping | Passed: denominator 8, 7/1/0, cleanup metadata correct, retry pass. | 0 |
+| `node --check` for `integration/harness-pulse.mjs`, `integration/mcp-gate.mjs`, `src/tasks.mjs`, and `test/harness-pulse.test.mjs`; `git diff --check` | Syntax and whitespace validation | Passed; no output. | 0 |
+
+The implementation now suppresses all diagnostic retries if any original is uncertain;
+after an uncertain retry it records exactly one result for each remaining candidate.
+Normal child-test budgets are 15 seconds, while dedicated timeout fixtures use separate
+bounded deadlines. POSIX settlement is bounded on signal errors and records uncertainty;
+its injectable regression exercised the control flow on this Windows host, not actual
+POSIX process-group behavior. Process-group checks cannot prove termination of a
+descendant that escaped with `setsid` or otherwise left the group. Windows stdin pipe
+errors are consumed, and only the exact pinned version is persisted.
+
+Self-review pass 1 checked both supplied retry reproducers, complete test outcomes,
+cleanup/termination states, Windows pipe races, version persistence and POSIX timeout
+settlement. Pass 2 reviewed the complete working diff and acceptance map, repeated the
+focused suite twice, rechecked B16 because its shared helper changed, and validated the
+new pinned-host artifact. No B17 rerun was performed as requested. The supervisor's
+failing focused run is preserved above; its exact per-test termination evidence was not
+available, and the local 1,000 ms experiment does not confirm its cause.
+
+Evidence level: Unit, local process fixtures and pinned OpenCode 2.2.5 integration with
+the local loopback fixture only. No real/paid provider, M2b service use or M3 task was
+performed. The pinned-host result is not an all-pass B06 gate.
+
+Not rerun: B17 acceptance matrix and B17 final host work (explicitly not requested),
+Ubuntu/POSIX native process-group behavior (not available on this Windows host),
+OpenCode smoke (outside the changed shared B16 helper workflow), and any real-provider
+or project task use (not authorized).
+
+Claim: The correction suite and new report support B19's retry accounting, bounded
+uncertain-stop handling, Windows Job Object fixture, B16 shared-helper compatibility
+and phase/cleanup reporting. They do not prove native POSIX teardown, escaped-descendant
+termination, an all-pass B06 gate, production-provider behavior or M2b/M3 completion.
+
+## M2b: B19 independent supervisor verification — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5,
+OpenCode 2.2.5. Date: 2026-11-14. Base:
+`c268239b3a15d9e507bee703016f6bbeccb266d7`; corrections over checkpoint `91e43e4`.
+GPT-6 Luna high implemented; GPT-6.1 Sol reviewed and independently ran these checks.
+Native exits were captured immediately in PowerShell before reading/formatting logs.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/harness-pulse.test.mjs` | Every B19-01–04 variant plus both R5 and bounded signal-failure regressions | 6 passed, 0 failed, 0 skipped | 0 |
+| `node C:\Users\paulo\AppData\Local\Temp\opencode\b19-supervisor-retry-repro.mjs` | Independently retest the two supervisor retry reproductions | Uncertain original: 3 calls, 3 fail/5 not_run, zero retries; uncertain first retry: 9 calls, exactly 8 unique diagnostic records, first fail/seven not_run | 0 |
+| `node integration/acceptance-matrix.mjs --opencode C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --report C:\Users\paulo\AppData\Local\Temp\opencode\b19-supervisor-b17-final.json` | Current-code B17 and changed shared B16 Windows helper regression | 13 pass, 0 fail, 0 not_run; mapping valid and contract digest unchanged | 0 |
+| `node --test` | Full regression on final corrected code | 291 total, 290 passed, 0 failed, 1 existing POSIX-only skip | 0 |
+| `node integration/harness-pulse.mjs --binary C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --version 2.2.5 --output docs/pulses/B19-supervisor-final.json --inject-failure-index 4 --retry-failed` | Independent final-code pinned-host B19-01 evidence | Original 7 pass/1 injected fail/0 not_run; denominator 8; one separate passing retry; all nine Job Objects confirmed empty | 1 (expected) |
+| PowerShell assertions on `docs/pulses/B19-supervisor-final.json` | Check original/retry accounting, phase, output cap and containment | Eight original slots; slot 4 `failure:probe`, cleanup complete, retry for slot 4 pass; all transcripts within 8192 UTF-8 bytes and cleanup verified | 0 |
+| `node examples/fallback-demo.mjs` | Required demo regression | 429 from `mock/preferred`, then 200 from `mock/local` | 0 |
+| `node --check integration/harness-pulse.mjs` | Syntax | no output | 0 |
+| `node --check integration/mcp-gate.mjs` | Syntax | no output | 0 |
+| `node integration/mcp-gate.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` with `MCP_GATE_INJECT_FAILURE_PHASE=probe`, `MCP_GATE_FORCE_CLEANUP_ERROR=1` and an exclusively named temporary `MCP_GATE_PHASE_FILE` | Independent simultaneous original/cleanup failure check | Marker retained `failure:probe`, `cleanup`, `failed`; the forced cleanup fixture retains its temporary tree for diagnosis | 1 (expected) |
+| `git diff --check` | Final tracked whitespace check | no output | 0 |
+
+Result: B19-01 PASS (eight originals and separate retry); B19-02 PASS (missing host/
+version, real descendant timeout, bounded output, uncertain-stop and unique diagnostic
+records); B19-03 PASS (pre-B17 and uncertain history refusal, actual store records,
+CLI exit, unchanged home bytes/no gate execution); B19-04 PASS (manual invocation,
+sanitization, caps, exclusive output and no ranking/provider activation). A simulated
+failure is the expected B19 experiment, not a passing B06 eight-run gate.
+
+Supervisor review pass 1 reproduced four blockers: unbounded descendants/retries,
+history launching gates, uncertain cancellation acceptance and original phase loss
+on cleanup failure. Pass 2 found two retry-control-flow defects and a failing focused
+run. All were returned to Luna. Current-code re-review verified containment, global
+halt/no replay, unique retry slots, pure store validation, separate read-only history
+and original/cleanup phases. The earlier 2/4 test failure is retained above; its
+exact cause was not established. Ordinary fixtures now use a separate 15-second
+budget, provide full outcome assertion diagnostics, and passed repeated implementer
+runs plus this independent focused/full run. This is not a claim to have diagnosed
+the earlier failure's cause. Final CI is a separate required gate.
+
+Evidence level: OpenCode integration — Hooks, queue, context, permissions and failures
+in the pinned host; not real model quality/cost. Local Node/Git/filesystem tests and
+the pinned loopback fixture establish the scoped B19 behavior, not production use.
+
+Not rerun: native POSIX process-group behavior on this Windows host (Ubuntu CI is
+pending; process-group verification cannot cover escaped/setsid descendants);
+OpenCode session/model smoke (unrelated to these changes); real-provider or project
+task execution (not authorized). Current-code B17/B16 was rerun, superseding the
+earlier entry's historical not-rerun note for the shared helper.
+
+Claim: This entry supports all four B19 rows and verified correction of the supervisor
+findings for the reviewed code. It does not claim green remote CI before observation,
+an all-pass B06 gate, production-provider support, universal tree containment or M3.
