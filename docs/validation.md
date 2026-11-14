@@ -1499,3 +1499,79 @@ writes an unrelated sibling PID to stdout, and exits with code 19 immediately.
 Removing only the creation-time Job Object attribute in an isolated regression
 experiment left the child alive and failed the fast-exit assertion (exit 1). The
 experiment terminated its own child. The Ubuntu pinned-client gate was not rerun.
+
+
+## B17 executable acceptance matrix — 2026-11-12
+
+Executed on Windows 11 Pro 10.0.26300 x64, Node.js v24.22.1 (fnm), Git
+2.55.0.windows.5 and the verified OpenCode 2.2.5 binary. Base commit:
+`681f0a6cce3c2160c578cc92a0ab038ff5cfce01`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `npm run acceptance -- --opencode C:/Users/paulo/.codex/.chatgpt-projects/g-p-6ae821acff7081918d46286e2c833b07/.audit/bin/opencode-2.2.5/opencode.exe --report docs/evidence/B17-acceptance-matrix.json` | B17-01–04; all 13 normative contract criteria | 13 pass, 0 fail, 0 not_run. Pinned client observed the correlated submit/poll/result lifecycle, duplicate replay, cancellation, restart without replay and result in provider context. | 0 |
+| `npm run acceptance -- --report <temporary JSON path>` | Missing-host fault injection for B17-02 | 7 pass, 6 not_run (M2b-02/04/05/07/08/13), success false | 1 |
+| `node --test test/acceptance-matrix.test.mjs` | Reporter failures, skipped/missing cases, missing matrix item and contract drift | 5 passed, 0 failed | 0 |
+| `node --test` | Full regression suite | 258 passed, 0 failed, 1 POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo | 429 from preferred model, then 200 from local model | 0 |
+| `node --check integration/acceptance-matrix.mjs` | Parse the B17 runner | no output | 0 |
+| `git diff --check` | Whitespace check | clean | 0 |
+
+One-off relative-link check using the local deliverables checker (not versioned): six
+changed Markdown files, 58 relative links, zero missing targets.
+
+The published JSON report maps each item to its contract wording, named test or
+experiment, command, exit code and observed status. The reporter fails closed if the
+13-item contract text changes, any required test is absent or skipped, the host is
+missing, an assertion fails, or an item is missing from the final matrix. The missing
+host experiment deliberately returned a nonzero exit and marked all host-dependent
+criteria `not_run`.
+
+Evidence level: local test processes and pinned OpenCode integration with the
+loopback fixture provider; no external or paid model was used. This supports the B17
+acceptance matrix on Windows. It does not support production-provider behavior,
+model quality or completion of M2b/M3. The Ubuntu pinned-client workflow was not
+rerun; the local suite's one POSIX-only skip is reported above.
+
+Claim: This entry supports the thirteen B17 contract criteria on this Windows
+checkout, based on `npm run acceptance` and `node --test`. It does not support M2b
+or M3 completion, which requires the remaining milestone gates and supervised use.
+
+Publication: PR [#40](https://github.com/pbsilvabd/ai-orchestrator/pull/40) is open
+at `6447b9a9a6e11fd2098946d46e8f3c5777e8c790`, based on `main` at
+`681f0a6cce3c2160c578cc92a0ab038ff5cfce01`. CI run #74 was in progress at the
+first remote check; no PR comments or reviews were present. Recheck CI against the
+final pushed documentation commit before treating this publication record as current.
+
+## M2b: B17 acceptance review corrections — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm-managed install); Git 2.55.0.windows.5.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/acceptance-matrix.test.mjs` | Exercise TAP classification, including real Node test children with mixed failure/skip/TODO and nonzero/TODO outcomes | 7 passed, 0 failed, 0 skipped; child fixtures observed the expected nonzero exits and classified them as `fail` | 0 |
+| `node --test --test-name-pattern 'foreign client submission is denied without changing task records|credential-shaped request text is rejected without mutating the caller or storing data' test/task-service.test.mjs` | Verify foreign-client denial without record changes and caller-visible secret omission | 2 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/acceptance-matrix.test.mjs test/task-service.test.mjs` | Final focused reporter and service regressions | Supervisor log `<temp>/b17-sol-focused-final.log`: 35 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/mcp-server.test.mjs` | Independent MCP transport forwarding regression suite | Supervisor log `<temp>/b17-sol-mcp-server.log`: 29 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/scheduler.test.mjs` | Independent scheduler/fixture-barrier boundary regressions | Supervisor log `<temp>/b17-sol-scheduler.log`: 23 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/artifacts.test.mjs` | Independent artifact/redaction boundary regressions | Supervisor log `<temp>/b17-sol-artifacts.log`: 7 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/workspace.test.mjs` | Independent workspace isolation regressions | Supervisor log `<temp>/b17-sol-workspace.log`: 8 passed, 0 failed | 0 |
+| `node integration/mcp-client-workflow.mjs ../.audit/bin/opencode-2.2.5/opencode.exe` | Verify the pinned client receives correlated queued/running/succeeded payloads and result context | OpenCode 2.2.5; 16 MCP calls; client-observed statuses `queued, running, running, succeeded`; task `217f5c89-8679-4e8c-9ebc-b0b03da41704` | 0 |
+| `node integration/acceptance-matrix.mjs --opencode ../.audit/bin/opencode-2.2.5/opencode.exe --report <temp>/b17-luna-final-client-payload-20261114.json` | Failure experiment while checking returned status payload shape | 7 pass, 6 fail; identified that status was nested in Code Mode's `{ status, result }` payload | 1 |
+| `node integration/acceptance-matrix.mjs --opencode ../.audit/bin/opencode-2.2.5/opencode.exe --report <temp>/b17-luna-final-verified-20261114.json` | Final B17-01–04 matrix against final source | 13 pass, 0 fail, 0 not_run; client-observed sequence `queued, running, running, succeeded`; task `b5c2602a-b8c9-4103-9688-4a4d1a1278b9` | 0 |
+| `node integration/acceptance-matrix.mjs --opencode ../.audit/bin/opencode-2.2.5/opencode.exe --report <temp>/b17-sol-final-matrix-20261114.json` | Independent final pinned-host matrix confirmation | Supervisor log reports 13 pass, 0 fail, 0 not_run; client sequence `queued, running, running, succeeded`; task `8f7eb36b-1800-4938-8952-a486f514749a` | 0 |
+| `node --test` | Full local regression suite after final source change | 262 tests, 261 passed, 1 POSIX-only test skipped on Windows, 0 failed | 0 |
+| `node examples/fallback-demo.mjs` | Verify the existing fallback demo | `mock/preferred` 429, then `mock/local` 200, session `demo-session` | 0 |
+| `node integration/acceptance-matrix.mjs --report <temp>/b17-sol-final-missing-host-20261114.json` | Final missing-host failure injection | Supervisor log reports 7 pass, 6 not_run, process exit 1; no required host items were falsely passed | 1 |
+| `node <temp>/b17-negative-client-attribution.mjs <checkout>` | Isolated negative attribution experiment; scratch-copy only | Script changed only the named foreign-client test to `assert.fail`, ran the no-host matrix in a temporary checkout, observed matrix exit 1, M2b-03 `pass`, M2b-09 `fail`, and 6 host-dependent `not_run`; report `<temp>/b17-negative-client-oaWT1h\matrix-report.json`; injector assertions exited 0 | 0 |
+| `node -e "const r=require('./docs/evidence/B17-acceptance-matrix.json'); if (!r.summary.success || r.summary.pass !== 13 || r.summary.fail !== 0 || r.summary.not_run !== 0) process.exit(1); for (const item of r.items.filter(x=>x.id==='M2b-02'||x.id==='M2b-04'||x.id==='M2b-05'||x.id==='M2b-07'||x.id==='M2b-08'||x.id==='M2b-13')) { const observed=item.runs.find(run=>run.observed)?.observed; if (!observed || observed.primaryPollStatuses.join(',') !== 'queued,running,running,succeeded') process.exit(1); } console.log('13/13 pass; all tracked pinned-client poll sequences are queued,running,running,succeeded');"` | Verify tracked matrix JSON and client-returned poll sequence | 13/13 pass; all tracked pinned-client poll sequences are queued,running,running,succeeded | 0 |
+| `git diff --check` | Check final local code and documentation diff for whitespace errors | Supervisor reran after the final documentation alignment: clean | 0 |
+
+Result: the real Node test children proved a failure remains `fail` when TAP also reports a skip/TODO, and nonzero exit takes precedence over TODO classification. The isolated fault injection proved the foreign-client test maps specifically to M2b-09, not M2b-03. The final pinned workflow returned each correlated status into the client's provider context, including queued and running, and the acceptance runner passed all 13 items. An earlier implementation attempt failed while matching the Code Mode payload shape; unwrapping the nested status fixed the experiment and the final matrix passed.
+
+Evidence level: OpenCode integration — demonstrates hooks, queue, context, permissions and failures in the pinned host; does not demonstrate real model quality/cost. This correction verifies correlated status objects returned to the Code Mode provider context; it does not establish production-provider behavior.
+
+Not rerun: `node integration/mcp-gate.mjs` and `node integration/opencode-smoke.mjs` (these separate gates are unaffected by this B17 correction); Ubuntu pinned-client integration (this checkout's host is Windows x64); real or paid model/provider use (not authorized and not supported by the fixture-only adapter).
+
+Claim: this entry supports the B17 thirteen-item acceptance matrix on Windows x64 with the pinned OpenCode 2.2.5 client, based on the final acceptance-matrix command and the full local suite. It does not support production-provider/model quality, Ubuntu host integration or M2b/M3 completion, which require evidence outside this fixture-only acceptance task.

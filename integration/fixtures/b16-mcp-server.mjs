@@ -52,6 +52,29 @@ options.worker = {
 };
 
 const service = createTaskService(options);
+// Hold the real scheduler callback until the pinned client has made a status
+// poll and the service has returned its persisted queued record. This is a
+// fixture-only dispatch barrier: no status is synthesized and runtime policy
+// or task-service behavior is unchanged.
+const submitTask = service.submitTask;
+let heldDispatch = null;
+let dispatchReleased = false;
+service.submitTask = input => {
+  if (input?.idempotencyKey !== 'b16-primary-task' || heldDispatch || dispatchReleased)
+    return submitTask(input);
+  const schedule = globalThis.setImmediate;
+  try {
+    globalThis.setImmediate = (callback, ...args) => {
+      heldDispatch ??= { callback, args };
+      return { ref() { return this; }, unref() { return this; }, hasRef() { return true; } };
+    };
+    const accepted = submitTask(input);
+    if (heldDispatch) heldDispatch.taskId = accepted.taskId;
+    return accepted;
+  } finally {
+    globalThis.setImmediate = schedule;
+  }
+};
 const input = new PassThrough();
 const output = new PassThrough();
 let pending = '';
@@ -84,11 +107,26 @@ output.on('data', chunk => {
       const name = callById.get(String(response.id));
       if (name) {
         appendFileSync(responseLog, `${JSON.stringify({ id: response.id, name, response })}\n`);
+        const payload = response.result?.content?.map(item => item.text ?? '').join('');
+        if (name === 'get_task_status' && !dispatchReleased && payload) {
+          try {
+            const status = JSON.parse(payload);
+            if (status.taskId === heldDispatch?.taskId && status.status === 'queued') {
+              dispatchReleased = true;
+              const dispatch = heldDispatch;
+              heldDispatch = null;
+              scheduleDispatch(dispatch);
+            }
+          } catch { /* the MCP adapter owns response validation */ }
+        }
         callById.delete(String(response.id));
       }
     } catch { /* the adapter owns protocol framing and serialization */ }
   }
 });
+function scheduleDispatch(dispatch) {
+  if (dispatch) globalThis.setImmediate(dispatch.callback, ...dispatch.args);
+}
 output.pipe(process.stdout);
 process.stdin.pipe(input);
 

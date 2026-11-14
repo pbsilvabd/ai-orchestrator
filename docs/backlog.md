@@ -1,8 +1,8 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-11: `origin/main` at `491de18` (B15/#38 merged after its
-request-envelope correction; B14/#37 and B15/#38 CI passed on reviewed heads).
-B16 is in progress on `task/B16-pinned-client-workflow`, based on this main head.
+Verified 2026-11-12: `origin/main` at `681f0a6` (B16/#39 merged after Windows
+host-containment review; current-head CI passed on Windows and Ubuntu).
+B17 is in progress on `task/B17-executable-acceptance-matrix`, based on this main head.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -10,8 +10,8 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current implementation task: [B16 — Pinned-client task workflow](tasks/B16.md).
-B12–B15 are merged. M2b and M3 remain open milestones.
+Current implementation task: [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md).
+B12–B16 are merged. M2b and M3 remain open milestones.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -51,7 +51,7 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Ready implementation choices: **B16 is the current implementation task**; B08 is supporting work
+Ready implementation choices: **B17 is the current implementation task**; B08 is supporting work
 whose B01/#8 and B03 prerequisites are now merged. B19 can prepare its manual
 capability-gate pulse, but task-history acceptance still waits for B17.
 Prerequisites below describe complete card acceptance; preparatory work does not
@@ -61,7 +61,7 @@ complete a gated card.
 
 | Milestone | Pending tasks and acceptance |
 | --- | --- |
-| M2b — One-worker delegation MVP | B12–B15 are merged; B16 pinned-client workflow is in its PR cycle; B17 executable thirteen-item acceptance matrix remains. |
+| M2b — One-worker delegation MVP | B12–B16 are merged; B17 executable thirteen-item acceptance matrix is in its PR cycle. |
 | M3 — First supervised development task | B18 maintainer recovery plus B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
 | Supporting work | B08 differential submit-schema adoption; B19 opt-in diagnostic pulse. Neither replaces M2b/M3 acceptance. |
 | Later milestones/decisions | B21 and B22a–c storage evaluation/rollout; B23 safe fallback (M2c); B24 memory (M4); B25 routing evaluation (M5). These are not prerequisites for completing basic one-worker delegation and first use. |
@@ -95,9 +95,9 @@ A merged card is retained as regression/review guidance, not new work.
 | [B13 — Verifiable bounded artifacts](tasks/B13.md) | P1 | Merged #35 at `254b5b9`; post-merge CI passed | B09/B10 merged |
 | [B14 — Cancellation, deadlines and late events](tasks/B14.md) | P1 | Merged #37 at `dc757c1`; Windows/Ubuntu checks passed | B10/B12/B13 merged |
 | [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Merged #38 at `491de18`; correction and CI verified | B06/B12/B14 merged; B13 artifacts available |
-| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | PR #39 open; Windows Job Object cleanup validated locally; CI and independent re-review tracked on the PR | B12–B15 merged; trusted OpenCode 2.2.5 available |
-| [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Pending; gated by B16 | B16 PR review/merge pending |
-| [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Pending; gated by B14 | B04a/B05 delivered; B14 pending; need not wait for B17 |
+| [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
+| [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | PR open; 13/13 matrix scenarios passed locally | B16/#39 merged; CI and review pending |
+| [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Pending; ready after B14 | B04a/B05/B14 delivered; need not wait for B17 |
 | [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Pending; gate pulse preparation ready, task history gated | B06 delivered; task-history track waits for B17 |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
