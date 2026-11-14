@@ -1820,3 +1820,41 @@ Template:
   inspect CI and feedback at the new head. Keep draft while a required check
   is red; a green rerun or a separately reviewed race correction must be
   observed before any fixture-only ready transition. No merge is authorized.
+
+## 2026-11-14 — M3 preparation: B29 P3 feedback receipts and exact-head CI
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: docs only; no executable, test or live worker behavior changed.
+- Steps:
+  1. Read the three new P3 findings at `113e926` (r4575329883, r4575329966,
+     r4575330038) and the supervisor's in-progress edits to `docs/handoff.md`,
+     `docs/tasks/B29.md`, `docs/roadmap.md` and `docs/backlog.md`.
+  2. Verified the exact-head CI receipt (run `43630565937`) with `gh run view`
+     and the raw Windows/Ubuntu job logs, and appended it to `docs/validation.md`
+     as a superseding entry rather than rewriting the earlier "remains pending"
+     sentence.
+  3. Extended the default-concurrency failure wording in `docs/validation.md`
+     to the six-failure run (five `test/mcp-server.test.mjs` output-wait
+     timeouts plus B10-03) without rewriting the earlier B10-03-only rows; the
+     B29-06 card row (supervisor edit) and the PR description carry the same
+     six-failure qualification.
+  4. Ran the isolated maintenance test and fallback demo with Node on the child
+     PATH, capturing native exits; cited the supervisor's serial-suite receipt
+     and the independent review's six-failure observation as evidence I did not
+     reproduce myself.
+  5. Updated the PR #44 body (new head, three P3 links, six-failure run, removal
+     of the stale "Current-head CI is required" line) and replied to the three
+     inline findings with the new SHA and evidence.
+- Files: `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/tasks/B29.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test test/task-maintenance.test.mjs` → 21 passed, 0
+  failed, exit 0; `node examples/fallback-demo.mjs` → 429 then 200, exit 0;
+  supervisor serial `node --test --test-concurrency=1` → 305/304 pass/0 fail/1
+  skip, exit 0; `gh run view 43630565937` → success at `113e926`; `git diff
+  --check` and `git diff --cached --check` → no output. The pinned free/MCP
+  harnesses, standalone smoke, B16/B17, B19 pulse, public catalog, real
+  inference, B20/#43 and B30 were not rerun.
+- Follow-up: verify the new head's exact-head CI (the last green run was at
+  `113e926`; the pushed head's CI is pending until observed), obtain re-review
+  of the three P3 replies, then the maintainer's draft-to-ready decision for
+  the fixture-only PR. No merge is authorized.

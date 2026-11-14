@@ -71,15 +71,18 @@ authenticate clients. The new objective does not imply these features already ex
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
 | M2b — One-worker delegation MVP | In progress; B12–B18 merged | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 - First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model. B29/#44 has local fixture MCP evidence pending publication/head review; B30 relay/egress evidence and separate live approval are missing under ADR-009 | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 - First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model. B29/#44 has local fixture MCP evidence and green CI at `113e926` (run `43630565937`), with three P3 replies/new-head review pending; B30 relay/egress evidence and separate live approval are missing under ADR-009 | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |
 
 2026-11-14 fixture update: B29/#44 is fixture-only; the local pinned MCP-client
-fixture gate passed and its corrected head still needs publication, CI and
-re-review. ADR-009 selects a future B30
-service-owned relay **and verified worker egress containment**; neither is
+fixture gate passed, and CI run `43630565937` passed on Windows and Ubuntu at
+`113e926`. Three new P3 findings need replies and re-review at the next head;
+draft-to-ready is a maintainer decision. This rerun did not fix the pre-existing
+Windows maintenance test race or default-concurrency timing failures. ADR-009
+selects a future B30 service-owned relay **and verified worker egress
+containment**; neither is
 implemented or authorized for live use.
 
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.

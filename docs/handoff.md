@@ -51,7 +51,7 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: publish and re-review B29 fixture evidence, then B30 after merge
+## Next action: close B29 feedback and re-review the new fixture head
 
 2026-11-14 fixture correction: `integration/mcp-free-workflow.mjs` now ran with
 the pinned OpenCode 2.2.5 client through real MCP stdio and loopback-only
@@ -65,10 +65,19 @@ timing case, while a serial run at `762c133` passed 304 with one skip. The
 historical 307 still failed, delivering 7121 body bytes to a second loopback
 origin. See the validation entries for native exits. Production `mcp-server.mjs` remains
 passive/live-closed; no catalog, real provider, B20, relay or merge was run.
-The next action is to update the PR #44 description on this branch, verify
-the new remote head and exact-head Windows/Ubuntu CI,
-and respond to the latest findings. Keep the PR draft while Windows CI is red;
-only consider fixture-only readiness after verified checks and re-review.
+At `113e926`, PR #44's description and remote head were verified and Actions run
+`43630565937` passed on Windows (305 tests/304 pass/0 fail/1 skip) and Ubuntu
+(305 tests/301 pass/0 fail/4 skip), with the demo returning 429 then 200 on both. This is a green
+rerun, not a repair of the create-then-write race in
+`test/task-maintenance.test.mjs`: Windows run `43628743462` at `762c133`
+failed and the test file is unchanged. Local default-concurrency runs can fail
+on pre-existing B10-03 output timing and on five MCP-server output-wait
+timeouts (B15-01c/01d/01e/01f/03b); the serial suite passed 304/1 skip.
+Next, reply to the three P3 findings at `113e926`, verify the new head and
+its CI, and obtain re-review before the maintainer decides draft-to-ready for
+the fixture-only PR. Keep PR #44 draft until that decision, not because the
+previous head's Windows check was red; neither a green rerun nor a developer
+reply establishes deterministic default-concurrency stability or approval.
 B30's separate branch cannot implement live use until
 B29 is merged and verifiable deployment infrastructure exists; this Windows
 host currently reports the required Hyper-V feature disabled. The following

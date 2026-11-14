@@ -2164,3 +2164,55 @@ Claim: This entry supports an honest red Windows/green Ubuntu CI status at
 and an isolated maintenance pass based on `node --test test/task-maintenance.test.mjs`.
 It does not support a passing CI receipt for a later head, deterministic
 default-concurrency success, redirect containment, live use or merge.
+
+## M3 preparation: B29 P3 feedback receipts and exact-head CI — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm; Node directory
+`C:\Users\paulo\AppData\Roaming\fnm\node-versions\v24.22.1\installation` on the
+child PATH). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `gh run view 43630565937 --json headSha,conclusion,jobs` | Verify PR #44's exact-head CI at `113e926` | Run `success`, head `113e926c08520ce7acd46c9a206d6d49ea89ff53`; Windows job `132556010859` `success`, Ubuntu job `132556011017` `success` | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/actions/jobs/132556010859/logs` | Read the Windows job raw log | `tests 305 / pass 304 / fail 0 / skipped 1`; demo `429` then `200` | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/actions/jobs/132556011017/logs` | Read the Ubuntu job raw log | `tests 305 / pass 301 / fail 0 / skipped 4`; demo `429` then `200` | 0 |
+| `node --test test/task-maintenance.test.mjs` | Isolate the Windows maintenance recovery test | 21 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Documentation correction whitespace | no output | 0 |
+| `git diff --cached --check` | Staged documentation correction whitespace | no output | 0 |
+
+Result: the exact-head CI for `113e926` is verified green in run `43630565937`:
+Windows job `132556010859` passed 305 tests (304 pass/0 fail/1 skip) and the
+demo returned 429 then 200; Ubuntu job `132556011017` passed 305 tests (301
+pass/0 fail/4 skip) and the demo returned 429 then 200. This supersedes the
+preceding entry's statement that the exact-head CI "remains pending". The
+isolated maintenance test passed 21/21 and the demo returned 429 then 200, so
+this documentation-only change leaves the tested behavior unchanged. The
+supervisor provided an independently run serial suite (`node --test
+--test-concurrency=1` at `113e926`) of 305 tests / 304 pass / 0 fail / 1 skip,
+native exit 0, logged outside the repository; that is supervisor-run evidence,
+not a command run here. The independent review at `113e926` additionally
+observed a default-concurrency run of 305 tests / 298 pass / 6 fail / 1 skip,
+exit 1: five pre-existing `test/mcp-server.test.mjs` output-wait timeouts
+(B15-01c/01d/01e/01f and B15-03b) plus the pre-existing B10-03 case. Both test
+files are untouched by B29 (`git diff 688da04..113e926 --
+test/mcp-server.test.mjs test/subprocess.test.mjs` is empty). No deterministic
+green default-concurrency claim is made.
+
+Evidence level: Unit — the isolated maintenance test and the fallback demo
+exercise temporary state, process and policy behavior and show that the
+documentation-only correction leaves them unchanged. The `gh` commands are an
+external observation of GitHub Actions status, reported as the exact-head CI
+receipt, not a local test of the code.
+
+Not rerun: full `node --test` default-concurrency (the supervisor supplied the
+serial run and the independent review supplied the six-failure observation),
+pinned OpenCode free/MCP harnesses (no executable change), standalone smoke,
+B16/B17, B19 pulse, public catalog, real inference, B20/#43 and B30
+isolation/relay (not authorized or not implemented).
+
+Claim: This entry supports the green exact-head CI receipt at `113e926` (run
+`43630565937`) and the isolated maintenance/demo passes, based on `gh run view`
+/ `gh api` and `node --test test/task-maintenance.test.mjs` / `node
+examples/fallback-demo.mjs`. It does not support deterministic green
+default-concurrency runs, redirect containment, live use, B20/M3 or merge.
