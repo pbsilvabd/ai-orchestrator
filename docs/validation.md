@@ -1941,3 +1941,278 @@ Evidence level: Unit — publication receipts do not demonstrate new runtime beh
 Not rerun: runtime tests/host gates for this documentation-only checkpoint (preceding
 entry records the final-code runs). Final-head CI/review remain required.
 Claim: this entry supports one verified PR publication, not merge or green CI.
+
+## B29 anonymous free worker fixture preparation — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm, `%APPDATA%\fnm\node-versions\v24.22.1`).
+Pinned binary outside the repository: `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `mcp-server.mjs`, `src/opencode.mjs`, `src/service.mjs`, `src/free-provider.mjs`, `src/free-guard.mjs`, `src/configured-service.mjs`, `test/free-provider.test.mjs`, `test/fixtures/free-worker.mjs`, `integration/opencode-free.mjs` | Syntax of every changed module | no output for each | 0 |
+| `node --test test/free-provider.test.mjs` | B29 focused cases: metadata, approval, admission, guard, composition | 8 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full local suite regression | 300 tests: 299 passed, 0 failed, 1 skipped (`B10-03` SIGTERM case, Windows-gated) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo still prints the expected responses | 429 from `mock/preferred`, then 200 from `mock/local` | 0 |
+| `node integration/opencode-free.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Pinned host, loopback fixture only: normal, 401, 402, 429, 307 redirect, connection drop | normal: succeeded, 3 fixture requests, out-of-scope write denied, allowed diff listed; 401/402/429/drop: failed with exactly 1 request each; redirect-307: succeeded, 1 request to the fixture and 1 to the alternate origin with 7121 body bytes and no credential | 1 (redirect-307 failed by design) |
+| `node integration/opencode-invocation.mjs <pinned binary>` on a temporary export of base `688da04` (unmodified) | Baseline of the existing B11/B12 harness | host and denied/allowed assertions reached; fails at its limitation-count assertion: observed two limitations (`success without a recorded passing test command…`, `no trusted test command was configured…`) where it expects one | 1 (pre-existing on base) |
+| Same harness from a temporary copy of the current `src/` and `integration/` with only that count assertion changed to `>= 1` | Pinned B11/B12 boundary regression on the B29 code | passed: denied write, link and hardlink rejections, config override rejection, allowed write, scheduler dispatch with 9 provider requests | 0 |
+| `opencode --version` on the pinned binary | Version of the executable under test | `opencode v2.2.5` | 0 |
+| PowerShell `Get-FileHash` on `opencode-windows-x64.zip` | Provenance against `SHA256SUMS` | `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8`, equal to the published digest | not a process |
+| `git diff --cached --check` | Whitespace in staged changes before the commit | no output | 0 |
+
+Result: the focal cases pass, the full suite and demo pass, and the nine changed modules
+compile. On the pinned host the guard is loaded through the `plugins` array, the
+fixture receives only the fixed model with the public bearer credential, the poisoned
+ambient key and configuration are not inherited, and no auxiliary (title, summary or
+compaction) request appears. The 401, 402, 429 and connection-drop cases each produce one
+request and a failed task, with no fallback or replay. The 307 case fails: the host follows
+the redirect and the guard cannot prevent or detect it. A first full-suite run that
+overlapped with the B11 harness failed one timing-sensitive subprocess case (`B10-03`); the
+isolated subprocess file passed 8 of 8 and the later isolated full run passed. A one-off
+script (not versioned) spawned `mcp-server.mjs`: with no worker it stayed alive for 2.5 s;
+with a free worker and no approval, and with a missing approval file, it exited 1 at
+startup. The exit reflects closed live composition, not approval handling.
+
+Evidence level: OpenCode integration — hooks, plugin loading, provider defaults, the
+anonymous credential, request count and failure latching in the pinned host, using only
+a loopback fixture and a local metadata copy. Unit covers metadata and approval
+validation. It does not demonstrate real model quality, cost, availability, quota or
+privacy, and it does not demonstrate redirect control.
+
+Not rerun: `node integration/opencode-smoke.mjs` (standalone smoke with its own
+invocation; not affected by these modules); `node integration/mcp-gate.mjs` and the B16
+pinned-client workflow (`integration/mcp-client-workflow.mjs`) — `mcp-server.mjs`
+composition changed, so these should run before any MCP-level acceptance, and were not run
+in this session; `node integration/harness-pulse.mjs` (B19 diagnostics, unaffected); B17
+matrix (unaffected); the live free route, the public catalog and any paid or external call
+(not authorized); B20 execution and its proposed redaction test (not implemented); the
+B11 harness assertion itself (pre-existing drift, not repaired in this change).
+
+Claim: This entry supports that, on the pinned OpenCode 2.2.5 host and a loopback fixture,
+the B29 guard loads through `plugins`, the fixed model and anonymous public credential are
+used, auxiliary requests are absent, and 401, 402, 429 and a connection drop stop after one
+request. It also supports unit and service evidence that free-worker admission refuses
+before persistence, workspace or branch creation, and that the passive service is unchanged,
+based on `node --test test/free-provider.test.mjs`, `node --test`, and
+`node integration/opencode-free.mjs`. It does not support redirect protection, live free-route
+availability, quota, zero price or privacy, real inference, MCP-client composition with the
+fixture, B20 or M3, which require a redirect decision and a separate approval.
+
+## M3 preparation: B29 redirect-control decision — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm installation invoked directly,
+then prepended to PATH for child PowerShell processes). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `gh pr view 44 --json number,isDraft,headRefOid,baseRefName,statusCheckRollup,url,comments,reviews` | Inspect pre-decision PR head and CI | draft at `4d28b65`; Windows/Ubuntu completed SUCCESS | 0 |
+| `node --test` (absolute fnm `node.exe`; PATH lacked `node`) | Regression, initial run | 300 tests: 297 pass, 2 fail, 1 skip; B10-03 partial output missing and maintenance PowerShell could not find `node` | 1 |
+| `node --test` (fnm Node prepended to PATH) | Regression with required child PATH | 300 tests: 298 pass, 1 fail, 1 skip; B10-03 missing `before` output under concurrent load | 1 |
+| `node --test test/subprocess.test.mjs` (fnm Node on PATH) | Isolated B10-03 reproduction | 9 tests: 8 pass, 0 fail, 1 Windows skip | 0 |
+| `node --test test/free-provider.test.mjs` (fnm Node on PATH) | B29 focal regression | 8 pass, 0 fail, 0 skip | 0 |
+| `node examples/fallback-demo.mjs` (absolute fnm `node.exe`) | Existing demo | 429 then 200 | 0 |
+| `git diff --check` | Documentation whitespace | no output | 0 |
+| `git diff --cached --check` | Staged decision documents | no output | 0 |
+
+Result: the documentation decision does not change runtime behavior. The full
+suite did not pass in either run; isolated B10-03 and B29 focused tests passed.
+The PowerShell failure in the first run was an environment PATH omission, fixed
+for the second; the B10-03 timing failure remains a limitation, not a pass.
+
+Evidence level: Unit — these local tests exercise policy and input
+normalization, not pinned-host network containment or live model behavior.
+
+Not rerun: `node integration/opencode-free.mjs` (already documented failure on
+the pinned host; no code was changed); MCP-client fixture (B29-04 still missing);
+public catalog GET and real inference (not authorized); B20/#43 (out of scope).
+
+Claim: this entry supports a documentation-only architectural decision and
+focal B29 unit regression, based on the commands above. It does not support a
+passing full suite, redirect containment, fixture MCP acceptance, live route
+or M3, which require new evidence and separate authorization.
+
+## M3 preparation: B29 pinned-client fixture MCP correction — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm installation invoked
+directly; its directory prepended to PATH for child processes). Pinned host:
+`C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs` | B29 metadata, admission/launch and production CLI boundary | 12 passed, 0 failed, 0 skipped; expiry before prepare creates no runtime directory; default passive and live free startup closed | 0 |
+| `node integration/mcp-free-workflow.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Pinned-client MCP stdio/fixture-worker gate after review fixes | 10 MCP calls; actual poll statuses `queued,running,running,running,succeeded`; one attempt/workspace, three fixture model requests, duplicate ID, denied write, diff and `node --test` exit 0, zero fixture anomalies | 0 |
+| `node integration/opencode-free.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Eight pinned-host failure/guard scenarios after review fixes | Seven scenarios passed; 401/402/429/drop: one request each and failed task; post-write drop: two requests, one attempt, failed task with partial diff; held deadline: one request, blocked `worker-outcome-uncertain`, reconciliation required and `releaseOwnership:false`; `redirect-307` still failed: task succeeded and alternate origin got one unauthenticated request with 7121 body bytes | 1 (intentional negative finding; not a passing safety gate) |
+| `node --test` | Full regression on final code revision | 304 tests, 303 passed, 0 failed, 1 Windows platform skip; native exit captured before reading output from `C:\Users\paulo\AppData\Local\Temp\opencode\b29-final-20261114-suite.log` | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `node --check` on `integration/fixtures/b29-free-mcp-server.mjs`, `integration/mcp-free-workflow.mjs`, `test/b29-cli-composition.test.mjs`, `test/free-provider.test.mjs`, `integration/opencode-free.mjs` | Syntax of five changed modules | no errors | 0 |
+| `git diff --cached --check` | Complete staged change whitespace after documentation | no errors | 0 |
+
+Result: the pinned client actually exchanged MCP stdio frames with the test-only
+configured free-worker service. It observed queued before dispatch, running while
+the fixture held the response, and a terminal result including the allowed diff
+and a recorded passing test exit. Two duplicate submissions caused no new
+attempt/workspace/model request. The production CLI tests and admission cases
+passed. The pinned failure harness **exited 1**: the 307 still leaks 7121 body
+bytes to an alternate loopback origin and incorrectly succeeds; this is B30's
+unmet live egress gate, not a B29 fixture pass for redirect safety. The new
+post-effect loss and uncertain deadline cases preserve effects/ownership without
+replaying. A reviewer reproduced 9 free-provider and 3 CLI cases separately;
+their pinned-host tests were inspection-only, so the commands above are the
+independently rerun host evidence. The suite also passed with 303 tests and
+one Windows skip; the demo printed 429 then 200.
+
+Evidence level: OpenCode integration — the pinned host and MCP client exercised
+real hooks, queue, context, permissions and failures against loopback fixtures.
+The focal/full suite provides Unit evidence for policy and input normalization.
+Neither level demonstrates production model quality, zero price, external-network
+containment or privacy.
+
+Not rerun: `integration/opencode-smoke.mjs` (standalone host smoke, unchanged
+production path); `integration/mcp-gate.mjs`, `integration/mcp-client-workflow.mjs`
+and B17 matrix (their production fixture adapter was not changed); B19 pulse
+(unaffected); Windows/Ubuntu PR CI (requires publication of the final commit);
+public catalog GET and real inference (not authorized); B20/#43 (out of scope);
+OS network isolation, relay and egress gateway (B30 and not implemented).
+
+Claim: this entry supports B29's fixture-only MCP preparation, production CLI
+closure and failure preservation based on the focal, pinned-host and full-suite
+commands above. It does not support a passing redirect safety gate, live
+provider/cost/privacy claims, B20/M3 or merge; those require B30 deployment
+proof, separate approvals and later reviewed evidence.
+
+## M3 preparation: B29 review feedback and launch refusal — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm; Node directory on
+child PATH). Date: 2026-11-14. This entry corrects the preceding passing-run
+snapshot without rewriting it. The [independent PR review at `3c30866`](https://github.com/pbsilvabd/ai-orchestrator/pull/44#issuecomment-6882305093)
+also ran the full suite twice: one B10-03 failure (302 pass/1 fail/1 skip,
+exit 1), then 303 pass/0 fail/1 skip, exit 0. Windows/Ubuntu CI passed at
+`3c30866`; this is **not** a CI receipt for the following correction head.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs` | New service-level launch-expiry consequence and production CLI gate | 13 passed, 0 failed, 0 skipped; post-admission expiry blocked one reserved attempt, retained workspace/owner, stopped scheduler and refused new work while identical replay remained readable | 0 |
+| `node --test` | Full suite after the review correction, first run | 305 tests, 303 passed, **1 failed** (`B10-03`, missing `before` output at `test/subprocess.test.mjs:78`), 1 Windows skip; output saved outside repo as `b29-p3-20261114-suite.log` | 1 |
+| `node --test test/subprocess.test.mjs` | Isolated reproduction of the pre-existing load-sensitive B10-03 test | 9 tests, 8 passed, 0 failed, 1 Windows skip | 0 |
+| `node --test` | Full suite after the review correction, second run | 305 tests, 303 passed, **1 failed** (same B10-03 `'' !== 'before'`), 1 Windows skip; output saved as `b29-p3-20261114-suite-rerun.log` | 1 |
+| `node --test --test-concurrency=1` | Full suite without cross-file test contention | 305 tests, 304 passed, 0 failed, 1 Windows skip; output saved as `b29-p3-20261114-serial-suite.log` | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback regression after test/docs correction | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `node --check mcp-server.mjs` and `node --check test/free-provider.test.mjs` | Syntax of changed header/fixture test | no output | 0 each |
+| `git diff --cached --check` | Staged review correction whitespace | no output | 0 |
+
+Result: the new service-level test verifies the conservative scheduler behavior
+after an approval expires between admission and `prepare`: a single attempt
+and workspace remain, the task is blocked and requires reconciliation, new
+work refuses while identical replay is readable, and ownership remains held.
+No OpenCode child is returned by `prepare`. The full local suite did **not**
+pass on either correction run: both failed only B10-03 under concurrent load;
+the same test passed in isolation and the complete serial suite (304 passed,
+one Windows skip, exit 0). This same case failed in an independent
+review run at the preceding head, passed in the next run and passed in
+Windows/Ubuntu CI there. A passing local result at the preceding head is
+not a deterministic-suite claim for the correction head.
+
+Evidence level: Unit — the new fixture test exercises the real service,
+temporary store and Git workspace after a rejected launch. It does not prove
+that actual external effects are absent in a production crash. Previous
+OpenCode integration evidence remains bound to `3c30866`, where the production
+runtime was unchanged by this review correction.
+
+Not rerun: pinned MCP and eight-scenario free harness (this correction changes
+only a test and the production entry point's comment, not its executable
+logic); standalone smoke, B16/B17, B19 (unchanged); catalog, real inference,
+B20/#43 and B30 live containment (not authorized). Final-head CI and re-review
+remain pending at this entry.
+
+Claim: this entry supports a new fixture service-level consequence test and
+one passing **serial** full-suite run, while reporting **two failed default-concurrency**
+full-suite runs due to pre-existing B10-03, based on the commands above. It
+does not support deterministic green default-concurrency local runs, redirect
+containment, live use, B20/M3 or merge.
+
+## M3 preparation: B29 exact-head CI and status correction — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `gh run view 43628743462 --json headSha,conclusion,jobs` | Verify PR #44's CI at `762c133` | Run conclusion `failure`; Windows `Run test suite (PowerShell)` failed; Ubuntu job succeeded. The published review links the Windows failure to `test/task-maintenance.test.mjs:183`, `Unexpected end of JSON input`. `gh run view 43628743462 --log-failed` returned no text in this session, so the raw failure detail was not independently retrieved here | 0 |
+| `node --test test/task-maintenance.test.mjs` | Check the Windows CI failing test file in isolation | 21 passed, 0 failed, 0 skipped; the competing stale-maintenance recovery test passed in this run | 0 |
+| `git diff --check` | Check documentation correction whitespace | no output | 0 |
+
+Result: CI for `762c133` is **not green**: the Windows test-suite step failed
+while Ubuntu passed. The isolated maintenance file passed locally, which does
+not cancel the CI failure or establish that the race is resolved. The previous
+validation entry already records two local default-concurrency B10-03 failures
+and a successful serial suite. The handoff now distinguishes historical green
+runs from the current PR head rather than silently promoting them.
+
+Evidence level: Unit — the local maintenance test exercises temporary state
+and process behavior; it does not prove CI stability or a safe live worker.
+
+Not rerun: full `node --test` (this documentation-only correction does not alter
+executable code; default-concurrency failures already recorded), pinned
+OpenCode fixture/MCP harnesses (unchanged), B17/B19 gates (unchanged), public
+catalog, real inference and B20/#43 (not authorized), and B30 isolation/relay
+(not implemented). Exact-head CI for the upcoming documentation commit remains
+pending and must be verified separately.
+
+Claim: This entry supports an honest red Windows/green Ubuntu CI status at
+`762c133`, based on `gh run view 43628743462 --json headSha,conclusion,jobs`,
+and an isolated maintenance pass based on `node --test test/task-maintenance.test.mjs`.
+It does not support a passing CI receipt for a later head, deterministic
+default-concurrency success, redirect containment, live use or merge.
+
+## M3 preparation: B29 P3 feedback receipts and exact-head CI — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm; Node directory
+`C:\Users\paulo\AppData\Roaming\fnm\node-versions\v24.22.1\installation` on the
+child PATH). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `gh run view 43630565937 --json headSha,conclusion,jobs` | Verify PR #44's exact-head CI at `113e926` | Run `success`, head `113e926c08520ce7acd46c9a206d6d49ea89ff53`; Windows job `132556010859` `success`, Ubuntu job `132556011017` `success` | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/actions/jobs/132556010859/logs` | Read the Windows job raw log | `tests 305 / pass 304 / fail 0 / skipped 1`; demo `429` then `200` | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/actions/jobs/132556011017/logs` | Read the Ubuntu job raw log | `tests 305 / pass 301 / fail 0 / skipped 4`; demo `429` then `200` | 0 |
+| `node --test test/task-maintenance.test.mjs` | Isolate the Windows maintenance recovery test | 21 passed, 0 failed, 0 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Documentation correction whitespace | no output | 0 |
+| `git diff --cached --check` | Staged documentation correction whitespace | no output | 0 |
+
+Result: the exact-head CI for `113e926` is verified green in run `43630565937`:
+Windows job `132556010859` passed 305 tests (304 pass/0 fail/1 skip) and the
+demo returned 429 then 200; Ubuntu job `132556011017` passed 305 tests (301
+pass/0 fail/4 skip) and the demo returned 429 then 200. This supersedes the
+preceding entry's statement that the exact-head CI "remains pending". The
+isolated maintenance test passed 21/21 and the demo returned 429 then 200, so
+this documentation-only change leaves the tested behavior unchanged. The
+supervisor provided an independently run serial suite (`node --test
+--test-concurrency=1` at `113e926`) of 305 tests / 304 pass / 0 fail / 1 skip,
+native exit 0, logged outside the repository; that is supervisor-run evidence,
+not a command run here. The independent review at `113e926` additionally
+observed a default-concurrency run of 305 tests / 298 pass / 6 fail / 1 skip,
+exit 1: five pre-existing `test/mcp-server.test.mjs` output-wait timeouts
+(B15-01c/01d/01e/01f and B15-03b) plus the pre-existing B10-03 case. Both test
+files are untouched by B29 (`git diff 688da04..113e926 --
+test/mcp-server.test.mjs test/subprocess.test.mjs` is empty). No deterministic
+green default-concurrency claim is made.
+
+Evidence level: Unit — the isolated maintenance test and the fallback demo
+exercise temporary state, process and policy behavior and show that the
+documentation-only correction leaves them unchanged. The `gh` commands are an
+external observation of GitHub Actions status, reported as the exact-head CI
+receipt, not a local test of the code.
+
+Not rerun: full `node --test` default-concurrency (the supervisor supplied the
+serial run and the independent review supplied the six-failure observation),
+pinned OpenCode free/MCP harnesses (no executable change), standalone smoke,
+B16/B17, B19 pulse, public catalog, real inference, B20/#43 and B30
+isolation/relay (not authorized or not implemented).
+
+Claim: This entry supports the green exact-head CI receipt at `113e926` (run
+`43630565937`) and the isolated maintenance/demo passes, based on `gh run view`
+/ `gh api` and `node --test test/task-maintenance.test.mjs` / `node
+examples/fallback-demo.mjs`. It does not support deterministic green
+default-concurrency runs, redirect containment, live use, B20/M3 or merge.

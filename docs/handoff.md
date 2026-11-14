@@ -1,12 +1,33 @@
 # Continuation point — 2026-11-14
 
-Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
+Remote `main` is `688da04bea29b300eb4cb1815bfbcb9fd0cd35ca` (B19 included). B12–B19 are
+merged. B20 remains draft PR #43 and unmerged. B29 is a draft preparation PR on
+`task/B29-opencode-free-provider` (see below); it does not claim live availability or M3.
 B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
 `43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
 not production model-quality/provider evidence. ADR-007 still selects MCP stdio
 revision `2026-07-28`.
 
-## Current implementation status: B19 reviewed and published as PR #42
+## Current implementation status: B29 fixture preparation, blocked for live use
+
+B29 (`task/B29-opencode-free-provider`, base `688da04`) prepares one anonymous free route,
+`opencode/deepseek-v4.1-flash-free`, with zero-price metadata validation, expiring
+payload-bound operator approval, a service-owned guard plugin and the B11 launch
+builder. The pinned OpenCode 2.2.5 host loads the guard through `plugins`, sends only the
+fixed model with `Bearer public`, and makes one request after 401/402/429 or a dropped
+connection. At the earlier B29 preparation checkpoint, the full suite had 299
+passes, 0 failures and 1 platform skip; that is not a result for the current PR
+head. Later default-concurrency runs exposed the B10-03 timing failure, and
+the Windows CI at `762c133` failed in the maintenance recovery test.
+
+Blocker: on the pinned host a 307 from the model endpoint is followed and the prompt body
+reaches the alternate origin. The guard cannot prevent or detect it. Live composition is
+therefore refused by `createConfiguredTaskService`, and
+[ADR-009](adr/009-free-anonymous-worker.md) is accepted only for fixture
+preparation; live activation remains prohibited. The integration harness
+`integration/opencode-free.mjs` exits 1 on this scenario by design. B20 remains unexecuted.
+
+## Historical B19 checkpoint (merged as PR #42)
 
 The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
 `c268239`, with correction work on top of supervisor checkpoint `91e43e4`. It uses
@@ -30,18 +51,78 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: inspect B19 PR #42's exact-head CI/merge receipts
+## Next action: close B29 feedback and re-review the new fixture head
 
-1. [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) is the single B19
-   delivery. Publication branch/head were verified; it was open with CI pending at
-   this snapshot. Read all findings, corrections and current-head CI/merge receipts.
-2. The current supervisor has B19-only merge authorization after all acceptance,
-   reviewed-head CI and blocking-feedback gates pass. Recheck head immediately before
-   merge; any changed head requires renewed review/validation. Verify origin/main and
-   post-merge CI. If the PR is already merged, do not repeat publication or merge;
-   inspect those receipts. No other task/session inherits this authorization.
-3. B20 remains gated on M2b acceptance and an explicitly authorized real
-   model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
+2026-11-14 fixture correction: `integration/mcp-free-workflow.mjs` now ran with
+the pinned OpenCode 2.2.5 client through real MCP stdio and loopback-only
+fixture composition. It observed queued/running/succeeded, a scoped diff and
+passing test exit, a denied out-of-scope write and two duplicate submissions
+without extra attempts/workspaces/model requests. New pinned fixtures preserved
+partial effects after a drop and blocked/retained ownership after an uncertain
+deadline. One local `node --test` run at `3c30866` passed 303 with one Windows
+platform skip; later default-concurrency runs failed the pre-existing B10-03
+timing case, while a serial run at `762c133` passed 304 with one skip. The
+historical 307 still failed, delivering 7121 body bytes to a second loopback
+origin. See the validation entries for native exits. Production `mcp-server.mjs` remains
+passive/live-closed; no catalog, real provider, B20, relay or merge was run.
+At `113e926`, PR #44's description and remote head were verified and Actions run
+`43630565937` passed on Windows (305 tests/304 pass/0 fail/1 skip) and Ubuntu
+(305 tests/301 pass/0 fail/4 skip), with the demo returning 429 then 200 on both. This is a green
+rerun, not a repair of the create-then-write race in
+`test/task-maintenance.test.mjs`: Windows run `43628743462` at `762c133`
+failed and the test file is unchanged. Local default-concurrency runs can fail
+on pre-existing B10-03 output timing and on five MCP-server output-wait
+timeouts (B15-01c/01d/01e/01f/03b); the serial suite passed 304/1 skip.
+Next, reply to the three P3 findings at `113e926`, verify the new head and
+its CI, and obtain re-review before the maintainer decides draft-to-ready for
+the fixture-only PR. Keep PR #44 draft until that decision, not because the
+previous head's Windows check was red; neither a green rerun nor a developer
+reply establishes deterministic default-concurrency stability or approval.
+B30's separate branch cannot implement live use until
+B29 is merged and verifiable deployment infrastructure exists; this Windows
+host currently reports the required Hyper-V feature disabled. The following
+decision checkpoint is historical and remains a live safety gate.
+
+Review follow-up at `3c30866`: an independent reviewer reproduced the pinned
+fixture MCP path and the 307 failure; Windows/Ubuntu CI passed at that head.
+Four non-blocking P3 findings were published. This correction clarifies ADR-009
+and the CLI header, exercises the real service outcome when approval expires
+after admission, and records an independent full-suite run that failed the
+pre-existing B10-03 timing case before a passing rerun. Revalidate the
+correction head and reply to all four review threads before changing draft
+status. No B30 gateway or live approval has been exercised.
+
+Re-review at `762c133` verified those four replies, but reported three new
+findings: Windows CI run `43628743462` failed in
+`test/task-maintenance.test.mjs:183` (`Unexpected end of JSON input` while a
+competing process was writing the file); Ubuntu passed. PR #44's body still
+named `3c30866` and a green default suite, and the earlier status lines above
+were misleading without their historical scope. The PR remains draft. Do not
+interpret the independent local fixture-only verdict as a passing CI receipt
+or redirect containment; the 307 still sent 7121 body bytes to another origin.
+
+2026-11-14 decision update: ADR-009 is accepted **for fixture-only preparation**;
+the live route remains closed. B29 is narrowed without rewriting its original
+FAIL: complete B29-04 with an actual fixture MCP client, then re-review the new
+head of draft PR #44. B30 is the separate live relay plus independently
+verified worker-egress gate; the B30 card is prepared on its own branch, not
+implemented in B29. Require pinned-host redirect and WebSocket-negative tests,
+fresh authorized catalog evidence, and a maintainer-signed live approval bound
+to the relay/egress policy before any real inference. The historical steps below
+record the pre-decision state and do not supersede this update.
+
+Historical pre-decision instructions (superseded by the update above):
+
+1. Choose one option in [ADR-009](adr/009-free-anonymous-worker.md): a trusted loopback
+   relay owned by the service (new trust boundary, needs its own card), a worker-host
+   egress allowlist, a pinned host change exposing redirect control, or recorded
+   acceptance of the redirect egress risk. Until a decision is recorded, keep the live
+   composition closed and the B29 PR as draft.
+2. Do not run the free route, a catalog GET, or B20 without a separate approval naming the
+   model, privacy acknowledgement, objective and budget. Real inference is `not_run`.
+3. B20 [PR #43](https://github.com/pbsilvabd/ai-orchestrator/pull/43) remains a draft and
+   unmerged; its proposed `test/redaction-regression.test.mjs` was not implemented in B29.
+   B19 is merged; its supporting diagnostics are not M3 evidence.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 

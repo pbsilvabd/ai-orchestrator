@@ -66,3 +66,37 @@ duplicate/concurrent events, restarts, tool/image messages, preserved permission
 and returning to the preferred model only in a new safe operation. Also verify
 log redaction, model discovery versus authorization and global provider limits.
 Local policy tests do not implicitly satisfy any of these gates.
+
+## B29 free-route evidence
+
+Date: 2026-11-14. Scope: the guard plugin and the built-in `opencode` provider for the
+single anonymous route `opencode/deepseek-v4.1-flash-free`
+([ADR-009](adr/009-free-anonymous-worker.md)). Source: the OpenCode 2.2.5 tree in the
+maintainer's audit directory, extracted from the pinned release archive; its commit was
+not re-verified in this session. The release ZIP SHA-256 matched the published digest in
+`SHA256SUMS`. Dynamic behavior was observed only on the pinned binary, with a loopback
+fixture and no network call to the free route.
+
+- Plugin loading (`packages/core/src/plugin/module.ts`): a local absolute directory is
+  loaded without npm installation. `plugin.use` decisions use the last matching policy
+  statement (`packages/core/src/managed-policy.ts`), so a directory-specific allow after a
+  wildcard deny works. A denied plugin returns `{ blocked: true }`; how callers report it was
+  not traced. The worker has no guard in that case, and its inert endpoint `127.0.0.1:1`
+  should fail closed (not observed on the pinned binary).
+- Hooks (`packages/plugin/src/promise/session.ts`, `packages/core/src/session/model-request.ts`):
+  `model.request` may replace `baseURL`; `http.request` may replace the `Request`; `retry`
+  honors `decision`; `title` honors `result`. The `http.response` event passes a `Response`
+  rebuilt from status and headers, so `redirected` and the final URL are not visible.
+- Model reference (`packages/schema/src/model.ts`): `{ providerID, id, variant? }`. The host
+  reports the default variant as `"default"`, and `withVariant`
+  (`packages/core/src/model-resolver.ts`) treats it as no overlay.
+- Built-in provider (`packages/core/src/plugin/provider/opencode.ts`): without a key it sets
+  `apiKey: "public"` and enables the provider; models with positive input cost are disabled
+  when no key exists. Remote Console configuration is fetched only with a connection.
+- Redirects: model requests use the default fetch client. Only specific calls set
+  `FetchHttpClient.RequestInit` (for example websearch `redirect: "error"`, webfetch
+  `manual`). The guard's `Request` redirect field is not honored. Observed: a 307 from the
+  fixture was followed and the prompt body reached a second loopback origin without the
+  bearer credential (B29 harness, `redirect-307`).
+- Websocket: `experimental.ws.*` hooks apply only when the durable runner selects a
+  websocket transport. Not guarded; the free configuration does not select it.

@@ -1640,3 +1640,221 @@ Template:
   code verification. Exact-head CI, feedback re-read and conditional merge follow.
 - Follow-up: publish SHA-specific review/resolutions, verify this documentation diff,
   then await final-head CI. No merge until all gates are observed passing.
+
+## 2026-11-14 — M3 preparation: B29 anonymous free worker, fixture only
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: code, unit tests, a pinned-host loopback harness and docs; the live free route
+  stays closed, so no real inference, catalog GET, paid call or merge was performed.
+- Steps:
+  1. Inspected the uncommitted B29 worktree on base `688da04` and ran the focal tests (8
+     passed) and the full suite (299 passed, one platform skip) on the initial code. The
+     pinned-host harness had not been run yet.
+  2. Ran the pinned OpenCode 2.2.5 binary against a loopback fixture. The guard did not
+     admit the model: it refused `variant: "default"`, which the host reports for every
+     model and treats as a no-op. The guard now accepts `undefined` or `default` and still
+     refuses any other variant or `null`; the unit fixture now uses the observed shape.
+  3. Ran the pinned harness across six scenarios. Normal, 401, 402, 429 and connection-drop
+     passed. The 307 redirect was followed and reached a second loopback origin with the
+     prompt body; the guard cannot control it, so the redirect case fails by design.
+  4. Removed the ineffective `redirect: "error"` Request replacement in
+     `src/free-guard.mjs` and documented the host limit in the guard header.
+  5. Closed live composition in `src/configured-service.mjs`: a free worker without an
+     explicit loopback fixture endpoint is refused before approval or metadata reads.
+     Metadata is required from trusted callers; no default catalog fetch remains there.
+  6. Adjusted `test/free-provider.test.mjs` to the observed event shape, removed the
+     redirect assertion and added the live-closure and variant cases.
+  7. Added `integration/opencode-free.mjs` (pinned-host loopback harness), its section in
+     `integration/README.md`, the admission clause in `docs/task-contract.md`, the ADR-009
+     decision (proposed), the plugin evidence section in `docs/plugin-audit.md`, and the
+     B29 status matrix in `docs/tasks/B29.md`.
+  8. Updated the backlog index, roadmap M3 status and handoff next action; recorded B19 as
+     merged on main `688da04`. B20 PR #43 and its unimplemented test were not touched.
+- Files: `src/free-provider.mjs`, `src/free-guard.mjs`, `src/configured-service.mjs`,
+  `src/opencode.mjs`, `src/service.mjs`, `mcp-server.mjs`,
+  `test/free-provider.test.mjs`, `test/fixtures/free-worker.mjs`,
+  `integration/opencode-free.mjs`, `integration/README.md`,
+  `docs/adr/009-free-anonymous-worker.md`, `docs/tasks/B29.md`,
+  `docs/task-contract.md`, `docs/plugin-audit.md`, `docs/backlog.md`, `docs/roadmap.md`,
+  `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test test/free-provider.test.mjs` → 8 passed, 0 failed; `node --test`
+  → 300 tests, 299 passed, 0 failed, 1 platform-gated skip; `node examples/fallback-demo.mjs`
+  → 429 then 200; `node --check` on nine changed `.mjs` files passed; the pinned harness
+  exited 1 only on `redirect-307`. Details are in [validation](validation.md). The
+  OpenCode smoke, MCP gate, B16 pinned-client workflow and live free route were not rerun.
+- Follow-up: the maintainer must choose a redirect control in ADR-009 before any live
+  approval; until then the B29 PR stays draft and B20 remains not_run.
+
+## 2026-11-14 — M3 preparation: B29 redirect-control decision
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: documentation-only technical/security decision; no worker, relay, live
+  request, public catalog request or B20/#43 change.
+- Steps:
+  1. Checked PR #44 at `4d28b65`: still draft; Windows and Ubuntu CI passed.
+     Reviewed the pinned host redirect path and the existing B29 evidence.
+  2. Amended ADR-009 with a conditional relay plus independently verified
+     worker egress restriction; kept live composition closed and required a
+     maintainer-signed, relay-bound approval and a WebSocket-negative gate.
+  3. Narrowed the B29 card to fixture-only without erasing its historical
+     307 failure; kept MCP-client fixture acceptance mandatory. Updated the
+     backlog PR link, roadmap and handoff. Prepared B30's card separately on
+     `task/B30-free-relay` from main; no B30 code was added to this branch.
+- Files: `docs/adr/009-free-anonymous-worker.md`, `docs/tasks/B29.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → first run 297 passed/2 failed, second run
+  298 passed/1 failed (the same timing-sensitive B10-03 case); isolated
+  `node --test test/subprocess.test.mjs` → 8 passed, 1 Windows skip;
+  `node --test test/free-provider.test.mjs` → 8 passed; demo → 429 then
+  200; `git diff --check` → no errors. No pinned-host harness, catalog,
+  real inference or MCP-client fixture was rerun for this docs-only decision.
+- Follow-up: complete B29-04 MCP-client fixture evidence and review PR #44's
+  new head while retaining draft; B30's separate branch holds the live card.
+
+## 2026-11-14 — M3 preparation: B29 pinned-client fixture MCP correction
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: test-only integration code, focused process/unit tests and documentation;
+  no production service/CLI source, external provider, public catalog, B20 or
+  live worker route changed.
+- Steps:
+  1. Added `integration/fixtures/b29-free-mcp-server.mjs` as a trusted
+     loopback-only composition entry point distinct from the production CLI.
+  2. Added `integration/mcp-free-workflow.mjs` to exercise the pinned client,
+     real MCP stdio, queued/running/result polling, two idempotent replays,
+     a scoped diff/test exit and denied out-of-scope write. Reused the B16
+     Windows Job Object with an explicit empty-job cleanup marker.
+  3. Added CLI refusal/passive tests, direct launch-time approval expiry tests
+     and pinned-host post-effect loss and uncertain-deadline fixtures, keeping
+     the historical 307 target/body-byte leak as a failing scenario.
+  4. Reviewed implementation/authority and responded to the second free-agent
+     inspection finding: built the status sequence from actual polls, removed
+     unobserved external-call booleans, tightened the dispatch barrier and
+     recorded the scheduler's required reconciliation on an uncertain stop.
+  5. Independently reran focal, pinned-client, negative harness, full suite and
+     demo checks. Amended the ADR/contract for test-only MCP composition,
+     documented the eight-scenario harness and updated card, backlog, roadmap
+     table formatting/status and handoff. Appended this and validation entries
+     rather than rewriting earlier failed/partial checkpoints.
+- Files: `integration/fixtures/b29-free-mcp-server.mjs`,
+  `integration/mcp-free-workflow.mjs`, `integration/opencode-free.mjs`,
+  `integration/README.md`, `test/b29-cli-composition.test.mjs`,
+  `test/free-provider.test.mjs`, `docs/adr/009-free-anonymous-worker.md`,
+  `docs/task-contract.md`, `docs/tasks/B29.md`, `docs/backlog.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 303 passed, 0 failed, 1 Windows skip;
+  `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs`
+  → 12 passed; pinned MCP fixture → queued/running/succeeded, one attempt,
+  test exit 0; pinned free harness → exit 1 solely for redirect-307, with
+  one alternate request and 7121 body bytes; demo → 429 then 200;
+  `git diff --cached --check` → no whitespace errors. Standalone smoke, B16/B17,
+  B19, real catalog/inference and B30 deployment were not rerun.
+- Follow-up: review the complete diff and PR feedback at the published B29
+  head, verify Windows/Ubuntu CI, then mark only the fixture PR ready if
+  checks pass. B30's relay/egress/signature work waits for B29 merge and a
+  suitable deployment; live stays closed. This entry adapts the task-card
+  status format by appending a dated matrix checkpoint rather than rewriting
+  the historical failed 307 row.
+
+## 2026-11-14 — M3 preparation: B29 independent review corrections
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: one fixture service-level regression and documentation/comment fixes;
+  no worker/transport executable behavior, live endpoint, catalog or PR #43
+  changed.
+- Steps:
+  1. Read all PR #44 conversation, submitted reviews and four inline P3
+     findings at `3c30866`; confirmed the independent fixture-only verdict,
+     reproduced 307 failure and Windows/Ubuntu CI success at that head.
+  2. Corrected `docs/handoff.md` to describe ADR-009 as accepted for fixture
+     preparation and `mcp-server.mjs` header to document the approval variable,
+     recognized worker block and explicit live closure.
+  3. Added a real service-level test to `test/free-provider.test.mjs` for
+     approval expiry after admission: the reserved attempt blocks, workspace
+     and owner lock remain, new submissions refuse and replay stays readable.
+     Documented that conservative outcome in the card and task contract.
+  4. Recorded the independent review's full-suite B10-03 failure and our two
+     repeated full-suite failures without rewriting the earlier successful
+     run; isolated B10-03 passed. This pre-existing timing issue requires a
+     separate maintenance correction and is not silently treated as green.
+- Files: `mcp-server.mjs`, `test/free-provider.test.mjs`, `docs/handoff.md`,
+  `docs/tasks/B29.md`, `docs/task-contract.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: focal B29/CLI tests → 13 passed; `node --test` twice →
+  303 passed/1 B10-03 failed/1 Windows skip each, exit 1; isolated
+  `test/subprocess.test.mjs` → 8 passed/1 skip, exit 0;
+  `node --test --test-concurrency=1` → 304 passed/1 skip, exit 0;
+  demo → 429 then 200,
+  exit 0; syntax and staged diff checks → no errors. Pinned MCP/negative
+  harness, standalone smoke, B16/B17, B19 and live routes were not rerun.
+- Follow-up: publish this correction in the same PR #44 and reply to each
+  inline finding with its new SHA/evidence. Re-review the exact head and CI;
+  if CI fails, keep draft and correct it. Even if fixture-only PR is ready,
+  B30 owns the failed live 307 gate and merge needs separate authorization.
+
+## 2026-11-14 — M3 preparation: B29 exact-head CI and status correction
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: docs only; no service, test or live worker behavior changed.
+- Steps:
+  1. Read the three new PR #44 findings after the `762c133` re-review and
+     verified run `43628743462`: Windows failed in the PowerShell suite step,
+     Ubuntu passed. The review reports an incomplete JSON read in the
+     competing maintenance recovery test; this session's `--log-failed`
+     response contained no text.
+  2. Corrected `docs/handoff.md` to label the older 299/303-pass reports as
+     historical snapshots, record the two B10-03 default-suite failures and
+     the red Windows CI, and keep the draft PR's next action current.
+  3. Appended the CI receipt and isolated test observation to
+     `docs/validation.md`; retained the earlier green runs as historical
+     evidence rather than revising their original entries.
+- Files: `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `gh run view 43628743462 --json headSha,conclusion,jobs` →
+  Windows failure/Ubuntu success at `762c133`, command exit 0;
+  `node --test test/task-maintenance.test.mjs` → 21 passed, exit 0;
+  `git diff --check` → no output, exit 0. The full suite, pinned-host
+  harnesses, public catalog, real inference, B20 and B30 were not rerun.
+- Follow-up: publish the correction and an accurate PR #44 description;
+  inspect CI and feedback at the new head. Keep draft while a required check
+  is red; a green rerun or a separately reviewed race correction must be
+  observed before any fixture-only ready transition. No merge is authorized.
+
+## 2026-11-14 — M3 preparation: B29 P3 feedback receipts and exact-head CI
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: docs only; no executable, test or live worker behavior changed.
+- Steps:
+  1. Read the three new P3 findings at `113e926` (r4575329883, r4575329966,
+     r4575330038) and the supervisor's in-progress edits to `docs/handoff.md`,
+     `docs/tasks/B29.md`, `docs/roadmap.md` and `docs/backlog.md`.
+  2. Verified the exact-head CI receipt (run `43630565937`) with `gh run view`
+     and the raw Windows/Ubuntu job logs, and appended it to `docs/validation.md`
+     as a superseding entry rather than rewriting the earlier "remains pending"
+     sentence.
+  3. Extended the default-concurrency failure wording in `docs/validation.md`
+     to the six-failure run (five `test/mcp-server.test.mjs` output-wait
+     timeouts plus B10-03) without rewriting the earlier B10-03-only rows; the
+     B29-06 card row (supervisor edit) and the PR description carry the same
+     six-failure qualification.
+  4. Ran the isolated maintenance test and fallback demo with Node on the child
+     PATH, capturing native exits; cited the supervisor's serial-suite receipt
+     and the independent review's six-failure observation as evidence I did not
+     reproduce myself.
+  5. Updated the PR #44 body (new head, three P3 links, six-failure run, removal
+     of the stale "Current-head CI is required" line) and replied to the three
+     inline findings with the new SHA and evidence.
+- Files: `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/tasks/B29.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test test/task-maintenance.test.mjs` → 21 passed, 0
+  failed, exit 0; `node examples/fallback-demo.mjs` → 429 then 200, exit 0;
+  supervisor serial `node --test --test-concurrency=1` → 305/304 pass/0 fail/1
+  skip, exit 0; `gh run view 43630565937` → success at `113e926`; `git diff
+  --check` and `git diff --cached --check` → no output. The pinned free/MCP
+  harnesses, standalone smoke, B16/B17, B19 pulse, public catalog, real
+  inference, B20/#43 and B30 were not rerun.
+- Follow-up: verify the new head's exact-head CI (the last green run was at
+  `113e926`; the pushed head's CI is pending until observed), obtain re-review
+  of the three P3 replies, then the maintainer's draft-to-ready decision for
+  the fixture-only PR. No merge is authorized.

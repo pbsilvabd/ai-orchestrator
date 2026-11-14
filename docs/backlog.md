@@ -103,7 +103,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
-| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
+| [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
+| [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Draft [PR #44](https://github.com/pbsilvabd/ai-orchestrator/pull/44): local pinned-client MCP fixture passed; Windows/Ubuntu CI green at `113e926` (rerun, not race fix); three P3 replies/new-head re-review and maintainer draft-to-ready decision pending; live closed | B17/B19 evidence; B30 owns live redirect/egress gate |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |

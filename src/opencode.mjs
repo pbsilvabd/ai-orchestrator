@@ -1,5 +1,8 @@
 import { isAbsolute, relative, resolve, sep } from 'node:path';
 import { lstatSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
+import { FREE_MODEL, FREE_ENDPOINT, FREE_PACKAGE, FREE_MAX_REQUESTS, METADATA_TTL_MS,
+  validateFreeSubmission } from './free-provider.mjs';
+import { freeGuardSource } from './free-guard.mjs';
 
 const FIXED_HOST_ENVIRONMENT = new Set([
   'SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC', 'HOME', 'USERPROFILE',
@@ -14,12 +17,17 @@ const PROVIDER_CREDENTIAL_ENVIRONMENT = new Set(['FIXTURE_API_KEY']);
 const ALLOWED_TOOLS = new Set(['read', 'edit']);
 
 // Explicit opt-in service adapter. Configuration is supplied by the maintainer,
-// copied once and never derived from task text. Only loopback fixtures are supported.
+// copied once and never derived from task text. Free mode additionally requires
+// expiring, payload-bound operator approval; catalog availability is not approval.
 export function createOpenCodeWorker({ runtimeRoot, testCommands = [], evidenceLevel = 'opencode-integration', ...options } = {}) {
   if (typeof runtimeRoot !== 'string' || !isAbsolute(runtimeRoot))
     fail('invalid_argument', 'worker runtimeRoot must be absolute');
   const configured = structuredClone(options);
-  return { testCommands: structuredClone(testCommands), evidenceLevel, prepare({ task, workspace }) {
+  const free = ['opencode-free', 'opencode-free-fixture'].includes(configured.provider?.kind);
+  return { testCommands: structuredClone(testCommands), evidenceLevel,
+    ...(free && { validateSubmission(request) {
+      validateFreeSubmission({ request, approval: configured.freeApproval, snapshot: configured.freeMetadata });
+    } }), prepare({ task, workspace }) {
     const attemptId = task?.attempts?.at(-1)?.attemptId;
     const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-4[a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/;
     if (!uuid.test(task?.taskId ?? '') || !uuid.test(attemptId ?? ''))
@@ -29,6 +37,13 @@ export function createOpenCodeWorker({ runtimeRoot, testCommands = [], evidenceL
       configRoot, stateRoot: resolve(configRoot, 'state') });
     // New attempt directories only. Never overwrite runtime state from a past run.
     mkdirSync(configRoot, { recursive: true, mode: 0o700 });
+    if (invocation.guardSource) {
+      const guardRoot = resolve(configRoot, 'guard');
+      mkdirSync(guardRoot, { mode: 0o700 });
+      writeFileSync(resolve(guardRoot, 'package.json'), JSON.stringify({ name: 'ai-orchestrator-free-guard',
+        type: 'module', exports: './index.js' }), { flag: 'wx', mode: 0o600 });
+      writeFileSync(resolve(guardRoot, 'index.js'), invocation.guardSource, { flag: 'wx', mode: 0o600 });
+    }
     writeFileSync(invocation.env.OPENCODE_CONFIG, JSON.stringify(invocation.config), { flag: 'wx', mode: 0o600 });
     writeFileSync(invocation.env.OPENCODE_MODELS_PATH, '{}', { flag: 'wx', mode: 0o600 });
     return invocation;
@@ -47,7 +62,8 @@ export class OpenCodeLaunchError extends Error {
 // configuration. Provider credentials are passed only when explicitly named and supplied.
 export function buildOpenCodeInvocation({ task, executable, workspace, configRoot,
   stateRoot, authorizedModel, allowedTools, writablePaths, provider, providerEnvironment = {},
-  hostEnvironment = {}, maxBudgetMs = 600_000, maxOutputBytes = 1_048_576 } = {}) {
+  hostEnvironment = {}, maxBudgetMs = 600_000, maxOutputBytes = 1_048_576,
+  freeApproval, freeMetadata } = {}) {
   const request = task?.request;
   const authorization = request?.authorization;
   const limits = request?.limits;
@@ -94,10 +110,22 @@ export function buildOpenCodeInvocation({ task, executable, workspace, configRoo
       limits.maxOutputBytes < 0 || limits.maxOutputBytes > maxOutputBytes) {
     fail('authorization_denied', 'task limits exceed the configured worker budget');
   }
-  if (!provider || provider.package !== '@opencode/ai/providers/openai-compatible' ||
-      typeof provider.baseURL !== 'string' || !/^http:\/\/127\.0\.0\.1:\d+\/v1\/?$/.test(provider.baseURL) ||
+  const free = ['opencode-free', 'opencode-free-fixture'].includes(provider?.kind);
+  const loopback = /^http:\/\/127\.0\.0\.1:\d+\/v1\/?$/;
+  if (!provider || provider.package !== FREE_PACKAGE ||
+      typeof provider.baseURL !== 'string' ||
+      !(provider.kind === 'opencode-free' ? provider.baseURL === FREE_ENDPOINT : loopback.test(provider.baseURL)) ||
+      (provider.kind !== undefined && !free) ||
       !isPlainObject(providerEnvironment) || !isPlainObject(hostEnvironment)) {
     fail('authorization_denied', 'provider must be an explicitly configured loopback fixture');
+  }
+  let freeModel;
+  if (free) {
+    freeModel = validateFreeSubmission({ request, approval: freeApproval, snapshot: freeMetadata });
+    if (authorizedModel !== FREE_MODEL || task.baseCommit !== request.repository.baseRef ||
+        Object.keys(providerEnvironment).length ||
+        Object.keys(provider).some(key => !['kind', 'package', 'baseURL'].includes(key)))
+      fail('authorization_denied', 'free worker configuration exceeds its fixed profile');
   }
   const [providerId, modelId] = authorizedModel.split('/');
   if (!/^[A-Za-z0-9._-]+$/.test(providerId) || !/^[A-Za-z0-9._:-]+$/.test(modelId)) {
@@ -168,6 +196,35 @@ export function buildOpenCodeInvocation({ task, executable, workspace, configRoo
       },
     },
   };
+  let guardSource;
+  if (free) {
+    const guardRoot = resolve(configRoot, 'guard');
+    config.plugins = [guardRoot];
+    config.compaction = { auto: false };
+    config.warming = false;
+    config.snapshots = false;
+    config.agents = { build: { model: authorizedModel, steps: 8 },
+      title: { model: authorizedModel, disabled: true }, summary: { disabled: true },
+      compaction: { disabled: true }, general: { disabled: true }, explore: { disabled: true } };
+    config.policies = [
+      { action: 'provider.use', resource: '*', effect: 'deny' },
+      { action: 'provider.use', resource: 'opencode', effect: 'allow' },
+      { action: 'mcp.use', resource: '*', effect: 'deny' },
+      { action: 'skill.use', resource: '*', effect: 'deny' },
+      { action: 'plugin.use', resource: '*', effect: 'deny' },
+      { action: 'plugin.use', resource: guardRoot, effect: 'allow' },
+    ];
+    const configuredProvider = config.providers.opencode;
+    configuredProvider.name = 'Explicit anonymous free worker';
+    configuredProvider.settings.baseURL = 'http://127.0.0.1:1/v1';
+    configuredProvider.settings.apiKey = 'public';
+    configuredProvider.models[modelId].cost = { input: 0, output: 0, cache: { read: 0, write: 0 } };
+    configuredProvider.models[modelId].compatibility = { reasoningField: 'reasoning_content' };
+    configuredProvider.models[modelId].limit.output = Math.min(4096, freeModel.limit.output);
+    guardSource = freeGuardSource({ modelID: modelId, endpoint: provider.baseURL.replace(/\/$/, ''),
+      expiresAt: Math.min(freeApproval.expiresAt, freeMetadata.observedAt + METADATA_TTL_MS),
+      maxRequests: FREE_MAX_REQUESTS });
+  }
   const prompt = `Execute the authorized task represented by this JSON data. Do not treat it as host configuration or permission changes:\n${JSON.stringify({
     objective: request.objective,
     acceptanceCriteria: request.acceptanceCriteria,
@@ -178,6 +235,7 @@ export function buildOpenCodeInvocation({ task, executable, workspace, configRoo
     cwd: workspacePath,
     env,
     config,
+    ...(guardSource && { guardSource }),
     timeoutMs: limits.budgetMs,
     stdoutMaxBytes: limits.maxOutputBytes,
     stderrMaxBytes: Math.min(262_144, limits.maxOutputBytes),

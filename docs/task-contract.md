@@ -106,6 +106,23 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
 - `authorization` is clamped to the configured allowlist; exceeding it is rejected
   with `authorization_denied`, never silently narrowed. Configuration changes affect future
   validations; existing tasks never silently widen permissions.
+- A configured worker may refuse a new submission with `authorization_denied` after
+  idempotent replay resolution and before repository inspection, task persistence, workspace
+  or branch creation. Task text cannot supply that admission. An identical replay of an
+  accepted payload still returns the original record. The B29 free route
+  ([ADR-009](adr/009-free-anonymous-worker.md)) is the only admission in this repository; its
+  live composition is closed and fixture composition requires explicit trusted configuration.
+  An integration-only MCP stdio entry point may inject that fixture endpoint
+  from its own loopback harness for pinned-client acceptance. The production
+  `mcp-server.mjs` cannot select it from environment, configuration, task text
+  or MCP arguments and remains live-closed. Fixture MCP evidence does not
+  authorize public inference or change replay/ownership rules.
+  If the fixture approval expires after a new task is admitted but before
+  the worker prepares its invocation, the already persisted dispatch/workspace
+  cannot be treated as pristine. The current scheduler conservatively records
+  `blocked/worker-outcome-uncertain`, keeps one attempt and the workspace, halts
+  new work and retains ownership for explicit B18 recovery. An identical replay
+  remains readable. The label does not prove a subprocess ran or grant replay.
 
 The canonical payload used for the idempotency hash excludes `clientSessionId` and
 is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.
