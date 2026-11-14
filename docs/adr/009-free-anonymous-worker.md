@@ -1,8 +1,8 @@
 # ADR-009 — Anonymous free OpenCode worker route is prepared but not live
 
-Date: 2026-11-14. Status: proposed; the maintainer must approve the live-route decision
-before any real inference. The fixture composition described below is implemented and
-pinned-host tested only against a loopback fixture.
+Date: 2026-11-14. Status: accepted for fixture-only preparation; live activation remains
+prohibited. The 2026-11-14 technical/security decision below accepts a conditional
+architecture, not a live-run approval or permission to merge.
 
 ## Context
 
@@ -94,6 +94,66 @@ approval or the guard.
 
 ## Revisit triggers
 
+The first trigger was resolved by the dated amendment below; the original list
+is retained as a record of the proposed decision.
+
 - The maintainer approves or rejects the redirect-control options above.
 - A new OpenCode release or host patch exposes redirect control to plugins or config.
 - Any live free-route experiment is proposed; it needs its own approval record.
+
+## Amendment — 2026-11-14: redirect boundary and live activation
+
+Decision authority: the technical/security decision requested for B29 on 2026-11-14;
+this does not impersonate a maintainer's separate, signed live-run authorization.
+The original proposed decision and failed `redirect-307` observation above remain
+historical evidence, not a passing redirect control.
+
+1. Select a **service-owned loopback relay plus verified worker egress restriction**
+   for the future live route (B30). The relay has one hard-coded upstream origin,
+   method and path policy, does not accept an arbitrary target, disables redirects
+   before sending request bodies, bounds bytes/time/requests outside the worker,
+   rejects proxy/ambient credential inheritance, and fails closed on DNS/TLS,
+   bind, teardown and upstream uncertainty. Prove that only the intended local
+   worker can connect; loopback binding alone does not authenticate local peers.
+   The worker may reach only the relay; the relay may reach only the approved
+   origin. An OS/network control or equivalent independently
+   verified egress containment is required: a loopback endpoint and application
+   guard alone are not a firewall. The deployment-specific restriction is not
+   demonstrated by the present repository.
+2. The 307 harness must show **zero** requests and **zero** prompt bytes at the
+   alternate origin, a terminal failed task and no replay. Also test 301/302/303/308,
+   an alternate-host redirect, an upstream drop after partial effects, relay
+   startup/teardown and worker bypass attempts. No real inference until B30 and
+   its reviewed-head evidence pass; B29's current harness still exits 1.
+3. B29 is narrowed to **fixture-only preparation**. Its historical B29-01 partial
+   catalog evidence and B29-05 failure remain recorded. A fixture MCP-client
+   submit/replay/poll/result run is mandatory; no exception to B29-04. Live
+   redirect containment, fresh public catalog verification (only with separate
+   authorization) and live activation move to B30. Do not merge B29 while its
+   amended fixture criteria or review are incomplete; a new PR #44 head requires
+   re-review. B20/#43 is unaffected.
+4. The current `approvalFile` is sufficient only for fixture tests, not live:
+   `actor` is an unverified string, not a signature, and the record does not bind
+   the relay/egress policy. A new versioned live approval must bind the exact
+   canonical submit hash and objective, fixed model and endpoint, explicit
+   privacy disclosure/acknowledgement for repository-content transmission,
+   zero paid USD, one attempt, wall-time/output/request ceilings, expiry, and a
+   relay/egress-policy identity or digest. Approval expires within 24 hours;
+   the metadata snapshot is no older than five minutes. The maintainer
+   signs/attests that record through a verifiable operator channel; task text
+   and a plain `actor`
+   field cannot sign it. Expiry, metadata freshness and policy identity are
+   checked again before dispatch. A separate approval is needed for each live
+   experiment; no implicit renewal, fallback, retry or replay.
+5. Before any live approval, verify on the pinned host that the selected model
+   cannot use a WebSocket path that bypasses the HTTP relay (source plus a
+   negative pinned-host fixture). If that cannot be established, close the path
+   with its own tested control or keep live closed. Configuration alone is not
+   sufficient evidence.
+
+Rejected as sole live controls: an unverifiable machine allowlist, an upstream
+host change with no delivered/pinned release, and acceptance of 3xx prompt
+egress. The relay introduces a local listener, port ownership, DNS/TLS and
+cleanup obligations; a deployment that cannot verify its egress restriction
+remains blocked rather than accepting the risk. No future real-provider
+availability, zero-price quota or privacy guarantee is inferred here.

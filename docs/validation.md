@@ -1998,3 +1998,36 @@ based on `node --test test/free-provider.test.mjs`, `node --test`, and
 `node integration/opencode-free.mjs`. It does not support redirect protection, live free-route
 availability, quota, zero price or privacy, real inference, MCP-client composition with the
 fixture, B20 or M3, which require a redirect decision and a separate approval.
+
+## M3 preparation: B29 redirect-control decision — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm installation invoked directly,
+then prepended to PATH for child PowerShell processes). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `gh pr view 44 --json number,isDraft,headRefOid,baseRefName,statusCheckRollup,url,comments,reviews` | Inspect pre-decision PR head and CI | draft at `4d28b65`; Windows/Ubuntu completed SUCCESS | 0 |
+| `node --test` (absolute fnm `node.exe`; PATH lacked `node`) | Regression, initial run | 300 tests: 297 pass, 2 fail, 1 skip; B10-03 partial output missing and maintenance PowerShell could not find `node` | 1 |
+| `node --test` (fnm Node prepended to PATH) | Regression with required child PATH | 300 tests: 298 pass, 1 fail, 1 skip; B10-03 missing `before` output under concurrent load | 1 |
+| `node --test test/subprocess.test.mjs` (fnm Node on PATH) | Isolated B10-03 reproduction | 9 tests: 8 pass, 0 fail, 1 Windows skip | 0 |
+| `node --test test/free-provider.test.mjs` (fnm Node on PATH) | B29 focal regression | 8 pass, 0 fail, 0 skip | 0 |
+| `node examples/fallback-demo.mjs` (absolute fnm `node.exe`) | Existing demo | 429 then 200 | 0 |
+| `git diff --check` | Documentation whitespace | no output | 0 |
+| `git diff --cached --check` | Staged decision documents | no output | 0 |
+
+Result: the documentation decision does not change runtime behavior. The full
+suite did not pass in either run; isolated B10-03 and B29 focused tests passed.
+The PowerShell failure in the first run was an environment PATH omission, fixed
+for the second; the B10-03 timing failure remains a limitation, not a pass.
+
+Evidence level: Unit — these local tests exercise policy and input
+normalization, not pinned-host network containment or live model behavior.
+
+Not rerun: `node integration/opencode-free.mjs` (already documented failure on
+the pinned host; no code was changed); MCP-client fixture (B29-04 still missing);
+public catalog GET and real inference (not authorized); B20/#43 (out of scope).
+
+Claim: this entry supports a documentation-only architectural decision and
+focal B29 unit regression, based on the commands above. It does not support a
+passing full suite, redirect containment, fixture MCP acceptance, live route
+or M3, which require new evidence and separate authorization.

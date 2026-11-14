@@ -47,7 +47,19 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: maintainer decision on the B29 redirect control (ADR-009)
+## Next action: B29 fixture MCP evidence and B30 redirect containment
+
+2026-11-14 decision update: ADR-009 is accepted **for fixture-only preparation**;
+the live route remains closed. B29 is narrowed without rewriting its original
+FAIL: complete B29-04 with an actual fixture MCP client, then re-review the new
+head of draft PR #44. B30 is the separate live relay plus independently
+verified worker-egress gate; the B30 card is prepared on its own branch, not
+implemented in B29. Require pinned-host redirect and WebSocket-negative tests,
+fresh authorized catalog evidence, and a maintainer-signed live approval bound
+to the relay/egress policy before any real inference. The historical steps below
+record the pre-decision state and do not supersede this update.
+
+Historical pre-decision instructions (superseded by the update above):
 
 1. Choose one option in [ADR-009](adr/009-free-anonymous-worker.md): a trusted loopback
    relay owned by the service (new trust boundary, needs its own card), a worker-host

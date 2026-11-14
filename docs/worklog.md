@@ -1684,3 +1684,30 @@ Template:
   OpenCode smoke, MCP gate, B16 pinned-client workflow and live free route were not rerun.
 - Follow-up: the maintainer must choose a redirect control in ADR-009 before any live
   approval; until then the B29 PR stays draft and B20 remains not_run.
+
+## 2026-11-14 — M3 preparation: B29 redirect-control decision
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: documentation-only technical/security decision; no worker, relay, live
+  request, public catalog request or B20/#43 change.
+- Steps:
+  1. Checked PR #44 at `4d28b65`: still draft; Windows and Ubuntu CI passed.
+     Reviewed the pinned host redirect path and the existing B29 evidence.
+  2. Amended ADR-009 with a conditional relay plus independently verified
+     worker egress restriction; kept live composition closed and required a
+     maintainer-signed, relay-bound approval and a WebSocket-negative gate.
+  3. Narrowed the B29 card to fixture-only without erasing its historical
+     307 failure; kept MCP-client fixture acceptance mandatory. Updated the
+     backlog PR link, roadmap and handoff. Prepared B30's card separately on
+     `task/B30-free-relay` from main; no B30 code was added to this branch.
+- Files: `docs/adr/009-free-anonymous-worker.md`, `docs/tasks/B29.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `node --test` → first run 297 passed/2 failed, second run
+  298 passed/1 failed (the same timing-sensitive B10-03 case); isolated
+  `node --test test/subprocess.test.mjs` → 8 passed, 1 Windows skip;
+  `node --test test/free-provider.test.mjs` → 8 passed; demo → 429 then
+  200; `git diff --check` → no errors. No pinned-host harness, catalog,
+  real inference or MCP-client fixture was rerun for this docs-only decision.
+- Follow-up: complete B29-04 MCP-client fixture evidence and review PR #44's
+  new head while retaining draft; B30's separate branch holds the live card.
