@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-12. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-14. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -17,8 +17,8 @@ runs tests, and returns a diff and report for review. No automatic merge.
 OpenCode 2.2.5 is the selected first worker executor and supervising client.
 ADR-007 selects MCP over stdio as the first transport; the loopback HTTP fallback
 was not selected. B15's stdio adapter and B16's pinned-client workflow are merged.
-B17 implements the thirteen-item acceptance matrix and passed locally on Windows with
-the pinned OpenCode 2.2.5 client; PR review and CI remain.
+B17 implements the thirteen-item acceptance matrix and merged as #40 at `190370f`;
+PR checks passed on Windows and Ubuntu. M2b remains incomplete.
 See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
@@ -44,8 +44,11 @@ MCP stdio server; OpenCode 2.2.5 discovered all four tools and submitted a fixtu
 task whose queued result reached the model context. B15/#38 is merged at `491de18`.
 B16's pinned-client integration checks correlated MCP replies, replay IDs, active
 worker cancellation, dispatch-enabled restart and Git isolation. The Windows gate
-uses a Job Object for host cleanup. B16/#39 is merged at `681f0a6`; current-head CI
-passed on Windows and Ubuntu. No production provider is enabled.
+uses a Job Object for host cleanup. B16/#39 is merged at `681f0a6`; Windows/Ubuntu CI
+passed. B17/#40 is merged at `190370f`; its post-merge Windows check passed in
+Actions run `43568386630`. B18 is delivered for PR review from
+`task/B18-maintainer-recovery`, with supervisor corrections and local acceptance
+verified; it is not merged. No production provider is enabled.
 There is no production provider, integrated fallback, semantic memory or completed
 self-development workflow yet.
 
@@ -61,7 +64,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12–B16 merged; B17 PR open with 13/13 acceptance scenarios passing locally | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12–B17 merged; B18 PR open after supervisor review | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
 | M3 — First self-development task | Pending; B20 requires M2b/B17, B18 and an available authorized real model | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
@@ -90,8 +93,8 @@ requirements do not satisfy a runtime or host-integration gate.
 
 B04a hardening checkpoint (2026-11-02): ordinary store transitions, immutable task
 identity/request fields and state-dependent metadata are guarded, with 126 local
-tests passing at that checkpoint. Process ownership subsequently merged in B05;
-executor dispatch, stop proof and maintainer reconciliation remain pending.
+tests passing at that checkpoint. Process ownership, dispatch, stop proof and
+maintainer reconciliation are delivered or under B18 review as detailed in backlog.
 This checkpoint does not advance an M2b exit gate.
 
 B05 ownership checkpoint (2026-11-03): service startup acquires an exclusive per-home lock before reconciliation and releases it on close or failed initialization. Stale crash locks fail closed. 129 local tests pass. Executor and M2b acceptance remain pending.
@@ -119,9 +122,8 @@ it and nothing beyond it.
 6. **M2b acceptance run.** Execute the acceptance tests in the contract plus one real
    task on a scratch branch, and record the evidence.
 
-The remaining M2b task order is B14 cancellation/stop evidence →
-B15 MCP adapter → B16 real-client workflow → B17 thirteen-item acceptance matrix.
-B18 human recovery follows B14 and need not wait for B17. M3/B20 then needs
+The remaining M2b work includes the final acceptance evidence/review cycle and B18
+maintainer recovery. B18 follows B14 and now follows merged B17. M3/B20 then needs
 B17/B18, an authorized available real-model execution path and a real approved
 repository task. The current adapter is fixture-only, so provider/model support
 and authorization must be established before that experiment. B08 schema adoption

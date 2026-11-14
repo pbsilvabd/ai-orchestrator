@@ -14,7 +14,8 @@ so it needs a record store, not a session lock.
 
 ## Decision
 
-1. `src/tasks.mjs` exposes `openTaskStore({ home, retentionMs })` with `createTask`,
+1. `src/tasks.mjs` exposes `openTaskStore({ home, retentionMs = DEFAULT_RETENTION_MS })`
+   with `createTask`,
    `readTask`, `updateTask`, `listTasks`, `reconcile` and `prune`. It owns persistence
    only: no operation validation, no executor, no cancellation semantics.
 2. Layout: `tasks/<taskId>.json` plus `idempotency/<sha256(clientId, key)>.json` under
@@ -39,7 +40,8 @@ so it needs a record store, not a session lock.
    `reason: "service-restart"`; it never resumes or replays work. It also repairs the
    index and reports ambiguous entries instead of overwriting them.
 7. `prune` is explicit maintenance. `blocked` records are never removed automatically;
-   terminal records expire after 30 days by default.
+   terminal records expire after 30 days by default when explicitly pruned; callers
+   may configure a validated retention duration.
 8. M2b originally assumed one service process, with no cross-process ownership lock.
    See the B05 amendment below for the implemented service lock; direct store handles
    remain cooperative tools for maintenance and tests. `artifacts/` stays deferred.
@@ -144,9 +146,43 @@ bounded and redacted output the scheduler captured from the interrupted worker,
 even when no task budget remains for Git collection. It is separate from test
 runs and does not change the blocked lifecycle or its stop evidence.
 
+## Amendment — 2026-11-14: B18 explicit recovery, exclusion and prune journal
+
+The task store now has a dedicated local maintainer handle and CLI. The service and
+maintenance lock files interlock through exclusive creation plus post-acquisition
+checks; stale-owner takeover additionally uses an exclusive recovery gate that service
+startup checks before and after acquiring ownership. Direct prune/reconciliation calls
+require an opaque in-process maintenance capability, never a nonce read from the lock
+file. Service startup reconciliation has distinct scoped authority. No maintenance
+operation is reachable through the four service operations, MCP, or worker configuration.
+
+Stale locks are never automatically reclaimed. Explicit recovery verifies the recorded
+PID is absent using Node's process probe, requires operator-supplied complete process
+inventory, empty live-worker list, process-tree and evidence assertions, writes an audit receipt bound to the exact lock bytes, then
+removes only unchanged lock bytes. A PID probe does not establish process start
+identity, descendant termination or external-effect status. Windows process-tree
+inspection, backups and ambiguity refusal are in `docs/task-maintenance.md`. The
+filesystem remains a trusted local cooperative-writer boundary; human evidence is
+not OS authentication or cryptographic proof.
+
+Only a dedicated store operation may transition `blocked` to `failed` or `cancelled`.
+It binds the audit to exact task bytes/state/decision, preserves dispatch identity,
+attempts, the original block and `effectsReverted: false`. A known failure requires
+completed recorded failure outcomes; an explicitly investigated administrative
+failure may close an interrupted attempt while preserving its unknown outcome and
+unknown stop state. Cancellation still requires a persisted request. Result
+limitations distinguish administrative closure from proven execution failure.
+Generic updates and MCP remain unable to reconcile.
+
+Pruning is explicit with 30 days as the validated configurable default and never
+removes blocked work. A durable per-task journal precedes record removal. Reconciliation
+clears an unused journal when the matching record remains, or completes conversion of
+the exact matching idempotency index to a durable key-reservation tombstone when the
+record is absent. Pruned keys cannot silently create duplicate tasks; changed payloads
+remain conflicts. Conflicts and unjournaled orphans remain fail-closed. This is
+interruption recovery, not a power-loss durability or hostile-writer guarantee.
+
 ## Revisit triggers
 
-Revisit when: M2b carries
-task artifacts (step 4) that need `artifacts/`; a second client or remote access
-requires authentication of `clientId`; or retention needs a configurable per-task
-override.
+Revisit when: a second client or remote access requires authentication of `clientId`,
+retention requirements change, or a future storage engine is considered.

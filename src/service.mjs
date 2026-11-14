@@ -10,7 +10,8 @@
 // adapter serializes the error envelope { error: { code, message } } and sets isError.
 
 import { isAbsolute, sep, resolve, join } from 'node:path';
-import { closeSync, mkdirSync, openSync, unlinkSync, writeFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { TaskStoreError, openTaskStore } from './tasks.mjs';
 import { RepositoryError, validateRepositoryIdentity } from './repository.mjs';
 import { createTaskScheduler } from './scheduler.mjs';
@@ -98,7 +99,7 @@ export function createTaskService(options = {}) {
   // Reconcile exactly once as the service starts. Never accept requests against an
   // ambiguous index or an unresolved in-flight task.
   try {
-    const reconciliation = store.reconcile({ now: startupNow });
+    const reconciliation = store.reconcile({ now: startupNow, ownershipToken: releaseOwner.token });
     if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
   } catch (error) {
     releaseOwner();
@@ -278,6 +279,9 @@ export function createTaskService(options = {}) {
         task.artifact === undefined && typeof task.diff !== 'string') {
       limitations.push('no artifact record for a failed task');
     }
+    if (task.reconciliation?.decision === 'failed' && task.reconciliation.administrativeOutcome === 'unknown') {
+      limitations.push('administrative failure after an interrupted dispatch; worker outcome remains unknown and success or side effects are not established');
+    }
 
     // Unit-level local test execution is the evidence source of the M2b worker; the
     // verification state of a success claim is tracked by the recorded runs and the
@@ -373,14 +377,21 @@ export function createTaskService(options = {}) {
 function acquireServiceOwnership(home) {
   const locks = join(home, 'locks');
   const lockPath = join(locks, 'service-owner.lock');
+  const maintenancePath = join(locks, 'maintenance-owner.lock');
+  const recoveryPath = join(locks, 'owner-recovery.lock');
+  const token = randomUUID();
   let fd;
   let created = false;
   try {
     mkdirSync(locks, { recursive: true, mode: 0o700 });
+    if (existsSync(maintenancePath) || existsSync(recoveryPath)) fail('unavailable', 'task-store maintenance or owner recovery is active');
     fd = openSync(lockPath, 'wx', 0o600);
     created = true;
-    writeFileSync(fd, `${JSON.stringify({ pid: process.pid, startedAt: Date.now() })}\n`);
+    writeFileSync(fd, `${JSON.stringify({ pid: process.pid, startedAt: Date.now(), nonce: token })}\n`);
     closeSync(fd);
+    // Pairwise post-create checks make simultaneous cooperative acquisition fail
+    // closed: neither owner proceeds if both locks were created in the race window.
+    if (existsSync(maintenancePath) || existsSync(recoveryPath)) fail('unavailable', 'task-store maintenance or owner recovery is active');
   } catch (error) {
     if (fd !== undefined) {
       try { closeSync(fd); } catch { /* preserve the original acquisition error */ }
@@ -392,14 +403,21 @@ function acquireServiceOwnership(home) {
     throw new ServiceError('unavailable', 'cannot acquire task store ownership', error.code);
   }
   let released = false;
-  return () => {
+  const release = () => {
     if (released) return;
-    try { unlinkSync(lockPath); }
+    try {
+      const owner = JSON.parse(readFileSync(lockPath, 'utf8'));
+      if (owner.nonce !== token) throw new ServiceError('unavailable', 'task store ownership changed');
+      unlinkSync(lockPath);
+    }
     catch (error) {
+      if (error instanceof ServiceError) throw error;
       if (error.code !== 'ENOENT') throw new ServiceError('unavailable', 'cannot release task store ownership', error.code);
     }
     released = true;
   };
+  release.token = token;
+  return release;
 }
 
 function validateSubmitRequest(request, config) {

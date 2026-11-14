@@ -341,6 +341,21 @@ test('task record schema accepts a persisted record and rejects drift', () => {
   }
 });
 
+test('task record schema covers the B18 reconciliation receipt and rejects live worker evidence', () => {
+  const evidence = { taskId: 'task-id', fromStatus: 'blocked', decision: 'failed', recordDigest: 'a'.repeat(64),
+    observation: 'Observed completed nonzero attempt and empty process inventory.', outcomeAssessment: 'known-failure', workerStopped: true,
+    processTreeChecked: true, inventoryComplete: true, inventorySource: 'Windows process inventory',
+    liveWorkerPids: [], observedAt: 2_000 };
+  const receipt = { actor: 'operator', reason: 'known nonzero exit', decision: 'failed', fromStatus: 'blocked',
+    recordDigest: 'a'.repeat(64), evidenceDigest: 'b'.repeat(64),
+    priorBlock: { reason: 'service-restart', requiresReconciliation: true },
+    administrativeOutcome: 'known-failure', evidence, reconciledAt: 2_001 };
+  assert.deepEqual(validate(recordSchema, taskRecord({ reconciliation: receipt })), { ok: true });
+  const invalid = structuredClone(taskRecord({ reconciliation: receipt }));
+  invalid.reconciliation.evidence.liveWorkerPids = [4321];
+  assert.equal(validate(recordSchema, invalid).ok, false);
+});
+
 test('task record schema matches a record the store actually writes', t => {
   const dir = mkdtempSync(join(tmpdir(), 'orchestrator-contracts-'));
   t.after(() => rmSync(dir, { recursive: true, force: true }));

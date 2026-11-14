@@ -1575,3 +1575,152 @@ Evidence level: OpenCode integration — demonstrates hooks, queue, context, per
 Not rerun: `node integration/mcp-gate.mjs` and `node integration/opencode-smoke.mjs` (these separate gates are unaffected by this B17 correction); Ubuntu pinned-client integration (this checkout's host is Windows x64); real or paid model/provider use (not authorized and not supported by the fixture-only adapter).
 
 Claim: this entry supports the B17 thirteen-item acceptance matrix on Windows x64 with the pinned OpenCode 2.2.5 client, based on the final acceptance-matrix command and the full local suite. It does not support production-provider/model quality, Ubuntu host integration or M2b/M3 completion, which require evidence outside this fixture-only acceptance task.
+
+## M2b: B18 supervisor pass-1 corrections — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5;
+branch `task/B18-maintainer-recovery`, base `190370fae1fe44272dbaed22889156397f143c2f`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/task-maintenance.test.mjs test/contracts.test.mjs test/task-store.test.mjs test/task-lifecycle.test.mjs test/mcp-server.test.mjs` | Focused B18 maintenance, schema, lifecycle, store and MCP regressions | 137 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full local regression suite | 282 passed, 0 failed, 1 existing POSIX-only skipped (283 tests) | 0 |
+| `node examples/fallback-demo.mjs` | Preserve existing fallback demo behavior | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `node --check scripts/task-maintenance.mjs` | Parse the maintainer CLI | no output | 0 |
+| `git diff --check` | Check final working diff for whitespace errors | no output | 0 |
+
+Result: focused tests passed 137/137 and the full suite passed 282 tests with only
+the existing POSIX-only skip. The demo returned 429 then 200; the CLI syntax check
+and final diff check passed. A named legacy-v1 regression removes only the optional
+`baseCommit` from a valid blocked record, then reads and recovers it without adding
+the field. A real CLI subprocess scenario executes stale-owner recovery,
+`reconcile-store` to blocked, inspection/digest binding, administrative closure, and
+restart/idempotent replay with zero worker preparations. B18-01 coverage includes active service/worker exclusion,
+wrong-state byte preservation, a real competing-recovery gate and refusal when a
+detached descendant remains alive. B18-02 tests evidence refusal and byte-idempotent
+repetition. B18-03 kills a process at both prune boundaries, repairs the journal and
+asserts the retained tombstone cannot create a replacement task; the CLI repair also
+leaves an unrelated running dispatch byte-identical. B18-04 tests known
+and unknown outcome handling, cancellation-request requirements, schema validation,
+generic-update/MCP denial and a real scheduler crash/restart without worker replay.
+The independent supervisor descendant-survival experiment
+`b18-windows-descendant-probe.mjs` is referenced with its path sanitized; it is not
+run by this implementation session. The separate supervisor review probes covered
+authority, replay and unrecoverable-restart behavior. The descendant experiment
+showed why PID absence alone is not treated as proof of process-tree termination.
+
+Evidence level: Unit — demonstrates policy decisions and input normalization; does
+not demonstrate the host, the network or production persistence. These tests also
+exercise real temporary filesystems and child processes on Windows, including process
+death, restart, lock races and a surviving detached descendant; this is local fixture
+evidence, not pinned-host integration or machine proof of a complete OS process tree.
+
+Not rerun: `node integration/opencode-smoke.mjs` and `node integration/mcp-gate.mjs`
+(require the external pinned OpenCode 2.2.5 binary; these host checks were not run in
+this local maintenance validation); `npm run acceptance -- --opencode <path>` (the
+host-dependent B17 matrix was unchanged and not rerun); Windows/Ubuntu Actions CI (no
+remote workflow was started by this implementation session).
+
+Claim: This entry supports B18's local Windows acceptance scenarios and regression
+behavior, based on the focused suite, `node --test`, and the fallback demo. It does
+not support pinned OpenCode integration, Ubuntu behavior, production persistence,
+independent supervisor approval, publication or merge; those require their respective
+external checks and authorization.
+
+## M2b: B18 Windows PowerShell CLI input correction — 2026-11-14
+
+Executed on Windows 11 Pro x64, Windows PowerShell 5.1.26100.9818, Node.js v24.22.1
+(fnm), Git 2.55.0.windows.5; branch `task/B18-maintainer-recovery`, base
+`190370fae1fe44272dbaed22889156397f143c2f`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/task-maintenance.test.mjs test/contracts.test.mjs test/task-store.test.mjs test/task-lifecycle.test.mjs test/mcp-server.test.mjs` | Focused B18 and adjacent regression suite, including the actual Windows PowerShell 5.1 subprocess case | 139 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full local regression suite | 284 passed, 0 failed, 1 existing POSIX-only skipped (285 tests) | 0 |
+| `node examples/fallback-demo.mjs` | Preserve existing fallback demo behavior | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `node --check scripts/task-maintenance.mjs` | Parse the maintenance CLI | no output | 0 |
+| `git diff --check` | Check final working diff for whitespace errors | no output | 0 |
+
+Result: `--input-file <path>` reads one UTF-8 JSON object with an optional BOM while
+retaining the compatible-shell raw JSON form. Node subprocess regressions cover BOM,
+plain UTF-8, paths and values with spaces, malformed/missing/null/array input, extra
+and unknown argument forms, sanitized missing-file diagnostics, and unchanged task
+and index bytes. The Windows-only test invokes actual `powershell.exe` and asserts
+PowerShell 5.1; it writes BOM-bearing JSON with `ConvertTo-Json` and
+`Set-Content -Encoding UTF8`, passes a path containing spaces as a native argument,
+and verifies valid input, missing option/path, malformed and array refusal without
+changing committed record/index bytes. The runbook now uses structured JSON files for
+PowerShell examples and documents that raw JSON requires compatible native argument
+passing or escaping.
+
+Evidence level: Unit/local Windows subprocess — exercises the CLI against temporary
+filesystem state and the installed Windows PowerShell 5.1 argument-passing behavior;
+it is not service-host integration or production persistence evidence.
+
+Not rerun: pinned OpenCode smoke/MCP gates, Ubuntu CI, and provider-backed acceptance;
+this correction is isolated to the local maintenance CLI input transport and runbook.
+
+Claim: this entry supports the Windows PowerShell 5.1 CLI input correction and its
+unchanged-byte refusal cases. No publication, independent supervisor approval or
+merge is claimed; final review and publication remain with the supervisor.
+
+## M2b: B18 supervisor final review and acceptance — 2026-11-14
+
+Executed on Windows x64 (Windows NT 10.0.26300.0), Windows PowerShell
+5.1.26100.9818, Node.js v24.22.1 (fnm 1.39.0), Git 2.55.0.windows.5.
+Date: 2026-11-14. Branch: `task/B18-maintainer-recovery`; base:
+`190370fae1fe44272dbaed22889156397f143c2f`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/task-maintenance.test.mjs test/contracts.test.mjs test/task-store.test.mjs test/task-lifecycle.test.mjs test/mcp-server.test.mjs` | Independent final focused acceptance, including Windows PowerShell subprocesses | 139 passed; no failures/skips | 0 |
+| `node --test` | Independent final full regression after the last CLI code correction | 284 passed, 0 failed, 1 existing POSIX-only skip; 285 total | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback behavior | preferred 429, then local 200 | 0 |
+| `node --check scripts/task-maintenance.mjs` | Final CLI syntax | no output | 0 |
+| `git diff --check` | Final implementation and publication-document whitespace check | no output | 0 |
+
+Result: the supervising GPT-6.1 Sol reran these commands after GPT-6 Luna high's
+implementation and correction rounds. Native exits were captured immediately, before
+formatting logs. The supervisor separately reproduced the initial service-nonce
+prune bypass, pruned-key duplicate creation, unrecoverable restart shape and legacy
+optional-field failure in temporary homes. Independent final external probes verified
+their corrections, both normal and legacy administrative closure, preserved unknown
+attempt evidence and exact-byte repeated decisions (exit 0). The full staged diff,
+including new files, was reviewed against the base; no blocking finding remains.
+The final one-off relative-link check observed 12 changed Markdown files, 115 local
+file targets and zero missing targets. Worklog and validation diffs contain additions
+only relative to the base; their pre-existing entries remain in their original order.
+
+| Card row | Observed named evidence | Result |
+| --- | --- | --- |
+| B18-01 | `service ownership and wrong lifecycle state refuse maintenance without byte changes`; `an actual service worker keeps direct store pruning excluded until it exits`; `stale service-owner recovery refuses a real surviving detached worker descendant`; competing real stale-maintenance recoveries | PASS: records/indexes/owner bytes preserved on refusal; a single recovery winner |
+| B18-02 | `missing, forged and conflicting evidence is refused; identical decision is byte-idempotent`; stale-handle and structurally valid forged-receipt refusals | PASS: invalid evidence writes nothing; identical decision rewrites nothing and creates no task/worker |
+| B18-03 | `real process death between prune record/index removals is journal-recovered without duplicate acceptance`; `process death after prune intent but before record removal preserves the record and replay mapping` | PASS: actual child exits 73/74 at filesystem boundaries; CLI repair retains blocked bytes/unrelated running state and reserves the old key with a tombstone |
+| B18-04 | `real scheduler crash/restart permits audited unknown administrative failure without replay`; `Windows CLI crash workflow explicitly recovers owner, blocks interrupted dispatch, reconciles and replays no worker`; cancellation, legacy-v1 and MCP-wire denial cases | PASS: audited failed/cancelled decisions, original dispatch/block retained, effectsReverted false, generic callback/MCP denied authority |
+
+Review pass 1 returned authority, replay, unsupported real-restart recovery,
+stale-lock race, missing CLI repair and evidence/append-only defects to the implementer.
+Re-review returned missing legacy-field support, incomplete Windows crash procedure,
+unbounded fixture cleanup and actual PowerShell 5.1 JSON argument corruption. All
+corrections were re-reviewed and tested. The final runbook uses UTF-8/BOM JSON files,
+not fragile inline JSON; its actual PowerShell subprocess case passed. Earlier
+in-flight worklog checkpoints record earlier implementations, not the final verdict.
+
+Evidence level: Unit — policy decisions and input normalization; does not demonstrate
+host, network or production persistence. Strongest B18 observations are real local
+filesystem/Git/process interruption, concurrency and Windows PowerShell 5.1 fixtures.
+This is separate-model supervisor review, not an independent human/security audit.
+
+Not rerun: pinned OpenCode smoke/MCP/B16 client gates and the host-dependent B17 matrix
+(no new transport operation or provider path; the local MCP wire tests were run).
+No production state, paid provider or B20/M3 project task was used. Complete process
+inventory remains an explicit trusted human attestation, not machine-proven tree stop;
+PID absence, hashes and administrative closure never prove reverted effects. Tombstones
+are retained indefinitely. Power-loss durability, hostile writers and remote access
+remain outside the contract. Published-head CI and PR feedback are tracked on the one
+B18 PR; no merge is authorized.
+
+Claim: these commands and independent review support all four B18 local Windows
+acceptance rows. They do not establish production-provider behavior, pinned-host
+revalidation, M3 service use, OS authentication, rollback or maintainer merge approval.

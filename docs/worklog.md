@@ -1322,3 +1322,152 @@ Template:
   `docs/validation.md`.
 - Follow-up: supervisor reviews the finalized local diff and validation evidence;
   the correction is ready for publication on PR #40 and current-head CI.
+
+## 2026-11-14 — M2b: B18 explicit maintainer recovery and retention
+
+- Branch: `task/B18-maintainer-recovery`
+- Scope: code, tests and docs; no worker-callable maintenance operation, replay path,
+  provider or publication action added.
+- Steps:
+  1. Added service/maintenance owner interlocking, nonce-bound maintenance handles,
+     explicit stale-owner audit and guarded direct store prune/reconciliation paths.
+  2. Added exact-state/evidence-bound blocked-to-failed/cancelled recovery, strict
+     completed-outcome/cancellation proof rules, and invariant `effectsReverted:false`.
+  3. Added fixed 30-day pruning with per-record intent journals and interrupted
+     record/index recovery; added actual process-death and active worker fixtures.
+  4. Updated the task-record schema, normative contract, ADR-008, CLI/procedure,
+     README, roadmap, backlog, task card and handoff. Kept the handoff current rather
+     than using a new template block; its existing sections were updated in place.
+  5. Review pass 1 found and fixed direct-store lock bypass, ordinary-update ability
+     to attach a reconciliation receipt, incomplete schema support, a test-only prune
+     phase hook, an inspection journal path error, and insufficient process-inventory
+     evidence. Review pass 2 checked the complete local diff and every B18 matrix row.
+- Files: `README.md`, `docs/adr/008-task-store.md`, `docs/backlog.md`,
+  `docs/handoff.md`, `docs/roadmap.md`, `docs/task-contract.md`, `docs/tasks/B18.md`,
+  `docs/task-maintenance.md`, `docs/worklog.md`, `docs/validation.md`,
+  `src/contracts/schemas/task-record.schema.json`, `src/service.mjs`, `src/tasks.mjs`,
+  `scripts/task-maintenance.mjs`, `test/contracts.test.mjs`,
+  `test/task-lifecycle.test.mjs`, `test/task-maintenance.test.mjs`,
+  `test/task-store.test.mjs`
+- Validation: Windows 11 Pro x64, Node.js v24.22.1, Git 2.55.0.windows.5;
+  `node --test` → 274 passed, 0 failed, 1 existing POSIX-only skip (exit 0);
+  `node examples/fallback-demo.mjs` → 429 then 200 (exit 0);
+  `node --check scripts/task-maintenance.mjs` and `git diff --check` passed.
+  Pinned OpenCode/MCP host gates were not rerun.
+- Follow-up: supervisor independently reviews this unpublished B18 diff, reproduces
+  its acceptance scenarios and owns any correction/publication cycle.
+
+## 2026-11-14 — M2b: B18 supervisor pass-1 corrections
+
+- Branch: `task/B18-maintainer-recovery`
+- Scope: code, tests and docs; no commit, push, PR or merge action was taken.
+- Steps:
+  1. Replaced caller-replayable maintenance nonce authorization with a private
+     in-process capability, added a serialized stale-owner recovery gate, and
+     documented manual recovery for an abandoned gate.
+  2. Preserved original idempotency keys as durable tombstones after pruning,
+     implemented an isolated `repair-index` CLI operation that leaves unrelated
+     task lifecycle state unchanged, and restored
+     configurable retention with a 30-day default.
+  3. Added explicit unknown-outcome administrative failure closure that preserves
+     dispatch evidence and the original block, without representing unknown work as
+     a known execution failure; retained cancellation's persisted-request rule.
+  4. Added real scheduler-crash/restart, competing recovery-process, detached
+     descendant, MCP-wire denial, CLI repair/tombstone and unchanged-byte tests.
+  5. Corrected B18/B19 status and acceptance wording; appended final validation
+     evidence without reordering earlier history. The prior entry's counts describe
+     its earlier run and are superseded for this checkout by this correction entry.
+- Files: `README.md`, `docs/adr/008-task-store.md`, `docs/backlog.md`,
+  `docs/handoff.md`, `docs/roadmap.md`, `docs/task-contract.md`,
+  `docs/task-maintenance.md`, `docs/tasks/B18.md`, `docs/tasks/B19.md`,
+  `docs/validation.md`, `docs/worklog.md`,
+  `src/contracts/schemas/task-record.schema.json`, `src/service.mjs`,
+  `src/tasks.mjs`, `scripts/task-maintenance.mjs`, `test/contracts.test.mjs`,
+  `test/mcp-server.test.mjs`, `test/task-lifecycle.test.mjs`,
+  `test/task-maintenance.test.mjs`, `test/task-store.test.mjs`
+- Validation: Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5;
+  focused B18/schema/store/lifecycle/MCP suite → 135 passed, 0 failed;
+  `node --test` → 280 passed, 0 failed, 1 existing POSIX-only skip;
+  `node examples/fallback-demo.mjs` → 429 then 200; CLI syntax and final diff
+  whitespace checks passed. Pinned OpenCode host gates and Ubuntu CI were not run.
+- Follow-up: supervisor reviews the corrected unpublished diff and its acceptance
+  evidence; supervisor owns publication. Merge remains separately unapproved.
+
+## 2026-11-14 — M2b: B18 supervisor re-review corrections
+
+- Branch: `task/B18-maintainer-recovery`
+- Scope: code, tests and docs; no commit, push, PR or merge action was taken.
+- Steps:
+  1. Made maintainer-update identity checks preserve the distinction between an
+     absent optional `baseCommit` and an explicit value; added a legacy-v1 blocked
+     record recovery regression.
+  2. Added the distinct guarded `reconcile-store` CLI command and an actual
+     subprocess crash workflow covering owner recovery, startup reconciliation,
+     digest-bound administrative closure and idempotent no-worker replay.
+  3. Registered bounded cleanup for the surviving-descendant test and bounded the
+     competing recovery child waits/termination while retaining ambiguous fixtures.
+  4. Corrected the Windows recovery runbook, retention signature/comment and the
+     sanitized name of the supervisor descendant experiment in new validation evidence.
+- Files: `docs/adr/008-task-store.md`, `docs/task-maintenance.md`,
+  `docs/validation.md`, `docs/worklog.md`, `scripts/task-maintenance.mjs`,
+  `src/tasks.mjs`, `test/task-maintenance.test.mjs`
+- Validation: Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git 2.55.0.windows.5;
+  focused maintenance/schema/store/lifecycle/MCP suite → 137 passed, 0 failed;
+  `node --test` → 282 passed, 0 failed, 1 existing POSIX-only skip;
+  fallback demo → 429 then 200; CLI syntax and final diff checks passed.
+  Pinned OpenCode gates and Ubuntu CI were not rerun.
+- Follow-up: supervisor owns the final complete-diff review and publication;
+  merge remains separately unapproved.
+
+## 2026-11-14 — M2b: B18 Windows PowerShell CLI input correction
+
+- Branch: `task/B18-maintainer-recovery`
+- Scope: CLI, operator procedure and tests; no commit, push, PR or merge action was taken.
+- Steps:
+  1. Added `--input-file <path>` with UTF-8 and optional-BOM decoding, exact JSON
+     object validation, strict argument-form rejection and path-free read errors;
+     retained raw JSON arguments for shells that preserve native quoting.
+  2. Replaced inline JSON in Windows runbook examples with structured
+     `ConvertTo-Json`/`Set-Content -Encoding UTF8` files and documented the raw
+     argument compatibility caveat.
+  3. Added platform-independent file-input and unchanged-byte regressions plus an
+     actual Windows PowerShell 5.1 subprocess test for BOM, spaces, malformed,
+     missing and array inputs.
+- Files: `docs/task-maintenance.md`, `docs/validation.md`, `docs/worklog.md`,
+  `scripts/task-maintenance.mjs`, `test/task-maintenance.test.mjs`
+- Validation: Windows 11 Pro x64, PowerShell 5.1.26100.9818, Node.js v24.22.1;
+  focused suite → 139 passed, 0 failed; full suite → 284 passed, 0 failed,
+  1 existing POSIX-only skip; demo → 429 then 200; CLI syntax and diff checks passed.
+  Pinned OpenCode gates and Ubuntu CI were not rerun.
+- Follow-up: supervisor owns final complete-diff review and publication; merge
+  remains separately unapproved.
+
+## 2026-11-14 — M2b: B18 supervisor final review and delivery
+
+- Branch: `task/B18-maintainer-recovery`
+- Scope: code/test review, independent validation and delivery documentation; no
+  provider activation, worker replay or merge authority added.
+- Steps:
+  1. GPT-6.1 Sol supervised GPT-6 Luna high from base `190370f`, with B17/#40
+     and its Windows/Ubuntu PR/post-merge checks verified and no existing B18 PR.
+  2. Reviewed the complete diff and each acceptance row, independently reproduced
+     blockers, returned them to Luna and verified the corrections over three rounds.
+     Fixes cover role-scoped maintenance, serialized recovery, retained key guards,
+     unknown administrative closure, CLI repair/crash flow, legacy compatibility,
+     bounded fixture cleanup and PowerShell 5.1-safe file input.
+  3. Independently ran the final focused/full suites, fallback demo, CLI syntax and
+     external correction probes against temporary homes. Reviewed all new source,
+     schema, tests, Windows procedure and status changes; no blocker remains.
+  4. Updated AGENTS, README, backlog/card, roadmap and handoff for the single B18 PR
+     review checkpoint. Appended supervisor validation without altering committed
+     worklog/validation history. Current-head publication, CI and feedback receipts
+     belong to that PR; merge remains a separate maintainer decision.
+- Files: `AGENTS.md`, `README.md`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/tasks/B18.md`, `docs/validation.md`, `docs/worklog.md`;
+  reviewed implementation/test files are enumerated in the prior B18 entries.
+- Validation: focused suite 139 passed; `node --test` -> 284 passed, one existing
+  POSIX-only skip; demo -> 429 then 200; CLI syntax and independent final probes
+  passed (all exits 0). Final whitespace/link checks accompany publication.
+  Pinned OpenCode/client gates were not rerun; fixture evidence is not B20/M3 use.
+- Follow-up: publish the reviewed commit without force, verify the one PR/head and
+  observe CI; leave the PR open for the maintainer's merge decision.

@@ -220,13 +220,13 @@ There are no automatic transitions out of `blocked`, and no automatic retry of a
 Reconciliation records the maintainer's decision and evidence; it never re-executes
 the same task. Repeat work requires a new `submit_task` with a new `idempotencyKey`.
 
-### Store enforcement (B04a, 2026-11-02)
+### Store enforcement (B04a, 2026-11-02; B18 amendment 2026-11-14)
 
 The diagram describes the target lifecycle. Ordinary `updateTask` currently permits
 `queued → running | cancelled`, dispatched `queued → blocked`, and
 `running → succeeded | failed | blocked`. The guard also runs on startup reconciliation.
 `running → cancelled` requires a dedicated executor stop-proof operation;
-`blocked → failed | cancelled` requires a future maintainer-only operation (B18).
+`blocked → failed | cancelled` requires the maintainer-only operation described below.
 Neither is permitted through the generic update callback. There is no boolean
 override that grants reconciliation authority.
 
@@ -243,8 +243,8 @@ override that grants reconciliation authority.
   Cancelled state requires a cancellation request and executionStopped true. A queued
   cancellation cannot carry a previous or newly inserted dispatch.
 - Ordinary updates cannot change a terminal status. Terminal lifecycle metadata
-  (timestamps, cancellation, block and attempts) is immutable; partial artifacts can
-  still be added without reopening work.
+  (timestamps, cancellation, block, attempts and any reconciliation receipt) is
+  immutable; partial artifacts can still be added without reopening work.
 - Malformed records/identity changes are invalid_argument; forbidden transitions
   are internal service errors. Rejected updates write nothing.
 - Existing incoherent v1 records fail closed on read/startup with unavailable;
@@ -253,6 +253,71 @@ override that grants reconciliation authority.
 These guards are not process exclusion, an authorization sandbox or proof of actual
 execution. Persist-before-spawn attempt production is B12; stop proof is B14.
 Success without test evidence remains an explicit limitation in get_task_result.
+
+### Explicit maintainer recovery and retention (B18, 2026-11-14)
+
+`openTaskMaintenance` and `scripts/task-maintenance.mjs` are local operator-only
+interfaces. They are not attached to `createTaskService`, the MCP transport or worker
+configuration. Maintenance acquires `locks/maintenance-owner.lock` exclusively and
+refuses when a service owner exists. Service startup checks the maintenance lock both
+before and after acquiring its owner lock; races fail closed. Prune and blocked
+reconciliation require an opaque in-process capability held only by the active
+maintenance closure, never a caller-supplied lock-file nonce. Direct
+`openTaskStore().prune()` and `reconcileBlocked()` calls, service-owner nonces and
+forged capability objects refuse. Closed/stale handles cannot act under a later lock.
+Service-startup reconciliation has a separate service-owner check and does not grant
+prune or blocked-recovery authority. These are cooperative local-filesystem controls,
+not OS authentication or protection against hostile writers.
+
+Stale-owner takeovers serialize through an exclusive `owner-recovery.lock` gate;
+service startup checks this gate before and after owner acquisition. The gate is not
+reclaimed automatically. If recovery crashes and leaves it behind, preserve state,
+inspect the recorded recovery process/tree and backup, then follow the offline gate
+recovery procedure in `docs/task-maintenance.md`.
+
+Stale service or maintenance locks are never removed automatically. Explicit recovery
+requires readable owner metadata, an absent PID (`ESRCH`); live or ambiguous PID state
+refuses. The operator must separately inspect process descendants, task workspaces,
+external effects and preserve a backup. The helper writes an audit record bound to
+the exact lock bytes before removing the unchanged lock. PID absence does not prove
+descendants stopped; process-tree review and effect observations are human assertions.
+
+The dedicated `reconcileBlocked` path accepts only `blocked → failed | cancelled`.
+Input records actor, reason and evidence containing task ID, expected blocked state,
+decision, SHA-256 of the exact current committed record, an observation, explicit
+worker-stopped/process-tree-checked assertions, a complete process-inventory source,
+an empty live-worker PID list and observation time. Missing,
+malformed, stale, cross-task, cross-state or conflicting evidence refuses without a
+write. The SHA-256 binds evidence to bytes; it is not an authenticity signature.
+`failed` may be either a known recorded failure (all attempts completed with `failed`,
+`spawn-error` or `launch-failed`) or an explicitly administrative closure of an
+interrupted dispatch whose execution outcome remains unknown. Administrative closure
+requires persisted dispatch evidence and operator stop/effects investigation; it
+preserves every attempt outcome/timestamp unchanged, the prior block, and
+`executionStopped: unknown`. A queued record with a persisted dispatch and no
+`startedAt` remains so; the audit is the narrow validation exception, not invented
+execution evidence. `get_task_result` labels this as administrative failure and
+states that worker outcome/success/effects are not established. `cancelled` remains
+stricter and requires a persisted cancellation request. Both require a complete
+inventory with no live worker PIDs; uncertain descendant state remains blocked.
+These are human assertions, not machine proof. The record preserves all attempts and
+identity, records an auditable `reconciliation` receipt/progress item and always keeps
+`effectsReverted: false`.
+No evidence can claim that effects were rolled back. Repeating the exact prior
+actor/reason/evidence/decision returns the known record without rewriting bytes;
+any other decision conflicts.
+
+Pruning is explicit; retention defaults to 30 days and remains configurable through
+the store/maintenance options. `blocked` records are never removed. Each terminal
+prune writes a durable `locks/prune-<taskId>.json` journal before deleting the record.
+It then replaces the exact matching idempotency entry with a durable tombstone retaining
+client/key/payload hash/task ID and prune time, before removing the journal. Recovery
+clears an unused journal when the matching record remains, or finishes tombstoning when
+it is absent. The tombstone permanently reserves the idempotency key: same-payload
+submission reports the prior result was pruned and never creates a new task; changed
+payload remains an idempotency conflict. Result/record data is subject to retention,
+but key reuse cannot silently repeat effects. Invalid journals and mismatched records
+or indexes remain unavailable for inspection.
 
 ### Cancellation and finalization evidence (B14)
 
@@ -348,10 +413,13 @@ or production provider is enabled by this option.
   `unavailable`. A lock left by a crash is not removed automatically; inspect the
   recorded PID and state before a maintainer removes it and restarts the service.
   Closing permanently disables all four operations on that service instance, even
-  after another instance acquires ownership. Direct store maintenance is cooperative:
-  stop all services and workers before modifying state or removing a stale lock.
-- Retention: `blocked` records are never deleted automatically. Other records are kept
-  until the maintainer runs cleanup; the default retention is 30 days.
+  after another instance acquires ownership. Direct maintenance is cooperative and
+  must use the exclusive B18 maintenance handle; stop all services/workers and follow
+  [the recovery procedure](task-maintenance.md) before modifying state/removing a stale
+  lock.
+- Retention: `blocked` records are never pruned. Explicit cleanup defaults to 30 days;
+  callers may configure a validated duration. Durable idempotency tombstones reserve
+  keys after task/result data is pruned.
 - There is no exactly-once guarantee. Duplicate work is prevented by the persisted
   lifecycle and the idempotency index, not by the worker or the model.
 

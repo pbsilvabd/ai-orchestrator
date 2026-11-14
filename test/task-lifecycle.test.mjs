@@ -3,13 +3,17 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { openTaskStore } from '../src/tasks.mjs';
+import { openTaskMaintenance, openTaskStore } from '../src/tasks.mjs';
 import { createTaskService } from '../src/service.mjs';
 
 const statuses = ['queued', 'running', 'succeeded', 'failed', 'blocked', 'cancelled'];
 const ordinaryEdges = new Set(['queued:running', 'queued:cancelled',
   'running:succeeded', 'running:failed', 'running:blocked']);
 const expected = code => error => error.name === 'TaskStoreError' && error.code === code;
+const reconcile = (home, now) => {
+  const maintenance = openTaskMaintenance({ home, now });
+  try { return maintenance.reconcile({ now }); } finally { maintenance.close(); }
+};
 
 function state(draft, status) {
   draft.status = status;
@@ -51,7 +55,7 @@ for (const from of statuses) for (const to of statuses) {
 }
 
 test('identity, request authority and acceptance metadata cannot change, even via replacement', t => {
-  const { store, taskId, bytes } = fixture(t);
+  const { home, store, taskId, bytes } = fixture(t);
   const before = bytes();
   const changes = [d => { d.clientId = 'other'; }, d => { d.idempotencyKey = 'other'; },
     d => { d.payloadHash = 'a'.repeat(64); }, d => { d.createdAt++; },
@@ -61,19 +65,19 @@ test('identity, request authority and acceptance metadata cannot change, even vi
     assert.throws(() => store.updateTask(taskId, change), expected('invalid_argument'));
     assert.equal(bytes(), before);
   }
-  assert.equal(store.reconcile({ now: 2_000 }).conflicts.length, 0);
+  assert.equal(reconcile(home, 2_000).conflicts.length, 0);
 });
 
 test('dispatched queued work blocks on restart and cannot claim unstarted cancellation', t => {
-  const { store, taskId, bytes } = fixture(t);
+  const { home, store, taskId, bytes } = fixture(t);
   store.updateTask(taskId, d => { d.attempts.push({ attemptId: 'a', model: 'mock/a', startedAt: 1_100 }); });
   const before = bytes();
   assert.throws(() => store.updateTask(taskId, d => state(d, 'cancelled')), expected('internal'));
   assert.throws(() => store.updateTask(taskId, d => state(d, 'running')), expected('internal'));
   assert.equal(bytes(), before);
-  assert.deepEqual(store.reconcile({ now: 1_200 }).blocked, [taskId]);
+  assert.deepEqual(reconcile(home, 1_200).blocked, [taskId]);
   const blocked = bytes();
-  assert.deepEqual(store.reconcile({ now: 1_300 }).blocked, []);
+  assert.deepEqual(reconcile(home, 1_300).blocked, []);
   assert.equal(bytes(), blocked);
 });
 
@@ -88,7 +92,7 @@ test('cancellation cannot hide a newly inserted dispatch', t => {
 });
 
 test('persisted dispatch identity cannot be erased before a later cancellation', t => {
-  const { store, taskId, bytes } = fixture(t);
+  const { home, store, taskId, bytes } = fixture(t);
   store.updateTask(taskId, d => { d.attempts.push({ attemptId: 'a', model: 'mock/a', startedAt: 1_100 }); });
   const before = bytes();
   for (const change of [d => { d.attempts = []; },
@@ -100,7 +104,7 @@ test('persisted dispatch identity cannot be erased before a later cancellation',
   }
   store.updateTask(taskId, d => { d.attempts[0].finishedAt = 1_200; });
   assert.throws(() => store.updateTask(taskId, d => state(d, 'cancelled')), expected('internal'));
-  assert.deepEqual(store.reconcile({ now: 1_300 }).blocked, [taskId]);
+  assert.deepEqual(reconcile(home, 1_300).blocked, [taskId]);
 });
 
 test('incoherent block and time metadata are rejected before persistence', t => {
