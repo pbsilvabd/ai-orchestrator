@@ -1724,3 +1724,51 @@ B18 PR; no merge is authorized.
 Claim: these commands and independent review support all four B18 local Windows
 acceptance rows. They do not establish production-provider behavior, pinned-host
 revalidation, M3 service use, OS authentication, rollback or maintainer merge approval.
+
+## M2b: B19 opt-in harness pulse — 2026-11-14
+
+Executed on Windows 11 Pro 10.0.26300 x64, Node.js v24.22.1 (fnm), Git
+2.55.0.windows.5. Branch `task/B19-opt-in-harness-pulse`, base
+`c268239b3a15d9e507bee703016f6bbeccb266d7`.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/harness-pulse.test.mjs` | B19-01–04 real temporary child/filesystem acceptance boundaries | 4 passed, 0 failed, 0 skipped | 0 |
+| `node integration/harness-pulse.mjs --binary C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --version 2.2.5 --output docs/pulses/B19-pinned-host.json --inject-failure-index 4 --retry-failed` | Eight isolated original capability-gate runs, injected original failure and separate diagnostic retry | 7 pass, 1 fail, 0 not_run, denominator 8; original slot 4 phase `failure:probe`, exit 1; separate retry for slot 4 pass; command exit 1 is expected because the original failure remains authoritative | 1 (expected) |
+| PowerShell `ConvertFrom-Json` assertions on `docs/pulses/B19-pinned-host.json` | Check exact denominator/status/retry mapping, cleanup record and absence of absolute host paths | All assertions passed; emitted “B19 observed 7 pass / 1 original fail / 0 not_run; retry passed separately; denominator 8; transcript sanitized.” | 0 |
+| `node --test` | Full local regression suite on changed B19 checkout | 289 tests: 288 passed, 0 failed, 1 existing POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo regression | `mock/preferred` returned 429, then `mock/local` returned 200 | 0 |
+| `node --check integration/harness-pulse.mjs` | Parse the new manual pulse CLI | no output | 0 |
+| `node --check integration/mcp-gate.mjs` | Parse phase and failure-injection instrumentation | no output | 0 |
+| `git diff --check` | Check tracked source/documentation changes for whitespace errors | no output | 0 |
+| `node --test` in archived snapshot `C:\Users\paulo\AppData\Local\Temp\opencode\b19-supervisor-baseline-351f8e87-f35c-4048-ba98-b2f9bb5b7900` | Supervisor's independent exact-base (`git archive c268239`) baseline | 285 tests: 284 passed, 0 failed, 1 existing POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` in the same archived base snapshot | Supervisor's independent fallback baseline | 429 then 200 | 0 |
+| `node integration/acceptance-matrix.mjs --opencode C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --report C:\Users\paulo\AppData\Local\Temp\opencode\b19-supervisor-baseline-351f8e87-f35c-4048-ba98-b2f9bb5b7900\b17-baseline-report.json` in the same archived base snapshot | Fresh B17 prerequisite verification, separate from B19 | 13 pass, 0 fail, 0 not_run; mapping valid; criterion digest `3319c26cc1d05f2c83d94938872868a142d5f4af9580aaa39becd6a7a8076788`; archive had no `.git`, so its checkout SHA/dirty fields are null | 0 |
+| `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe --version` | Supervisor's supplied pinned-host version check | `opencode v2.2.5`; release ZIP SHA-256 independently matched documented digest `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8` | 0 |
+
+Result: local tests exercised real Node subprocesses and temporary task files. The
+pinned OpenCode host produced seven successful original gate outcomes and one
+deliberately injected failure, retained as `failure:probe`; its separately labeled
+diagnostic retry passed without changing the denominator. The pulse artifact has eight
+original slots and no `not_run` records. The run is intentionally not an all-pass B06
+gate. The supervisor's fresh archived-base B17 run independently confirmed the B17
+prerequisite. No real/paid/external provider call or task execution was made; the
+OpenCode pulse used only the gate's local loopback fixture. `descendantsStopped` stays
+false because B10 observes only the root; uncertain-timeout scratch is retained.
+
+Evidence level: OpenCode integration — demonstrates hooks, queue, context, permissions
+and failures in the pinned host; does not demonstrate real model quality/cost. Here the
+pulse demonstrates the pinned host's local MCP discovery/call gate and truthful
+failure/retry reporting, not task-service lifecycle or production-provider behavior.
+
+Not rerun: Ubuntu pinned-host pulse (only this Windows host was available); the full
+B17 acceptance matrix on the modified B19 checkout (the supervisor ran it freshly on
+the exact archived base; B19 does not change its acceptance runner); OpenCode smoke and
+B16 task workflow (not needed for the B19 gate-pulse acceptance); any real or paid
+provider use (not authorized).
+
+Claim: This entry supports B19-01–04's local failure-boundary behavior and a pinned
+OpenCode 2.2.5 fixture pulse with preserved 7/1/0 outcomes, based on the named B19
+tests, the recorded pulse and the report assertions. It does not support an all-pass
+eight-run B06 capability gate, M2b/M3 completion, real-provider behavior or use of the
+task service on this project; those require separate evidence and authorization.

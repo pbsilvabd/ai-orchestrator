@@ -1,11 +1,9 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-14: `origin/main` at `190370f` (B17/#40 merged; PR checks passed
-on Windows and Ubuntu. The post-merge Windows check, pending at initial inspection,
-subsequently passed in Actions run `43568386630`).
-B18 is delivered as one PR from `task/B18-maintainer-recovery`, based on this main
-head. Supervisor review and local acceptance are complete; review/CI are tracked on
-that PR. It is not merged.
+Verified 2026-11-14: current main `c268239` includes B18/#41; its post-merge check
+passed in Actions run `43589015912`. B17/#40 is included and its Windows/Ubuntu PR
+checks passed; post-merge Windows run `43568386630` passed. B19 implementation is
+local on `task/B19-opt-in-harness-pulse`; supervisor review/publication is pending.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -13,8 +11,8 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current implementation task: [B18 — Explicit human recovery and retention](tasks/B18.md).
-B12–B17 are merged. M2b and M3 remain open milestones.
+Current implementation task: [B19 — Opt-in harness pulse](tasks/B19.md).
+B12–B18 are merged. M2b and M3 remain open milestones.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -54,9 +52,9 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Ready implementation choices: **B18 is in PR review, not merged**; B08 is supporting work
-whose B01/#8 and B03 prerequisites are now merged. B19 can prepare its manual
-capability-gate pulse and task-history acceptance; B17 is merged.
+Current state: **B19 is implemented locally; supervisor review/publication pending**.
+B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
+the manual capability-gate pulse and read-only task-history acceptance; B17 is merged.
 Prerequisites below describe complete card acceptance; preparatory work does not
 complete a gated card.
 
@@ -64,8 +62,8 @@ complete a gated card.
 
 | Milestone | Pending tasks and acceptance |
 | --- | --- |
-| M2b — One-worker delegation MVP | B12–B17 are merged; B18 recovery remains before M3. The M2b acceptance gates still require their published evidence/review cycle. |
-| M3 — First supervised development task | B18 maintainer recovery plus B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
+| M2b — One-worker delegation MVP | B12–B18 are merged. The M2b acceptance gates still require their published evidence/review cycle. |
+| M3 — First supervised development task | B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
 | Supporting work | B08 differential submit-schema adoption; B19 opt-in diagnostic pulse. Neither replaces M2b/M3 acceptance. |
 | Later milestones/decisions | B21 and B22a–c storage evaluation/rollout; B23 safe fallback (M2c); B24 memory (M4); B25 routing evaluation (M5). These are not prerequisites for completing basic one-worker delegation and first use. |
 
@@ -100,8 +98,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B15 — Four-operation MCP stdio adapter](tasks/B15.md) | P1 | Merged #38 at `491de18`; correction and CI verified | B06/B12/B14 merged; B13 artifacts available |
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
-| [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | PR open on `task/B18-maintainer-recovery`; B18-01–04 passed locally and supervisor corrections verified | Maintainer review/merge decision; current-head CI tracked on PR |
-| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Pending; gate pulse preparation and task-history acceptance are unblocked | B06 and B17 delivered |
+| [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
+| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Local implementation on `task/B19-opt-in-harness-pulse`; supervisor review/publication pending | B06 and B17 delivered |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |

@@ -1,38 +1,31 @@
 # Continuation point — 2026-11-14
 
-Remote `main` is `190370fae1fe44272dbaed22889156397f143c2f`; B12–B17 are merged.
-B17/#40's Windows and Ubuntu PR checks passed. M2b/M3 remain incomplete; the worker
-provider is fixture-only, not production model-quality/provider evidence. B18 is
-delivered for PR review on `task/B18-maintainer-recovery`, not merged. Supervisor
-review and local acceptance passed after correction rounds. The base post-merge
-Windows check passed in Actions run `43568386630`.
-ADR-007 still selects MCP stdio revision `2026-07-28`.
+Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
+B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
+`43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
+not production model-quality/provider evidence. ADR-007 still selects MCP stdio
+revision `2026-07-28`.
 
-## Current implementation status: B18 PR open
+## Current implementation status: B19 local, unpublished
 
-The B18 implementation adds a maintainer-only local store handle/CLI, service-owner
-interlock, evidence-bound blocked reconciliation and journaled retention cleanup.
-Focused Windows tests use temporary stores, a real service worker subprocess and a
-child killed between prune record/index removal. Durable tombstones prevent key reuse.
-GPT-6 Luna high implemented the changes; GPT-6.1 Sol independently reviewed the
-complete diff and verified the returned corrections. Final local evidence: 139 focused
-tests passed; full suite 284 passed with one existing POSIX-only skip; demo, syntax
-and whitespace checks passed. The Windows PowerShell 5.1 file-input procedure ran
-against real subprocesses. Exact evidence/limits are in `docs/validation.md`.
-No provider calls or credentials were used, and no B20/M3 service use is claimed.
+The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
+`c268239`. It runs eight isolated bounded capability-gate subprocesses, retains each
+original outcome/phase/sanitized transcript, and records diagnostic retries
+separately. Its optional task-history track is explicit-home and read-only, gated on
+passing B17 evidence, and refuses blocked/uncertain records. Local pinned-host
+evidence uses OpenCode 2.2.5 and the loopback fixture provider only. Review,
+publication and any merge decision belong to supervisor/maintainer; this task
+delegation authorizes no commit, push, PR creation or merge by the implementer.
 
-## Next action: maintainer review of the B18 PR
+## Next action: supervisor review and publication decision for B19
 
-1. Read the B18 PR's exact head, CI and all feedback under `docs/pr-review.md`.
-   The supervisor publishes the local review/corrections and observes current-head CI;
-   GitHub is the authoritative publication/check receipt.
-2. Correct further findings on the same branch/PR and revalidate before any decision.
-   The maintainer decides merge; no B18 merge is authorized by this session.
-3. After a separately approved B18 merge, B20 still needs an explicitly authorized
-   real model/provider/budget path. B08/B19 remain optional supporting work.
-
-The supervisor was authorized to commit, push and publish this single B18 PR, but not
-merge it. The fixture-only provider does not authorize a real-model project task.
+1. Review the complete B19 diff, both self-review notes and all row-mapped evidence
+   under `docs/pr-review.md`; reproduce any finding and verify corrections at the
+   current local head before publication.
+2. If ready, the supervisor owns commit/push/PR/remote checks under this assignment's
+   explicit division of authority. Merge requires task-specific maintainer approval.
+3. B20 remains gated on M2b acceptance and an explicitly authorized real
+   model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 

@@ -87,3 +87,23 @@ current loopback fixture provider accepts only the credential variable FIXTURE_A
 an explicit allowlist replaces the incomplete environment denylist. Further providers
 need deliberate credential-name support. These are launch checks, not protection
 against concurrent filesystem mutation or a replacement for OS isolation.
+
+### Amendment — 2026-11-14: B19 manual diagnostic pulse boundary
+
+The optional B19 harness is a manually invoked CLI outside the task service, MCP
+operations and scheduler. It runs exactly eight isolated capability-gate subprocesses
+against an explicitly supplied trusted OpenCode 2.2.5 binary and records every
+original outcome, phase and bounded sanitized transcript. A retry is a separately
+identified diagnostic record and cannot replace an original failure or alter its
+denominator. It uses only the gate's local loopback fixture provider; it adds no
+provider configuration, scheduling, model ranking or task executable surface.
+
+The optional task-history track is available only when tracked B17 evidence passes.
+It reads one explicit record for history fields without opening the store or invoking
+reconciliation, writes, scheduling or task replay. Blocked/uncertain work, including
+administrative closure with unknown attempts, remains refused. Terminal state is not
+substituted for missing test evidence. All returned text is sanitized/bounded before
+persistence. B10 observes/kills only the subprocess root; descendants are never
+claimed stopped, and uncertain timeout scratch is retained rather than cleaned up.
+This diagnostic evidence does not establish M2b/M3 completion or production-provider
+behavior.

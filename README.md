@@ -77,8 +77,11 @@ MCP stdio adapter (`mcp-server.mjs`), with bounded framing and sanitized protoco
 errors. The pinned OpenCode 2.2.5 fixture gate discovers all four tools, submits a
 task and observes its queued result in model context. B16/B17 client workflow and
 acceptance work is merged (#40 at `190370f`), but this does not provide a
-production provider or complete delegation MVP. B18 maintainer recovery is delivered
-for PR review; it does not advance M2b/M3 by itself.
+production provider or complete delegation MVP. B18 maintainer recovery and
+retention are merged as PR #41 at `c268239`. B19 adds a manual, opt-in capability
+pulse and read-only task-history track; it does not schedule work, execute tasks or
+advance M2b/M3 by itself. Its local implementation is under supervisor review, not
+published.
 
 A separate [real OpenCode smoke test](integration/README.md) uses the 2.2.5 binary
 and a simulated local provider. It validates session continuity, context, explicit
@@ -183,7 +186,8 @@ for status, dependencies and acceptance gates.
 
 ## Next steps
 
-1. Review the B18 PR and current-head CI; merging requires a maintainer decision.
+1. Complete supervisor review and publication checks for B19; merging requires the
+   task-specific maintainer authorization.
 2. Resolve remaining M2b gates and then, with explicit provider/model/budget approval,
    run B20's supervised project task.
 3. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.

@@ -482,3 +482,39 @@ These tests must exist and pass before M2b is claimed:
 
 Remote access and authentication, multi-worker routing, semantic memory, automatic
 fallback (M2c), automatic merge, a UI, scheduled retries and paid providers.
+
+## B19 manual diagnostic harness (outside the four service operations)
+
+`integration/harness-pulse.mjs` is a maintainer-invoked CLI, not a fifth service
+operation. It accepts an explicit trusted pinned binary/version and a new output
+artifact path. It starts exactly eight isolated, bounded original capability-gate
+processes; absent/wrong host inputs create eight `not_run` records and a nonzero
+command result. Each record preserves the original status, phase, observed process
+exit/termination, bounded sanitized transcript and truncation state. A diagnostic
+retry is separately labeled and never replaces an original result or changes the
+denominator. The CLI is not scheduled and cannot invoke a provider other than the
+gate's local loopback fixture.
+
+`sanitized: true` records that the bounded redaction policy was applied; it does not
+guarantee detection of arbitrary sensitive data. Callers must still avoid producing
+secrets in host output.
+
+The optional history track requires the tracked B17 matrix to pass, and reads only one
+explicitly selected task record. It may inspect the identity/lifecycle fields needed to
+refuse unsafe records plus existing attempts, test runs and limitations. It does not
+open the task store, reconcile, write state, schedule work, execute task commands or
+replay any task. Blocked or uncertain work (including administrative closure retaining
+unknown attempts) is refused. Missing recorded test evidence remains `not_run` even
+for terminal `succeeded`; terminal status and empty arrays are not evidence of success.
+`observed` means test command/exit metadata was found, not that the tests passed or the
+task succeeded.
+History strings are sanitized and bounded before artifact persistence. The record is
+read only from the explicit path; the default developer state home is not consulted.
+
+The B10 subprocess primitive proves only root-process exit and reports
+`descendantsStopped: false`. The pulse does not claim process-tree cleanup. On an
+uncertain timeout it preserves its owned phase scratch instead of deleting it while a
+child may still be active. If a raw stream hit its retention cap, that stream is
+omitted rather than storing a tail that could start midway through a credential. This
+manual diagnostic boundary is not service execution, M2b completion, M3 use or
+production-provider evidence.

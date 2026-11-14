@@ -1471,3 +1471,46 @@ Template:
   Pinned OpenCode/client gates were not rerun; fixture evidence is not B20/M3 use.
 - Follow-up: publish the reviewed commit without force, verify the one PR/head and
   observe CI; leave the PR open for the maintainer's merge decision.
+
+## 2026-11-14 — M2b: B19 opt-in harness pulse
+
+- Branch: `task/B19-opt-in-harness-pulse`
+- Scope: code, tests and docs; no service scheduler, task execution, provider activation,
+  model ranking or automatic/scheduled retry was added.
+- Steps:
+  1. Added a manual eight-slot capability pulse with explicit pinned host/version,
+     bounded subprocess and UTF-8 output, per-slot phase/transcript, exclusive report
+     creation, failure-preserving diagnostic retries and conservative timeout cleanup.
+  2. Added the gated read-only history projection. It requires passing tracked B17
+     evidence, reads only one explicit task record, sanitizes/bounds fields, and refuses
+     blocked or uncertain outcomes without store reconciliation or task replay.
+  3. Added real temporary child/filesystem tests for all B19 rows and a pinned-host
+     failure/retry report using only the local loopback fixture provider.
+  4. Updated the current-state summary in AGENTS, normative task contract, ADR-006,
+     task/backlog/roadmap/handoff status, README, integration guide and pulse evidence
+     map. Adapted the worklog/validation templates as the required append-only records.
+- Review pass 1: found and fixed absolute-path leakage from child stack traces, capped
+  raw-tail credential leakage, malformed/uncertain history handling, and an initially
+  unsafe scratch parent for timeout fixtures. Also removed a test-only B17 evidence-path
+  override that could have weakened the tracked-evidence gate; a copied pre-B17 CLI
+  fixture now tests refusal on a real temporary filesystem. Capped raw streams are
+  omitted; timeout scratch is retained in temp/report scope and the test removes its
+  exact owned fixture.
+- Review pass 2: inspected the complete base-to-working diff and each B19 row; verified
+  missing host/version slots, eight original results plus separate retry, pre-B17 and
+  uncertain history byte preservation/no task replay, exclusive artifacts, no
+  scheduler/provider/ranking/task executable path, and accurate milestone/host-evidence
+  wording. No blocking finding remains locally.
+- Files: `AGENTS.md`, `README.md`, `docs/adr/006-worker-service.md`, `docs/backlog.md`,
+  `docs/handoff.md`, `docs/pulses/B19-pinned-host.json`, `docs/pulses/README.md`,
+  `docs/roadmap.md`, `docs/task-contract.md`, `docs/tasks/B19.md`,
+  `docs/validation.md`, `docs/worklog.md`, `integration/README.md`,
+  `integration/harness-pulse.mjs`, `integration/mcp-gate.mjs`,
+  `test/harness-pulse.test.mjs`.
+- Validation: `node --test` → 288 passed, 0 failed, 1 existing POSIX-only skip;
+  fallback demo → 429 then 200; B19 injected pinned-host pulse → expected exit 1,
+  originals 7 pass/1 fail/0 not_run with a separately passing retry; `git diff --check`
+  → clean. Ubuntu pinned-host integration was not rerun.
+- Follow-up: supervisor reviews the unpublished B19 branch/diff and decides on
+  publication; B20 remains gated on M2b acceptance and explicit real-provider/model/
+  budget authorization.
