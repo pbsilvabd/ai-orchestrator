@@ -1,0 +1,123 @@
+{
+  "schemaVersion": 1,
+  "task": "B20",
+  "realTaskId": null,
+  "realSubmission": "not_run",
+  "evidenceLevel": "unit",
+  "fixtureOnly": true,
+  "externalProviderCalls": 0,
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.22.1"
+  },
+  "cases": [
+    {
+      "name": "external-provider",
+      "status": "pass",
+      "observedCode": "authorization_denied",
+      "dispatches": 0
+    },
+    {
+      "name": "unapproved-model",
+      "status": "pass",
+      "observedCode": "authorization_denied",
+      "dispatches": 0
+    },
+    {
+      "name": "unapproved-budget",
+      "status": "pass",
+      "observedCode": "authorization_denied",
+      "dispatches": 0
+    },
+    {
+      "name": "unsupported-credential",
+      "status": "pass",
+      "observedCode": "invalid_argument",
+      "dispatches": 0
+    },
+    {
+      "name": "unrelated-edit",
+      "status": "pass",
+      "fixtureTaskId": "54640faf-4621-4108-b34c-36202f02a298",
+      "idempotencyKey": "b20-negative-unrelated-edit",
+      "serviceStatus": "succeeded",
+      "attempts": 1,
+      "model": "fixture/mock",
+      "changedFiles": [
+        "unrelated.txt"
+      ],
+      "diff": "diff --git a/unrelated.txt b/unrelated.txt\nnew file mode 100644\nindex 0000000..bf20b78\n--- /dev/null\n+++ b/unrelated.txt\n@@ -0,0 +1 @@\n+fixture output\n",
+      "testRuns": [
+        {
+          "command": "node fixture-test-unrelated-edit",
+          "exitCode": 0
+        }
+      ],
+      "supervisorDecision": "reject",
+      "reasons": [
+        "out-of-scope-change"
+      ],
+      "secretAbsentFromRecordAndResult": true,
+      "retryDispatches": 0,
+      "merged": false
+    },
+    {
+      "name": "failed-test",
+      "status": "pass",
+      "fixtureTaskId": "ce8fcd40-3164-4960-be5e-5945591e9657",
+      "idempotencyKey": "b20-negative-failed-test",
+      "serviceStatus": "succeeded",
+      "attempts": 1,
+      "model": "fixture/mock",
+      "changedFiles": [
+        "scoped.txt"
+      ],
+      "diff": "diff --git a/scoped.txt b/scoped.txt\nindex df967b9..bf20b78 100644\n--- a/scoped.txt\n+++ b/scoped.txt\n@@ -1 +1 @@\n-base\n+fixture output\n",
+      "testRuns": [
+        {
+          "command": "node fixture-test-failed-test",
+          "exitCode": 7
+        }
+      ],
+      "supervisorDecision": "reject",
+      "reasons": [
+        "failed-test"
+      ],
+      "secretAbsentFromRecordAndResult": true,
+      "retryDispatches": 0,
+      "merged": false
+    },
+    {
+      "name": "secret",
+      "status": "pass",
+      "fixtureTaskId": "3f5db127-1639-437b-9f2e-6d3d2fccd821",
+      "idempotencyKey": "b20-negative-secret",
+      "serviceStatus": "succeeded",
+      "attempts": 1,
+      "model": "fixture/mock",
+      "changedFiles": [
+        "scoped.txt"
+      ],
+      "diff": "diff --git a/scoped.txt b/scoped.txt\nindex df967b9..962f4cb 100644\n--- a/scoped.txt\n+++ b/scoped.txt\n@@ -1 +1 @@\n-base\n+api_key=[REDACTED]\n",
+      "testRuns": [
+        {
+          "command": "node fixture-test-secret",
+          "exitCode": 0
+        }
+      ],
+      "supervisorDecision": "reject",
+      "reasons": [
+        "credential-shaped-artifact"
+      ],
+      "secretAbsentFromRecordAndResult": true,
+      "retryDispatches": 0,
+      "merged": false
+    }
+  ],
+  "summary": {
+    "pass": 7,
+    "fail": 0,
+    "not_run": 0
+  }
+}

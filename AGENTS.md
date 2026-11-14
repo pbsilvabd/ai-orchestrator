@@ -24,19 +24,17 @@ Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
 authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
-Current state (2026-11-14): main `c268239` includes B12–B18. B17/#40 checks passed
-on Windows/Ubuntu; B18/#41 post-merge Windows checks passed. B19's manual opt-in
-harness pulse and read-only history track are implemented locally on
-`task/B19-opt-in-harness-pulse`, based on `c268239`, delivered as PR #42. Supervisor
-review and correction verification passed locally; the PR is the authoritative
-current-head CI/merge receipt.
-The implementation has local full-suite and pinned OpenCode 2.2.5 loopback fixture
-evidence, not an all-pass B06 gate, M2b/M3 service use or real-provider evidence.
-The current supervisor has B19-only merge authorization contingent on acceptance,
-reviewed-head CI and resolved feedback; this grants no future session or other task
-merge authority. B20 still needs M2b acceptance and an
-authorized real-model/provider/budget path. See the handoff/backlog; earlier
-task-specific authorizations do not carry forward.
+Current state (2026-11-14): fetched/remote main `688da04` includes B12–B19.
+B17/#40, B18/#41 and B19/#42 are merged; their reviewed-head and post-merge
+Windows/Ubuntu checks succeeded. The B20 checkpoint is blocked/incomplete on
+`task/B20-first-supervised-use`: the adapter still permits only a loopback fixture,
+not a real provider or an effort variant. No real task, model/financial-budget
+approval or human diff review exists. B20-01/B20-04 are not_run; negative fixtures
+and prerequisite evidence do not complete M2b/M3. Continue the same B20 draft PR
+after separately authorized provider support and specific objective/run approval;
+never substitute supervisor edits or a chat subagent for service execution.
+See `docs/evidence/B20-preflight.md` and the handoff/backlog. B19's merge authority
+is exhausted; no B20 merge is authorized.
 
 ## Repository maintenance skills (Codex)
 

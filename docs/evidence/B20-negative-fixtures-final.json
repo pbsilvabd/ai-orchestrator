@@ -1,0 +1,142 @@
+{
+  "schemaVersion": 1,
+  "task": "B20",
+  "generatedAt": "2026-11-14T14:15:15.330Z",
+  "realTaskId": null,
+  "realSubmission": "not_run",
+  "evidenceLevel": "unit",
+  "fixtureOnly": true,
+  "externalProviderCalls": 0,
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.22.1"
+  },
+  "cases": [
+    {
+      "name": "external-provider",
+      "status": "pass",
+      "observedCode": "authorization_denied",
+      "dispatches": 0
+    },
+    {
+      "name": "unapproved-model",
+      "status": "pass",
+      "observedCode": "authorization_denied",
+      "dispatches": 0
+    },
+    {
+      "name": "unapproved-budget",
+      "status": "pass",
+      "observedCode": "authorization_denied",
+      "dispatches": 0
+    },
+    {
+      "name": "unsupported-credential",
+      "status": "pass",
+      "observedCode": "invalid_argument",
+      "dispatches": 0
+    },
+    {
+      "name": "unrelated-edit",
+      "status": "pass",
+      "fixtureTaskId": "8e967a83-ce6f-4868-85ec-82f5d3f8497c",
+      "idempotencyKey": "b20-negative-unrelated-edit",
+      "serviceStatus": "succeeded",
+      "attempts": 1,
+      "model": "fixture/mock",
+      "attemptId": "2483f167-c440-4e3b-b386-4798e734316a",
+      "fixtureBaseCommit": "62def50a723a3bfca2a827d9def90cf796c40033",
+      "fixtureBranch": "task/negative-unrelated-edit",
+      "fixtureHeadCommit": "62def50a723a3bfca2a827d9def90cf796c40033",
+      "changedFiles": [
+        "unrelated.txt"
+      ],
+      "diff": "diff --git a/unrelated.txt b/unrelated.txt\nnew file mode 100644\nindex 0000000..bf20b78\n--- /dev/null\n+++ b/unrelated.txt\n@@ -0,0 +1 @@\n+fixture output\n",
+      "testRuns": [
+        {
+          "command": "node fixture-test-unrelated-edit",
+          "exitCode": 0
+        }
+      ],
+      "limitations": [],
+      "supervisorDecision": "reject",
+      "reasons": [
+        "out-of-scope-change"
+      ],
+      "secretAbsentFromRecordAndResult": true,
+      "retryDispatches": 0,
+      "merged": false
+    },
+    {
+      "name": "failed-test",
+      "status": "pass",
+      "fixtureTaskId": "b02c3aff-fbd8-4624-bd87-baddfd29200a",
+      "idempotencyKey": "b20-negative-failed-test",
+      "serviceStatus": "succeeded",
+      "attempts": 1,
+      "model": "fixture/mock",
+      "attemptId": "8c02f695-1cae-4a58-a14f-5b258a8832fe",
+      "fixtureBaseCommit": "62def50a723a3bfca2a827d9def90cf796c40033",
+      "fixtureBranch": "task/negative-failed-test",
+      "fixtureHeadCommit": "62def50a723a3bfca2a827d9def90cf796c40033",
+      "changedFiles": [
+        "scoped.txt"
+      ],
+      "diff": "diff --git a/scoped.txt b/scoped.txt\nindex df967b9..bf20b78 100644\n--- a/scoped.txt\n+++ b/scoped.txt\n@@ -1 +1 @@\n-base\n+fixture output\n",
+      "testRuns": [
+        {
+          "command": "node fixture-test-failed-test",
+          "exitCode": 7
+        }
+      ],
+      "limitations": [
+        "success without a recorded passing test command and exit code",
+        "test command failed: node fixture-test-failed-test"
+      ],
+      "supervisorDecision": "reject",
+      "reasons": [
+        "failed-test"
+      ],
+      "secretAbsentFromRecordAndResult": true,
+      "retryDispatches": 0,
+      "merged": false
+    },
+    {
+      "name": "secret",
+      "status": "pass",
+      "fixtureTaskId": "e25322e6-d811-481c-acf9-3af98aa144dc",
+      "idempotencyKey": "b20-negative-secret",
+      "serviceStatus": "succeeded",
+      "attempts": 1,
+      "model": "fixture/mock",
+      "attemptId": "0dffaa07-e7dc-46ea-9c1e-b4427798cf93",
+      "fixtureBaseCommit": "62def50a723a3bfca2a827d9def90cf796c40033",
+      "fixtureBranch": "task/negative-secret",
+      "fixtureHeadCommit": "62def50a723a3bfca2a827d9def90cf796c40033",
+      "changedFiles": [
+        "scoped.txt"
+      ],
+      "diff": "diff --git a/scoped.txt b/scoped.txt\nindex df967b9..962f4cb 100644\n--- a/scoped.txt\n+++ b/scoped.txt\n@@ -1 +1 @@\n-base\n+api_key=[REDACTED]\n",
+      "testRuns": [
+        {
+          "command": "node fixture-test-secret",
+          "exitCode": 0
+        }
+      ],
+      "limitations": [],
+      "supervisorDecision": "reject",
+      "reasons": [
+        "credential-shaped-artifact"
+      ],
+      "secretAbsentFromRecordAndResult": true,
+      "retryDispatches": 0,
+      "merged": false
+    }
+  ],
+  "summary": {
+    "pass": 7,
+    "fail": 0,
+    "not_run": 0
+  }
+}

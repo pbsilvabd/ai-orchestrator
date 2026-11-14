@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "task": "B20",
+  "generatedAt": "2026-11-14T14:17:30.130Z",
+  "realTaskId": null,
+  "realSubmission": "not_run",
+  "evidenceLevel": "unit",
+  "fixtureOnly": true,
+  "externalProviderCalls": 0,
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.22.1"
+  },
+  "cases": [
+    {
+      "name": "external-provider",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    },
+    {
+      "name": "unapproved-model",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    },
+    {
+      "name": "unapproved-budget",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    },
+    {
+      "name": "unsupported-credential",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    },
+    {
+      "name": "unrelated-edit",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    },
+    {
+      "name": "failed-test",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    },
+    {
+      "name": "secret",
+      "status": "not_run",
+      "reason": "fixture harness halted without retry"
+    }
+  ],
+  "summary": {
+    "pass": 0,
+    "fail": 0,
+    "not_run": 7
+  },
+  "failure": "fixture assertion or operation failed; inspect retained scratch locally",
+  "retainedScratchBasename": "b20-negative-ESFF7T",
+  "success": false
+}

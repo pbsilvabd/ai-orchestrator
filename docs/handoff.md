@@ -1,12 +1,13 @@
 # Continuation point — 2026-11-14
 
-Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
-B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
-`43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
+Remote `main` was fetched and independently checked as
+`688da04bea29b300eb4cb1815bfbcb9fd0cd35ca`; B12–B19 are merged.
+B17/#40, B18/#41 and B19/#42 reviewed-head and post-merge checks passed on
+Windows/Ubuntu. M2b/M3 remain incomplete; the worker provider is fixture-only,
 not production model-quality/provider evidence. ADR-007 still selects MCP stdio
 revision `2026-07-28`.
 
-## Current implementation status: B19 reviewed and published as PR #42
+## Historical implementation evidence: B19, now merged as PR #42
 
 The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
 `c268239`, with correction work on top of supervisor checkpoint `91e43e4`. It uses
@@ -30,18 +31,28 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: inspect B19 PR #42's exact-head CI/merge receipts
+## Next action: resolve the B20 real-provider prerequisite separately
 
-1. [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) is the single B19
-   delivery. Publication branch/head were verified; it was open with CI pending at
-   this snapshot. Read all findings, corrections and current-head CI/merge receipts.
-2. The current supervisor has B19-only merge authorization after all acceptance,
-   reviewed-head CI and blocking-feedback gates pass. Recheck head immediately before
-   merge; any changed head requires renewed review/validation. Verify origin/main and
-   post-merge CI. If the PR is already merged, do not repeat publication or merge;
-   inspect those receipts. No other task/session inherits this authorization.
-3. B20 remains gated on M2b acceptance and an explicitly authorized real
-   model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
+1. Read [B20 preflight](evidence/B20-preflight.md). Continue
+   `task/B20-first-supervised-use` and its single [draft PR #43](https://github.com/pbsilvabd/ai-orchestrator/pull/43), not a second evidence
+   delivery. No real taskId/idempotency key/worker diff exists; B20-01/B20-04 are
+   not_run. Do not merge the checkpoint or mark M3 complete.
+2. Obtain separately scoped authorization for real-provider adapter support and
+   service/MCP composition. `src/opencode.mjs` remains loopback-fixture-only,
+   permits only FIXTURE_API_KEY and has no effort variant; `mcp-server.mjs` is
+   passive by default. No credentials or model availability were assumed/probed.
+3. After that implementation is validated and M2b acceptance is settled, obtain
+   specific human approval of the proposed one-file regression objective, exact
+   provider/model/effort, external credential source and enforceable financial/time/
+   output/tool/path limits. Preference for GPT-6 Luna high is not authorization.
+4. Submit once through the service transport, poll/retrieve the same real task,
+   preserve corrections/failures, review the returned diff, then obtain B20-04 human
+   review and task-specific merge authorization. Keep fallback disabled and do not
+   replay uncertainty. B19/#42 merge/post-merge receipts were verified; do not repeat
+   that delivery or inherit its exhausted merge permission.
+
+Negative fixture evidence is supporting local evidence only; provider support,
+automatic fallback, a two-model controller and automatic merge remain out of scope.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 

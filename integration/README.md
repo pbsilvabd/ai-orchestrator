@@ -216,6 +216,26 @@ B19 evidence and its acceptance-row mapping are in
 [`docs/pulses/README.md`](../docs/pulses/README.md). The pulse is diagnostic support,
 not M2b/M3 acceptance or production-provider evidence.
 
+## B20 safe negative preflight (not real project use)
+
+```sh
+node integration/supervised-use-preflight.mjs /path/to/new-b20-report.json
+```
+
+Requires Node 24.22.1 and Git, no OpenCode executable or credential. The fixed
+harness reserves a new report before fixture execution, checks actual adapter
+refusal of external providers/unapproved models/budgets/credential names, and
+collects real temporary Node/Git/service artifacts for unrelated changes, an
+actual failing test (exit 7), and a fake secret. It records supervisor rejection,
+not acceptance based on a process-level `succeeded` status. It never dispatches a
+real model, implements the proposed worker test, retries or merges. Fixture UUIDs
+are not a real B20 task ID. Existing reports refuse before fixture work; failed or
+uncertain execution retains scratch and a failure receipt, without replay.
+
+See [B20 preflight](../docs/evidence/B20-preflight.md) for the exact provider/transport/
+approval blockers, negative evidence limits and the unapproved one-file objective.
+This harness cannot satisfy B20-01, human review B20-04 or M3.
+
 ## Session/model smoke test
 
 Run separately from local tests, using Node 24 and a pinned official binary:
