@@ -2031,3 +2031,53 @@ Claim: this entry supports a documentation-only architectural decision and
 focal B29 unit regression, based on the commands above. It does not support a
 passing full suite, redirect containment, fixture MCP acceptance, live route
 or M3, which require new evidence and separate authorization.
+
+## M3 preparation: B29 pinned-client fixture MCP correction — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm installation invoked
+directly; its directory prepended to PATH for child processes). Pinned host:
+`C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs` | B29 metadata, admission/launch and production CLI boundary | 12 passed, 0 failed, 0 skipped; expiry before prepare creates no runtime directory; default passive and live free startup closed | 0 |
+| `node integration/mcp-free-workflow.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Pinned-client MCP stdio/fixture-worker gate after review fixes | 10 MCP calls; actual poll statuses `queued,running,running,running,succeeded`; one attempt/workspace, three fixture model requests, duplicate ID, denied write, diff and `node --test` exit 0, zero fixture anomalies | 0 |
+| `node integration/opencode-free.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Eight pinned-host failure/guard scenarios after review fixes | Seven scenarios passed; 401/402/429/drop: one request each and failed task; post-write drop: two requests, one attempt, failed task with partial diff; held deadline: one request, blocked `worker-outcome-uncertain`, reconciliation required and `releaseOwnership:false`; `redirect-307` still failed: task succeeded and alternate origin got one unauthenticated request with 7121 body bytes | 1 (intentional negative finding; not a passing safety gate) |
+| `node --test` | Full regression on final code revision | 304 tests, 303 passed, 0 failed, 1 Windows platform skip; native exit captured before reading output from `C:\Users\paulo\AppData\Local\Temp\opencode\b29-final-20261114-suite.log` | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `node --check` on `integration/fixtures/b29-free-mcp-server.mjs`, `integration/mcp-free-workflow.mjs`, `test/b29-cli-composition.test.mjs`, `test/free-provider.test.mjs`, `integration/opencode-free.mjs` | Syntax of five changed modules | no errors | 0 |
+| `git diff --cached --check` | Complete staged change whitespace after documentation | no errors | 0 |
+
+Result: the pinned client actually exchanged MCP stdio frames with the test-only
+configured free-worker service. It observed queued before dispatch, running while
+the fixture held the response, and a terminal result including the allowed diff
+and a recorded passing test exit. Two duplicate submissions caused no new
+attempt/workspace/model request. The production CLI tests and admission cases
+passed. The pinned failure harness **exited 1**: the 307 still leaks 7121 body
+bytes to an alternate loopback origin and incorrectly succeeds; this is B30's
+unmet live egress gate, not a B29 fixture pass for redirect safety. The new
+post-effect loss and uncertain deadline cases preserve effects/ownership without
+replaying. A reviewer reproduced 9 free-provider and 3 CLI cases separately;
+their pinned-host tests were inspection-only, so the commands above are the
+independently rerun host evidence. The suite also passed with 303 tests and
+one Windows skip; the demo printed 429 then 200.
+
+Evidence level: OpenCode integration — the pinned host and MCP client exercised
+real hooks, queue, context, permissions and failures against loopback fixtures.
+The focal/full suite provides Unit evidence for policy and input normalization.
+Neither level demonstrates production model quality, zero price, external-network
+containment or privacy.
+
+Not rerun: `integration/opencode-smoke.mjs` (standalone host smoke, unchanged
+production path); `integration/mcp-gate.mjs`, `integration/mcp-client-workflow.mjs`
+and B17 matrix (their production fixture adapter was not changed); B19 pulse
+(unaffected); Windows/Ubuntu PR CI (requires publication of the final commit);
+public catalog GET and real inference (not authorized); B20/#43 (out of scope);
+OS network isolation, relay and egress gateway (B30 and not implemented).
+
+Claim: this entry supports B29's fixture-only MCP preparation, production CLI
+closure and failure preservation based on the focal, pinned-host and full-suite
+commands above. It does not support a passing redirect safety gate, live
+provider/cost/privacy claims, B20/M3 or merge; those require B30 deployment
+proof, separate approvals and later reviewed evidence.

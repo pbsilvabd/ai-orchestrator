@@ -47,7 +47,24 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: B29 fixture MCP evidence and B30 redirect containment
+## Next action: publish and re-review B29 fixture evidence, then B30 after merge
+
+2026-11-14 fixture correction: `integration/mcp-free-workflow.mjs` now ran with
+the pinned OpenCode 2.2.5 client through real MCP stdio and loopback-only
+fixture composition. It observed queued/running/succeeded, a scoped diff and
+passing test exit, a denied out-of-scope write and two duplicate submissions
+without extra attempts/workspaces/model requests. New pinned fixtures preserved
+partial effects after a drop and blocked/retained ownership after an uncertain
+deadline. `node --test` passed 303 with one Windows platform skip; the historical
+307 still failed, delivering 7121 body bytes to a second loopback origin. See
+the new validation entry for native exits. Production `mcp-server.mjs` remains
+passive/live-closed; no catalog, real provider, B20, relay or merge was run.
+The next action is complete-diff review, commit/push to draft #44, verify the
+published SHA, CI and feedback, and only then mark the fixture-only PR ready
+if no blocker remains. B30's separate branch cannot implement live use until
+B29 is merged and verifiable deployment infrastructure exists; this Windows
+host currently reports the required Hyper-V feature disabled. The following
+decision checkpoint is historical and remains a live safety gate.
 
 2026-11-14 decision update: ADR-009 is accepted **for fixture-only preparation**;
 the live route remains closed. B29 is narrowed without rewriting its original

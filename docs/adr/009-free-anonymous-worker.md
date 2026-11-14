@@ -157,3 +157,17 @@ egress. The relay introduces a local listener, port ownership, DNS/TLS and
 cleanup obligations; a deployment that cannot verify its egress restriction
 remains blocked rather than accepting the risk. No future real-provider
 availability, zero-price quota or privacy guarantee is inferred here.
+
+## Amendment — 2026-11-14: isolated MCP fixture acceptance
+
+B29-04's actual MCP-client gate uses a dedicated integration-only stdio entry
+point with a trusted harness-injected `127.0.0.1` fixture endpoint and local
+metadata. This is a narrow correction to the earlier statement that fixture
+composition was not exposed through MCP: it is now exercised through MCP **only
+inside the explicit test harness**, not through production `mcp-server.mjs` or
+user-provided MCP/task/config fields. The production entry point stays passive
+by default and refuses free-worker live configuration, with or without an
+approval file. The fixture approval's `actor` is still not a live signature.
+The endpoint is not an authority supplied by the client. This change does not
+resolve redirect egress, network isolation, WebSocket behavior or B30 approval;
+the historical 307 observation and live closure remain in force.

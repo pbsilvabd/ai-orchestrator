@@ -1711,3 +1711,49 @@ Template:
   real inference or MCP-client fixture was rerun for this docs-only decision.
 - Follow-up: complete B29-04 MCP-client fixture evidence and review PR #44's
   new head while retaining draft; B30's separate branch holds the live card.
+
+## 2026-11-14 — M3 preparation: B29 pinned-client fixture MCP correction
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: test-only integration code, focused process/unit tests and documentation;
+  no production service/CLI source, external provider, public catalog, B20 or
+  live worker route changed.
+- Steps:
+  1. Added `integration/fixtures/b29-free-mcp-server.mjs` as a trusted
+     loopback-only composition entry point distinct from the production CLI.
+  2. Added `integration/mcp-free-workflow.mjs` to exercise the pinned client,
+     real MCP stdio, queued/running/result polling, two idempotent replays,
+     a scoped diff/test exit and denied out-of-scope write. Reused the B16
+     Windows Job Object with an explicit empty-job cleanup marker.
+  3. Added CLI refusal/passive tests, direct launch-time approval expiry tests
+     and pinned-host post-effect loss and uncertain-deadline fixtures, keeping
+     the historical 307 target/body-byte leak as a failing scenario.
+  4. Reviewed implementation/authority and responded to the second free-agent
+     inspection finding: built the status sequence from actual polls, removed
+     unobserved external-call booleans, tightened the dispatch barrier and
+     recorded the scheduler's required reconciliation on an uncertain stop.
+  5. Independently reran focal, pinned-client, negative harness, full suite and
+     demo checks. Amended the ADR/contract for test-only MCP composition,
+     documented the eight-scenario harness and updated card, backlog, roadmap
+     table formatting/status and handoff. Appended this and validation entries
+     rather than rewriting earlier failed/partial checkpoints.
+- Files: `integration/fixtures/b29-free-mcp-server.mjs`,
+  `integration/mcp-free-workflow.mjs`, `integration/opencode-free.mjs`,
+  `integration/README.md`, `test/b29-cli-composition.test.mjs`,
+  `test/free-provider.test.mjs`, `docs/adr/009-free-anonymous-worker.md`,
+  `docs/task-contract.md`, `docs/tasks/B29.md`, `docs/backlog.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: `node --test` → 303 passed, 0 failed, 1 Windows skip;
+  `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs`
+  → 12 passed; pinned MCP fixture → queued/running/succeeded, one attempt,
+  test exit 0; pinned free harness → exit 1 solely for redirect-307, with
+  one alternate request and 7121 body bytes; demo → 429 then 200;
+  `git diff --cached --check` → no whitespace errors. Standalone smoke, B16/B17,
+  B19, real catalog/inference and B30 deployment were not rerun.
+- Follow-up: review the complete diff and PR feedback at the published B29
+  head, verify Windows/Ubuntu CI, then mark only the fixture PR ready if
+  checks pass. B30's relay/egress/signature work waits for B29 merge and a
+  suitable deployment; live stays closed. This entry adapts the task-card
+  status format by appending a dated matrix checkpoint rather than rewriting
+  the historical failed 307 row.

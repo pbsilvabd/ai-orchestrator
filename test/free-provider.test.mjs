@@ -86,6 +86,23 @@ test('B29-02: denied admission creates no task, branch, workspace or runtime; re
   assert.equal(starts, 1);
 });
 
+test('B29-02: launch revalidates approval expiry and metadata freshness before preparation', async t => {
+  const f = fixture(t);
+  const expiring = { ...approvalFor(f.request), expiresAt: Date.now() + 250 };
+  const worker = createOpenCodeWorker({ ...f.options, freeApproval: expiring,
+    runtimeRoot: join(f.root, 'expiry-runtime') });
+  await new Promise(resolveWait => setTimeout(resolveWait, 300));
+  assert.throws(() => worker.prepare(f), denied);
+  assert.equal(existsSync(join(f.root, 'expiry-runtime')), false,
+    'A refused launch must not create runtime configuration');
+  const stale = metadata();
+  stale.observedAt = Date.now() - METADATA_TTL_MS - 1;
+  assert.throws(() => buildOpenCodeInvocation({ ...f.options, freeMetadata: stale }), denied);
+  const future = metadata();
+  future.observedAt = Date.now() + 10_000;
+  assert.throws(() => buildOpenCodeInvocation({ ...f.options, freeMetadata: future }), denied);
+});
+
 test('B29-03: free launch is anonymous, isolated, guarded and inert without its plugin', t => {
   const f = fixture(t);
   const invocation = buildOpenCodeInvocation(f.options);

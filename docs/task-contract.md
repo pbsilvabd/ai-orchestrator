@@ -112,6 +112,11 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   accepted payload still returns the original record. The B29 free route
   ([ADR-009](adr/009-free-anonymous-worker.md)) is the only admission in this repository; its
   live composition is closed and fixture composition requires explicit trusted configuration.
+  An integration-only MCP stdio entry point may inject that fixture endpoint
+  from its own loopback harness for pinned-client acceptance. The production
+  `mcp-server.mjs` cannot select it from environment, configuration, task text
+  or MCP arguments and remains live-closed. Fixture MCP evidence does not
+  authorize public inference or change replay/ownership rules.
 
 The canonical payload used for the idempotency hash excludes `clientSessionId` and
 is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.
