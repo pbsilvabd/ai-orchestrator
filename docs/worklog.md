@@ -1640,3 +1640,47 @@ Template:
   code verification. Exact-head CI, feedback re-read and conditional merge follow.
 - Follow-up: publish SHA-specific review/resolutions, verify this documentation diff,
   then await final-head CI. No merge until all gates are observed passing.
+
+## 2026-11-14 — M3 preparation: B29 anonymous free worker, fixture only
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: code, unit tests, a pinned-host loopback harness and docs; the live free route
+  stays closed, so no real inference, catalog GET, paid call or merge was performed.
+- Steps:
+  1. Inspected the uncommitted B29 worktree on base `688da04` and ran the focal tests (8
+     passed) and the full suite (299 passed, one platform skip) on the initial code. The
+     pinned-host harness had not been run yet.
+  2. Ran the pinned OpenCode 2.2.5 binary against a loopback fixture. The guard did not
+     admit the model: it refused `variant: "default"`, which the host reports for every
+     model and treats as a no-op. The guard now accepts `undefined` or `default` and still
+     refuses any other variant or `null`; the unit fixture now uses the observed shape.
+  3. Ran the pinned harness across six scenarios. Normal, 401, 402, 429 and connection-drop
+     passed. The 307 redirect was followed and reached a second loopback origin with the
+     prompt body; the guard cannot control it, so the redirect case fails by design.
+  4. Removed the ineffective `redirect: "error"` Request replacement in
+     `src/free-guard.mjs` and documented the host limit in the guard header.
+  5. Closed live composition in `src/configured-service.mjs`: a free worker without an
+     explicit loopback fixture endpoint is refused before approval or metadata reads.
+     Metadata is required from trusted callers; no default catalog fetch remains there.
+  6. Adjusted `test/free-provider.test.mjs` to the observed event shape, removed the
+     redirect assertion and added the live-closure and variant cases.
+  7. Added `integration/opencode-free.mjs` (pinned-host loopback harness), its section in
+     `integration/README.md`, the admission clause in `docs/task-contract.md`, the ADR-009
+     decision (proposed), the plugin evidence section in `docs/plugin-audit.md`, and the
+     B29 status matrix in `docs/tasks/B29.md`.
+  8. Updated the backlog index, roadmap M3 status and handoff next action; recorded B19 as
+     merged on main `688da04`. B20 PR #43 and its unimplemented test were not touched.
+- Files: `src/free-provider.mjs`, `src/free-guard.mjs`, `src/configured-service.mjs`,
+  `src/opencode.mjs`, `src/service.mjs`, `mcp-server.mjs`,
+  `test/free-provider.test.mjs`, `test/fixtures/free-worker.mjs`,
+  `integration/opencode-free.mjs`, `integration/README.md`,
+  `docs/adr/009-free-anonymous-worker.md`, `docs/tasks/B29.md`,
+  `docs/task-contract.md`, `docs/plugin-audit.md`, `docs/backlog.md`, `docs/roadmap.md`,
+  `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `node --test test/free-provider.test.mjs` → 8 passed, 0 failed; `node --test`
+  → 300 tests, 299 passed, 0 failed, 1 platform-gated skip; `node examples/fallback-demo.mjs`
+  → 429 then 200; `node --check` on nine changed `.mjs` files passed; the pinned harness
+  exited 1 only on `redirect-307`. Details are in [validation](validation.md). The
+  OpenCode smoke, MCP gate, B16 pinned-client workflow and live free route were not rerun.
+- Follow-up: the maintainer must choose a redirect control in ADR-009 before any live
+  approval; until then the B29 PR stays draft and B20 remains not_run.

@@ -106,6 +106,12 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
 - `authorization` is clamped to the configured allowlist; exceeding it is rejected
   with `authorization_denied`, never silently narrowed. Configuration changes affect future
   validations; existing tasks never silently widen permissions.
+- A configured worker may refuse a new submission with `authorization_denied` after
+  idempotent replay resolution and before repository inspection, task persistence, workspace
+  or branch creation. Task text cannot supply that admission. An identical replay of an
+  accepted payload still returns the original record. The B29 free route
+  ([ADR-009](adr/009-free-anonymous-worker.md)) is the only admission in this repository; its
+  live composition is closed and fixture composition requires explicit trusted configuration.
 
 The canonical payload used for the idempotency hash excludes `clientSessionId` and
 is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.

@@ -318,3 +318,34 @@ task transport, production provider or self-development gate is covered. It is n
 an OS sandbox or outbound network firewall. `PATH` and other required Windows OS variables remain in
 the explicit host environment and need deployment-specific review before any real
 provider or worker is authorized.
+
+## B29 free-route fixture harness
+
+Run separately with the pinned binary; it never calls the free route:
+
+```sh
+node integration/opencode-free.mjs /absolute/path/opencode.exe
+```
+
+It composes the configured service with an explicit loopback fixture endpoint, a local
+copy of the public metadata shape (never fetched) and an operator approval bound to the
+exact request. It runs six scenarios in temporary directories: a normal run with one
+allowed `src/**` write and one out-of-scope write that must be denied, then HTTP 401,
+402 and 429 responses, a connection drop and a 307 redirect to a second loopback origin.
+Each scenario asserts the fixed model, anonymous `Bearer public` credential, zero
+anomalies and the request count. The process prints JSON and exits 1 if any scenario
+fails. Poisoned `OPENCODE_API_KEY` and `OPENCODE_CONFIG` values are set in the parent
+process to show that they are not inherited.
+
+Observed on 2026-11-14 with OpenCode 2.2.5 (Windows x64): the normal scenario passed with
+three fixture requests, a denied out-of-scope write and an allowed diff; the 401, 402, 429
+and connection-drop scenarios each made exactly one request and failed the task. The
+`redirect-307` scenario failed: the host followed the redirect and sent the prompt body
+(7121 bytes in the observed run) to the alternate origin without the bearer credential.
+The exit code 1 is the intended result until the redirect decision in
+[ADR-009](../docs/adr/009-free-anonymous-worker.md) is resolved. The guard cannot prevent
+or detect that redirect on this host.
+
+Not covered: the live free route, catalog availability, quota, privacy, the MCP client
+transport with fixture composition, uncertain worker termination and B20. The harness is
+not production or live-provider evidence.

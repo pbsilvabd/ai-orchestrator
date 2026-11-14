@@ -26,7 +26,7 @@
 // (finishing in-flight work or retaining ownership when its outcome is uncertain).
 
 import { readFileSync } from 'node:fs';
-import { createTaskService } from './src/service.mjs';
+import { createConfiguredTaskService } from './src/configured-service.mjs';
 import { createMcpServer } from './src/mcp-server.mjs';
 
 const home = process.env.AI_ORCHESTRATOR_HOME;
@@ -48,7 +48,12 @@ if (configPath) {
 
 let service;
 try {
-  service = createTaskService({ home, config });
+  const hostEnvironment = {};
+  for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC']) {
+    if (process.env[key]) hostEnvironment[key] = process.env[key];
+  }
+  service = await createConfiguredTaskService({ home, config, hostEnvironment,
+    approvalFile: process.env.AI_ORCHESTRATOR_APPROVAL });
 } catch {
   process.stderr.write('Failed to start task service\n');
   process.exit(1);

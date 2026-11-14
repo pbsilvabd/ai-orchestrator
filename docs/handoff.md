@@ -1,12 +1,29 @@
 # Continuation point — 2026-11-14
 
-Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
+Remote `main` is `688da04bea29b300eb4cb1815bfbcb9fd0cd35ca` (B19 included). B12–B19 are
+merged. B20 remains draft PR #43 and unmerged. B29 is a draft preparation PR on
+`task/B29-opencode-free-provider` (see below); it does not claim live availability or M3.
 B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
 `43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
 not production model-quality/provider evidence. ADR-007 still selects MCP stdio
 revision `2026-07-28`.
 
-## Current implementation status: B19 reviewed and published as PR #42
+## Current implementation status: B29 fixture preparation, blocked for live use
+
+B29 (`task/B29-opencode-free-provider`, base `688da04`) prepares one anonymous free route,
+`opencode/deepseek-v4.1-flash-free`, with zero-price metadata validation, expiring
+payload-bound operator approval, a service-owned guard plugin and the B11 launch
+builder. The pinned OpenCode 2.2.5 host loads the guard through `plugins`, sends only the
+fixed model with `Bearer public`, and makes one request after 401/402/429 or a dropped
+connection. Full suite 299 passed, 0 failed, 1 platform skip; demo and syntax checks passed.
+
+Blocker: on the pinned host a 307 from the model endpoint is followed and the prompt body
+reaches the alternate origin. The guard cannot prevent or detect it. Live composition is
+therefore refused by `createConfiguredTaskService`, and
+[ADR-009](adr/009-free-anonymous-worker.md) stays `proposed`. The integration harness
+`integration/opencode-free.mjs` exits 1 on this scenario by design. B20 remains unexecuted.
+
+## Historical B19 checkpoint (merged as PR #42)
 
 The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
 `c268239`, with correction work on top of supervisor checkpoint `91e43e4`. It uses
@@ -30,18 +47,18 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: inspect B19 PR #42's exact-head CI/merge receipts
+## Next action: maintainer decision on the B29 redirect control (ADR-009)
 
-1. [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) is the single B19
-   delivery. Publication branch/head were verified; it was open with CI pending at
-   this snapshot. Read all findings, corrections and current-head CI/merge receipts.
-2. The current supervisor has B19-only merge authorization after all acceptance,
-   reviewed-head CI and blocking-feedback gates pass. Recheck head immediately before
-   merge; any changed head requires renewed review/validation. Verify origin/main and
-   post-merge CI. If the PR is already merged, do not repeat publication or merge;
-   inspect those receipts. No other task/session inherits this authorization.
-3. B20 remains gated on M2b acceptance and an explicitly authorized real
-   model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
+1. Choose one option in [ADR-009](adr/009-free-anonymous-worker.md): a trusted loopback
+   relay owned by the service (new trust boundary, needs its own card), a worker-host
+   egress allowlist, a pinned host change exposing redirect control, or recorded
+   acceptance of the redirect egress risk. Until a decision is recorded, keep the live
+   composition closed and the B29 PR as draft.
+2. Do not run the free route, a catalog GET, or B20 without a separate approval naming the
+   model, privacy acknowledgement, objective and budget. Real inference is `not_run`.
+3. B20 [PR #43](https://github.com/pbsilvabd/ai-orchestrator/pull/43) remains a draft and
+   unmerged; its proposed `test/redaction-regression.test.mjs` was not implemented in B29.
+   B19 is merged; its supporting diagnostics are not M3 evidence.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 

@@ -1941,3 +1941,60 @@ Evidence level: Unit — publication receipts do not demonstrate new runtime beh
 Not rerun: runtime tests/host gates for this documentation-only checkpoint (preceding
 entry records the final-code runs). Final-head CI/review remain required.
 Claim: this entry supports one verified PR publication, not merge or green CI.
+
+## B29 anonymous free worker fixture preparation — 2026-11-14
+
+Executed on Windows x64, Node.js v24.22.1 (fnm, `%APPDATA%\fnm\node-versions\v24.22.1`).
+Pinned binary outside the repository: `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `mcp-server.mjs`, `src/opencode.mjs`, `src/service.mjs`, `src/free-provider.mjs`, `src/free-guard.mjs`, `src/configured-service.mjs`, `test/free-provider.test.mjs`, `test/fixtures/free-worker.mjs`, `integration/opencode-free.mjs` | Syntax of every changed module | no output for each | 0 |
+| `node --test test/free-provider.test.mjs` | B29 focused cases: metadata, approval, admission, guard, composition | 8 passed, 0 failed, 0 skipped | 0 |
+| `node --test` | Full local suite regression | 300 tests: 299 passed, 0 failed, 1 skipped (`B10-03` SIGTERM case, Windows-gated) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo still prints the expected responses | 429 from `mock/preferred`, then 200 from `mock/local` | 0 |
+| `node integration/opencode-free.mjs C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe` | Pinned host, loopback fixture only: normal, 401, 402, 429, 307 redirect, connection drop | normal: succeeded, 3 fixture requests, out-of-scope write denied, allowed diff listed; 401/402/429/drop: failed with exactly 1 request each; redirect-307: succeeded, 1 request to the fixture and 1 to the alternate origin with 7121 body bytes and no credential | 1 (redirect-307 failed by design) |
+| `node integration/opencode-invocation.mjs <pinned binary>` on a temporary export of base `688da04` (unmodified) | Baseline of the existing B11/B12 harness | host and denied/allowed assertions reached; fails at its limitation-count assertion: observed two limitations (`success without a recorded passing test command…`, `no trusted test command was configured…`) where it expects one | 1 (pre-existing on base) |
+| Same harness from a temporary copy of the current `src/` and `integration/` with only that count assertion changed to `>= 1` | Pinned B11/B12 boundary regression on the B29 code | passed: denied write, link and hardlink rejections, config override rejection, allowed write, scheduler dispatch with 9 provider requests | 0 |
+| `opencode --version` on the pinned binary | Version of the executable under test | `opencode v2.2.5` | 0 |
+| PowerShell `Get-FileHash` on `opencode-windows-x64.zip` | Provenance against `SHA256SUMS` | `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8`, equal to the published digest | not a process |
+| `git diff --cached --check` | Whitespace in staged changes before the commit | no output | 0 |
+
+Result: the focal cases pass, the full suite and demo pass, and the nine changed modules
+compile. On the pinned host the guard is loaded through the `plugins` array, the
+fixture receives only the fixed model with the public bearer credential, the poisoned
+ambient key and configuration are not inherited, and no auxiliary (title, summary or
+compaction) request appears. The 401, 402, 429 and connection-drop cases each produce one
+request and a failed task, with no fallback or replay. The 307 case fails: the host follows
+the redirect and the guard cannot prevent or detect it. A first full-suite run that
+overlapped with the B11 harness failed one timing-sensitive subprocess case (`B10-03`); the
+isolated subprocess file passed 8 of 8 and the later isolated full run passed. A one-off
+script (not versioned) spawned `mcp-server.mjs`: with no worker it stayed alive for 2.5 s;
+with a free worker and no approval, and with a missing approval file, it exited 1 at
+startup. The exit reflects closed live composition, not approval handling.
+
+Evidence level: OpenCode integration — hooks, plugin loading, provider defaults, the
+anonymous credential, request count and failure latching in the pinned host, using only
+a loopback fixture and a local metadata copy. Unit covers metadata and approval
+validation. It does not demonstrate real model quality, cost, availability, quota or
+privacy, and it does not demonstrate redirect control.
+
+Not rerun: `node integration/opencode-smoke.mjs` (standalone smoke with its own
+invocation; not affected by these modules); `node integration/mcp-gate.mjs` and the B16
+pinned-client workflow (`integration/mcp-client-workflow.mjs`) — `mcp-server.mjs`
+composition changed, so these should run before any MCP-level acceptance, and were not run
+in this session; `node integration/harness-pulse.mjs` (B19 diagnostics, unaffected); B17
+matrix (unaffected); the live free route, the public catalog and any paid or external call
+(not authorized); B20 execution and its proposed redaction test (not implemented); the
+B11 harness assertion itself (pre-existing drift, not repaired in this change).
+
+Claim: This entry supports that, on the pinned OpenCode 2.2.5 host and a loopback fixture,
+the B29 guard loads through `plugins`, the fixed model and anonymous public credential are
+used, auxiliary requests are absent, and 401, 402, 429 and a connection drop stop after one
+request. It also supports unit and service evidence that free-worker admission refuses
+before persistence, workspace or branch creation, and that the passive service is unchanged,
+based on `node --test test/free-provider.test.mjs`, `node --test`, and
+`node integration/opencode-free.mjs`. It does not support redirect protection, live free-route
+availability, quota, zero price or privacy, real inference, MCP-client composition with the
+fixture, B20 or M3, which require a redirect decision and a separate approval.
