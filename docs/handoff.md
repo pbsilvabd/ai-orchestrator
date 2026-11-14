@@ -20,7 +20,8 @@ connection. Full suite 299 passed, 0 failed, 1 platform skip; demo and syntax ch
 Blocker: on the pinned host a 307 from the model endpoint is followed and the prompt body
 reaches the alternate origin. The guard cannot prevent or detect it. Live composition is
 therefore refused by `createConfiguredTaskService`, and
-[ADR-009](adr/009-free-anonymous-worker.md) stays `proposed`. The integration harness
+[ADR-009](adr/009-free-anonymous-worker.md) is accepted only for fixture
+preparation; live activation remains prohibited. The integration harness
 `integration/opencode-free.mjs` exits 1 on this scenario by design. B20 remains unexecuted.
 
 ## Historical B19 checkpoint (merged as PR #42)
@@ -59,12 +60,21 @@ deadline. `node --test` passed 303 with one Windows platform skip; the historica
 307 still failed, delivering 7121 body bytes to a second loopback origin. See
 the new validation entry for native exits. Production `mcp-server.mjs` remains
 passive/live-closed; no catalog, real provider, B20, relay or merge was run.
-The next action is complete-diff review, commit/push to draft #44, verify the
-published SHA, CI and feedback, and only then mark the fixture-only PR ready
-if no blocker remains. B30's separate branch cannot implement live use until
+The next action is to validate and publish the PR #44 review corrections,
+verify their exact remote head, CI and feedback, and only then mark the
+fixture-only PR ready if no blocker remains. B30's separate branch cannot implement live use until
 B29 is merged and verifiable deployment infrastructure exists; this Windows
 host currently reports the required Hyper-V feature disabled. The following
 decision checkpoint is historical and remains a live safety gate.
+
+Review follow-up at `3c30866`: an independent reviewer reproduced the pinned
+fixture MCP path and the 307 failure; Windows/Ubuntu CI passed at that head.
+Four non-blocking P3 findings were published. This correction clarifies ADR-009
+and the CLI header, exercises the real service outcome when approval expires
+after admission, and records an independent full-suite run that failed the
+pre-existing B10-03 timing case before a passing rerun. Revalidate the
+correction head and reply to all four review threads before changing draft
+status. No B30 gateway or live approval has been exercised.
 
 2026-11-14 decision update: ADR-009 is accepted **for fixture-only preparation**;
 the live route remains closed. B29 is narrowed without rewriting its original

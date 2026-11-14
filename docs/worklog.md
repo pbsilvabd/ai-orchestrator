@@ -1757,3 +1757,39 @@ Template:
   suitable deployment; live stays closed. This entry adapts the task-card
   status format by appending a dated matrix checkpoint rather than rewriting
   the historical failed 307 row.
+
+## 2026-11-14 — M3 preparation: B29 independent review corrections
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: one fixture service-level regression and documentation/comment fixes;
+  no worker/transport executable behavior, live endpoint, catalog or PR #43
+  changed.
+- Steps:
+  1. Read all PR #44 conversation, submitted reviews and four inline P3
+     findings at `3c30866`; confirmed the independent fixture-only verdict,
+     reproduced 307 failure and Windows/Ubuntu CI success at that head.
+  2. Corrected `docs/handoff.md` to describe ADR-009 as accepted for fixture
+     preparation and `mcp-server.mjs` header to document the approval variable,
+     recognized worker block and explicit live closure.
+  3. Added a real service-level test to `test/free-provider.test.mjs` for
+     approval expiry after admission: the reserved attempt blocks, workspace
+     and owner lock remain, new submissions refuse and replay stays readable.
+     Documented that conservative outcome in the card and task contract.
+  4. Recorded the independent review's full-suite B10-03 failure and our two
+     repeated full-suite failures without rewriting the earlier successful
+     run; isolated B10-03 passed. This pre-existing timing issue requires a
+     separate maintenance correction and is not silently treated as green.
+- Files: `mcp-server.mjs`, `test/free-provider.test.mjs`, `docs/handoff.md`,
+  `docs/tasks/B29.md`, `docs/task-contract.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: focal B29/CLI tests → 13 passed; `node --test` twice →
+  303 passed/1 B10-03 failed/1 Windows skip each, exit 1; isolated
+  `test/subprocess.test.mjs` → 8 passed/1 skip, exit 0;
+  `node --test --test-concurrency=1` → 304 passed/1 skip, exit 0;
+  demo → 429 then 200,
+  exit 0; syntax and staged diff checks → no errors. Pinned MCP/negative
+  harness, standalone smoke, B16/B17, B19 and live routes were not rerun.
+- Follow-up: publish this correction in the same PR #44 and reply to each
+  inline finding with its new SHA/evidence. Re-review the exact head and CI;
+  if CI fails, keep draft and correct it. Even if fixture-only PR is ready,
+  B30 owns the failed live 307 gate and merge needs separate authorization.

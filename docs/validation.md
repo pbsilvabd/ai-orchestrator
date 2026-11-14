@@ -2081,3 +2081,53 @@ closure and failure preservation based on the focal, pinned-host and full-suite
 commands above. It does not support a passing redirect safety gate, live
 provider/cost/privacy claims, B20/M3 or merge; those require B30 deployment
 proof, separate approvals and later reviewed evidence.
+
+## M3 preparation: B29 review feedback and launch refusal — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm; Node directory on
+child PATH). Date: 2026-11-14. This entry corrects the preceding passing-run
+snapshot without rewriting it. The [independent PR review at `3c30866`](https://github.com/pbsilvabd/ai-orchestrator/pull/44#issuecomment-6882305093)
+also ran the full suite twice: one B10-03 failure (302 pass/1 fail/1 skip,
+exit 1), then 303 pass/0 fail/1 skip, exit 0. Windows/Ubuntu CI passed at
+`3c30866`; this is **not** a CI receipt for the following correction head.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs` | New service-level launch-expiry consequence and production CLI gate | 13 passed, 0 failed, 0 skipped; post-admission expiry blocked one reserved attempt, retained workspace/owner, stopped scheduler and refused new work while identical replay remained readable | 0 |
+| `node --test` | Full suite after the review correction, first run | 305 tests, 303 passed, **1 failed** (`B10-03`, missing `before` output at `test/subprocess.test.mjs:78`), 1 Windows skip; output saved outside repo as `b29-p3-20261114-suite.log` | 1 |
+| `node --test test/subprocess.test.mjs` | Isolated reproduction of the pre-existing load-sensitive B10-03 test | 9 tests, 8 passed, 0 failed, 1 Windows skip | 0 |
+| `node --test` | Full suite after the review correction, second run | 305 tests, 303 passed, **1 failed** (same B10-03 `'' !== 'before'`), 1 Windows skip; output saved as `b29-p3-20261114-suite-rerun.log` | 1 |
+| `node --test --test-concurrency=1` | Full suite without cross-file test contention | 305 tests, 304 passed, 0 failed, 1 Windows skip; output saved as `b29-p3-20261114-serial-suite.log` | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback regression after test/docs correction | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `node --check mcp-server.mjs` and `node --check test/free-provider.test.mjs` | Syntax of changed header/fixture test | no output | 0 each |
+| `git diff --cached --check` | Staged review correction whitespace | no output | 0 |
+
+Result: the new service-level test verifies the conservative scheduler behavior
+after an approval expires between admission and `prepare`: a single attempt
+and workspace remain, the task is blocked and requires reconciliation, new
+work refuses while identical replay is readable, and ownership remains held.
+No OpenCode child is returned by `prepare`. The full local suite did **not**
+pass on either correction run: both failed only B10-03 under concurrent load;
+the same test passed in isolation and the complete serial suite (304 passed,
+one Windows skip, exit 0). This same case failed in an independent
+review run at the preceding head, passed in the next run and passed in
+Windows/Ubuntu CI there. A passing local result at the preceding head is
+not a deterministic-suite claim for the correction head.
+
+Evidence level: Unit — the new fixture test exercises the real service,
+temporary store and Git workspace after a rejected launch. It does not prove
+that actual external effects are absent in a production crash. Previous
+OpenCode integration evidence remains bound to `3c30866`, where the production
+runtime was unchanged by this review correction.
+
+Not rerun: pinned MCP and eight-scenario free harness (this correction changes
+only a test and the production entry point's comment, not its executable
+logic); standalone smoke, B16/B17, B19 (unchanged); catalog, real inference,
+B20/#43 and B30 live containment (not authorized). Final-head CI and re-review
+remain pending at this entry.
+
+Claim: this entry supports a new fixture service-level consequence test and
+one passing **serial** full-suite run, while reporting **two failed default-concurrency**
+full-suite runs due to pre-existing B10-03, based on the commands above. It
+does not support deterministic green default-concurrency local runs, redirect
+containment, live use, B20/M3 or merge.

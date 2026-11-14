@@ -103,6 +103,48 @@ test('B29-02: launch revalidates approval expiry and metadata freshness before p
   assert.throws(() => buildOpenCodeInvocation({ ...f.options, freeMetadata: future }), denied);
 });
 
+test('B29-02: approval expiry after admission retains the dispatch and halts the service', async t => {
+  const f = fixture(t);
+  const expiresAt = Date.now() + 60_000;
+  const runtimeRoot = join(f.root, 'expired-service-runtime');
+  const worker = createOpenCodeWorker({ ...f.options,
+    freeApproval: { ...approvalFor(f.request), expiresAt }, runtimeRoot });
+  const prepare = worker.prepare;
+  let prepareCalls = 0;
+  // Advance the clock only inside the real adapter's synchronous prepare call.
+  // Admission uses the unmodified clock; no subprocess can start after refusal.
+  worker.prepare = input => {
+    prepareCalls++;
+    const originalNow = Date.now;
+    Date.now = () => expiresAt + 1;
+    try { return prepare(input); }
+    finally { Date.now = originalNow; }
+  };
+  const service = createTaskService({ home: f.home, config: f.config, worker });
+  const accepted = service.submitTask(f.request);
+  await service.whenIdle();
+  const task = service.store.readTask(accepted.taskId);
+  assert.equal(prepareCalls, 1);
+  assert.equal(task.status, 'blocked');
+  assert.equal(task.block.reason, 'worker-outcome-uncertain');
+  assert.equal(task.block.requiresReconciliation, true);
+  assert.equal(task.attempts.length, 1);
+  assert.equal(task.attempts[0].outcome, null);
+  assert.equal(existsSync(task.attempts[0].workspace.workspacePath), true,
+    'The reserved workspace is retained for inspection');
+  assert.equal(existsSync(runtimeRoot), false, 'No host runtime was created before refusal');
+  assert.equal(service.schedulerStatus().stopped, true);
+  assert.equal(service.schedulerStatus().requiresReconciliation, true);
+  assert.equal(service.submitTask(f.request).taskId, accepted.taskId,
+    'Identical replay is readable but never dispatches');
+  assert.throws(() => service.submitTask({ ...f.request, idempotencyKey: 'after-expiry' }),
+    error => error.code === 'unavailable');
+  assert.deepEqual(await service.close(), { releaseOwnership: false });
+  assert.equal(existsSync(join(f.home, 'locks', 'service-owner.lock')), true);
+  // This disposable fixture verified prepare threw before returning an invocation;
+  // no worker child was ever spawned. Only this isolated test home is removed.
+});
+
 test('B29-03: free launch is anonymous, isolated, guarded and inert without its plugin', t => {
   const f = fixture(t);
   const invocation = buildOpenCodeInvocation(f.options);
