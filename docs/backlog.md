@@ -105,7 +105,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
 | [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
-| [B30 — Contain the live free route behind a trusted relay](tasks/B30.md) | P2 | Card only on separate branch; no relay, egress enforcement, live use or PR | B29/#44 fixture-only completion/merge; ADR-009 amendment; deployment egress proof and separate approvals |
+| [B30 — Contain the live free route behind a trusted relay](tasks/B30.md) | P2 | Card and ADR-010 design only on separate branch; no relay, isolation, signature, live use or PR | B29/#44 fixture-only completion/merge; ADR-009 reconciliation; deployment egress proof and separate approvals |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |
 | [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Gated | B22a |

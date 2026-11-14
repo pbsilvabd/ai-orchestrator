@@ -1657,3 +1657,25 @@ Template:
   pinned-host fixture, MCP client and live API were not run on this card branch.
 - Follow-up: reconcile the B30 branch with B29 after its reviewed fixture
   completion, then implement B30 only under its own task authorization.
+
+## 2026-11-14 — M3 preparation: specify B30 egress and signing
+
+- Branch: `task/B30-free-relay`
+- Scope: documentation-only security architecture; no VM, network namespace,
+  gateway, key, signature, provider call or service code was created.
+- Steps:
+  1. Inspected platform documentation for Hyper-V switch isolation, Linux
+     network namespaces and OpenSSH SSHSIG sign/verify semantics.
+  2. Added ADR-010 with separate worker/relay network compartments, trusted
+     host L7 egress gateway and exact-byte offline maintainer signature;
+     documented the partial change to ADR-009's live listener clause.
+  3. Made the B30 acceptance matrix observable for both platforms, gateway
+     bypass and signature tampering; updated backlog and handoff status.
+- Files: `docs/adr/010-live-egress-and-approval.md`, `docs/tasks/B30.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `git diff --cached --check` → no whitespace errors after staging;
+  full suite, demo, pinned host, actual isolation and SSHSIG were not rerun.
+- Follow-up: after B29 fixture acceptance and merge, amend ADR-009 to reconcile
+  the host-only listener, then implement/review B30 or split oversized
+  deployment work into sequential cards without relaxing the live gate.

@@ -1958,3 +1958,32 @@ Not rerun: `node --test`, demo and pinned-host/MCP harnesses (card-only change);
 catalog GET and live inference (not authorized).
 Claim: this entry supports only a documented acceptance plan, not relay safety,
 egress enforcement, B29 completion, live availability or M3.
+
+## M3 preparation: B30 egress and signing design — 2026-11-14
+
+Executed on Windows x64 (documentation research; no Node or OpenCode host run).
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git status --short --branch` | Confirm B30 starting branch | clean `task/B30-free-relay` at `551b3f4` before edits | 0 |
+| `git diff --cached --check` | Check complete staged design and card | no whitespace errors | 0 |
+
+Result: the design is documented, not deployed or exercised. Research sources:
+[Microsoft Hyper-V switch types](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/plan/plan-hyper-v-networking-in-windows-server)
+(Internal permits host/VM communication; Default Switch can carry NAT),
+[Linux network namespaces](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)
+and [ip-netns](https://man7.org/linux/man-pages/man8/ip-netns.8.html)
+(separate devices/routes), and
+[OpenSSH ssh-keygen](https://man.openbsd.org/ssh-keygen.1) (`-Y sign`, `-Y verify`,
+namespace and allowed signers). These are specification references, not
+platform deployment observations.
+
+Evidence level: Unit — the staged diff check is documentation-only; it does
+not demonstrate network isolation, SSH signatures or actual host behavior.
+Not rerun: `node --test`, demo, pinned-host harness and MCP workflow (no code
+change); Hyper-V/netns/gateway bypass tests and signature tests (not
+implemented); catalog GET and real inference (not authorized).
+Claim: this entry supports only a concrete design and acceptance plan, not
+relay safety, verifiable egress enforcement, a real maintainer signature,
+live-model availability or M3.

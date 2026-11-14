@@ -7,6 +7,15 @@ B29/#44 fixture MCP evidence and merge/review decision, then reconcile this
 card with the accepted ADR-009 amendment before executing B30. The historical
 checkpoint below predates this decision. No live inference or merge is authorized.
 
+2026-11-14 design refinement: [ADR-010](adr/010-live-egress-and-approval.md)
+specifies separate worker/relay compartments (Hyper-V Internal switches on
+Windows; network namespaces/veth on Ubuntu), a host-side origin-restricting
+L7 egress gateway, and an offline FIDO2-backed SSHSIG from the maintainer.
+These are **requirements**, not observed deployment or a signed live approval.
+The B29 fixture remains loopback-only; reconcile ADR-009's future live listener
+wording after B29 merges. If the required isolation/gateway/signature cannot
+be verified, do not open the live route or replace it with ambient host egress.
+
 Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
 B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
 `43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
