@@ -1917,3 +1917,27 @@ earlier entry's historical not-rerun note for the shared helper.
 Claim: This entry supports all four B19 rows and verified correction of the supervisor
 findings for the reviewed code. It does not claim green remote CI before observation,
 an all-pass B06 gate, production-provider support, universal tree containment or M3.
+
+## M2b: B19 publication checkpoint — 2026-11-14
+
+Executed on Windows x64 with Git 2.55.0.windows.5 and GitHub CLI.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git push -u origin task/B19-opt-in-harness-pulse` | Publish the two scoped commits without force | Remote branch created | 0 |
+| `gh pr create --base main --head task/B19-opt-in-harness-pulse --title 'feat: add manual opt-in harness pulse (B19)' --body-file C:\Users\paulo\AppData\Local\Temp\opencode\b19-pr-body.md` | Publish one B19 PR with template/matrix/review/evidence | PR #42, https://github.com/pbsilvabd/ai-orchestrator/pull/42 | 0 |
+| `git ls-remote origin refs/heads/task/B19-opt-in-harness-pulse` | Verify published branch identity | `87782d2b192a89ba11cacbbe4e59d31df90ea200` matches intended head | 0 |
+| `gh pr view 42 --json number,url,state,baseRefName,baseRefOid,headRefName,headRefOid,statusCheckRollup,mergeable,mergeStateStatus` | Verify PR base/head/checks | Main `c268239`, head `87782d2`, open; Windows/Ubuntu CI in progress | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/issues/42/comments --paginate` | Read complete conversation | Empty at publication | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/pulls/42/reviews --paginate` | Read complete submitted reviews | Empty at publication | 0 |
+| `gh api graphql --input C:\Users\paulo\AppData\Local\Temp\opencode\b19-pr-threads-query.json` | Read all resolved/outdated/open inline threads with pagination metadata | Empty; `hasNextPage: false`, head `87782d2` | 0 |
+| `node C:\Users\paulo\AppData\Local\Temp\opencode\b19-final-content-check.mjs` | Documentation-only correction links and preserved artifact structure/redaction/caps | 12 changed Markdown files, 111 relative links, 4 original pulse reports checked; pass | 0 |
+| `git diff --check` | Publication-status whitespace check | no output | 0 |
+
+Result: the single PR was published and remote identity verified. CI was pending,
+not passed. The accompanying status edit is documentation-only; no tested code changed.
+Evidence level: Unit — publication receipts do not demonstrate new runtime behavior.
+Not rerun: runtime tests/host gates for this documentation-only checkpoint (preceding
+entry records the final-code runs). Final-head CI/review remain required.
+Claim: this entry supports one verified PR publication, not merge or green CI.

@@ -6,7 +6,7 @@ B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
 not production model-quality/provider evidence. ADR-007 still selects MCP stdio
 revision `2026-07-28`.
 
-## Current implementation status: B19 reviewed locally, publication pending
+## Current implementation status: B19 reviewed and published as PR #42
 
 The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
 `c268239`, with correction work on top of supervisor checkpoint `91e43e4`. It uses
@@ -30,14 +30,16 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: publish B19 and verify exact-head CI/feedback
+## Next action: inspect B19 PR #42's exact-head CI/merge receipts
 
-1. Commit/push this single branch and publish its single B19 PR, including the
-   SHA-specific findings, correction commits, verified re-review and row evidence.
+1. [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) is the single B19
+   delivery. Publication branch/head were verified; it was open with CI pending at
+   this snapshot. Read all findings, corrections and current-head CI/merge receipts.
 2. The current supervisor has B19-only merge authorization after all acceptance,
    reviewed-head CI and blocking-feedback gates pass. Recheck head immediately before
    merge; any changed head requires renewed review/validation. Verify origin/main and
-   post-merge CI. No other task/session inherits this authorization.
+   post-merge CI. If the PR is already merged, do not repeat publication or merge;
+   inspect those receipts. No other task/session inherits this authorization.
 3. B20 remains gated on M2b acceptance and an explicitly authorized real
    model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
 

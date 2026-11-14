@@ -3,8 +3,10 @@
 Verified 2026-11-14: current main `c268239` includes B18/#41; its post-merge check
 passed in Actions run `43589015912`. B17/#40 is included and its Windows/Ubuntu PR
 checks passed; post-merge Windows run `43568386630` passed. B19 implementation is
-local on `task/B19-opt-in-harness-pulse`; supervisor review/corrections are verified,
-with publication/current-head CI pending.
+published in [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) from
+`task/B19-opt-in-harness-pulse`; supervisor review/corrections are verified.
+At publication the PR is open and CI pending; consult the PR for subsequent exact-head
+CI/merge receipts rather than treating this snapshot as the current remote state.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -53,7 +55,8 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Current state: **B19 is reviewed locally; publication/current-head CI pending**.
+Current delivery: **B19 PR #42; reviewed and published**. Its remote state and checks
+are authoritative on GitHub.
 B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
 the manual capability-gate pulse and read-only task-history acceptance; B17 is merged.
 Prerequisites below describe complete card acceptance; preparatory work does not
@@ -100,7 +103,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
-| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Reviewed implementation on `task/B19-opt-in-harness-pulse`; publication/current-head CI pending | B06 and B17 delivered |
+| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |

@@ -51,7 +51,8 @@ check passed in Actions run `43589015912`. B19's manual opt-in pulse and local
 supervisor corrections are on `task/B19-opt-in-harness-pulse`; focused correction
 tests and final pinned-host evidence are complete locally. GPT-6.1 Sol independently
 verified the corrections, all four rows, the full suite and current-code B17 matrix;
-publication/current-head CI are pending.
+delivery is published as [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42),
+which carries the authoritative reviewed-head CI/merge/post-merge receipts.
 No production provider is enabled.
 There is no production provider, integrated fallback, semantic memory or completed
 self-development workflow yet.

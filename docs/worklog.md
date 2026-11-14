@@ -1618,3 +1618,25 @@ Template:
 - Follow-up: publish the single reviewed B19 PR, record findings/correction SHAs and
   verified re-review, wait for exact-head CI, then use only the current B19-specific
   conditional merge authorization. Confirm remote main and post-merge CI afterward.
+
+## 2026-11-14 — M2b: B19 PR publication checkpoint
+
+- Branch: `task/B19-opt-in-harness-pulse`
+- Scope: publication status documentation only; tested runtime code unchanged.
+- Steps:
+  1. Committed the initial review checkpoint `91e43e4` and verified corrections in
+     `87782d2`, pushed without force and opened the single B19 PR #42 against main
+     `c268239`. The remote branch and PR head both matched `87782d2`.
+  2. Read the complete conversation, submitted reviews and inline-thread query at
+     that head: all empty, with no next thread page. CI started on Windows/Ubuntu.
+  3. Recorded the PR as the authoritative future check/merge receipt rather than
+     claiming a merge or green CI before observation.
+- Files: `AGENTS.md`, `README.md`, `docs/backlog.md`, `docs/tasks/B19.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: publication and SHA verification succeeded; content checks passed for
+  12 Markdown files, 111 links and all four preserved pulse reports; diff check passed.
+  Runtime checks were not
+  rerun for this documentation-only checkpoint; the preceding entry records final
+  code verification. Exact-head CI, feedback re-read and conditional merge follow.
+- Follow-up: publish SHA-specific review/resolutions, verify this documentation diff,
+  then await final-head CI. No merge until all gates are observed passing.
