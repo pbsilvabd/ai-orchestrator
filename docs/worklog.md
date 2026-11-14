@@ -1471,3 +1471,172 @@ Template:
   Pinned OpenCode/client gates were not rerun; fixture evidence is not B20/M3 use.
 - Follow-up: publish the reviewed commit without force, verify the one PR/head and
   observe CI; leave the PR open for the maintainer's merge decision.
+
+## 2026-11-14 — M2b: B19 opt-in harness pulse
+
+- Branch: `task/B19-opt-in-harness-pulse`
+- Scope: code, tests and docs; no service scheduler, task execution, provider activation,
+  model ranking or automatic/scheduled retry was added.
+- Steps:
+  1. Added a manual eight-slot capability pulse with explicit pinned host/version,
+     bounded subprocess and UTF-8 output, per-slot phase/transcript, exclusive report
+     creation, failure-preserving diagnostic retries and conservative timeout cleanup.
+  2. Added the gated read-only history projection. It requires passing tracked B17
+     evidence, reads only one explicit task record, sanitizes/bounds fields, and refuses
+     blocked or uncertain outcomes without store reconciliation or task replay.
+  3. Added real temporary child/filesystem tests for all B19 rows and a pinned-host
+     failure/retry report using only the local loopback fixture provider.
+  4. Updated the current-state summary in AGENTS, normative task contract, ADR-006,
+     task/backlog/roadmap/handoff status, README, integration guide and pulse evidence
+     map. Adapted the worklog/validation templates as the required append-only records.
+- Review pass 1: found and fixed absolute-path leakage from child stack traces, capped
+  raw-tail credential leakage, malformed/uncertain history handling, and an initially
+  unsafe scratch parent for timeout fixtures. Also removed a test-only B17 evidence-path
+  override that could have weakened the tracked-evidence gate; a copied pre-B17 CLI
+  fixture now tests refusal on a real temporary filesystem. Capped raw streams are
+  omitted; timeout scratch is retained in temp/report scope and the test removes its
+  exact owned fixture.
+- Review pass 2: inspected the complete base-to-working diff and each B19 row; verified
+  missing host/version slots, eight original results plus separate retry, pre-B17 and
+  uncertain history byte preservation/no task replay, exclusive artifacts, no
+  scheduler/provider/ranking/task executable path, and accurate milestone/host-evidence
+  wording. No blocking finding remains locally.
+- Files: `AGENTS.md`, `README.md`, `docs/adr/006-worker-service.md`, `docs/backlog.md`,
+  `docs/handoff.md`, `docs/pulses/B19-pinned-host.json`, `docs/pulses/README.md`,
+  `docs/roadmap.md`, `docs/task-contract.md`, `docs/tasks/B19.md`,
+  `docs/validation.md`, `docs/worklog.md`, `integration/README.md`,
+  `integration/harness-pulse.mjs`, `integration/mcp-gate.mjs`,
+  `test/harness-pulse.test.mjs`.
+- Validation: `node --test` → 288 passed, 0 failed, 1 existing POSIX-only skip;
+  fallback demo → 429 then 200; B19 injected pinned-host pulse → expected exit 1,
+  originals 7 pass/1 fail/0 not_run with a separately passing retry; `git diff --check`
+  → clean. Ubuntu pinned-host integration was not rerun.
+- Follow-up: supervisor reviews the unpublished B19 branch/diff and decides on
+  publication; B20 remains gated on M2b acceptance and explicit real-provider/model/
+  budget authorization.
+
+## 2026-11-14 — M2b: B19 supervisor corrections
+
+- Branch: `task/B19-opt-in-harness-pulse` (unpublished local corrections over user
+  checkpoint `91e43e4`; no commit or publication authorized)
+- Scope: mixed.
+- Steps:
+  1. Contained Windows gate launches in the B16 creation-time Job Object helper,
+     keeping its randomized cleanup proof marker out of the child environment; POSIX
+     launches use a dedicated process group with bounded teardown/empty-group
+     verification. Timeout or uncertain cleanup preserves the original sample,
+     halts subsequent original samples, marks remaining slots `not_run`, and prevents
+     retries.
+  2. Separated original gate phase from cleanup phase/status and preserved cleanup
+     outcome without replacing the failure phase.
+  3. Made history a distinct B17-gated read-only report mode, using the task store's
+     pure record validator, conservative lifecycle checks and an output path outside
+     the selected home. Coherent known-failure reconciliation is allowed; unknown or
+     incoherent administrative outcomes are refused.
+  4. Added regression coverage for a real spawned descendant, uncertain cleanup,
+     history-only CLI/API side effects and known/unknown reconciliation records.
+- Self-review pass 1: identified that the Windows proof marker could be inherited by
+  the gate and potentially echoed as a false cleanup confirmation; the launcher now
+  removes it from its child environment. Also tightened history mode to reject binary
+  and version options instead of silently ignoring mixed-mode arguments.
+- Self-review pass 2: rechecked all acceptance rows and the complete local diff,
+  including actual B16 Job Object pulse evidence, forced simultaneous probe/cleanup
+  failure metadata, history home byte preservation and timeout/retry suppression. No
+  remaining local blocker identified; supervisor retest is still required.
+- Files: `integration/harness-pulse.mjs`, `integration/mcp-gate.mjs`,
+  `integration/fixtures/b16-windows-job.cs`, `src/tasks.mjs`,
+  `test/harness-pulse.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/006-worker-service.md`, `integration/README.md`,
+  `docs/pulses/README.md`, `docs/validation.md`, `docs/roadmap.md`,
+  `docs/handoff.md`, and `docs/pulses/B19-final-containment.json`.
+- Validation: focused B19 suite 4/4; full suite 288 passed, 0 failed, 1 existing
+  POSIX-only skip; demo 429 then 200; pinned-host fixture 7/1/0 with separate passing
+  retry and verified Job Object cleanup; forced probe+cleanup fixture preserved
+  `failure:probe` plus `cleanup/failed`; syntax and diff checks passed. Exact commands
+  and limits are recorded in `docs/validation.md`.
+- Follow-up: supervisor independently retests this local diff and decides publication.
+
+## 2026-11-14 — M2b: B19 R5 supervisor corrections and final local review
+
+- Branch: `task/B19-opt-in-harness-pulse` (unpublished local changes over checkpoint
+  `91e43e4`; no commit, push or PR authorized).
+- Scope: code, tests, evidence and docs.
+- Steps: gated diagnostics on the entire originals run remaining certain; removed
+  duplicate retry `not_run` records; added both retry regressions. Increased ordinary
+  fixture timeouts to 15 seconds and kept dedicated timeout fixtures separate, with
+  complete outcome assertions. Made POSIX signal-failure settlement bounded and
+  uncertain, explicitly documented process-group/escaped-descendant limits, consumed
+  Windows control-stdin errors, and restricted persisted version to exact `2.2.5`.
+- Supervisor failure preserved: the supervisor's focused test command exited 1 with
+  B19-01 summary.fail 2 (expected 1) and the oversized-output fixture status `fail`
+  (expected `pass`). Per-test termination evidence was unavailable. A local diagnosis
+  using a 1-second B19-style budget did not reproduce either failure (injected exit 7
+  plus verified cleanup; oversized output passed in 175 ms); cause remains unconfirmed.
+- Self-review pass 1: checked retry invariants, full-outcome diagnostics, uncertain
+  cleanup, Windows stdin and version handling, and bounded POSIX signal-failure flow.
+  Self-review pass 2: reviewed the completed diff and evidence mapping; repeated B19
+  tests, full suite/demo/diff checks, B16 shared-helper integration and fresh pinned
+  host report. No B17 rerun was made.
+- Files: `integration/harness-pulse.mjs`, `test/harness-pulse.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/006-worker-service.md`, `integration/README.md`,
+  `integration/fixtures/b16-windows-job.cs`, `src/tasks.mjs`, `docs/pulses/README.md`,
+  `docs/pulses/B19-r5-final.json`, `docs/validation.md`, `docs/worklog.md`,
+  `docs/handoff.md`, `docs/roadmap.md`.
+- Validation: focused suite twice, each 6/6; full suite 290 passed, 0 failed, 1
+  existing POSIX-only skip; fallback demo 429 then 200; retry reproducer matched 3-call
+  no-retry and 9-call/eight-unique-record expectations; B16 pinned-client workflow
+  passed; new pinned-host pulse assertions passed (7/1/0, separate retry and confirmed
+  Job Object cleanup; expected command exit 1); syntax and diff checks passed. Full
+  commands, the supervisor failure and limitations are appended in `docs/validation.md`.
+- Limits: native POSIX process-group behavior was not run on this Windows host. The
+  injected POSIX settlement test validates bounded control flow, not OS containment;
+  escaped descendants remain outside process-group verification. No real provider,
+  M2b service use or M3 task evidence.
+- Follow-up: independent supervisor review of the unpublished current diff and
+  `B19-r5-final.json`; publication remains supervisor-owned.
+
+## 2026-11-14 — M2b: B19 independent supervisor review and verification
+
+- Branch: `task/B19-opt-in-harness-pulse`
+- Scope: review, independent validation and documentation; no real-provider/task
+  execution or additional product capability.
+- Steps:
+  1. GPT-6.1 Sol reviewed the entire base-to-final diff and every B19 row, reproduced
+     blockers, returned them to GPT-6 Luna high and verified the corrections.
+  2. Independently ran the six focused cases, both retry reproductions, full suite,
+     current-code B17 matrix, pinned-host pulse, forced probe/cleanup failure, demo,
+     syntax and whitespace checks. Kept all earlier pulse artifacts unchanged.
+  3. Updated continuation and evidence mapping; recorded earlier failed results and
+     remaining POSIX/provider limits instead of replacing them with later passes.
+- Files: `AGENTS.md`, `README.md`, `docs/backlog.md`, `docs/tasks/B19.md`,
+  `docs/handoff.md`, `docs/roadmap.md`, `docs/pulses/README.md`,
+  `docs/pulses/B19-supervisor-final.json`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused 6/6; full suite 290 passed, 0 failed, 1 existing POSIX-only skip;
+  B17 13/13; pulse originals 7/1/0 plus one separate passing retry, expected native
+  exit 1; forced cleanup failure retained original phase; demo 429 then 200; syntax
+  and diff checks passed. Native POSIX and unrelated smoke gates were not rerun.
+- Follow-up: publish the single reviewed B19 PR, record findings/correction SHAs and
+  verified re-review, wait for exact-head CI, then use only the current B19-specific
+  conditional merge authorization. Confirm remote main and post-merge CI afterward.
+
+## 2026-11-14 — M2b: B19 PR publication checkpoint
+
+- Branch: `task/B19-opt-in-harness-pulse`
+- Scope: publication status documentation only; tested runtime code unchanged.
+- Steps:
+  1. Committed the initial review checkpoint `91e43e4` and verified corrections in
+     `87782d2`, pushed without force and opened the single B19 PR #42 against main
+     `c268239`. The remote branch and PR head both matched `87782d2`.
+  2. Read the complete conversation, submitted reviews and inline-thread query at
+     that head: all empty, with no next thread page. CI started on Windows/Ubuntu.
+  3. Recorded the PR as the authoritative future check/merge receipt rather than
+     claiming a merge or green CI before observation.
+- Files: `AGENTS.md`, `README.md`, `docs/backlog.md`, `docs/tasks/B19.md`,
+  `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: publication and SHA verification succeeded; content checks passed for
+  12 Markdown files, 111 links and all four preserved pulse reports; diff check passed.
+  Runtime checks were not
+  rerun for this documentation-only checkpoint; the preceding entry records final
+  code verification. Exact-head CI, feedback re-read and conditional merge follow.
+- Follow-up: publish SHA-specific review/resolutions, verify this documentation diff,
+  then await final-head CI. No merge until all gates are observed passing.

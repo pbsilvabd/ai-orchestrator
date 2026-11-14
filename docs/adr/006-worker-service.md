@@ -87,3 +87,35 @@ current loopback fixture provider accepts only the credential variable FIXTURE_A
 an explicit allowlist replaces the incomplete environment denylist. Further providers
 need deliberate credential-name support. These are launch checks, not protection
 against concurrent filesystem mutation or a replacement for OS isolation.
+
+### Amendment — 2026-11-14: B19 manual diagnostic pulse boundary
+
+The optional B19 harness is a manually invoked CLI outside the task service, MCP
+operations and scheduler. It runs exactly eight isolated capability-gate subprocesses
+against an explicitly supplied trusted OpenCode 2.2.5 binary and records every
+original outcome, phase and bounded sanitized transcript. A retry is a separately
+identified diagnostic record and cannot replace an original failure or alter its
+denominator. It uses only the gate's local loopback fixture provider; it adds no
+provider configuration, scheduling, model ranking or task executable surface.
+
+The optional task-history track is available only when tracked B17 evidence passes.
+It is a distinct read-only report mode: it reads one explicit regular task record
+without opening the store or invoking reconciliation, writes, scheduling, gate launch
+or task replay. It uses the pure store record validator plus conservative lifecycle
+checks. Blocked/uncertain work, including administrative closure with unknown
+outcomes, remains refused; coherent known-failure reconciliation may be observed.
+Terminal state is not substituted for missing test evidence. Returned text is
+sanitized/bounded before persistence, and the exclusive report must be outside the
+selected task home.
+
+Pulse launches are contained independently of the B10 root-only subprocess primitive.
+Windows uses the existing B16 creation-time Job Object helper and verifies an empty
+job; POSIX uses a dedicated process group with bounded TERM/KILL teardown and
+empty-group verification. POSIX verification covers only members remaining in the
+group; a `setsid`/otherwise escaped descendant may remain and is not claimed stopped.
+Root exit is recorded separately and never proves the tree stopped. Timeout or
+unverified cleanup halts samples, suppresses all pulse retries, marks the remaining
+original slots `not_run`, and retains scratch. The gate preserves original phase and
+cleanup phase/status independently even if both probe and cleanup fail. This
+diagnostic evidence does not establish M2b/M3 completion or production-provider
+behavior.

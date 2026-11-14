@@ -852,6 +852,13 @@ function validateTask(task) {
   if (task.artifact !== undefined) validateArtifact(task.artifact);
 }
 
+// Pure structural/lifecycle validation for callers that inspect a record without
+// opening the task store. This deliberately performs no filesystem operations.
+export function isValidTaskRecord(task) {
+  try { validateTask(task); return true; }
+  catch { return false; }
+}
+
 function validateArtifact(artifact) {
   if (!artifact || typeof artifact !== 'object' || Array.isArray(artifact))
     fail('invalid_argument', 'artifact must be an object');

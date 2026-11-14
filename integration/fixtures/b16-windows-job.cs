@@ -41,6 +41,10 @@ internal static class B16WindowsJob
 
     private static int Run(SafeFileHandle job, string[] args)
     {
+        // Keep the private cleanup proof token in the launcher only. If the gate or
+        // host inherited it, child output could forge the launcher's confirmation.
+        string cleanupMarker = Environment.GetEnvironmentVariable("B19_JOB_CLEANUP_MARKER");
+        Environment.SetEnvironmentVariable("B19_JOB_CLEANUP_MARKER", null);
         using (SafeFileHandle input = CreateFile("NUL", 0x80000000, 3, IntPtr.Zero, 3, 0, IntPtr.Zero))
         {
             Require(!input.IsInvalid, "open NUL");
@@ -85,9 +89,16 @@ internal static class B16WindowsJob
 
                     int signaled = WaitHandle.WaitAny(new WaitHandle[] { hostExited, stopRequested });
                     uint code = 0;
-                    if (signaled == 0)
+                    bool gateExited = signaled == 0;
+                    if (gateExited)
                         Require(GetExitCodeProcess(hostExited.SafeWaitHandle, out code), "GetExitCodeProcess");
                     StopJob(job);
+                    if (!String.IsNullOrEmpty(cleanupMarker))
+                    {
+                        Console.Error.WriteLine();
+                        if (gateExited) Console.Error.WriteLine("B19_GATE_EXIT:" + cleanupMarker + ":" + code);
+                        Console.Error.WriteLine("B19_JOB_EMPTY:" + cleanupMarker);
+                    }
                     return unchecked((int)code);
                 }
             }

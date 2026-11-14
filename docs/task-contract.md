@@ -482,3 +482,49 @@ These tests must exist and pass before M2b is claimed:
 
 Remote access and authentication, multi-worker routing, semantic memory, automatic
 fallback (M2c), automatic merge, a UI, scheduled retries and paid providers.
+
+## B19 manual diagnostic harness (outside the four service operations)
+
+`integration/harness-pulse.mjs` is a maintainer-invoked CLI, not a fifth service
+operation. It accepts an explicit trusted pinned binary/version and a new output
+artifact path. It starts exactly eight isolated, bounded original capability-gate
+processes; absent/wrong host inputs create eight `not_run` records and a nonzero
+command result. Each record preserves the original status, phase, observed process
+exit/termination, bounded sanitized transcript and truncation state. A diagnostic
+retry is separately labeled and never replaces an original result or changes the
+denominator. The CLI is not scheduled and cannot invoke a provider other than the
+gate's local loopback fixture.
+
+`sanitized: true` records that the bounded redaction policy was applied; it does not
+guarantee detection of arbitrary sensitive data. Callers must still avoid producing
+secrets in host output.
+
+History is a separate reader/report mode, selected by `--history-home`, `--task-id`
+and `--output`; it cannot be combined with a pulse binary, retry, injection or timeout
+options. It requires the tracked B17 matrix to pass, reads one regular task record
+within the explicitly selected home, validates it through the store's pure record
+validator and conservative history invariants, and writes an exclusive report outside
+that home. It does not open or mutate the store, reconcile, schedule work, launch a
+gate, execute task commands or replay any task. Blocked, uncertain or incoherent work
+(including administrative closure with unknown outcomes) is refused; coherent
+known-failure reconciliation can be observed. Missing recorded test evidence remains
+`not_run` even for terminal `succeeded`; terminal status and empty arrays are not
+evidence of success. `observed` means test command/exit metadata was found, not that
+the tests passed or the task succeeded. History strings are sanitized and bounded;
+the default developer state home is never consulted.
+
+Pulse process containment is distinct from the B10 root-only subprocess primitive.
+Windows starts the gate in the existing B16 creation-time Job Object helper and
+requires a confirmed empty-job marker. POSIX starts a dedicated process group and
+performs bounded TERM/KILL teardown and empty-group verification. The report records
+root exit and cleanup verification separately; root exit alone never proves the tree
+stopped. POSIX verification covers only members still in that process group; a
+descendant that deliberately calls `setsid` or otherwise escapes the group may remain
+and cannot be claimed stopped. Any timeout or unverified teardown halts original
+samples, marks remaining slots `not_run`, suppresses all diagnostic retries and
+retains owned scratch. The gate also records
+original phase separately from cleanup phase/status, so cleanup failure cannot replace
+the probe/startup result. If a raw stream hit its retention cap, that stream is omitted
+rather than storing a tail that could start midway through a credential. This manual
+diagnostic boundary is not service execution, M2b completion, M3 use or
+production-provider evidence.

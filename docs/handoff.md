@@ -1,38 +1,47 @@
 # Continuation point — 2026-11-14
 
-Remote `main` is `190370fae1fe44272dbaed22889156397f143c2f`; B12–B17 are merged.
-B17/#40's Windows and Ubuntu PR checks passed. M2b/M3 remain incomplete; the worker
-provider is fixture-only, not production model-quality/provider evidence. B18 is
-delivered for PR review on `task/B18-maintainer-recovery`, not merged. Supervisor
-review and local acceptance passed after correction rounds. The base post-merge
-Windows check passed in Actions run `43568386630`.
-ADR-007 still selects MCP stdio revision `2026-07-28`.
+Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
+B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
+`43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
+not production model-quality/provider evidence. ADR-007 still selects MCP stdio
+revision `2026-07-28`.
 
-## Current implementation status: B18 PR open
+## Current implementation status: B19 reviewed and published as PR #42
 
-The B18 implementation adds a maintainer-only local store handle/CLI, service-owner
-interlock, evidence-bound blocked reconciliation and journaled retention cleanup.
-Focused Windows tests use temporary stores, a real service worker subprocess and a
-child killed between prune record/index removal. Durable tombstones prevent key reuse.
-GPT-6 Luna high implemented the changes; GPT-6.1 Sol independently reviewed the
-complete diff and verified the returned corrections. Final local evidence: 139 focused
-tests passed; full suite 284 passed with one existing POSIX-only skip; demo, syntax
-and whitespace checks passed. The Windows PowerShell 5.1 file-input procedure ran
-against real subprocesses. Exact evidence/limits are in `docs/validation.md`.
-No provider calls or credentials were used, and no B20/M3 service use is claimed.
+The B19 manual pulse implementation is on `task/B19-opt-in-harness-pulse`, based on
+`c268239`, with correction work on top of supervisor checkpoint `91e43e4`. It uses
+Windows creation-time Job Object or POSIX process-group containment, halts on timeout
+or unverified cleanup, and records original and cleanup phases separately. Retry
+eligibility now requires the whole originals run to remain certain; an uncertain retry
+produces one `not_run` result for each remaining candidate. POSIX settlement is bounded
+and explicitly limited to process-group members (escaped descendants may remain).
+History is a distinct B17-gated read-only mode using store validation and an exclusive
+report outside the selected home. R5 focused tests passed twice, the full suite and
+demo passed, B16's shared-helper workflow was rerun successfully, and the new
+`docs/pulses/B19-r5-final.json` pinned-host artifact passed its assertions. The earlier
+pinned-host artifacts remain unchanged. The supervisor's earlier focused-test failure
+is recorded with its cause still unconfirmed because termination details were not
+provided.
+GPT-6.1 Sol verified the Luna high corrections and reviewed the complete diff and all
+four acceptance rows. Independent final checks: six focused tests passed; full suite
+290 passed with one existing POSIX-only skip; demo, syntax and diff checks passed.
+Current-code B17 passed 13/13, including the changed shared Windows helper. The
+supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected original
+fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
+real provider/project service use is claimed.
 
-## Next action: maintainer review of the B18 PR
+## Next action: inspect B19 PR #42's exact-head CI/merge receipts
 
-1. Read the B18 PR's exact head, CI and all feedback under `docs/pr-review.md`.
-   The supervisor publishes the local review/corrections and observes current-head CI;
-   GitHub is the authoritative publication/check receipt.
-2. Correct further findings on the same branch/PR and revalidate before any decision.
-   The maintainer decides merge; no B18 merge is authorized by this session.
-3. After a separately approved B18 merge, B20 still needs an explicitly authorized
-   real model/provider/budget path. B08/B19 remain optional supporting work.
-
-The supervisor was authorized to commit, push and publish this single B18 PR, but not
-merge it. The fixture-only provider does not authorize a real-model project task.
+1. [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) is the single B19
+   delivery. Publication branch/head were verified; it was open with CI pending at
+   this snapshot. Read all findings, corrections and current-head CI/merge receipts.
+2. The current supervisor has B19-only merge authorization after all acceptance,
+   reviewed-head CI and blocking-feedback gates pass. Recheck head immediately before
+   merge; any changed head requires renewed review/validation. Verify origin/main and
+   post-merge CI. If the PR is already merged, do not repeat publication or merge;
+   inspect those receipts. No other task/session inherits this authorization.
+3. B20 remains gated on M2b acceptance and an explicitly authorized real
+   model/provider/budget path. B19 fixture evidence is supporting diagnostics only.
 
 ## Historical FIX23 checkpoint before PR #24 merged
 

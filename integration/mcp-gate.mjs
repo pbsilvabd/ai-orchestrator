@@ -31,6 +31,18 @@ const root = mkdtempSync(join(tmpdir(), 'orchestrator-mcp-gate-'));
 const work = join(root, 'work'); mkdirSync(work);
 const mcpLog = join(root, 'mcp.jsonl');
 const mcpCalls = join(root, 'calls.jsonl');
+let currentPhase = 'startup';
+let cleanupPhase = 'pending';
+let cleanupStatus = 'pending';
+let phaseWriteFailure = null;
+function writePhaseMetadata() {
+  if (process.env.MCP_GATE_PHASE_FILE) try {
+    writeFileSync(process.env.MCP_GATE_PHASE_FILE, JSON.stringify({
+      phase: currentPhase, cleanupPhase, cleanupStatus,
+    }), { flag: 'w' });
+  } catch (failure) { phaseWriteFailure ??= failure; }
+}
+function setPhase(value) { currentPhase = value; writePhaseMetadata(); }
 
 const env = {};
 for (const key of ['SystemRoot', 'WINDIR', 'PATH', 'PATHEXT', 'COMSPEC'])
@@ -166,6 +178,7 @@ const server = createHttpServer(async (req, res) => {
 let host;
 let successResult;
 try {
+  setPhase('fixture-start');
   server.listen(0, '127.0.0.1'); await once(server, 'listening');
   const config = {
     update: 'disable', share: 'disabled', model: 'fixture/mock',
@@ -185,10 +198,12 @@ try {
   env.OPENCODE_MODELS_PATH = join(root, 'models.json');
   writeFileSync(env.OPENCODE_MODELS_PATH, '{}');
 
+  setPhase('version');
   const version = await run(binary, ['--version'], work, Math.min(commandTimeout, 60_000));
   assert.equal(version.code, 0, version.stderr);
   assert.equal(version.stdout.trim(), 'opencode v2.2.5');
 
+  setPhase('host-start');
   const port = await freePort();
   const endpoint = `http://127.0.0.1:${port}`;
   host = start(binary, ['serve', '--hostname', '127.0.0.1', '--port', String(port),
@@ -201,11 +216,13 @@ try {
     await new Promise(wait => setTimeout(wait, 100));
   }
 
+  setPhase('warmup');
   const warm = await run(binary, ['run', '--server', endpoint, '--format', 'json', '--model', 'fixture/mock',
     'Say hello briefly.'], work, commandTimeout);
   assert.equal(warm.code, 0, warm.stderr + warm.stdout);
   assert.ok(warm.stdout.includes('warm-up-ok'), warm.stderr + warm.stdout);
 
+  setPhase('mcp-readiness');
   const connectDeadline = Date.now() + readinessTimeout;
   for (;;) {
     const logs = `${host.output().stdout}\n${host.output().stderr}`;
@@ -214,6 +231,9 @@ try {
     await new Promise(wait => setTimeout(wait, 100));
   }
 
+  setPhase('probe');
+  if (process.env.MCP_GATE_PHASE_FILE && process.env.MCP_GATE_INJECT_FAILURE_PHASE === 'probe')
+    throw new Error('Injected B19 diagnostic failure at probe phase');
   const probe = await run(binary, ['run', '--server', endpoint, '--format', 'json', '--model', 'fixture/mock',
     'Call the probe tool once with message GATE_FIXTURE.'], work, commandTimeout);
   assert.equal(probe.code, 0, probe.stderr + probe.stdout);
@@ -255,6 +275,9 @@ try {
 } catch (failure) {
   gateFailure = failure;
 } finally {
+  if (gateFailure) currentPhase = `failure:${currentPhase}`;
+  cleanupPhase = 'cleanup';
+  writePhaseMetadata();
   const cleanupFailures = [];
   if (host) try { await stop(host.child); } catch (failure) { cleanupFailures.push(failure); }
   try {
@@ -270,6 +293,8 @@ try {
     try { rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 }); }
     catch (failure) { cleanupFailures.push(failure); }
   }
+  cleanupStatus = cleanupFailures.length ? 'failed' : (process.env.MCP_GATE_DEBUG ? 'retained_debug' : 'complete');
+  writePhaseMetadata();
 
   if (cleanupFailures.length) {
     if (existsSync(root)) console.error(`Temporary fixture retained for diagnosis: ${root}`);
@@ -278,6 +303,12 @@ try {
       const original = redact(`${gateFailure.name}: ${gateFailure.message}`);
       gateFailure = new Error(`Gate failure preserved: ${original}; cleanup failure: ${redact(cleanupMessage)}`);
     } else gateFailure = new Error(`Gate cleanup failed: ${redact(cleanupMessage)}`);
+  }
+  if (phaseWriteFailure) {
+    const detail = phaseWriteFailure.code ?? 'unknown';
+    gateFailure = gateFailure
+      ? new Error(`Gate failure preserved: ${redact(`${gateFailure.name}: ${gateFailure.message}`)}; phase marker write failed: ${detail}`)
+      : new Error(`Phase marker write failed: ${detail}`);
   }
   if (process.env.MCP_GATE_DEBUG && existsSync(root)) console.error(`Temporary fixture retained for diagnosis: ${root}`);
 }
