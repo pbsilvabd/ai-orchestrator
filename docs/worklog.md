@@ -1640,3 +1640,20 @@ Template:
   code verification. Exact-head CI, feedback re-read and conditional merge follow.
 - Follow-up: publish SHA-specific review/resolutions, verify this documentation diff,
   then await final-head CI. No merge until all gates are observed passing.
+
+## 2026-11-14 — M3 preparation: B30 live-boundary card
+
+- Branch: `task/B30-free-relay`
+- Scope: documentation-only planning card on a separate branch from B29; no
+  executable relay, egress control, live inference or PR was delivered.
+- Steps:
+  1. Created a B30 card with a relay/egress trust boundary and six measurable
+     acceptance rows, starting from remote main `688da04`.
+  2. Linked the card in the backlog and marked the next action in the handoff;
+     B29/#44 must be reconciled after its fixture-only decision is published.
+- Files: `docs/tasks/B30.md`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `git diff --check` → no whitespace errors; full suite, demo,
+  pinned-host fixture, MCP client and live API were not run on this card branch.
+- Follow-up: reconcile the B30 branch with B29 after its reviewed fixture
+  completion, then implement B30 only under its own task authorization.

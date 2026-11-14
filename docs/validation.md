@@ -1941,3 +1941,20 @@ Evidence level: Unit — publication receipts do not demonstrate new runtime beh
 Not rerun: runtime tests/host gates for this documentation-only checkpoint (preceding
 entry records the final-code runs). Final-head CI/review remain required.
 Claim: this entry supports one verified PR publication, not merge or green CI.
+
+## M3 preparation: B30 live-boundary card — 2026-11-14
+
+Executed on Windows x64 (Git; Node was not invoked). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git diff --check` | Tracked documentation whitespace before staging card | no output; untracked new card was not included in this check | 0 |
+| `git diff --cached --check` | Staged documentation including new B30 card | no output; new card included | 0 |
+
+Result: both whitespace checks passed; the staged check includes the new B30
+card. Neither code nor runtime behavior was changed. Evidence level: Unit —
+no new runtime claim is made by these checks.
+Not rerun: `node --test`, demo and pinned-host/MCP harnesses (card-only change);
+catalog GET and live inference (not authorized).
+Claim: this entry supports only a documented acceptance plan, not relay safety,
+egress enforcement, B29 completion, live availability or M3.

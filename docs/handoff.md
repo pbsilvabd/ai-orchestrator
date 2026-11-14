@@ -1,5 +1,12 @@
 # Continuation point — 2026-11-14
 
+Card-only update on `task/B30-free-relay` (2026-11-14): the new card specifies
+a future service-owned loopback relay plus independently verified worker egress
+restriction; this branch has not implemented or approved a live route. Wait for
+B29/#44 fixture MCP evidence and merge/review decision, then reconcile this
+card with the accepted ADR-009 amendment before executing B30. The historical
+checkpoint below predates this decision. No live inference or merge is authorized.
+
 Remote `main` is `c268239b3a15d9e507bee703016f6bbeccb266d7`; B12–B18 are merged.
 B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
 `43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
