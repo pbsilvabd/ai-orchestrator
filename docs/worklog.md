@@ -1292,3 +1292,33 @@ Template:
   (`681f0a6cce3c2160c578cc92a0ab038ff5cfce01`). Remote CI run #74 was in progress
   at the first remote check; no review submissions, inline threads or comments exist.
   Merge requires separate task-specific authorization.
+
+## 2026-11-14 — M2b: B17 acceptance review corrections
+
+- Branch: `task/B17-executable-acceptance-matrix`
+- Scope: code, tests and docs; no task-service runtime behavior or provider authority
+  changed.
+- Steps:
+  1. Added real Node test-child coverage showing a required assertion failure stays
+     `fail` when TAP also reports a skipped child and a TODO; added nonzero-exit
+     precedence coverage when TAP reports only a TODO.
+  2. Added client submission denial to the M2b-09 title, keeping the foreign-client
+     denial and unchanged-record assertions in its executable mapping.
+  3. Regenerated the B17 evidence JSON from the final pinned-client run and recorded
+     the local and independently supplied validation results. Ran a temporary-copy
+     fault injection that forces only the foreign-client test to fail and verified
+     the matrix attributes the failure to M2b-09 rather than M2b-03.
+- Files: `integration/acceptance-matrix.mjs`, `test/acceptance-matrix.test.mjs`,
+  `test/task-service.test.mjs`, `integration/fixtures/b16-mcp-server.mjs`,
+  `integration/mcp-client-workflow.mjs`, `integration/README.md`,
+  `docs/evidence/B17-acceptance-matrix.json`, `docs/worklog.md`,
+  `docs/validation.md`
+- Validation: final pinned OpenCode matrix 13/13 passed; full suite 261 passed,
+  1 POSIX-only test skipped on Windows, 0 failed; final focused reporter/service
+  suite 35/35 passed; missing-host matrix correctly returned 7 pass and 6 not_run;
+  negative attribution injection returned matrix exit 1 with M2b-09 fail and M2b-03
+  pass. Fallback demo returned preferred 429 then local 200; final diff check passed.
+  Independent transport, scheduler, artifacts and workspace results are recorded in
+  `docs/validation.md`.
+- Follow-up: supervisor reviews the finalized local diff and validation evidence;
+  the correction is ready for publication on PR #40 and current-head CI.

@@ -1,13 +1,13 @@
 {
   "schemaVersion": 1,
   "task": "B17",
-  "generatedAt": "2026-11-13T02:43:57.608Z",
+  "generatedAt": "2026-11-14T06:36:20.838Z",
   "environment": {
     "platform": "win32",
     "arch": "x64",
     "node": "v24.22.1"
   },
-  "checkoutHeadSha": "681f0a6cce3c2160c578cc92a0ab038ff5cfce01",
+  "checkoutHeadSha": "5cc2e3004588dea237045128fa8f346b7e80be37",
   "workingTreeDirty": true,
   "contract": {
     "criteriaCount": 13,
@@ -103,8 +103,14 @@
             "server": "B16 task stdio",
             "discovered": true,
             "fourToolsCatalogued": true,
-            "transportCalls": 15,
+            "transportCalls": 16,
             "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
             "duplicateStableId": true,
             "attempts": 1,
             "workspacesForDuplicate": 1,
@@ -119,7 +125,7 @@
               "preserved": true
             },
             "unavailableHost": "ENOENT diagnosed",
-            "taskId": "7670516f-c60d-4809-bd5f-bc2db6e541ff"
+            "taskId": "b5c2602a-b8c9-4103-9688-4a4d1a1278b9"
           }
         }
       ]
@@ -172,7 +178,7 @@
       "title": "A separate client observes queued, running and succeeded while polling",
       "status": "pass",
       "evidence": [
-        "integration/mcp-client-workflow.mjs — pinned OpenCode MCP submit/poll/result lifecycle; correlated running and terminal replies"
+        "integration/mcp-client-workflow.mjs — pinned OpenCode MCP submit plus correlated queued, running and terminal status polls in order"
       ],
       "runs": [
         {
@@ -186,8 +192,14 @@
             "server": "B16 task stdio",
             "discovered": true,
             "fourToolsCatalogued": true,
-            "transportCalls": 15,
+            "transportCalls": 16,
             "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
             "duplicateStableId": true,
             "attempts": 1,
             "workspacesForDuplicate": 1,
@@ -202,7 +214,7 @@
               "preserved": true
             },
             "unavailableHost": "ENOENT diagnosed",
-            "taskId": "7670516f-c60d-4809-bd5f-bc2db6e541ff"
+            "taskId": "b5c2602a-b8c9-4103-9688-4a4d1a1278b9"
           }
         }
       ]
@@ -259,8 +271,14 @@
             "server": "B16 task stdio",
             "discovered": true,
             "fourToolsCatalogued": true,
-            "transportCalls": 15,
+            "transportCalls": 16,
             "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
             "duplicateStableId": true,
             "attempts": 1,
             "workspacesForDuplicate": 1,
@@ -275,7 +293,7 @@
               "preserved": true
             },
             "unavailableHost": "ENOENT diagnosed",
-            "taskId": "7670516f-c60d-4809-bd5f-bc2db6e541ff"
+            "taskId": "b5c2602a-b8c9-4103-9688-4a4d1a1278b9"
           }
         }
       ]
@@ -406,8 +424,14 @@
             "server": "B16 task stdio",
             "discovered": true,
             "fourToolsCatalogued": true,
-            "transportCalls": 15,
+            "transportCalls": 16,
             "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
             "duplicateStableId": true,
             "attempts": 1,
             "workspacesForDuplicate": 1,
@@ -422,7 +446,7 @@
               "preserved": true
             },
             "unavailableHost": "ENOENT diagnosed",
-            "taskId": "7670516f-c60d-4809-bd5f-bc2db6e541ff"
+            "taskId": "b5c2602a-b8c9-4103-9688-4a4d1a1278b9"
           }
         }
       ]
@@ -479,8 +503,14 @@
             "server": "B16 task stdio",
             "discovered": true,
             "fourToolsCatalogued": true,
-            "transportCalls": 15,
+            "transportCalls": 16,
             "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
             "duplicateStableId": true,
             "attempts": 1,
             "workspacesForDuplicate": 1,
@@ -495,7 +525,7 @@
               "preserved": true
             },
             "unavailableHost": "ENOENT diagnosed",
-            "taskId": "7670516f-c60d-4809-bd5f-bc2db6e541ff"
+            "taskId": "b5c2602a-b8c9-4103-9688-4a4d1a1278b9"
           }
         }
       ]
@@ -507,6 +537,7 @@
       "status": "pass",
       "evidence": [
         "test/task-service.test.mjs — submit_task rejects unknown, missing or out of range fields (includes unchanged task-record count)",
+        "test/task-service.test.mjs — foreign client submission is denied without changing task records",
         "test/opencode.test.mjs — rejects a task requesting any model beyond the single trusted model",
         "test/opencode.test.mjs — rejects unauthorized and unsupported tools instead of trimming them",
         "test/opencode.test.mjs — rejects writable globs outside the trusted exact allowlist and path traversal",
@@ -527,6 +558,21 @@
           "command": "node --test --test-name-pattern '^submit_task rejects unknown, missing or out of range fields$' test/task-service.test.mjs",
           "exitCode": 0,
           "test": "submit_task rejects unknown, missing or out of range fields"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^foreign client submission is denied without changing task records$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "foreign client submission is denied without changing task records"
         },
         {
           "status": "pass",
@@ -696,7 +742,7 @@
       "title": "Credential-shaped requests are rejected and returned text artifacts are redacted",
       "status": "pass",
       "evidence": [
-        "test/task-service.test.mjs — credential-shaped request text is rejected without mutating the caller or storing data",
+        "test/task-service.test.mjs — credential-shaped request text is rejected without mutating the caller or storing data or echoing its sentinel",
         "test/task-service.test.mjs — result redacts credential-shaped text and reports the bounded policy",
         "test/artifacts.test.mjs — B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts"
       ],
@@ -768,8 +814,14 @@
             "server": "B16 task stdio",
             "discovered": true,
             "fourToolsCatalogued": true,
-            "transportCalls": 15,
+            "transportCalls": 16,
             "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
             "duplicateStableId": true,
             "attempts": 1,
             "workspacesForDuplicate": 1,
@@ -784,7 +836,7 @@
               "preserved": true
             },
             "unavailableHost": "ENOENT diagnosed",
-            "taskId": "7670516f-c60d-4809-bd5f-bc2db6e541ff"
+            "taskId": "b5c2602a-b8c9-4103-9688-4a4d1a1278b9"
           }
         }
       ]

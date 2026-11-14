@@ -31,7 +31,7 @@ const matrix = [
   },
   {
     id: 'M2b-04', title: 'A separate client observes queued, running and succeeded while polling',
-    evidence: ['integration/mcp-client-workflow.mjs — pinned OpenCode MCP submit/poll/result lifecycle; correlated running and terminal replies'],
+    evidence: ['integration/mcp-client-workflow.mjs — pinned OpenCode MCP submit plus correlated queued, running and terminal status polls in order'],
     hostEvidence: true,
   },
   {
@@ -73,13 +73,15 @@ const matrix = [
     hostEvidence: true,
   },
   {
-    id: 'M2b-09', title: 'Unauthorized model, tool, path and budget are rejected without persistence',
+    id: 'M2b-09', title: 'Unauthorized client, model, tool, path and budget are rejected without persistence',
     evidence: ['test/task-service.test.mjs — submit_task rejects unknown, missing or out of range fields (includes unchanged task-record count)',
+      'test/task-service.test.mjs — foreign client submission is denied without changing task records',
       'test/opencode.test.mjs — rejects a task requesting any model beyond the single trusted model',
       'test/opencode.test.mjs — rejects unauthorized and unsupported tools instead of trimming them',
       'test/opencode.test.mjs — rejects writable globs outside the trusted exact allowlist and path traversal',
       'test/opencode.test.mjs — rejects task budgets above the configured caps'],
     tests: [['test/task-service.test.mjs', 'submit_task rejects unknown, missing or out of range fields'],
+      ['test/task-service.test.mjs', 'foreign client submission is denied without changing task records'],
       ['test/opencode.test.mjs', 'rejects a task requesting any model beyond the single trusted model'],
       ['test/opencode.test.mjs', 'rejects unauthorized and unsupported tools instead of trimming them'],
       ['test/opencode.test.mjs', 'rejects writable globs outside the trusted exact allowlist and path traversal'],
@@ -103,7 +105,7 @@ const matrix = [
   },
   {
     id: 'M2b-12', title: 'Credential-shaped requests are rejected and returned text artifacts are redacted',
-    evidence: ['test/task-service.test.mjs — credential-shaped request text is rejected without mutating the caller or storing data',
+    evidence: ['test/task-service.test.mjs — credential-shaped request text is rejected without mutating the caller or storing data or echoing its sentinel',
       'test/task-service.test.mjs — result redacts credential-shaped text and reports the bounded policy',
       'test/artifacts.test.mjs — B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts'],
     tests: [['test/task-service.test.mjs', 'credential-shaped request text is rejected without mutating the caller or storing data'],
@@ -157,11 +159,12 @@ export function classifyTapRun({ exitCode, stdout = '', error = null, expectedTi
     reason: error.code === 'ETIMEDOUT' ? 'test_process_timed_out' : error.code === 'ENOENT' ? 'runner_unavailable' : 'runner_not_started' };
   const counts = parseTapSummary(stdout);
   if (exitCode !== 0 && counts.tests === null) return { status: 'fail', reason: 'process_exit_without_tap_summary', counts };
-  if (counts.tests === null || counts.tests === 0) return { status: 'not_run', reason: 'required_test_not_observed', counts };
-  if (counts.skipped > 0 || counts.todo > 0) return { status: 'not_run', reason: 'required_test_skipped_or_todo', counts };
-  if (counts.failed > 0 || counts.cancelled > 0 || exitCode !== 0 || counts.passed !== counts.tests) {
+  if (counts.failed > 0 || counts.cancelled > 0 || exitCode !== 0) {
     return { status: 'fail', reason: 'assertion_or_process_failure', counts };
   }
+  if (counts.tests === null || counts.tests === 0) return { status: 'not_run', reason: 'required_test_not_observed', counts };
+  if (counts.skipped > 0 || counts.todo > 0) return { status: 'not_run', reason: 'required_test_skipped_or_todo', counts };
+  if (counts.passed !== counts.tests) return { status: 'fail', reason: 'assertion_or_process_failure', counts };
   if (expectedTitle && !stdout.includes(`# Subtest: ${expectedTitle}`)) {
     return { status: 'not_run', reason: 'expected_test_title_not_observed', counts };
   }
@@ -219,6 +222,8 @@ function runPinnedClient(binary) {
   catch { return { status: 'fail', reason: 'pinned_client_evidence_not_machine_readable', command, exitCode: result.status }; }
   const observed = summary.version === '2.2.5' && summary.protocol === '2026-07-28' &&
     summary.fourToolsCatalogued === true && summary.submitPollResult === true &&
+    Array.isArray(summary.primaryPollStatuses) && summary.primaryPollStatuses[0] === 'queued' &&
+    summary.primaryPollStatuses.includes('running') && summary.primaryPollStatuses.at(-1) === 'succeeded' &&
     summary.duplicateStableId === true && summary.attempts === 1 && summary.workspacesForDuplicate === 1 &&
     summary.cancellation?.status === 'blocked' && summary.cancellation?.requested === true &&
     summary.cancellation?.stopped === 'unknown' && summary.interruption?.status === 'blocked' &&

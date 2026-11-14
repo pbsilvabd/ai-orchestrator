@@ -147,8 +147,12 @@ node integration/acceptance-matrix.mjs --opencode /absolute/path/opencode.exe --
 The local items launch their named Node tests separately and require an observed TAP
 test, zero skipped cases and a zero process exit. The pinned-client items run the
 full B16 workflow once and validate its machine-readable summary, including the
-queued/running/succeeded MCP lifecycle, duplicate replay, actual result in provider
-context, cancellation and restart without replay. Omitting the binary, a missing
+correlated queued/running/succeeded status polls in order as returned in the pinned
+client's Code Mode provider payloads, duplicate replay, actual result in provider
+context, cancellation and restart without replay. The B16 fixture
+holds its real scheduler callback until it has returned the persisted queued record
+to the pinned client's first status poll; it neither fabricates status nor changes
+runtime behavior. Omitting the binary, a missing
 scenario, or a skipped required test is recorded as `not_run`; any missing or
 non-passing item makes the overall process exit nonzero. The optional report path
 must not already exist. The report omits raw test output and local binary paths.

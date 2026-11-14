@@ -291,6 +291,25 @@ function providerToolPayloads(requestSlice) {
     });
 }
 
+function assertClientObservedStatuses(mcpRepliesForPoll, providerRequestsForPoll, taskId) {
+  const mcpStatuses = mcpRepliesForPoll.filter(reply => reply.name === 'get_task_status')
+    .map(replyPayload);
+  const clientStatuses = providerToolPayloads(providerRequestsForPoll).flatMap(payload => {
+    if (payload?.taskId === taskId && typeof payload.status === 'string') return [payload];
+    if (payload?.status?.taskId === taskId && typeof payload.status.status === 'string') return [payload.status];
+    return [];
+  });
+  return mcpStatuses.map(status => {
+    assert.equal(status.taskId, taskId, 'MCP status reply must correlate to the original submission');
+    const clientStatus = clientStatuses.find(payload => payload.taskId === status.taskId &&
+      payload.status === status.status);
+    assert.ok(clientStatus,
+      `Pinned client provider context must contain the correlated MCP status ${status.status} for ${taskId}; ` +
+      `observed ${JSON.stringify(clientStatuses.map(payload => ({ taskId: payload.taskId, status: payload.status })))}`);
+    return clientStatus;
+  });
+}
+
 function mcpCallNames() {
   return readFileSync(callLog, 'utf8').trim().split(/\r?\n/).filter(Boolean).map(line => JSON.parse(line).name);
 }
@@ -518,21 +537,26 @@ try {
   assert.equal(primaryAccepted.status, 'queued');
   assert.equal(primaryAccepted.idempotentReplay, false);
   let pollCount = 0;
+  const polledStatuses = [];
   let runningReply;
   const primaryDeadline = Date.now() + 30_000;
   while (primaryTask.status !== 'succeeded' && Date.now() < primaryDeadline) {
     const before = mcpReplies().length;
+    const beforePollProviderRequest = requests.length;
     await runClient(endpoint, 'poll', `Poll task ${primaryTask.taskId} through MCP and retrieve its terminal result.`);
     pollCount++;
-    for (const reply of mcpReplies().slice(before).filter(item => item.name === 'get_task_status')) {
-      const status = replyPayload(reply);
-      assert.equal(status.taskId, primaryTask.taskId, 'Status reply must correlate to the original submission');
+    const pollReplies = mcpReplies().slice(before);
+    const clientPollStatuses = assertClientObservedStatuses(pollReplies,
+      requests.slice(beforePollProviderRequest), primaryTask.taskId);
+    for (const status of clientPollStatuses) {
+      polledStatuses.push(status.status);
       if (status.status === 'running') runningReply = status;
     }
     if (runningReply && !existsSync(primaryRelease)) writeFileSync(primaryRelease, 'release');
     primaryTask = taskRecordFor('b16-primary-task');
   }
   assert.equal(primaryTask.status, 'succeeded');
+  assert.equal(polledStatuses[0], 'queued', 'The pinned client must observe persisted queued status in its first poll');
   assert.ok(runningReply, 'MCP must return a running status before the fixture worker is released');
   // A poll can observe running immediately before the worker commits success. Make
   // a final transport call after the durable terminal state to fetch its artifacts.
@@ -545,6 +569,14 @@ try {
   const finalResult = replyPayload(finalReplies.find(reply => reply.name === 'get_task_result'));
   assert.equal(finalStatus.taskId, primaryClientTaskId);
   assert.equal(finalStatus.status, 'succeeded');
+  const finalClientStatuses = assertClientObservedStatuses(finalReplies,
+    requests.slice(beforeFinalProviderRequest), primaryClientTaskId);
+  assert.ok(finalClientStatuses.some(status => status.status === finalStatus.status),
+    'Pinned client must receive the correlated terminal status in provider context');
+  polledStatuses.push(...finalClientStatuses.map(status => status.status));
+  assert.ok(polledStatuses.indexOf('queued') < polledStatuses.indexOf('running') &&
+    polledStatuses.indexOf('running') < polledStatuses.lastIndexOf('succeeded'),
+  `Pinned-client polls must observe queued -> running -> succeeded in order; saw ${polledStatuses.join(' -> ')}`);
   assert.equal(finalResult.taskId, primaryClientTaskId, 'Terminal result must independently return the submitted task ID');
   assert.ok(finalResult.diff.includes('+B16_FIXTURE_OUTPUT'));
   assert.ok(finalResult.changedFiles.includes('src/b16-output.txt'));
@@ -691,6 +723,7 @@ try {
     'Fixture credentials leaked to the provider');
   successResult = JSON.stringify({ version: '2.2.5', protocol: '2026-07-28', server: 'B16 task stdio',
     discovered: true, fourToolsCatalogued: true, transportCalls: names.length, submitPollResult: true,
+    primaryPollStatuses: polledStatuses,
     duplicateStableId: true, attempts: duplicateTask.attempts.length, workspacesForDuplicate: 1,
     cancellation: { status: cancelledTask.status, requested: true, stopped: cancelledTask.cancel.executionStopped },
     interruption: { status: interruptedTask.status, attempts: interruptedTask.attempts.length, preserved: true },
