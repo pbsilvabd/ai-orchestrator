@@ -1,0 +1,845 @@
+{
+  "schemaVersion": 1,
+  "task": "B17",
+  "generatedAt": "2026-11-14T14:13:25.864Z",
+  "environment": {
+    "platform": "win32",
+    "arch": "x64",
+    "node": "v24.22.1"
+  },
+  "checkoutHeadSha": "688da04bea29b300eb4cb1815bfbcb9fd0cd35ca",
+  "workingTreeDirty": true,
+  "contract": {
+    "criteriaCount": 13,
+    "criteriaSha256": "3319c26cc1d05f2c83d94938872868a142d5f4af9580aaa39becd6a7a8076788",
+    "mappingValid": true
+  },
+  "summary": {
+    "success": true,
+    "requiredItems": 13,
+    "observedItems": 13,
+    "missingItems": [],
+    "unexpectedItems": [],
+    "pass": 13,
+    "fail": 0,
+    "not_run": 0
+  },
+  "items": [
+    {
+      "id": "M2b-01",
+      "criterion": "Submit returns a stable ID and the record exists before the worker starts.",
+      "title": "Submit returns a stable ID and persists before worker start",
+      "status": "pass",
+      "evidence": [
+        "test/scheduler.test.mjs — B12-01: prompt submission, durable identity and serial fixtures remain observable between events"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B12-01: prompt submission, durable identity and serial fixtures remain observable between events$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "B12-01: prompt submission, durable identity and serial fixtures remain observable between events"
+        }
+      ]
+    },
+    {
+      "id": "M2b-02",
+      "criterion": "Duplicate submit with the same key creates no second workspace or attempt.",
+      "title": "Duplicate submit creates no second workspace or attempt",
+      "status": "pass",
+      "evidence": [
+        "test/scheduler.test.mjs — B12-04: duplicates, another process observer and competing owner preserve the same dispatch",
+        "test/workspace.test.mjs — B09-02: duplicate invocation reuses one receipt-verified worktree",
+        "integration/mcp-client-workflow.mjs — pinned-client reconnect checks one attempt and one workspace"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B12-04: duplicates, another process observer and competing owner preserve the same dispatch$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "B12-04: duplicates, another process observer and competing owner preserve the same dispatch"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B09-02: duplicate invocation reuses one receipt-verified worktree$' test/workspace.test.mjs",
+          "exitCode": 0,
+          "test": "B09-02: duplicate invocation reuses one receipt-verified worktree"
+        },
+        {
+          "status": "pass",
+          "reason": "pinned_client_result_and_context_observed",
+          "command": "node integration/mcp-client-workflow.mjs <pinned OpenCode 2.2.5 binary>",
+          "exitCode": 0,
+          "observed": {
+            "version": "2.2.5",
+            "protocol": "2026-07-28",
+            "server": "B16 task stdio",
+            "discovered": true,
+            "fourToolsCatalogued": true,
+            "transportCalls": 16,
+            "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
+            "duplicateStableId": true,
+            "attempts": 1,
+            "workspacesForDuplicate": 1,
+            "cancellation": {
+              "status": "blocked",
+              "requested": true,
+              "stopped": "unknown"
+            },
+            "interruption": {
+              "status": "blocked",
+              "attempts": 1,
+              "preserved": true
+            },
+            "unavailableHost": "ENOENT diagnosed",
+            "taskId": "fd60d540-360e-4a9f-9dd9-498cc3ef07aa"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2b-03",
+      "criterion": "Same key with a different payload returns `idempotency_conflict`.",
+      "title": "Same idempotency key with a different payload conflicts",
+      "status": "pass",
+      "evidence": [
+        "test/task-store.test.mjs — same key with a different payload is an idempotency conflict",
+        "test/task-service.test.mjs — submit_task replays idempotently and conflicts on changed payloads"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^same key with a different payload is an idempotency conflict$' test/task-store.test.mjs",
+          "exitCode": 0,
+          "test": "same key with a different payload is an idempotency conflict"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^submit_task replays idempotently and conflicts on changed payloads$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "submit_task replays idempotently and conflicts on changed payloads"
+        }
+      ]
+    },
+    {
+      "id": "M2b-04",
+      "criterion": "A second process observes `queued → running → succeeded` while polling.",
+      "title": "A separate client observes queued, running and succeeded while polling",
+      "status": "pass",
+      "evidence": [
+        "integration/mcp-client-workflow.mjs — pinned OpenCode MCP submit plus correlated queued, running and terminal status polls in order"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "pinned_client_result_and_context_observed",
+          "command": "node integration/mcp-client-workflow.mjs <pinned OpenCode 2.2.5 binary>",
+          "exitCode": 0,
+          "observed": {
+            "version": "2.2.5",
+            "protocol": "2026-07-28",
+            "server": "B16 task stdio",
+            "discovered": true,
+            "fourToolsCatalogued": true,
+            "transportCalls": 16,
+            "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
+            "duplicateStableId": true,
+            "attempts": 1,
+            "workspacesForDuplicate": 1,
+            "cancellation": {
+              "status": "blocked",
+              "requested": true,
+              "stopped": "unknown"
+            },
+            "interruption": {
+              "status": "blocked",
+              "attempts": 1,
+              "preserved": true
+            },
+            "unavailableHost": "ENOENT diagnosed",
+            "taskId": "fd60d540-360e-4a9f-9dd9-498cc3ef07aa"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2b-05",
+      "criterion": "The result contains diff, changed files, test exit codes, attempts and limitations.",
+      "title": "Result includes diff, changed files, test exits, attempts and limitations",
+      "status": "pass",
+      "evidence": [
+        "test/task-service.test.mjs — get_task_result returns terminal artifacts, truncation flags and limitations",
+        "test/artifacts.test.mjs — B13-01: test command generated workspace files are captured in final artifact diff and changed files",
+        "integration/mcp-client-workflow.mjs — pinned-client result assertions"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^get_task_result returns terminal artifacts, truncation flags and limitations$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "get_task_result returns terminal artifacts, truncation flags and limitations"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B13-01: test command generated workspace files are captured in final artifact diff and changed files$' test/artifacts.test.mjs",
+          "exitCode": 0,
+          "test": "B13-01: test command generated workspace files are captured in final artifact diff and changed files"
+        },
+        {
+          "status": "pass",
+          "reason": "pinned_client_result_and_context_observed",
+          "command": "node integration/mcp-client-workflow.mjs <pinned OpenCode 2.2.5 binary>",
+          "exitCode": 0,
+          "observed": {
+            "version": "2.2.5",
+            "protocol": "2026-07-28",
+            "server": "B16 task stdio",
+            "discovered": true,
+            "fourToolsCatalogued": true,
+            "transportCalls": 16,
+            "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
+            "duplicateStableId": true,
+            "attempts": 1,
+            "workspacesForDuplicate": 1,
+            "cancellation": {
+              "status": "blocked",
+              "requested": true,
+              "stopped": "unknown"
+            },
+            "interruption": {
+              "status": "blocked",
+              "attempts": 1,
+              "preserved": true
+            },
+            "unavailableHost": "ENOENT diagnosed",
+            "taskId": "fd60d540-360e-4a9f-9dd9-498cc3ef07aa"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2b-06",
+      "criterion": "Cancel before start returns `cancelled` with no worker process spawned.",
+      "title": "Cancel before spawn is cancelled without a worker process",
+      "status": "pass",
+      "evidence": [
+        "test/scheduler.test.mjs — B14-01: cancellation at the prepared-before-spawn boundary starts no child",
+        "test/scheduler.test.mjs — known spawn error becomes failed; queued cancellation and idle close start no child",
+        "test/task-service.test.mjs — cancel_task cancels queued work and blocks uncertain running work"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B14-01: cancellation at the prepared-before-spawn boundary starts no child$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "B14-01: cancellation at the prepared-before-spawn boundary starts no child"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^known spawn error becomes failed; queued cancellation and idle close start no child$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "known spawn error becomes failed; queued cancellation and idle close start no child"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^cancel_task cancels queued work and blocks uncertain running work$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "cancel_task cancels queued work and blocks uncertain running work"
+        }
+      ]
+    },
+    {
+      "id": "M2b-07",
+      "criterion": "Cancel during a write ends in `blocked` with no replay and `effectsReverted: false`.",
+      "title": "Active cancellation blocks uncertain effects and never replays work",
+      "status": "pass",
+      "evidence": [
+        "test/scheduler.test.mjs — B14-02: active cancellation preserves bounded worker logs and partial workspace evidence",
+        "test/scheduler.test.mjs — B14-04: cancellation persists its block first and halts the queue before worker return",
+        "test/scheduler.test.mjs — B14-04: a late real zero exit cannot replace an already blocked task",
+        "integration/mcp-client-workflow.mjs — pinned-client active cancellation and worker-root observation"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B14-02: active cancellation preserves bounded worker logs and partial workspace evidence$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "B14-02: active cancellation preserves bounded worker logs and partial workspace evidence"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B14-04: cancellation persists its block first and halts the queue before worker return$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "B14-04: cancellation persists its block first and halts the queue before worker return"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B14-04: a late real zero exit cannot replace an already blocked task$' test/scheduler.test.mjs",
+          "exitCode": 0,
+          "test": "B14-04: a late real zero exit cannot replace an already blocked task"
+        },
+        {
+          "status": "pass",
+          "reason": "pinned_client_result_and_context_observed",
+          "command": "node integration/mcp-client-workflow.mjs <pinned OpenCode 2.2.5 binary>",
+          "exitCode": 0,
+          "observed": {
+            "version": "2.2.5",
+            "protocol": "2026-07-28",
+            "server": "B16 task stdio",
+            "discovered": true,
+            "fourToolsCatalogued": true,
+            "transportCalls": 16,
+            "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
+            "duplicateStableId": true,
+            "attempts": 1,
+            "workspacesForDuplicate": 1,
+            "cancellation": {
+              "status": "blocked",
+              "requested": true,
+              "stopped": "unknown"
+            },
+            "interruption": {
+              "status": "blocked",
+              "attempts": 1,
+              "preserved": true
+            },
+            "unavailableHost": "ENOENT diagnosed",
+            "taskId": "fd60d540-360e-4a9f-9dd9-498cc3ef07aa"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2b-08",
+      "criterion": "Service restart with a `running` task marks it `blocked`; no automatic resume.",
+      "title": "Restart blocks an interrupted task and does not resume its dispatch",
+      "status": "pass",
+      "evidence": [
+        "test/task-store.test.mjs — reconcile blocks running work and queued work that already dispatched",
+        "test/task-service.test.mjs — service startup blocks an interrupted running task before reads",
+        "integration/mcp-client-workflow.mjs — dispatch-enabled restart retains the single invocation and reports blocked"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^reconcile blocks running work and queued work that already dispatched$' test/task-store.test.mjs",
+          "exitCode": 0,
+          "test": "reconcile blocks running work and queued work that already dispatched"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^service startup blocks an interrupted running task before reads$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "service startup blocks an interrupted running task before reads"
+        },
+        {
+          "status": "pass",
+          "reason": "pinned_client_result_and_context_observed",
+          "command": "node integration/mcp-client-workflow.mjs <pinned OpenCode 2.2.5 binary>",
+          "exitCode": 0,
+          "observed": {
+            "version": "2.2.5",
+            "protocol": "2026-07-28",
+            "server": "B16 task stdio",
+            "discovered": true,
+            "fourToolsCatalogued": true,
+            "transportCalls": 16,
+            "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
+            "duplicateStableId": true,
+            "attempts": 1,
+            "workspacesForDuplicate": 1,
+            "cancellation": {
+              "status": "blocked",
+              "requested": true,
+              "stopped": "unknown"
+            },
+            "interruption": {
+              "status": "blocked",
+              "attempts": 1,
+              "preserved": true
+            },
+            "unavailableHost": "ENOENT diagnosed",
+            "taskId": "fd60d540-360e-4a9f-9dd9-498cc3ef07aa"
+          }
+        }
+      ]
+    },
+    {
+      "id": "M2b-09",
+      "criterion": "Unauthorized client, model, tool, path or budget is rejected without side effects.",
+      "title": "Unauthorized client, model, tool, path and budget are rejected without persistence",
+      "status": "pass",
+      "evidence": [
+        "test/task-service.test.mjs — submit_task rejects unknown, missing or out of range fields (includes unchanged task-record count)",
+        "test/task-service.test.mjs — foreign client submission is denied without changing task records",
+        "test/opencode.test.mjs — rejects a task requesting any model beyond the single trusted model",
+        "test/opencode.test.mjs — rejects unauthorized and unsupported tools instead of trimming them",
+        "test/opencode.test.mjs — rejects writable globs outside the trusted exact allowlist and path traversal",
+        "test/opencode.test.mjs — rejects task budgets above the configured caps"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^submit_task rejects unknown, missing or out of range fields$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "submit_task rejects unknown, missing or out of range fields"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^foreign client submission is denied without changing task records$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "foreign client submission is denied without changing task records"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^rejects a task requesting any model beyond the single trusted model$' test/opencode.test.mjs",
+          "exitCode": 0,
+          "test": "rejects a task requesting any model beyond the single trusted model"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^rejects unauthorized and unsupported tools instead of trimming them$' test/opencode.test.mjs",
+          "exitCode": 0,
+          "test": "rejects unauthorized and unsupported tools instead of trimming them"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^rejects writable globs outside the trusted exact allowlist and path traversal$' test/opencode.test.mjs",
+          "exitCode": 0,
+          "test": "rejects writable globs outside the trusted exact allowlist and path traversal"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^rejects task budgets above the configured caps$' test/opencode.test.mjs",
+          "exitCode": 0,
+          "test": "rejects task budgets above the configured caps"
+        }
+      ]
+    },
+    {
+      "id": "M2b-10",
+      "criterion": "A non-owner read or cancel returns `not_owner`.",
+      "title": "Non-owner status, result and cancellation operations return not_owner",
+      "status": "pass",
+      "evidence": [
+        "test/task-service.test.mjs — get_task_status enforces ownership and unknown tasks",
+        "test/task-service.test.mjs — get_task_result enforces ownership; status case also asserts foreign cancellation is denied"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^get_task_status enforces ownership and unknown tasks$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "get_task_status enforces ownership and unknown tasks"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^get_task_result enforces ownership$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "get_task_result enforces ownership"
+        }
+      ]
+    },
+    {
+      "id": "M2b-11",
+      "criterion": "Oversized diff and log are truncated with explicit flags.",
+      "title": "Oversized diffs and logs are byte bounded with truncation flags",
+      "status": "pass",
+      "evidence": [
+        "test/artifacts.test.mjs — B13-03: UTF-8 diff/log and binary artifacts stay byte bounded with explicit flags",
+        "test/task-service.test.mjs — result enforces the log cap across multiple test runs",
+        "test/task-service.test.mjs — diff limits use UTF-8 bytes and honor the task output budget"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B13-03: UTF-8 diff/log and binary artifacts stay byte bounded with explicit flags$' test/artifacts.test.mjs",
+          "exitCode": 0,
+          "test": "B13-03: UTF-8 diff/log and binary artifacts stay byte bounded with explicit flags"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^result enforces the log cap across multiple test runs$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "result enforces the log cap across multiple test runs"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^diff limits use UTF-8 bytes and honor the task output budget$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "diff limits use UTF-8 bytes and honor the task output budget"
+        }
+      ]
+    },
+    {
+      "id": "M2b-12",
+      "criterion": "Fixture secrets matching the documented patterns in requests are rejected before persistence and in returned text artifacts are redacted; errors never echo request values. This pattern policy does not inspect arbitrary binary artifacts or prove complete secret detection.",
+      "title": "Credential-shaped requests are rejected and returned text artifacts are redacted",
+      "status": "pass",
+      "evidence": [
+        "test/task-service.test.mjs — credential-shaped request text is rejected without mutating the caller or storing data or echoing its sentinel",
+        "test/task-service.test.mjs — result redacts credential-shaped text and reports the bounded policy",
+        "test/artifacts.test.mjs — B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^credential-shaped request text is rejected without mutating the caller or storing data$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "credential-shaped request text is rejected without mutating the caller or storing data"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^result redacts credential-shaped text and reports the bounded policy$' test/task-service.test.mjs",
+          "exitCode": 0,
+          "test": "result redacts credential-shaped text and reports the bounded policy"
+        },
+        {
+          "status": "pass",
+          "reason": "all_observed_tests_passed",
+          "counts": {
+            "tests": 1,
+            "passed": 1,
+            "failed": 0,
+            "skipped": 0,
+            "cancelled": 0,
+            "todo": 0
+          },
+          "command": "node --test --test-name-pattern '^B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts$' test/artifacts.test.mjs",
+          "exitCode": 0,
+          "test": "B13-04: producer redacts credential sentinels before the scheduler persists or returns artifacts"
+        }
+      ]
+    },
+    {
+      "id": "M2b-13",
+      "criterion": "One real client run through the transport returns a result; mock-only runs are labelled as mock in the evidence.",
+      "title": "Pinned OpenCode client receives the real MCP task result and context",
+      "status": "pass",
+      "evidence": [
+        "integration/mcp-client-workflow.mjs — actual OpenCode 2.2.5, MCP stdio, task service, fixture worker and parsed result in provider context"
+      ],
+      "runs": [
+        {
+          "status": "pass",
+          "reason": "pinned_client_result_and_context_observed",
+          "command": "node integration/mcp-client-workflow.mjs <pinned OpenCode 2.2.5 binary>",
+          "exitCode": 0,
+          "observed": {
+            "version": "2.2.5",
+            "protocol": "2026-07-28",
+            "server": "B16 task stdio",
+            "discovered": true,
+            "fourToolsCatalogued": true,
+            "transportCalls": 16,
+            "submitPollResult": true,
+            "primaryPollStatuses": [
+              "queued",
+              "running",
+              "running",
+              "succeeded"
+            ],
+            "duplicateStableId": true,
+            "attempts": 1,
+            "workspacesForDuplicate": 1,
+            "cancellation": {
+              "status": "blocked",
+              "requested": true,
+              "stopped": "unknown"
+            },
+            "interruption": {
+              "status": "blocked",
+              "attempts": 1,
+              "preserved": true
+            },
+            "unavailableHost": "ENOENT diagnosed",
+            "taskId": "fd60d540-360e-4a9f-9dd9-498cc3ef07aa"
+          }
+        }
+      ]
+    }
+  ]
+}

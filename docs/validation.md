@@ -1941,3 +1941,89 @@ Evidence level: Unit — publication receipts do not demonstrate new runtime beh
 Not rerun: runtime tests/host gates for this documentation-only checkpoint (preceding
 entry records the final-code runs). Final-head CI/review remain required.
 Claim: this entry supports one verified PR publication, not merge or green CI.
+
+## M3: B20 supervised-use preflight and negative evidence — 2026-11-14
+
+Executed on Windows x64 (NT 10.0.26300), Node.js v24.22.1 (fnm 1.39.0),
+Git 2.55.0.windows.5, trusted OpenCode 2.2.5 for fixture-only B17 verification.
+Date: 2026-11-14. Base: `688da04bea29b300eb4cb1815bfbcb9fd0cd35ca`.
+Supervisor: GPT-6.1 Sol; no real worker/model execution was authorized or attempted.
+PowerShell saved `$LASTEXITCODE` immediately after each native process, before
+printing/tailing output, and explicitly failed unexpected nonzero checks. State
+and logs were temporary, never the developer's real task/credential home.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node integration/supervised-use-preflight.mjs docs/evidence/B20-negative-fixtures.json` | Initial B20-02/03 fixed negative fixtures | 4 prelaunch refusals, 3 supervisor rejections; actual failed test exit 7 preserved | 0 |
+| `node integration/acceptance-matrix.mjs --opencode C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe --report docs/evidence/B20-prerequisite-B17.json` | Recheck all 13 technical M2b/B17 criteria on fetched base | 13 pass, 0 fail, 0 not_run; actual pinned MCP lifecycle/context; fixture provider/worker only | 0 |
+| `node --test test/task-maintenance.test.mjs` | B18 prerequisite recovery/authority/crash evidence | 21 passed, 0 failed/skipped; real temporary processes and Windows PowerShell 5.1 | 0 |
+| `node --test test/opencode.test.mjs test/task-service.test.mjs test/artifacts.test.mjs` | Actual model/budget/provider refusal, scope and redaction/artifact boundaries | 47 passed, 0 failed/skipped | 0 |
+| `node --test` | First full local regression | 291 total, 290 passed, 0 failed, 1 existing POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | First baseline demo | `mock/preferred` 429 then `mock/local` 200; not worker fallback authorization | 0 |
+| `node integration/supervised-use-preflight.mjs docs/evidence/B20-negative-fixtures-final.json` | Revalidate report reservation correction | 7 fixture checks pass; no real task/provider; earlier report not overwritten | 0 |
+| `node integration/supervised-use-preflight.mjs docs/evidence/B20-negative-fixtures-final.json` (existing output path) | Refuse before repeated fixture work | Expected refusal; SHA-256 of output and temporary-root inventory unchanged | 1 (expected) |
+| `node integration/supervised-use-preflight.mjs docs/evidence/B20-negative-reviewed.json` | Final-code negative evidence after failure-receipt review | 7 fixture checks pass; three results rejected, one attempt each, no retry/merge; test exit 7 retained | 0 |
+| `node integration/supervised-use-preflight.mjs docs/evidence/B20-negative-setup-failure.json` (absolute Node executable, empty child PATH) | Actual missing-Git setup failure | `success: false`; 0 pass/0 scenario fail/7 not_run, generic infrastructure failure, scratch retained, no worker dispatch/retry | 1 (expected) |
+| `node --check integration/supervised-use-preflight.mjs` | Final harness syntax | No output | 0 |
+| `node --test` | Full suite after final harness code correction | 291 total, 290 passed, 0 failed, 1 existing POSIX-only skip | 0 |
+| `node examples/fallback-demo.mjs` | Demo after final code correction | `mock/preferred` 429 then `mock/local` 200 | 0 |
+| `C:/Users/paulo/Documents/Projects/.audit/bin/opencode-2.2.5/opencode.exe --version` | Record supplied host version | `opencode v2.2.5`; executable SHA-256 `0c346fdaf519d2f23a31d3b6cb9d65e369a72d77cac6f027b5e0a06376ec3a43` | 0 |
+| `git diff --check` | Changed-file whitespace | No output | 0 |
+
+Result: B20-01 **not_run**; B20-02 **pass** for refusal/safe stop without authorized
+real support/model/budget; B20-03 **pass at local negative-fixture level only**;
+B20-04 **not_run**. No real taskId, idempotency key, task base/workspace/head,
+transport receipts, worker project diff or correction receipt exists. The failed
+fixture test remains exit 7; missing Git remains a separate failed infrastructure
+observation with seven not_run scenarios. A `succeeded` fixture-process status was
+not accepted as completion. Costs of a real worker are unavailable because none ran;
+zero real-worker provider calls, supervisor session cost unknown.
+
+Review pass 1 inspected service/adapter/transport authority, real-model preconditions,
+fixture provenance and the three returned diffs/exits. It found output-path reuse
+was detected after fixture execution; exclusive report reservation now precedes
+effects and the refusal experiment verifies unchanged bytes/inventory. Review pass 2
+inspected every proposed file, preserved report, acceptance row and continuation
+claim. It found cleanup could mask failure receipts and leave omitted scenarios;
+the final harness records failures/not_run and a real setup failure was preserved.
+It also corrected stale current-B19 wording. The final harness/full suite/demo were
+revalidated; the proposed worker test is still absent. These are supervisor/model
+artifact reviews, not B20-04 human review or approval of the unexecuted objective.
+
+Remote evidence: #40/#41/#42 bodies/conversation/reviews/threads and SHA-specific
+correction verdicts were read. All thread queries had no nodes/no further page.
+PR and post-merge CI are successful on Windows/Ubuntu at the recorded heads/merges;
+post-merge runs are `43568386630`, `43589015912`, `43599861407`. Git fetch and the
+GitHub main API both returned `688da04`. Initial shell diagnostics found Node absent
+from PATH (resolved with explicit fnm setup) and inline GraphQL quotes stripped by
+PowerShell (read failed; retried read via query file succeeded). These are not
+successful initial reads or hidden model-dispatch retries.
+
+Evidence level: Unit — Policy decisions and input normalization; not host, network,
+production persistence. The negative harness additionally exercises real temporary
+Node/Git/service artifacts, not a real OpenCode worker. OpenCode integration —
+Hooks, queue, context, permissions and failures in the pinned host; not real model
+quality/cost. This applies only to the fresh B17 loopback-fixture matrix, not B20-01.
+
+Not rerun: standalone OpenCode session/model smoke, B11 invocation, B15 standalone
+task gate and B19 eight-run pulse (unchanged independent gates; B17 includes B16);
+native Ubuntu pinned host (Windows environment only); real-provider availability/
+billing probes and B20-01 real project execution (unsupported/unapproved); real
+worker correction flow and B20-04 human diff review (no real result exists).
+
+Claim: the fixed negative harness and fresh B17/B18 checks support safe refusal,
+supervisor rejection of synthetic bad results and the verified prerequisite scope.
+They do not establish provider/effort support, financial-budget enforcement, human
+approval, a worker-produced project change, M2b milestone sign-off or M3 completion.
+Publish only as the single blocked B20 draft; no merge authorization exists.
+
+Final documentation/report content check (one-off local script, not a runtime
+acceptance gate): 9 changed Markdown files, 92 local file links, 3 preserved
+successful negative reports, 1 preserved setup-failure report and all 13 B17 rows
+validated; no missing target or raw fake credential in returned reports. The
+proposed worker file is absent. Original worklog/validation content and order are
+preserved; new entries are appended. No contract/ADR/service source file changed.
+The first added append-only assertion exited 1: an accidental one-space indent
+change on the old worklog's last line was detected and restored before publication.
+This was a documentation correction, not a model/task retry; the failed content
+check is retained here and the corrected content/history check was revalidated.

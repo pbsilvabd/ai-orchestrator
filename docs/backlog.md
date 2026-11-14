@@ -1,6 +1,12 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-14: current main `c268239` includes B18/#41; its post-merge check
+Verified 2026-11-14 for B20: fetched/remote main is `688da04`; B19/#42 is merged
+with successful reviewed-head and post-merge Windows/Ubuntu checks. B20 is blocked
+on real-provider support and specific objective/model/budget approval; its single
+draft checkpoint is on `task/B20-first-supervised-use`. See
+[B20 preflight](evidence/B20-preflight.md); B20-01/B20-04 are not_run, M3 incomplete.
+
+Earlier B19 publication snapshot: main `c268239` includes B18/#41; its post-merge check
 passed in Actions run `43589015912`. B17/#40 is included and its Windows/Ubuntu PR
 checks passed; post-merge Windows run `43568386630` passed. B19 implementation is
 published in [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) from
@@ -14,8 +20,8 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current implementation task: [B19 — Opt-in harness pulse](tasks/B19.md).
-B12–B18 are merged. M2b and M3 remain open milestones.
+Current task: [B20 — First supervised use](tasks/B20.md), blocked/incomplete.
+B12–B19 are merged. M2b and M3 remain open milestones.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -55,8 +61,9 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Current delivery: **B19 PR #42; reviewed and published**. Its remote state and checks
-are authoritative on GitHub.
+Current delivery: **B20 blocked/incomplete draft checkpoint**; continue the same
+branch/PR after separately authorized provider support. B19/#42 is merged and its
+remote reviewed-head/post-merge checks are verified.
 B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
 the manual capability-gate pulse and read-only task-history acceptance; B17 is merged.
 Prerequisites below describe complete card acceptance; preparatory work does not
@@ -103,8 +110,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
-| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
-| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
+| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04`; reviewed-head/post-merge Windows/Ubuntu CI passed | Fixture diagnostic only; not M3 |
+| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Blocked/incomplete draft checkpoint on `task/B20-first-supervised-use`; B20-01/B20-04 not_run | B17/B18 merged/verified; separate real-provider support and specific objective/model/budget approval required |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |
 | [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Gated | B22a |

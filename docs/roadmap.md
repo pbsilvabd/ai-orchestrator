@@ -53,6 +53,12 @@ tests and final pinned-host evidence are complete locally. GPT-6.1 Sol independe
 verified the corrections, all four rows, the full suite and current-code B17 matrix;
 delivery is published as [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42),
 which carries the authoritative reviewed-head CI/merge/post-merge receipts.
+B20 preflight fetched and independently confirmed main `688da04`: B19/#42 is
+merged and its reviewed-head/post-merge Windows/Ubuntu checks succeeded. B20 is a
+blocked checkpoint on `task/B20-first-supervised-use`; real submission and human
+diff review are not_run. The adapter remains fixture-only, credentials/effort and
+real-model financial limits are unsupported/unapproved, and the stock MCP entry
+point is passive. See [the exact blocker and unapproved proposal](evidence/B20-preflight.md).
 No production provider is enabled.
 There is no production provider, integrated fallback, semantic memory or completed
 self-development workflow yet.
@@ -71,7 +77,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
 | M2b — One-worker delegation MVP | In progress; B12–B18 merged | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 — First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 — First self-development task | Blocked/incomplete; B20-01/B20-04 not_run; B17/B18 merged, real-provider support and specific objective/model/budget approval missing | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |

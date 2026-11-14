@@ -1640,3 +1640,48 @@ Template:
   code verification. Exact-head CI, feedback re-read and conditional merge follow.
 - Follow-up: publish SHA-specific review/resolutions, verify this documentation diff,
   then await final-head CI. No merge until all gates are observed passing.
+
+## 2026-11-14 — M3: B20 supervised-use preflight and negative evidence
+
+- Branch: `task/B20-first-supervised-use`
+- Scope: fixture evidence harness and documentation only; no real worker change,
+  provider support, service behavior, credential activation or merge authority.
+- Steps:
+  1. Fetched main `688da04`, verified B17/#40, B18/#41 and B19/#42 merge/review/
+     cross-platform check receipts, and read their complete feedback. Created the
+     sole B20 branch from main; no B20 branch/PR existed at pickup.
+  2. Verified the builder remains loopback-fixture-only, supports only the fixture
+     credential name and no effort variant, while the stock MCP entry is passive.
+     Stopped before any real-provider probe or task dispatch; documented the exact
+     separately scoped support prerequisite and unapproved one-file objective.
+  3. Added the fixed negative harness and preserved independent sanitized reports
+     for prelaunch refusal and three actual Node/Git/service rejection fixtures.
+     Rejected unrelated edits, an actual test exit 7 and a redacted fake secret.
+     No fixture was used as a real B20 worker or retry/correction receipt.
+  4. Review pass 1 fixed late exclusive report reservation. Pass 2 fixed failure
+     receipt/remaining-scenario accounting and stale delivery wording. Revalidated
+     existing-report refusal, missing-Git failure, final harness, full suite/demo,
+     prerequisite matrix and documentation. B20-01/B20-04 remain not_run.
+- Files: `AGENTS.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/tasks/B20.md`, `docs/evidence/B20-preflight.md`,
+  `docs/evidence/B20-prerequisite-B17.json`,
+  `docs/evidence/B20-negative-fixtures.json`,
+  `docs/evidence/B20-negative-fixtures-final.json`,
+  `docs/evidence/B20-negative-reviewed.json`,
+  `docs/evidence/B20-negative-setup-failure.json`,
+  `integration/supervised-use-preflight.mjs`, `integration/README.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: B17 13/13, B18 maintenance 21/21, authorization/artifacts 47/47;
+  final negative harness 7/7; full suite twice, each 290 pass/0 fail/1 existing
+  POSIX-only skip; demo twice, 429 then 200; syntax/whitespace passed. Missing-Git
+  fixture failed with native exit 1/all seven not_run and retained scratch; existing
+  report refused with native exit 1/unchanged bytes/inventory. These failures and
+  the fixture test's exit 7 are preserved, not converted by retries. Unrelated
+  pinned smoke/invocation/pulse gates and real-model use were not rerun.
+- Format: used the worklog/validation templates; added a B20 preflight report and
+  retained the handoff's historical sections to separate current blockers from
+  earlier verified integration. No normative contract or ADR decision changed.
+- Follow-up: publish only this safe incomplete checkpoint as the single B20 draft;
+  separately authorize/validate provider support, then approve the exact objective
+  and model/budget configuration before real service execution. Human review of
+  the eventual worker diff and a new B20-specific merge decision remain required.
