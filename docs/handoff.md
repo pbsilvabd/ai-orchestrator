@@ -34,7 +34,7 @@ real provider/project service use is claimed.
 ## Next action: resolve the B20 real-provider prerequisite separately
 
 1. Read [B20 preflight](evidence/B20-preflight.md). Continue
-   `task/B20-first-supervised-use` and its single draft PR, not a second evidence
+   `task/B20-first-supervised-use` and its single [draft PR #43](https://github.com/pbsilvabd/ai-orchestrator/pull/43), not a second evidence
    delivery. No real taskId/idempotency key/worker diff exists; B20-01/B20-04 are
    not_run. Do not merge the checkpoint or mark M3 complete.
 2. Obtain separately scoped authorization for real-provider adapter support and

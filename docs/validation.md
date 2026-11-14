@@ -2027,3 +2027,31 @@ The first added append-only assertion exited 1: an accidental one-space indent
 change on the old worklog's last line was detected and restored before publication.
 This was a documentation correction, not a model/task retry; the failed content
 check is retained here and the corrected content/history check was revalidated.
+
+## M3: B20 draft publication checkpoint — 2026-11-14
+
+Executed on Windows x64 with Git 2.55.0.windows.5 and GitHub CLI.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git push -u origin task/B20-first-supervised-use` | Publish safe incomplete task branch without force | New branch at `8cf7aad33080a11b3138b566fceaaebde550a271` | 0 |
+| `git ls-remote origin refs/heads/task/B20-first-supervised-use` | Verify remote identity | Exact intended `8cf7aad` head | 0 |
+| `gh pr create --draft --base main --head task/B20-first-supervised-use --title "test: checkpoint blocked B20 supervised use" --body-file C:/Users/paulo/AppData/Local/Temp/opencode/b20-pr-body.md` | Publish the single B20 draft, not a competing evidence PR | https://github.com/pbsilvabd/ai-orchestrator/pull/43 | 0 |
+| `gh pr view 43 --json number,url,state,isDraft,baseRefName,baseRefOid,headRefName,headRefOid,statusCheckRollup` | Verify base/head/draft/check snapshot | Open/draft; base `688da04`, head `8cf7aad`; both CI jobs in progress | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/issues/43/comments --paginate` | Read complete conversation | Empty at publication | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/pulls/43/reviews --paginate` | Read all submitted reviews | Empty at publication | 0 |
+| `gh api repos/pbsilvabd/ai-orchestrator/pulls/43/comments --paginate` | Read all inline review comments | Empty at publication | 0 |
+| `gh api graphql -F query=@C:/Users/paulo/AppData/Local/Temp/opencode/b20-pr-feedback.graphql` | Read all resolved/outdated/open threads with pagination metadata and head | Empty; hasNextPage false; head `8cf7aad` | 0 |
+| `gh run list --branch task/B20-first-supervised-use --limit 5 --json databaseId,event,headSha,status,conclusion,url` | Locate exact-head CI | Run `43604686566`, head `8cf7aad`, in progress | 0 |
+
+Result: one draft PR published with verified branch/base/head and full feedback
+intake. Subsequent exact-final-head CI/verdict/feedback receipts belong on PR #43;
+this snapshot does not claim a future check passed. This follow-up changes only
+documentation; runtime code remains identical to the validated first commit.
+Evidence level: Unit — publication receipts do not demonstrate runtime/provider
+behavior or real supervised project use.
+Not rerun: full suite/demo/pinned host for this documentation-only follow-up
+(preceding entry records final code checks); real worker/human review remain not_run.
+Claim: publication and initial feedback intake succeeded, not B20/M3 completion,
+real-provider support, human approval, final-head CI or merge.

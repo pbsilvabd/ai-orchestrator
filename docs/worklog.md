@@ -1685,3 +1685,27 @@ Template:
   separately authorize/validate provider support, then approve the exact objective
   and model/budget configuration before real service execution. Human review of
   the eventual worker diff and a new B20-specific merge decision remain required.
+
+## 2026-11-14 — M3: B20 draft publication checkpoint
+
+- Branch: `task/B20-first-supervised-use`
+- Scope: publication/continuation documentation only; validated harness/service
+  code unchanged, no real worker task or provider support added.
+- Steps:
+  1. Committed safe incomplete work as `8cf7aad`, pushed without force and opened
+     the single B20 draft PR #43 targeting main `688da04`.
+  2. Verified remote branch/PR head `8cf7aad33080a11b3138b566fceaaebde550a271`,
+     draft/open state and intended base. Read conversation, submitted reviews,
+     inline comments and all resolved/outdated threads: empty, no next page.
+  3. Recorded publication links; CI run `43604686566` was in progress at this
+     snapshot, not passed. The PR carries subsequent exact-head check/review
+     receipts; draft status does not relax B20-01/B20-04 or permit merge.
+- Files: `docs/handoff.md`, `docs/backlog.md`, `docs/tasks/B20.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: push, PR creation and branch/base/head/full-feedback reads exited 0;
+  original runtime checks are in the preceding entry. Content/history and
+  whitespace checks validate this documentation-only follow-up. Runtime/pinned
+  host checks were not repeated because their code is identical to `8cf7aad`.
+- Follow-up: inspect exact-final-head CI/feedback on PR #43, retain draft, then
+  resolve the separately authorized provider support and specific human
+  objective/config approval before attempting real service execution.

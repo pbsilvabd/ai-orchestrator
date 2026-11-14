@@ -5,6 +5,8 @@ with successful reviewed-head and post-merge Windows/Ubuntu checks. B20 is block
 on real-provider support and specific objective/model/budget approval; its single
 draft checkpoint is on `task/B20-first-supervised-use`. See
 [B20 preflight](evidence/B20-preflight.md); B20-01/B20-04 are not_run, M3 incomplete.
+The single delivery is [draft PR #43](https://github.com/pbsilvabd/ai-orchestrator/pull/43),
+not ready for merge or a completed B20 evidence-only deliverable.
 
 Earlier B19 publication snapshot: main `c268239` includes B18/#41; its post-merge check
 passed in Actions run `43589015912`. B17/#40 is included and its Windows/Ubuntu PR
