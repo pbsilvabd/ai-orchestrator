@@ -2131,3 +2131,36 @@ one passing **serial** full-suite run, while reporting **two failed default-conc
 full-suite runs due to pre-existing B10-03, based on the commands above. It
 does not support deterministic green default-concurrency local runs, redirect
 containment, live use, B20/M3 or merge.
+
+## M3 preparation: B29 exact-head CI and status correction — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `gh run view 43628743462 --json headSha,conclusion,jobs` | Verify PR #44's CI at `762c133` | Run conclusion `failure`; Windows `Run test suite (PowerShell)` failed; Ubuntu job succeeded. The published review links the Windows failure to `test/task-maintenance.test.mjs:183`, `Unexpected end of JSON input`. `gh run view 43628743462 --log-failed` returned no text in this session, so the raw failure detail was not independently retrieved here | 0 |
+| `node --test test/task-maintenance.test.mjs` | Check the Windows CI failing test file in isolation | 21 passed, 0 failed, 0 skipped; the competing stale-maintenance recovery test passed in this run | 0 |
+| `git diff --check` | Check documentation correction whitespace | no output | 0 |
+
+Result: CI for `762c133` is **not green**: the Windows test-suite step failed
+while Ubuntu passed. The isolated maintenance file passed locally, which does
+not cancel the CI failure or establish that the race is resolved. The previous
+validation entry already records two local default-concurrency B10-03 failures
+and a successful serial suite. The handoff now distinguishes historical green
+runs from the current PR head rather than silently promoting them.
+
+Evidence level: Unit — the local maintenance test exercises temporary state
+and process behavior; it does not prove CI stability or a safe live worker.
+
+Not rerun: full `node --test` (this documentation-only correction does not alter
+executable code; default-concurrency failures already recorded), pinned
+OpenCode fixture/MCP harnesses (unchanged), B17/B19 gates (unchanged), public
+catalog, real inference and B20/#43 (not authorized), and B30 isolation/relay
+(not implemented). Exact-head CI for the upcoming documentation commit remains
+pending and must be verified separately.
+
+Claim: This entry supports an honest red Windows/green Ubuntu CI status at
+`762c133`, based on `gh run view 43628743462 --json headSha,conclusion,jobs`,
+and an isolated maintenance pass based on `node --test test/task-maintenance.test.mjs`.
+It does not support a passing CI receipt for a later head, deterministic
+default-concurrency success, redirect containment, live use or merge.

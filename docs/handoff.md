@@ -15,7 +15,10 @@ B29 (`task/B29-opencode-free-provider`, base `688da04`) prepares one anonymous f
 payload-bound operator approval, a service-owned guard plugin and the B11 launch
 builder. The pinned OpenCode 2.2.5 host loads the guard through `plugins`, sends only the
 fixed model with `Bearer public`, and makes one request after 401/402/429 or a dropped
-connection. Full suite 299 passed, 0 failed, 1 platform skip; demo and syntax checks passed.
+connection. At the earlier B29 preparation checkpoint, the full suite had 299
+passes, 0 failures and 1 platform skip; that is not a result for the current PR
+head. Later default-concurrency runs exposed the B10-03 timing failure, and
+the Windows CI at `762c133` failed in the maintenance recovery test.
 
 Blocker: on the pinned host a 307 from the model endpoint is followed and the prompt body
 reaches the alternate origin. The guard cannot prevent or detect it. Live composition is
@@ -56,13 +59,17 @@ fixture composition. It observed queued/running/succeeded, a scoped diff and
 passing test exit, a denied out-of-scope write and two duplicate submissions
 without extra attempts/workspaces/model requests. New pinned fixtures preserved
 partial effects after a drop and blocked/retained ownership after an uncertain
-deadline. `node --test` passed 303 with one Windows platform skip; the historical
-307 still failed, delivering 7121 body bytes to a second loopback origin. See
-the new validation entry for native exits. Production `mcp-server.mjs` remains
+deadline. One local `node --test` run at `3c30866` passed 303 with one Windows
+platform skip; later default-concurrency runs failed the pre-existing B10-03
+timing case, while a serial run at `762c133` passed 304 with one skip. The
+historical 307 still failed, delivering 7121 body bytes to a second loopback
+origin. See the validation entries for native exits. Production `mcp-server.mjs` remains
 passive/live-closed; no catalog, real provider, B20, relay or merge was run.
-The next action is to validate and publish the PR #44 review corrections,
-verify their exact remote head, CI and feedback, and only then mark the
-fixture-only PR ready if no blocker remains. B30's separate branch cannot implement live use until
+The next action is to update the PR #44 description on this branch, verify
+the new remote head and exact-head Windows/Ubuntu CI,
+and respond to the latest findings. Keep the PR draft while Windows CI is red;
+only consider fixture-only readiness after verified checks and re-review.
+B30's separate branch cannot implement live use until
 B29 is merged and verifiable deployment infrastructure exists; this Windows
 host currently reports the required Hyper-V feature disabled. The following
 decision checkpoint is historical and remains a live safety gate.
@@ -75,6 +82,15 @@ after admission, and records an independent full-suite run that failed the
 pre-existing B10-03 timing case before a passing rerun. Revalidate the
 correction head and reply to all four review threads before changing draft
 status. No B30 gateway or live approval has been exercised.
+
+Re-review at `762c133` verified those four replies, but reported three new
+findings: Windows CI run `43628743462` failed in
+`test/task-maintenance.test.mjs:183` (`Unexpected end of JSON input` while a
+competing process was writing the file); Ubuntu passed. PR #44's body still
+named `3c30866` and a green default suite, and the earlier status lines above
+were misleading without their historical scope. The PR remains draft. Do not
+interpret the independent local fixture-only verdict as a passing CI receipt
+or redirect containment; the 307 still sent 7121 body bytes to another origin.
 
 2026-11-14 decision update: ADR-009 is accepted **for fixture-only preparation**;
 the live route remains closed. B29 is narrowed without rewriting its original

@@ -1793,3 +1793,30 @@ Template:
   inline finding with its new SHA/evidence. Re-review the exact head and CI;
   if CI fails, keep draft and correct it. Even if fixture-only PR is ready,
   B30 owns the failed live 307 gate and merge needs separate authorization.
+
+## 2026-11-14 — M3 preparation: B29 exact-head CI and status correction
+
+- Branch: `task/B29-opencode-free-provider`
+- Scope: docs only; no service, test or live worker behavior changed.
+- Steps:
+  1. Read the three new PR #44 findings after the `762c133` re-review and
+     verified run `43628743462`: Windows failed in the PowerShell suite step,
+     Ubuntu passed. The review reports an incomplete JSON read in the
+     competing maintenance recovery test; this session's `--log-failed`
+     response contained no text.
+  2. Corrected `docs/handoff.md` to label the older 299/303-pass reports as
+     historical snapshots, record the two B10-03 default-suite failures and
+     the red Windows CI, and keep the draft PR's next action current.
+  3. Appended the CI receipt and isolated test observation to
+     `docs/validation.md`; retained the earlier green runs as historical
+     evidence rather than revising their original entries.
+- Files: `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: `gh run view 43628743462 --json headSha,conclusion,jobs` →
+  Windows failure/Ubuntu success at `762c133`, command exit 0;
+  `node --test test/task-maintenance.test.mjs` → 21 passed, exit 0;
+  `git diff --check` → no output, exit 0. The full suite, pinned-host
+  harnesses, public catalog, real inference, B20 and B30 were not rerun.
+- Follow-up: publish the correction and an accurate PR #44 description;
+  inspect CI and feedback at the new head. Keep draft while a required check
+  is red; a green rerun or a separately reviewed race correction must be
+  observed before any fixture-only ready transition. No merge is authorized.
