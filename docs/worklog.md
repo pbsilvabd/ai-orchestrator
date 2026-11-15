@@ -2649,7 +2649,8 @@ Template:
   `B10-03`; the passing rerun is claimed, the failures are not erased);
   `node examples/fallback-demo.mjs` -> 429 then 200, exit 0; `git diff --check` -> no
   output, exit 0. Two self-review passes covered the release split, construction
-  rollback, close/uncertainty paths and the contract wording.
+  rollback, close/uncertainty paths and the contract wording. Exact-head CI run
+  `43768061960` succeeded on both OS jobs; the docs-only receipt commit has its own PR run.
 - Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
   independent re-review of the new head is required. All B30 deployment gates remain
   `not_run`.

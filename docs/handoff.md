@@ -12,7 +12,9 @@ release; an early or concurrent creator release is refused with `invalid_argumen
 touching the lock. Passive default close stays synchronous; a capability handoff returns the
 release Promise. `test/service-ownership-handoff.test.mjs` now covers the early-release bypass,
 close idempotency, `beforeRelease` ordering, and failed-construction cleanup in addition to the
-forged/copied/reused/released/mismatched/competing-owner and uncertain-release cases. All
+forged/copied/reused/released/mismatched/competing-owner and uncertain-release cases. Exact-head
+CI run `43768061960` at `352c212` passed on Windows and Ubuntu; the docs-only receipt commit has
+its own PR run. All
 deployment gates remain `not_run`; PR #45 stays draft and unmerged.
 
 2026-11-15 fourth correction (ownership handoff capability; same draft PR #45). The independent
