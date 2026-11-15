@@ -1,23 +1,26 @@
 # Continuation point — 2026-11-14
 
 B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
-with B29 main `11fcb42`), corrected after the supervisor review at `cff5265`. The
-relay, egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth
-containment observation are implemented and tested; live composition remains closed
-and no merge is authorized.
+with B29 main `11fcb42`), corrected after the supervisor reviews at `cff5265` and
+`32c0339`. The relay, egress gateway, SSHSIG approval/admission and an isolated WSL2
+netns/veth containment observation are implemented and tested; live composition remains
+closed and no merge is authorized.
 
 - `src/relay.mjs` — fixed single-upstream relay, redirect refusal (301/302/303/
-  307/308), independent request/byte/time bounds, rejects `0.0.0.0`/`::` bind,
-  fail-closed lifecycle.
+  307/308), independent request/byte/time bounds, rejects all-zero IPv4/IPv6 bind
+  (including compressed IPv6 aliases), fail-closed lifecycle.
 - `src/egress-gateway.mjs` — L7 egress gateway, fixed `Bearer public` forwarded
   upstream, CONNECT/redirect/unapproved-path refusal, independent request cap,
-  rejects `0.0.0.0`/`::` bind, sanitized logs, policy digest.
+  rejects all-zero IPv4/IPv6 bind (including compressed IPv6 aliases), sanitized logs,
+  policy digest.
 - `src/live-approval.mjs` — canonical SSHSIG live approval with `ssh-keygen -Y
   verify`, FIDO2 presence/verification flag enforcement, policy/metadata binding
   and a durable atomic no-replace single-use approval ledger.
 - `integration/b30-egress-namespaces.sh` — isolated WSL2 worker/relay/gateway
-  netns + veth fixture (three disposable namespaces, no WSL host-namespace changes),
-  real socket probes and verified-empty fail-closed teardown.
+  netns + veth fixture: three disposable namespaces with unique per-run names, each
+  veth pair created **inside** a disposable namespace (only the peer moved), so no
+  `ip link add` runs in the WSL initial/host namespace; owned-only collision-safe
+  teardown, `--self-test` mode, real socket probes and verified-empty teardown.
 
 `not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
 (absent, install not authorized — containment is routing-based); bare-metal Ubuntu
@@ -32,11 +35,12 @@ PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-on
 
 ## Next action
 
-1. The supervisor review at `cff5265` (P1 ledger, P2 gateway/bind/WSL scope) has been
-   corrected on this branch; the reply with the new head SHA and evidence is posted
-   on PR #45. Re-review the corrected head, then the maintainer decides draft-to-ready.
-   The draft lists the unmet criteria (firewall filtering, hardware signing, catalog,
-   live activation) as `not_run`, not passed.
+1. The supervisor reviews at `cff5265` and `32c0339` (P1 ledger; P2 gateway/bind/WSL
+   scope; residual WSL in-namespace veth + compressed IPv6 aliases) have been corrected
+   on this branch; the reply with the new head SHA and evidence is posted on PR #45.
+   Re-review the corrected head, then the maintainer decides draft-to-ready. The draft
+   lists the unmet criteria (firewall filtering, hardware signing, catalog, live
+   activation) as `not_run`, not passed.
 2. Remaining B30 gates are platform/hardware, not code: nftables (or an approved
    alternative), a real FIDO2 `-sk` signing dry run, and a separately authorized
    catalog read before any live experiment.

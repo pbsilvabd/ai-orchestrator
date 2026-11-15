@@ -28,17 +28,31 @@ function fail(code, message) {
 const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
 const MAX_TIMEOUT_MS = 2_147_483_647;
 
-// Reject unspecified/wildcard bind addresses: 0.0.0.0, :: and the uncompressed all-zero
-// IPv6 form. The relay must never bind every interface.
+// Reject unspecified/wildcard bind addresses: 0.0.0.0 and every all-zero IPv6 form
+// (canonical `::` and any compressed alias such as `0:0:0:0:0:0:0::`). The relay must
+// never bind every interface.
 function isUnspecifiedAddress(host) {
   const family = isIP(host);
   if (family === 4) return host === '0.0.0.0';
-  if (family === 6) {
-    if (host === '::' || host === '::0') return true;
-    const groups = host.split(':');
-    return groups.length === 8 && groups.every(group => group === '0' || group === '0000');
-  }
+  if (family === 6) return isAllZeroIpv6(host);
   return false;
+}
+
+// Sound all-zero IPv6 predicate: expand `::` compression to eight groups and require
+// every group to be zero. Handles canonical, trailing and interior compression.
+function isAllZeroIpv6(host) {
+  if (!host.includes('::')) {
+    const groups = host.split(':');
+    return groups.length === 8 && groups.every(group => /^0+$/.test(group));
+  }
+  const parts = host.split('::');
+  if (parts.length !== 2) return false;
+  const left = parts[0] ? parts[0].split(':') : [];
+  const right = parts[1] ? parts[1].split(':') : [];
+  if (left.length + right.length > 7) return false;
+  const zeros = 8 - left.length - right.length;
+  const groups = [...left, ...Array(zeros).fill('0'), ...right];
+  return groups.every(group => /^0+$/.test(group));
 }
 
 // A private/loopback bind address only. Reject 0.0.0.0, :: and empty hosts: the relay

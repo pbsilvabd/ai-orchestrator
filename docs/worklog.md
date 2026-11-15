@@ -1970,3 +1970,37 @@ Template:
 - Follow-up: reply to the supervisor finding with the new head SHA and evidence; keep
   the draft open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host
   relay, FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 re-review correction (in-namespace veth, collision safety, IPv6 aliases)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `32c0339`).
+- Scope: correct the residual Finding 4 and the IPv6 wildcard follow-up from the
+  re-review at `32c0339`; PR stays draft and live closed.
+- Steps:
+  1. Rewrote `integration/b30-egress-namespaces.sh` to create every veth pair **inside**
+     an already-created disposable namespace (`ip netns exec <ns> ip link add ...`) and
+     move only the peer, so `ip link add` never runs in the WSL initial/host namespace.
+     Namespaces now use a unique per-run suffix; the script tracks the exact namespaces
+     it created and tears down only those, refuses a name collision without touching the
+     pre-existing object, and fails on any partially failed `ip` configuration (explicit
+     `|| fail` on every setup command). Added a `--self-test` mode that exercises
+     collision refusal and owned-only cleanup with disposable namespaces only.
+  2. Reran the safe script under the narrow permission: `--self-test` passed, and the
+     full fixture printed "containment verified" (exit 0) with a "teardown removed all
+     owned objects, no initial-namespace residue" assertion; external residue check
+     confirmed no `b30-*` netns/veth and no `10.100.x` address/route in the host.
+  3. Replaced the IPv6 unspecified-address check with a sound all-zero predicate that
+     expands `::` compression to eight groups, so compressed aliases such as
+     `0:0:0:0:0:0:0::` and `0:0:0:0:0::` are rejected in both `src/relay.mjs` and
+     `src/egress-gateway.mjs`; added compressed-alias and positive cases to both tests.
+- Files: `integration/b30-egress-namespaces.sh`, `src/relay.mjs`,
+  `src/egress-gateway.mjs`, `test/relay.test.mjs`, `test/egress-gateway.test.mjs`,
+  `integration/README.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/task-contract.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused relay/gateway/approval tests 40/40 pass (incl. compressed IPv6
+  aliases); WSL `--self-test` and full fixture both exit 0 with verified empty host
+  residue; serial full suite and demo pass (see validation entry). No catalog GET, live
+  inference, package install, host/Windows network change or FIDO2 hardware run.
+- Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
+  FIDO2 hardware dry run, catalog, live).

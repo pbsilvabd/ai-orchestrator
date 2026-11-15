@@ -387,13 +387,14 @@ its own temporary-process/loopback fixture:
 
 - `src/relay.mjs` + `test/relay.test.mjs` — one fixed upstream, no arbitrary target,
   `Bearer public` only, terminal refusal of 301/302/303/307/308 without forwarding,
-  independent request/byte/time bounds, rejection of `0.0.0.0`/`::` bind addresses,
-  fail-closed bind/upstream/teardown.
+  independent request/byte/time bounds, rejection of all-zero IPv4/IPv6 bind addresses
+  (including compressed IPv6 aliases), fail-closed bind/upstream/teardown.
 - `src/egress-gateway.mjs` + `test/egress-gateway.test.mjs` — one fixed origin, fixed
   ingress `Bearer public` forwarded upstream (never inheriting arbitrary client
   headers), CONNECT and redirect refusal, unapproved-path refusal, an independent
-  request cap, rejection of `0.0.0.0`/`::` bind addresses, sanitized body-free logging,
-  policy digest, and an end-to-end relay→gateway→fixture-origin chain test.
+  request cap, rejection of all-zero IPv4/IPv6 bind addresses (including compressed
+  IPv6 aliases), sanitized body-free logging, policy digest, and an end-to-end
+  relay→gateway→fixture-origin chain test.
 - `src/live-approval.mjs` + `test/live-approval.test.mjs` — canonical SSHSIG live
   approval, `ssh-keygen -Y verify` against a single-principal `allowed_signers` plus a
   revocation list, FIDO2 presence/verification flag enforcement parsed from the SSHSIG
@@ -407,18 +408,23 @@ never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
 
 ```sh
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test
 ```
 
 It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
-and two veth pairs, moving both ends of every veth into a namespace so the WSL
-initial/host namespace is never assigned an address, route or link. It assigns private
-addresses with no default route, records the full `ip netns`/`ip addr`/`ip route`
-inventory, then runs real socket attempts proving the worker reaches only the relay,
-the relay reaches only the gateway, and the gateway reaches only the relay, while each
-is denied a direct Internet/TEST-NET destination. Teardown is fail-closed and verified:
-no `b30-*` netns/veth and no `10.100.x` address/route remain in the host namespace.
-Containment is routing-based: nftables/iptables are not installed and default-drop
-filtering is `not_run`.
+with a unique per-run suffix. Each veth pair is created **inside** an already-created
+disposable namespace (`ip netns exec <ns> ip link add ...`) and only the peer is moved
+to the other compartment, so `ip link add` never runs in the WSL initial/host namespace
+and no host address, route or link is ever assigned. It assigns private addresses with
+no default route, records the full `ip netns`/`ip addr`/`ip route` inventory, then runs
+real socket attempts proving the worker reaches only the relay, the relay reaches only
+the gateway, and the gateway reaches only the relay, while each is denied a direct
+Internet/TEST-NET destination. Teardown removes only the namespaces this run created
+(refusing name collisions without touching pre-existing state) and verifies no `b30-*`
+netns/veth and no `10.100.x` address/route remain. The `--self-test` mode exercises
+collision refusal and owned-only cleanup with disposable namespaces only. Containment
+is routing-based: nftables/iptables are not installed and default-drop filtering is
+`not_run`.
 
 Not covered / `not_run`: the live free route, public catalog GET, live inference,
 nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, the

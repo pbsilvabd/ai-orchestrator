@@ -192,10 +192,17 @@ test('B30-07: gateway logs are sanitized (no body or authorization material)', a
   assert.equal(events[0].detail, 'connect');
 });
 
-test('gateway rejects unspecified/wildcard bind addresses', () => {
-  for (const host of ['0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0']) {
+test('gateway rejects unspecified/wildcard bind addresses including compressed all-zero IPv6', () => {
+  const unspecified = [
+    '0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0',
+    '0:0:0:0:0:0:0::', '0:0:0:0:0::', '::0:0:0:0:0:0:0', '0:0:0:0:0:0::0',
+  ];
+  for (const host of unspecified) {
     assert.throws(() => createEgressGateway(gatewayConfig('http://127.0.0.1:1', { listen: { host, port: 0 } })),
       /must not be unspecified/);
+  }
+  for (const host of ['127.0.0.1', '::1', '2001:db8::1']) {
+    assert.doesNotThrow(() => createEgressGateway(gatewayConfig('http://127.0.0.1:1', { listen: { host, port: 0 } })));
   }
 });
 

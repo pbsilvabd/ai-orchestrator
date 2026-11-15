@@ -152,16 +152,17 @@ Implemented and tested (fixture/loopback and temporary-process only):
 - `src/relay.mjs` — a service-owned relay with one fixed upstream, no arbitrary
   target, `redirect: manual` with terminal refusal on 301/302/303/307/308,
   explicit `Bearer public` only, independent request/byte/time bounds, rejection of
-  unspecified/wildcard bind addresses (`0.0.0.0`, `::`), and a fail-closed lifecycle
-  (port-conflict refusal, upstream-failure latch, terminal stop). Tested by
-  `test/relay.test.mjs` (B30-01, B30-02, B30-04).
+  unspecified/wildcard bind addresses (all-zero IPv4/IPv6 including compressed IPv6
+  aliases), and a fail-closed lifecycle (port-conflict refusal, upstream-failure
+  latch, terminal stop). Tested by `test/relay.test.mjs` (B30-01, B30-02, B30-04).
 - `src/egress-gateway.mjs` — a layer-7 egress gateway with one fixed origin, a fixed
   ingress `Bearer public` credential that it forwards upstream (never inheriting
   arbitrary client headers), CONNECT/redirect/unapproved-path refusal, an independent
-  request cap, rejection of unspecified/wildcard bind addresses, body-free sanitized
-  logging and a policy digest; live mode requires an HTTPS non-IP origin, never
-  exercised here. Tested by `test/egress-gateway.test.mjs`, including an end-to-end
-  relay→gateway→fixture-origin chain (B30-01/B30-07).
+  request cap, rejection of unspecified/wildcard bind addresses (all-zero IPv4/IPv6
+  including compressed IPv6 aliases), body-free sanitized logging and a policy digest;
+  live mode requires an HTTPS non-IP origin, never exercised here. Tested by
+  `test/egress-gateway.test.mjs`, including an end-to-end relay→gateway→fixture-origin
+  chain (B30-01/B30-07).
 - `src/live-approval.mjs` — strict canonical approval schema, `ssh-keygen -Y verify`
   SSHSIG verification against a single-principal `allowed_signers` plus KRL, FIDO2
   presence/verification flag enforcement parsed from the SSHSIG blob, policy/metadata
@@ -174,14 +175,18 @@ Implemented and tested (fixture/loopback and temporary-process only):
 Observed deployment containment (isolated WSL2 Ubuntu, routing-based, no host changes):
 
 - `integration/b30-egress-namespaces.sh` creates three temporary network namespaces
-  (`b30-worker`, `b30-relay`, `b30-gw`) and two veth pairs, moving both ends of every
-  veth into a namespace so the WSL initial/host namespace is never assigned an address,
-  route or link. It assigns private addresses with no default IPv4/IPv6 route, records
-  the full `ip netns`/`ip addr`/`ip route` inventory, then runs real socket attempts:
-  the worker reaches only the relay, the relay reaches only the gateway, and the
-  gateway reaches only the relay; worker/relay/gateway are each denied a direct
-  Internet/TEST-NET destination. Teardown is fail-closed and verified: no `b30-*`
-  netns/veth and no `10.100.x` address/route remain in the host namespace.
+  (`b30-worker`, `b30-relay`, `b30-gw`) with a unique per-run suffix. Each veth pair is
+  created **inside** an already-created disposable namespace (`ip netns exec <ns> ip
+  link add ...`) and only the peer is moved to the other compartment, so `ip link add`
+  never runs in the WSL initial/host namespace and no host address, route or link is
+  ever assigned. It assigns private addresses with no default IPv4/IPv6 route, records
+  the full inventory, then runs real socket attempts: the worker reaches only the
+  relay, the relay reaches only the gateway, and the gateway reaches only the relay;
+  worker/relay/gateway are each denied a direct Internet/TEST-NET destination. Teardown
+  removes only the namespaces this run created (refusing name collisions without
+  touching pre-existing state) and verifies no `b30-*` netns/veth and no `10.100.x`
+  address/route remain. A `--self-test` mode exercises collision refusal and owned-only
+  cleanup with disposable namespaces.
 
 Not run / not established by this amendment (recorded `not_run`):
 

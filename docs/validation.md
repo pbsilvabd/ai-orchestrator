@@ -2347,3 +2347,42 @@ WSL2 containment observation, based on the commands above. The whole-row `pass`
 overclaims in the earlier PR body are corrected to partial/`not_run`; firewall-filtered
 isolation, bare-metal/VM deployment, pinned-host relay, hardware signing, catalog and
 live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 re-review correction (in-namespace veth, collision safety, IPv6 aliases) — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), WSL2 Ubuntu (kernel
+`6.6.87.2-microsoft-standard-WSL2`, root). Date: 2026-11-14. This entry corrects the
+preceding checkpoint without rewriting it.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs` | Syntax of the two wildcard-corrected modules | no output for each | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | Focused cases incl. compressed all-zero IPv6 aliases | 40 passed, 0 failed, 0 skipped | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test` | Collision refusal + owned-only cleanup (disposable namespaces only) | "self-test passed" | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Corrected in-namespace veth fixture (no `ip link add` in initial namespace) with real socket probes | "containment verified"; "teardown removed all owned objects, no initial-namespace residue" | 0 |
+| `wsl -d Ubuntu -- bash <residue-check>` | Verify teardown leaves no host-namespace residue | no `b30-*` netns/veth, no `10.100.x` address/route | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression on the corrected code | 345 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: each veth pair is now created inside a disposable namespace and only the peer
+is moved, so `ip link add` never runs in the WSL initial/host namespace; namespaces use
+a unique per-run suffix with owned-only collision-safe teardown; the all-zero IPv6
+predicate expands `::` compression and rejects compressed aliases (`0:0:0:0:0:0:0::`,
+`0:0:0:0:0::`, …) in both listeners. The earlier out-of-scope host-namespace
+observation was corrected, not repeated.
+
+Evidence level: Unit (temporary loopback processes, disposable keys, a two-process
+claim fixture); the corrected WSL2 run is a routing-only deployment observation with
+veth pairs created inside disposable namespaces, not a firewall (nftables) proof and
+not a bare-metal/VM deployment.
+
+Not rerun / not_run: nftables/iptables default-drop filtering (absent, install not
+authorized); bare-metal Ubuntu / two-VM Hyper-V; pinned OpenCode 2.2.5 through the
+relay; a real FIDO2 `-sk` hardware-key signing dry run; public catalog GET and live
+inference.
+
+Claim: this entry supports the corrected in-namespace veth creation, collision-safe
+owned cleanup and the sound all-zero IPv6 rejection, based on the commands above.
+Firewall-filtered isolation, bare-metal/VM deployment, pinned-host relay, hardware
+signing, catalog and live inference remain `not_run` and the live route stays closed.

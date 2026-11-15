@@ -171,10 +171,20 @@ test('relay policy digest binds the exact configuration', () => {
   assert.notEqual(relayPolicyDigest(config), relayPolicyDigest(changed));
 });
 
-test('relay rejects unspecified/wildcard bind addresses', () => {
-  for (const host of ['0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0']) {
+test('relay rejects unspecified/wildcard bind addresses including compressed all-zero IPv6', () => {
+  const unspecified = [
+    '0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0',
+    '0:0:0:0:0:0:0::', '0:0:0:0:0::', '::0:0:0:0:0:0:0', '0:0:0:0:0:0::0',
+  ];
+  for (const host of unspecified) {
     const config = relayConfig('http://127.0.0.1:1234');
     config.listen = { host, port: 0 };
     assert.throws(() => createRelay(config), /must not be unspecified/);
+  }
+  // Concrete (non-unspecified) addresses remain accepted.
+  for (const host of ['127.0.0.1', '::1', '2001:db8::1']) {
+    const config = relayConfig('http://127.0.0.1:1234');
+    config.listen = { host, port: 0 };
+    assert.doesNotThrow(() => createRelay(config));
   }
 });
