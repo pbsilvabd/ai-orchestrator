@@ -248,7 +248,9 @@ Not run / not established by this amendment (recorded `not_run`):
   (B30-05) is now wired and tested at the service level (see the assessment above), but
   only its refusal paths and a mock-verified single-use path; the hardware positive path
   remains `not_run`.
-- Public catalog GET and live inference: remain prohibited and `not_run`.
+- Public catalog GET and live inference: remain prohibited and `not_run`. (Dated note,
+  2026-11-15: one bounded catalog GET was later performed at `8e358a4` under staged
+  authorization; see the 2026-11-15 amendment. Live inference remains `not_run`.)
 
 Signed-approval service integration assessment (B30-05): the SSHSIG verification,
 policy/metadata binding, resolved-base-commit binding, effective-request binding (readable
@@ -375,5 +377,10 @@ Not run / not established by this amendment (recorded `not_run`):
   is unconfirmed): the worker path relies on the scheduler's existing uncertain-outcome
   handling from merged B12 (the scheduler keeps ownership and never replays); the listener
   supervisor is a separate, unwired component and B14 cancellation evidence is not merged.
-- The WebSocket bypass experiment, bare-metal/VM deployment, real FIDO2 signing, live
-  inference and any catalog GET remain `not_run`, as recorded above.
+- The WebSocket bypass experiment, bare-metal/VM deployment, real FIDO2 signing and live
+  inference remain `not_run`, as recorded above. The public catalog GET is not `not_run`:
+  one bounded GET was performed at `8e358a4` under staged authorization (HTTP 200, 104,821
+  bytes; receipt in `docs/validation.md`, section "M3 preparation: B30 signed-approval
+  pre-spawn revalidation + host/readable binding (B30-05) — 2026-11-15", line 2862). This
+  amendment does not repeat it. The snapshot is dated and expires; a fresh read needs its
+  own narrow authorization. No live inference is authorized.

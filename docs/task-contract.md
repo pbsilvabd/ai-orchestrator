@@ -651,7 +651,9 @@ releases the port. The signed-approval service admission integration (ordering, 
 preservation, before-persistence refusal, error mapping, single-use ledger and the real
 factory's negative refusal paths) is implemented and tested with disposable non-hardware
 keys and clearly-labelled mocks; a real FIDO2 hardware-key signing dry run, the
-cryptographic positive path, a catalog read and live inference have not been performed.
+cryptographic positive path and live inference have not been performed. (Dated note,
+2026-11-15: one bounded public catalog GET was performed at `8e358a4` under staged
+authorization, HTTP 200, a dated snapshot that is not repeated; it is not a live gate.)
 These are separate `not_run` gates; the live route stays closed until a platform provides
 verified firewall-filtered isolation in a bare-metal/VM deployment and a separately signed
 live approval.

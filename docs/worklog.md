@@ -2473,3 +2473,18 @@ Template:
 - Files: `src/egress-gateway.mjs`, `src/listener-supervisor.mjs`, `src/listener-child.mjs`, `integration/listener-fixture-child.mjs`, `integration/tls-fixture-resolver.mjs`, `test/listener-supervisor.test.mjs`, `test/gateway-tls.test.mjs`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md`.
 - Validation: focused `node --test` on the new and existing relay/gateway files → 50 pass, 0 fail; serial `node --test --test-concurrency=1` → 388 tests, 387 pass, 0 fail, 1 skip, exit 0; default-concurrency `node --test` exits 1 on eight timing-sensitive locations that also fail at base `eb4968d`; `node examples/fallback-demo.mjs` → 429 then 200; `git diff --check` clean. The pinned OpenCode host, privileged WSL fixture, deployed TLS chain, expired-certificate case, catalog, WebSocket bypass, FIDO2 and live inference were not rerun or run (see validation entry).
 - Follow-up: keep PR #45 draft and reply to the 18:18 review findings with this head and evidence; the next B30 step is an independent Ubuntu/Hyper-V deployment with a deployed TLS chain and a real trust store, which remains `not_run` until a maintainer provides the environment.
+
+## 2026-11-15 — B30 catalog-evidence continuity correction (P2 review)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: documentation only; corrects the catalog GET status in new continuity text after the supervisor P2 review. No source, test, network request or live action; the catalog GET is not repeated.
+- Steps:
+  1. Read the P2 review at `6899620770` and checked `docs/validation.md` line 2862, which records the one bounded catalog GET at `8e358a4` (HTTP 200, 104,821 bytes).
+  2. Amended the 2026-11-15 handoff continuation and next action in `docs/handoff.md` to state the GET as performed once at `8e358a4`, dated and expiring, not repeated, with a fresh read needing separate narrow authorization and no live-inference authorization.
+  3. Amended the B30 backlog row in `docs/backlog.md`, the M3 row and the 2026-11-15 paragraph in `docs/roadmap.md`, and the 2026-11-15 ADR amendment in `docs/adr/010-live-egress-and-approval.md` with the same status, plus a dated note on the 2026-11-14 ADR bullet.
+  4. Added a dated parenthetical to the B30 admission-wiring sentence in `docs/task-contract.md`, which said no catalog read had been performed.
+  5. Corrected the matching lines in the PR body (Deferred, Not rerun, the Validation bullets and the draft summary) to state the same dated status.
+  6. Appended this entry and a validation entry; earlier entries are not rewritten.
+- Files: `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused `node --test` on the listener-supervisor, gateway-tls, egress-gateway and relay files → 50 pass, 0 fail, exit 0 (source unchanged); `git diff --check` clean; static grep of added `catalog` lines consistent with the `8e358a4` receipt. The full suite, demo and any live, FIDO2, WebSocket, VM or deployed-TLS gates were not rerun (see the validation entry).
+- Follow-up: keep PR #45 draft and re-review the new documentation head; a fresh catalog read, if ever needed, requires a separate narrow authorization and does not authorize live inference.

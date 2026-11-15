@@ -13,16 +13,23 @@ and refuses live-mode `NODE_TLS_REJECT_UNAUTHORIZED=0` (`tls-policy`). Offline f
 network change and no external query. Live composition stays closed; the supervisor is not
 wired into `createConfiguredTaskService`. Evidence is local loopback/process fixture only:
 the deployed cross-namespace TLS chain, expired certificates, a real resolver/origin, the
-WebSocket-bypass experiment, bare-metal/VM deployment, FIDO2 signing, catalog GET, live
-inference and merge remain `not_run`. Recorded per ADR-010's 2026-11-15 amendment.
+WebSocket-bypass experiment, bare-metal/VM deployment, FIDO2 signing, live inference and
+merge remain `not_run`. The public catalog GET for the fixed free model was performed once,
+under a staged bounded authorization, at prior head `8e358a4` (HTTP 200, 104,821 bytes,
+zero-price metadata; receipt in the `M3 preparation: B30 signed-approval pre-spawn
+revalidation + host/readable binding (B30-05) — 2026-11-15` section of
+`docs/validation.md`, line 2862). That snapshot is dated and expires. It was not repeated in
+this correction. A fresh read needs its own narrow authorization; neither the old GET nor this
+correction authorizes live inference. Recorded per ADR-010's 2026-11-15 amendment.
 
 ## Next action (2026-11-15)
 
 1. Re-review draft PR #45 at the new head. Keep it draft; the maintainer decides ready/merge.
 2. Remaining B30 gates are deployment/hardware: an independent bare-metal or two-VM Ubuntu/
    Hyper-V deployment with verified relay/gateway placement, a deployed TLS chain with a
-   real trust store and origin, a real FIDO2 `-sk` dry run, the WebSocket-bypass experiment,
-   and a separately authorized catalog read before any live experiment.
+   real trust store and origin, a real FIDO2 `-sk` dry run, and the WebSocket-bypass
+   experiment. A fresh catalog read is needed only if the dated snapshot must be refreshed,
+   and then only under its own narrow authorization.
 
 Earlier 2026-11-14 state (superseded for next action): B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
 with B29 main `11fcb42`), corrected after the supervisor reviews at `cff5265` and
