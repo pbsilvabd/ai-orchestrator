@@ -68,12 +68,9 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
   // lock is taken and the store reconciled before any child may bind, and it is held until the
   // listeners have stopped. A competing owner or a corrupt store therefore has zero listener
   // effects. The passive path keeps its original acquisition inside createTaskService.
-  const owner = plan === undefined ? undefined : openTaskHome({ home });
   let listeners;
-  const releaseOwner = async () => {
-    if (listeners !== undefined) await listeners.stop();
-    owner.releaseOwner();
-  };
+  const owner = plan === undefined ? undefined : openTaskHome({ home,
+    beforeRelease: async () => { if (listeners !== undefined) await listeners.stop(); } });
   try {
     // Missing approval creates a locked preparation service with no metadata lookup.
     // Metadata is trusted input from the caller, required only when approval is supplied.
@@ -99,12 +96,11 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       if (!listeners.healthy()) throw Object.assign(new Error('supervised listener is not running'), { code: 'unavailable' });
       return worker.prepare(invocation);
     } };
-    const service = createTaskService({ home, config, worker: guarded, admission,
-      ownership: { store: owner.store, releaseOwner } });
+    const service = createTaskService({ home, config, worker: guarded, admission, ownership: owner });
     const closeService = service.close;
     let closing;
     // Listeners stop only after the scheduler is idle, so a running worker keeps its relay.
-    // Ownership is released by the scheduler close only after `releaseOwner` has stopped them.
+    // The capability's `beforeRelease` stops them before the scheduler close releases ownership.
     service.close = () => (closing ??= closeService().then(async result => {
       await listeners.stop();
       return result;
@@ -121,16 +117,11 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       : plan.startupAuthority;
     return service;
   } catch (error) {
-    if (listeners !== undefined) {
-      // Stop before releasing: a stop that cannot be confirmed throws and keeps ownership.
-      await listeners.stop();
-      owner.releaseOwner();
-    } else if (owner !== undefined && error?.code !== 'uncertain-stop') {
-      // A failed start cleans up inside `startFreeListeners`. If that cleanup could not be
-      // confirmed, keep the task-home owner for the same operator reconciliation as a
-      // close-time uncertain stop; otherwise no listener is left behind.
-      owner.releaseOwner();
-    }
+    // A failed start cleans up inside `startFreeListeners`. If that cleanup could not be
+    // confirmed, do not release: the owner and the unconfirmed listener lock stay. Otherwise
+    // the capability's `beforeRelease` stops any started listener before releasing ownership.
+    if (owner !== undefined && !(listeners === undefined && error?.code === 'uncertain-stop'))
+      await owner.releaseOwner();
     throw error;
   }
 }

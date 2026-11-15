@@ -88,24 +88,32 @@ export const DEFAULT_CONFIG = {
   limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
 };
 
+// Module-local registry of task-home ownership capabilities. Only `openTaskHome` inserts an
+// entry after it holds the exclusive lock and has reconciled the store. A plain object, a
+// spread copy, a released capability or one already handed to a service is not a valid
+// handoff; caller honesty is not an ownership boundary.
+const taskHomeHandoffs = new WeakMap();
+
 export function createTaskService(options = {}) {
   const ownership = options.ownership;
+  let handoff;
   if (ownership !== undefined) {
-    // A caller that acquired ownership must hand over the store it opened for the same home.
-    // Accepting a store for a different home would let this service run against a directory
-    // whose lock/reconciliation the caller never performed.
-    if (!isPlainObject(ownership) || !ownership.store ||
-        typeof ownership.releaseOwner !== 'function' || options.store !== undefined ||
-        typeof options.home !== 'string') {
-      fail('invalid_argument', 'ownership must be a pre-acquired store and release function for the requested home');
+    handoff = taskHomeHandoffs.get(ownership);
+    if (handoff === undefined || handoff.state !== 'minted' ||
+        ownership.store !== handoff.store || typeof ownership.releaseOwner !== 'function' ||
+        options.store !== undefined || typeof options.home !== 'string') {
+      fail('invalid_argument', 'ownership must be an unconsumed capability minted by openTaskHome for the requested home');
     }
     let ownedHome;
-    try { ownedHome = typeof ownership.store.home === 'string' ? resolve(ownership.store.home) : undefined; }
+    try { ownedHome = typeof handoff.store.home === 'string' ? resolve(handoff.store.home) : undefined; }
     catch { ownedHome = undefined; }
-    if (ownedHome !== resolve(options.home))
-      fail('invalid_argument', 'ownership store does not belong to the requested task home');
+    if (ownedHome !== resolve(options.home) || handoff.home !== ownedHome)
+      fail('invalid_argument', 'ownership capability does not belong to the requested task home');
+    // Consume before any effect: the same capability cannot open a second service, during or
+    // after the first one's lifetime.
+    handoff.state = 'consumed';
   }
-  const store = ownership?.store ?? options.store ?? openTaskStore({ home: options.home });
+  const store = handoff?.store ?? options.store ?? openTaskStore({ home: options.home });
   const configured = isPlainObject(options.config) ? options.config : {};
   const admission = options.admission;
   if (admission !== undefined && typeof admission !== 'function')
@@ -118,7 +126,7 @@ export function createTaskService(options = {}) {
   const startupNow = typeof options.now === 'function' ? options.now() :
     (Number.isInteger(options.now) ? options.now : Date.now());
   let releaseOwner;
-  if (options.ownership === undefined) {
+  if (handoff === undefined) {
     releaseOwner = acquireServiceOwnership(store.home);
     // Reconcile exactly once as the service starts. Never accept requests against an
     // ambiguous index or an unresolved in-flight task.
@@ -132,7 +140,7 @@ export function createTaskService(options = {}) {
   } else {
     // Ownership was acquired and reconciled by `openTaskHome` before any caller effect; this
     // service must not acquire or reconcile a second time (no double acquisition).
-    releaseOwner = options.ownership.releaseOwner;
+    releaseOwner = ownership.releaseOwner;
   }
   const now = () => {
     if (typeof options.now === 'function') return options.now();
@@ -163,7 +171,7 @@ export function createTaskService(options = {}) {
     // Ownership supplied by the caller is released by that caller, which may first have to
     // stop external effects (for example supervised listeners). Releasing here as well would
     // race a second, concurrent stop/release. A locally acquired lock is released here.
-    if (options.ownership === undefined) releaseOwner();
+    if (handoff === undefined) releaseOwner();
     throw toServiceError(error);
   }
 
@@ -452,7 +460,12 @@ export function createTaskService(options = {}) {
     schedulerStatus: () => scheduler?.snapshot() ?? null,
     close: () => {
       closed = true;
-      if (!scheduler) return Promise.resolve(releaseOwner());
+      if (!scheduler) {
+        const released = releaseOwner();
+        // Passive default services keep synchronous close; a capability handoff may have
+        // asynchronous pre-release cleanup, in which case its Promise is returned.
+        return released instanceof Promise ? released : undefined;
+      }
       // Ownership is released only after the caller-supplied release has run (for example
       // after supervised listeners stop), so a failed release keeps the task-home owner.
       closing ??= scheduler.close().then(async result => {
@@ -464,19 +477,44 @@ export function createTaskService(options = {}) {
 }
 
 // Acquire task-home ownership and reconcile the store before any caller starts effects that
-// depend on it (for example supervised listener children). On any refusal the owner lock is
+// depend on it (for example supervised listener children). The returned capability is the only
+// handoff accepted by `createTaskService({ ownership })`: it is minted after the exclusive lock
+// is held and reconciliation succeeded, can be consumed once, and is invalidated on release.
+// `beforeRelease` (trusted composition, for example stopping listeners) runs while ownership is
+// still held; if it or the lock release fails, the capability becomes unusable and the owner
+// lock is retained for explicit maintainer reconciliation. On any other refusal the lock is
 // released and no task-store write has been accepted.
-export function openTaskHome({ home, now = Date.now } = {}) {
+export function openTaskHome({ home, now = Date.now, beforeRelease } = {}) {
   if (typeof home !== 'string' || !isAbsolute(home)) fail('invalid_argument', 'task home must be an absolute path');
-  const releaseOwner = acquireServiceOwnership(home);
+  if (beforeRelease !== undefined && typeof beforeRelease !== 'function')
+    fail('invalid_argument', 'beforeRelease must be a function');
+  const releaseLock = acquireServiceOwnership(home);
   try {
     const store = openTaskStore({ home });
     const reconciliation = store.reconcile({ now: typeof now === 'function' ? now() : now,
-      ownershipToken: releaseOwner.token });
+      ownershipToken: releaseLock.token });
     if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
-    return { store, releaseOwner };
+    const record = { state: 'minted', store, home: resolve(store.home) };
+    let releasing;
+    const releaseOwner = () => (releasing ??= (async () => {
+      if (record.state === 'released') return;
+      record.state = 'releasing';
+      try {
+        if (beforeRelease !== undefined) await beforeRelease();
+        releaseLock();
+      } catch (error) {
+        // The lock is removed only when `releaseLock` itself succeeded. Any uncertainty keeps
+        // the capability unusable and the owner in place for explicit reconciliation.
+        record.state = 'uncertain';
+        throw error;
+      }
+      record.state = 'released';
+    })());
+    const capability = Object.freeze({ store, releaseOwner });
+    taskHomeHandoffs.set(capability, record);
+    return capability;
   } catch (error) {
-    releaseOwner();
+    releaseLock();
     throw toServiceError(error);
   }
 }

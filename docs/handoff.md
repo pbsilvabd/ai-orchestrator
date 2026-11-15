@@ -1,5 +1,20 @@
 # Continuation point — 2026-11-15
 
+2026-11-15 fourth correction (ownership handoff capability; same draft PR #45). The independent
+re-review at `6ea76d8` confirmed the two earlier P1s in the configured path but found that the
+exported `ownership` option accepted a caller-shaped `{ store, releaseOwner }` object, allowing a
+second service beside an active owner. `createTaskService` now accepts only the opaque, frozen,
+single-use capability that `openTaskHome` mints after the exclusive lock and reconciliation;
+shaped or copied objects, released or reused capabilities and wrong-home handoffs are refused
+with `invalid_argument` and never release or replace an active owner. The configured path passes
+that capability directly with listener stop bound as `beforeRelease`, which runs while ownership
+is still held; a failed cleanup or lock release leaves the capability unusable and the lock
+retained. Passive default close is synchronous again; a capability handoff returns the release
+Promise. `test/service-ownership-handoff.test.mjs` covers forged/copied/reused/released/
+mismatched/competing-owner and uncertain-release cases, and the existing B12/B30 lock and
+listener-lock tests still pass. All deployment gates remain `not_run`; PR #45 stays draft and
+unmerged.
+
 2026-11-15 third correction (ownership and startup authority; same draft PR #45). Corrected the
 two P1 findings from the independent re-review at `c8645d6`. (1) `openTaskHome` now acquires
 exclusive task-home ownership and reconciles the store **before** either supervised listener

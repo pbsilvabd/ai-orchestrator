@@ -2567,3 +2567,49 @@ Template:
 - Follow-up: keep PR #45 draft and reply to the two P1 findings with the new head;
   independent re-review of this ownership/authority correction is required before any
   ready or merge decision. All B30 deployment gates remain `not_run`.
+
+## 2026-11-15 – M3: B30 ownership handoff capability correction
+
+- Branch: `task/B30-free-relay`
+- Scope: code, tests and docs; closes the P1 from the independent re-review at `6ea76d8`
+  without changing live composition, provider, deployment or hardware paths.
+- Steps:
+  1. Replaced the caller-shaped `{ store, releaseOwner }` ownership option with a
+     module-local capability: `createTaskService` accepts only an object present in a
+     private `WeakMap`, minted by `openTaskHome` after the exclusive lock and
+     reconciliation. Forged, spread-copied, reconstructed, released, reused and
+     wrong-home handoffs are refused with `invalid_argument`; a refused handoff releases
+     nothing.
+  2. Made the capability single-use and stateful (`minted`, `consumed`, `releasing`,
+     `released`, `uncertain`). `createTaskService` consumes it synchronously before any
+     effect. Release runs an optional `beforeRelease` cleanup while ownership is still
+     held; if that cleanup or the lock release fails, the capability becomes `uncertain`,
+     the owner lock is retained and all later handoffs are refused (fail closed).
+  3. Kept the configured listener path on the same pre-bind acquisition: it passes the
+     minted capability directly and binds listener stop as `beforeRelease`, so a
+     competing owner still spawns no listener child/port/lock.
+  4. Restored synchronous `close()` for passive default services; a passive service
+     composed from a capability returns the release Promise.
+  5. Added `test/service-ownership-handoff.test.mjs` (7 tests): forged ownership beside
+     an active owner, copied/reconstructed handoffs, reuse before/after close, release
+     before handoff, mismatched home, competing legitimate owner and uncertain
+     `beforeRelease`. Revalidated the existing `test/service-owner.test.mjs` (B12) and the
+     B29/B30 listener-lock set.
+  6. Updated the normative contract, ADR-010 amendment, handoff, roadmap, backlog row and
+     both evidence files; the PR body and the P1 reply carry the fix SHA and evidence.
+- Files: `src/service.mjs`, `src/configured-service.mjs`,
+  `test/service-ownership-handoff.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/backlog.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused B29/B30/ownership set -> 121 pass, 0 fail, exit 0; full serial
+  `node --test --test-concurrency=1` -> 412 tests, 411 pass, 0 fail, 1 skip, exit 0
+  (two earlier attempts hit the known B15-03b and B10-03 timing flakes; the passing
+  rerun is claimed, the failures are not erased); `node examples/fallback-demo.mjs` ->
+  429 then 200, exit 0; `git diff --check` -> no output, exit 0. Two self-review passes
+  covered the capability boundary, release/uncertainty and close paths, old callers and
+  the contract wording; the second pass restored the documented passive-close behavior.
+  Default-concurrency local suite, WSL fixture, pinned OpenCode harnesses, deployed TLS,
+  FIDO2 positive signature, WebSocket bypass, VM and live inference were not rerun.
+- Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
+  independent re-review of the new head is required. All B30 deployment gates remain
+  `not_run`.

@@ -101,7 +101,9 @@ zero-price. Neither is repeated, and a fresh read needs a separate narrow author
 into the trusted service only through the fixture-only `freeListeners` option, with approved-run
 and digest gates, launch refusal, uncertain-stop retention, crash-to-blocked dispatch and
 close-time stop. Loopback only. A same-day correction acquires and reconciles task-home
-ownership before any listener bind and holds it through a confirmed stop; startup authority is
+ownership before any listener bind and holds it through a confirmed stop; the handoff is an
+opaque, single-use capability, so forged, copied, released, reused or wrong-home handoffs are
+refused beside an active owner; startup authority is
 trusted composition (unsigned operator artifact plus a digest-bound gate, not an SSHSIG), while
 each task submission is signature-verified and missing/forged signatures are refused with zero
 task/workspace/worker effect. The independent Ubuntu host, deployed TLS chain, FIDO2 positive

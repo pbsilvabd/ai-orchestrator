@@ -451,7 +451,8 @@ or production provider is enabled by this option.
   worker stop remains uncertain or persistence failed, close returns
   `{ releaseOwnership: false }` and retains the service lock for explicit
   maintainer recovery. Otherwise it releases ownership and returns
-  `{ releaseOwnership: true }`. Passive services retain synchronous close behavior.
+  `{ releaseOwnership: true }`. Passive default services retain synchronous close behavior;
+  a passive service composed from an ownership capability returns the release Promise.
   Neither `whenIdle`, root exit after abort nor a closed handle proves descendants
   stopped or effects reverted. No automatic workspace cleanup occurs.
 
@@ -466,7 +467,14 @@ or production provider is enabled by this option.
   blocks them. Nothing resumes from a persisted dispatch.
 - A service exclusively creates `locks/service-owner.lock` before reconciliation and
   holds ownership until `service.close()`. A second service for that home fails with
-  `unavailable`. A lock left by a crash is not removed automatically; inspect the
+  `unavailable`. Composition from pre-acquired ownership accepts only the opaque, frozen,
+  single-use capability returned by `openTaskHome`; a shaped or copied `{ store, releaseOwner }`
+  object, a released or reused capability and a capability minted for another home are refused
+  with `invalid_argument`, and a forged or mismatched handoff never releases or replaces an
+  active owner. An optional `beforeRelease` cleanup (trusted composition) runs while ownership
+  is still held; if it or the lock release fails, the capability becomes unusable and the lock
+  is retained for explicit maintainer recovery. A lock left by a crash is not removed
+  automatically; inspect the
   recorded PID and state before a maintainer removes it and restarts the service.
   Closing permanently disables all four operations on that service instance, even
   after another instance acquires ownership. Direct maintenance is cooperative and
@@ -624,7 +632,11 @@ above). Live composition remains closed.
   task-home ownership (`openTaskHome`), then starts a gateway
   (fixture mode, loopback origin) and then a relay (loopback, one fixed upstream, model
   `opencode/deepseek-v4.1-flash-free`, path `/v1/chat/completions`) under the supervisor,
-  with fixed non-zero ports and the worker base URL derived from the relay port. A competing
+  with fixed non-zero ports and the worker base URL derived from the relay port. The
+  pre-acquired store is handed over only as the opaque, frozen, single-use capability returned
+  by `openTaskHome`; a shaped or copied `{ store, releaseOwner }` object, a released or reused
+  capability and a capability for another home are refused, so caller honesty is not an
+  ownership boundary. A competing
   task-home owner or a corrupt store therefore refuses with zero new listener child, port or
   lock; ownership is held until the listeners have stopped. Startup authority is trusted
   composition, not a task signature: the operator approval artifact is unsigned JSON (shape,
