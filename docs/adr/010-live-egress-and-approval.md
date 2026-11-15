@@ -314,3 +314,66 @@ that run, not an attempted direct WebSocket bypass.
 Until a platform provides verified firewall-filtered isolation, a real hardware-key
 signing dry run and the separately signed live approval, the live composition stays
 closed.
+
+## Amendment — 2026-11-15: listener supervision and offline gateway TLS fixtures (B30-04/07)
+
+Decision (listener ownership). The relay and egress gateway may run as a child process
+of the service only through `src/listener-supervisor.mjs`, which forks
+`src/listener-child.mjs`. The child binds the listener and reports `ready` with its
+bound port and policy digest, or `error` and exits 2 on refusal. Ownership is a lock file
+`listeners/<name>.lock.json` under a supervisor-owned home: it is created exclusively
+before any spawn, records the child pid before the `start` message, and is removed only
+after the child's exit is confirmed. A refused or early-exited child releases its lock;
+an unconfirmed exit (after stop, kill or ready timeout) keeps the lock and the handle
+becomes `unknown`. A held lock refuses any restart, a home that cannot be created refuses
+before any spawn, and nothing restarts automatically. A maintainer may release an
+unresolved lock only through `reconcileListenerLock`, which requires `confirmedStopped:
+true` and the exact token and pid, after the process tree is verified stopped. A child
+whose supervisor disconnects stops its listener, so an orphan does not hold the port.
+The supervisor's `env`, `execArgv`, `fork` and timeout options are trusted-composition
+inputs; task text cannot set them. The supervisor is not wired into
+`createConfiguredTaskService`.
+
+Decision (gateway TLS and DNS latches). Gateway upstream failures are classified into
+distinct terminal latches: `dns-failure` (`ENOTFOUND`, `EAI_AGAIN`), `tls-failure`
+(`ERR_TLS_*`, `ERR_SSL_*`, `UNABLE_TO_*`, `SELF_SIGNED*`, `DEPTH_ZERO_*`, `CERT_*`) and
+`upstream-unavailable` for everything else. All three fail closed with a 502, a latched
+state and no replay. Live mode refuses an ambient certificate-verification bypass
+(`NODE_TLS_REJECT_UNAUTHORIZED=0`) at creation and before each request (`tls-policy`).
+Certificate and hostname verification remain Node's defaults; the gateway adds no
+insecure option. Operators may trust a private CA only through process-start
+configuration (`NODE_EXTRA_CA_CERTS`); that widens trust and must be a maintainer
+decision in deployment.
+
+Evidence (offline, `test/gateway-tls.test.mjs`, `test/listener-supervisor.test.mjs`).
+The TLS fixtures generate a disposable CA and a leaf for `tls-host.fixture.test` with
+openssl at test time (no certificate or key is committed). A child process runs the
+live-mode gateway with `NODE_EXTRA_CA_CERTS` set to that CA and `--import` of
+`integration/tls-fixture-resolver.mjs`, which maps two fixture names to 127.0.0.1 inside
+that child only, fails every other name without an external query, and passes IP
+literals through. Verified cases: trusted CA with the matching hostname forwards exactly one
+`Bearer public` request over TLS; an untrusted CA and a hostname the certificate does not
+cover latch `tls-failure` with zero origin requests; a DNS-failing name latches
+`dns-failure`; a latched gateway refuses later requests without replay. The bypass refusal
+is tested in-process. The resolver shim changes lookup results only; TLS verification is
+real. The supervisor tests cover confirmed stop with lock release and port release, a
+port conflict that keeps the first listener, a held lock with no second child, restart
+with a new token, an uncertain stop and a silent child that keep the lock and port
+ownership, reconciliation with a wrong token refused, an unusable home that spawns nothing,
+and an orphaned child stopping on disconnect. A mutation check in a scratch copy (release
+of the lock on an unconfirmed stop; collapsing DNS/TLS into `upstream-unavailable`) made
+the corresponding tests fail.
+
+Not run / not established by this amendment (recorded `not_run`):
+
+- The deployed cross-namespace TLS chain (a relay in its own namespace or VM, the gateway
+  on the host, a real HTTPS origin and a real certificate chain): not exercised. The offline
+  fixtures do not test a real DNS resolver, a real trust store or a real origin.
+- Expired or not-yet-valid certificates: not covered; the generator uses a fixed 2-day
+  window and a clock-controlled fixture is not in scope.
+- Service-level uncertain-child-stop through the task service (a worker child whose stop
+  is unconfirmed): the worker path relies on the scheduler's existing uncertain-outcome
+  handling from merged B12 (the scheduler keeps ownership and never replays); the listener
+  supervisor is a separate, unwired component and B14 cancellation evidence is not merged.
+- The WebSocket bypass experiment, bare-metal/VM deployment, real FIDO2 signing, live
+  inference and any catalog GET remain `not_run`, as recorded above.

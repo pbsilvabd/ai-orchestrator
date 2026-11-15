@@ -85,6 +85,15 @@ containment observation (routing-based, no nftables/iptables filtering). The liv
 route, public catalog, firewall-filtered deployment, real FIDO2 hardware-key
 signing dry run and live inference remain closed / `not_run`.
 
+2026-11-15 B30-04/07 offline update (PR #45, draft): the relay and egress gateway can
+run as supervised child listeners with a durable ownership lock (an unconfirmed stop keeps
+the lock and refuses restart; reconciliation is explicit). The gateway names DNS and TLS
+upstream failures as distinct fail-closed latches and refuses an ambient TLS-verification
+bypass. Offline live-mode TLS fixtures (disposable CA, test-only resolver in a child) pass.
+This is loopback/fixture evidence only: the deployed cross-namespace TLS chain, expired
+certificates, a real DNS resolver or origin, the WebSocket bypass experiment, bare-metal/VM
+deployment, FIDO2 signing, catalog, live inference and merge remain `not_run`.
+
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.
 M3 may start with one authorized model and fallback disabled. Two models are
 required for M2c, not for proving basic delegation. This changes sequencing without

@@ -605,7 +605,17 @@ bound to service admission through an optional synchronous `admission` gate (see
   redirects, enforces its own independent request cap, rejects the all-zero
   IPv4/IPv6 unspecified bind addresses (including compressed IPv6 aliases), and keeps
   logs free of bodies and authorization material. Live mode requires an HTTPS non-IP
-  origin and is never exercised here.
+  origin, Node's default certificate and hostname verification, and refuses an ambient
+  verification bypass (`NODE_TLS_REJECT_UNAUTHORIZED=0`). Upstream DNS failures latch
+  `dns-failure` and TLS failures latch `tls-failure`, both fail-closed without replay.
+  Offline live-mode fixtures use a disposable CA and a test-only resolver in a child
+  process; they do not exercise a deployed TLS chain.
+- **Listener supervisor** (`src/listener-supervisor.mjs`, B30-04) runs one relay or
+  gateway in a child process with a durable lock file created before spawn. The lock is
+  released only after a confirmed exit; an unconfirmed stop, kill or ready timeout keeps
+  the lock and refuses restart. Only `reconcileListenerLock` (exact token and pid,
+  operator-confirmed stop) releases such a lock. Nothing restarts automatically, and an
+  orphaned child stops on disconnect. Not wired into `createConfiguredTaskService`.
 - **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
   strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
   SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and

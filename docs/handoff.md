@@ -1,6 +1,30 @@
-# Continuation point — 2026-11-14
+# Continuation point — 2026-11-15
 
-B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
+2026-11-15 B30-04/07 offline correction on `task/B30-free-relay` (draft PR #45, base
+`11fcb42`). Added `src/listener-supervisor.mjs` and `src/listener-child.mjs`: a relay or
+gateway runs in a supervised child with a durable lock created before spawn. Only a confirmed
+exit releases the lock; an unconfirmed stop, kill or ready timeout keeps the lock and
+refuses restart; `reconcileListenerLock` is the explicit operator release (exact token and
+pid, stop verified). An orphaned child stops on IPC disconnect. The gateway names DNS
+(`dns-failure`) and TLS (`tls-failure`) upstream failures as distinct fail-closed latches
+and refuses live-mode `NODE_TLS_REJECT_UNAUTHORIZED=0` (`tls-policy`). Offline fixtures
+(`test/gateway-tls.test.mjs`, `test/listener-supervisor.test.mjs`) use a disposable CA and
+`integration/tls-fixture-resolver.mjs` inside a child process; no DNS, hosts, firewall or
+network change and no external query. Live composition stays closed; the supervisor is not
+wired into `createConfiguredTaskService`. Evidence is local loopback/process fixture only:
+the deployed cross-namespace TLS chain, expired certificates, a real resolver/origin, the
+WebSocket-bypass experiment, bare-metal/VM deployment, FIDO2 signing, catalog GET, live
+inference and merge remain `not_run`. Recorded per ADR-010's 2026-11-15 amendment.
+
+## Next action (2026-11-15)
+
+1. Re-review draft PR #45 at the new head. Keep it draft; the maintainer decides ready/merge.
+2. Remaining B30 gates are deployment/hardware: an independent bare-metal or two-VM Ubuntu/
+   Hyper-V deployment with verified relay/gateway placement, a deployed TLS chain with a
+   real trust store and origin, a real FIDO2 `-sk` dry run, the WebSocket-bypass experiment,
+   and a separately authorized catalog read before any live experiment.
+
+Earlier 2026-11-14 state (superseded for next action): B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
 with B29 main `11fcb42`), corrected after the supervisor reviews at `cff5265` and
 `32c0339`. The relay, egress gateway, SSHSIG approval/admission and an isolated WSL2
 netns/veth containment observation are implemented and tested; live composition remains
@@ -44,7 +68,7 @@ Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
 B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft
 PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-only.
 
-## Next action
+## Previous next action (2026-11-14, superseded by the 2026-11-15 section above)
 
 1. The supervisor reviews at `cff5265`, `32c0339`, `ad010a7` and `cc3e917` (P1 ledger; P2
    gateway/bind/WSL scope; residual in-namespace veth + compressed IPv6 aliases; cleanup

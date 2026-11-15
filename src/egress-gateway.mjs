@@ -9,8 +9,10 @@ import { isIP } from 'node:net';
 // authorization material.
 //
 // Like `src/relay.mjs`, this is deployable infrastructure that is NOT wired into the
-// live composition path. Live mode requires an HTTPS origin with certificate/hostname
-// validation and is never exercised here; only the loopback fixture mode is tested.
+// live composition path. Live mode requires an HTTPS origin, a real hostname and Node's
+// default certificate/hostname verification; DNS and TLS failures latch distinctly. The
+// offline tests exercise that path with a disposable CA and a test-only resolver only; a
+// deployed cross-namespace TLS chain is not exercised here.
 
 export class EgressGatewayError extends Error {
   constructor(code, message) {
@@ -83,6 +85,24 @@ function validateOrigin(origin, mode) {
   }
 }
 
+// Live mode trusts only Node's default verification (plus any operator-provided CA set at
+// process start). An ambient bypass of certificate validation is refused, never honored.
+function tlsBypassEnabled() {
+  return process.env.NODE_TLS_REJECT_UNAUTHORIZED === '0';
+}
+
+// Classify an upstream fetch failure into a distinct terminal latch. DNS and TLS failures
+// fail closed like any other upstream failure, but are named so a reviewer can see which
+// trust step refused the origin.
+export function classifyUpstreamFailure(error) {
+  const code = error?.cause?.code ?? error?.code;
+  if (code === 'ENOTFOUND' || code === 'EAI_AGAIN') return 'dns-failure';
+  if (typeof code === 'string' && /^(ERR_TLS_|ERR_SSL_|UNABLE_TO_|SELF_SIGNED|DEPTH_ZERO_|CERT_)/.test(code)) {
+    return 'tls-failure';
+  }
+  return 'upstream-unavailable';
+}
+
 function validateLimits(limits) {
   if (!limits || typeof limits !== 'object' || Array.isArray(limits)) {
     fail('invalid_argument', 'gateway limits must be an object');
@@ -144,6 +164,9 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
   validateOrigin(origin, mode);
   validateLimits(limits);
   if (typeof log !== 'function') fail('invalid_argument', 'gateway log must be a function');
+  if (mode === 'live' && tlsBypassEnabled()) {
+    fail('invalid_argument', 'live gateway refuses an ambient TLS verification bypass');
+  }
 
   const policyDigest = gatewayPolicyDigest({ mode, listen, origin, path, limits });
   let server;
@@ -195,6 +218,11 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
       return respond(res, 413, 'request body exceeds gateway bound');
     }
 
+    if (mode === 'live' && tlsBypassEnabled()) {
+      latch('tls-policy');
+      return respond(res, 502, 'upstream unavailable');
+    }
+
     // Forward only the fixed method/path to the fixed origin with the fixed anonymous
     // credential. Never inherit arbitrary client headers. Redirects are refused.
     let upstreamResponse;
@@ -209,8 +237,8 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
         redirect: 'manual',
         signal: AbortSignal.timeout(limits.timeoutMs),
       });
-    } catch {
-      latch('upstream-unavailable');
+    } catch (error) {
+      latch(classifyUpstreamFailure(error));
       return respond(res, 502, 'upstream unavailable');
     }
 

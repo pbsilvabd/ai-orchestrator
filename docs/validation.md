@@ -3009,3 +3009,27 @@ and a deployed gateway).
 Claim: this entry supports the relay/gateway lifecycle symmetry. Uncertain child stop, DNS/
 TLS-failure latches, the cross-namespace TLS chain, bare-metal/VM deployment and live
 inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 listener supervision and offline gateway TLS fixtures (B30-04/07) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm, `%APPDATA%\fnm\node-versions\v24.22.1`), with Git for Windows `usr/bin/openssl` 3.5.7 on PATH for the TLS fixtures. Date: 2026-11-15. Scope: offline loopback fixtures for the supervised relay/gateway listener child (ownership lock, uncertain stop, ready timeout, port conflict, reconciliation, orphan stop) and the gateway's DNS/TLS fail-closed latches with a disposable CA. Base for comparison: `eb4968d` (clone checked out in `%TEMP%`, removed afterwards).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Focused: supervisor (8), offline TLS (6), gateway and relay lifecycle/refusal (36) | 50 pass / 0 fail / 0 skip | 0 |
+| `node --test test/gateway-tls.test.mjs` | TLS fixtures alone; confirms each run removes its disposable certificate directory | 6 pass / 0 fail / 0 skip; no `b30-tls-*` directory left | 0 |
+| `node --test --test-concurrency=1` | Full serial suite regression on the corrected head | 388 tests: 387 pass, 0 fail, 1 skip (the pre-existing POSIX-only or platform skip) | 0 |
+| `node --test` | Full suite at default concurrency (as CI invokes it) | 8 test locations failed with timing assertions: `mcp-server.test.mjs` 146, 164, 188, 207 (B15-01c/d/e/f), 513 (B15-03b), `scheduler.test.mjs` 60 (B12-01), `subprocess.test.mjs` 64 (B10-03), `task-maintenance.test.mjs` 195 (B18-01); the same eight locations fail at base `eb4968d` (below) | 1 |
+| `node --test` (base `eb4968d`, separate clone) | Pre-existing comparison for the default-concurrency failures | Same eight test locations fail; exit 1 | 1 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Whitespace in the complete change, including new files | no output | 0 |
+
+Result: the new gateway and supervisor behavior passes in focused and serial runs (50 focused; 388 serial with 387 pass, 0 fail, 1 skip). The default-concurrency run fails at the same eight timing-sensitive locations as the untouched base commit, so those failures are a pre-existing parallel-load flake and not evidence against this change; a serial run is the reproducible baseline. Their names are recorded so that no run is reported as all green. The fallback demo returns 429 then 200, and `git diff --check` is clean.
+
+Mutation check (scratch copy outside the repository, not versioned, so not a table row): releasing the lock on an unconfirmed stop made `test/listener-supervisor.test.mjs` fail the uncertain-stop test (lock file missing), and collapsing DNS and TLS failures into `upstream-unavailable` made four tests fail (untrusted certificate, hostname mismatch, DNS failure, and the classification unit test). Both defects are therefore detected by the new tests.
+
+Evidence level: Local HTTP — demonstrates real HTTP and HTTPS headers, statuses and refusals through controlled loopback fixtures, real child processes with IPC, real lock files and a disposable CA verified by Node's default TLS validation (with a test-only resolver that maps three fixture names to loopback in the child only); does not demonstrate real OpenCode tools or sessions, a deployed relay or gateway, a real DNS resolver, a real trust store, a real origin, or the cross-namespace TLS chain. The relay and gateway remain unwired from `createConfiguredTaskService`.
+
+Not rerun: `integration/b30-egress-namespaces.sh` (privileged WSL netns/nftables fixture; this change does not modify it and it was not rerun here); `integration/opencode-free-relay.mjs` (needs the pinned OpenCode 2.2.5 binary outside the repository; the gateway change touches only failure classification and live-mode gating, and the fixture-mode path is covered by `test/egress-gateway.test.mjs`); `node integration/opencode-smoke.mjs` and `node integration/mcp-gate.mjs` (pinned binary; unrelated); the expired or not-yet-valid certificate case (not covered; the generator uses a fixed two-day window); the deployed cross-namespace TLS chain, a real resolver or origin (`not_run`); the active WebSocket-bypass experiment, bare-metal or two-VM deployment, a real FIDO2 hardware signature, the public catalog GET and live inference (all `not_run`, unchanged); the Ubuntu CI job for this head (pending at the time of writing).
+
+Claim: This entry supports offline, loopback-only evidence that a supervised relay or gateway listener keeps its port and lock on an unconfirmed stop, releases them only after a confirmed exit or an explicit reconciliation, and that the gateway fails closed with distinct DNS and TLS latches, based on `node --test test/listener-supervisor.test.mjs test/gateway-tls.test.mjs` and the serial suite. It does not support any deployed TLS chain, network containment, real DNS or origin behavior, live activation, or an OpenCode integration claim, which require the missing deployment, hardware and pinned-host evidence listed above.
