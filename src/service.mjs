@@ -33,7 +33,10 @@ const BRANCH = /^[A-Za-z0-9._/-]{1,128}$/;
 const OBJECTIVE_MAX = 4000;
 const ACCEPTANCE_MAX = 20;
 const SUBMIT_REQUIRED = ['idempotencyKey', 'clientId', 'objective', 'acceptanceCriteria', 'repository', 'authorization', 'limits'];
-const SUBMIT_OPTIONAL = ['clientSessionId'];
+// approval/signature are the B30 signed live-approval envelope: optional on the transport,
+// required only when a signed-approval admission gate is configured. They are excluded from
+// the canonical payload/request hash and never persisted on the task record.
+const SUBMIT_OPTIONAL = ['clientSessionId', 'approval', 'signature'];
 const REPOSITORY_FIELDS = ['path', 'baseRef', 'branch'];
 const AUTHORIZATION_FIELDS = ['models', 'tools', 'writablePaths'];
 const LIMITS_FIELDS = ['maxAttempts', 'budgetMs', 'maxOutputBytes'];
@@ -88,6 +91,9 @@ export const DEFAULT_CONFIG = {
 export function createTaskService(options = {}) {
   const store = options.store ?? openTaskStore({ home: options.home });
   const configured = isPlainObject(options.config) ? options.config : {};
+  const admission = options.admission;
+  if (admission !== undefined && typeof admission !== 'function')
+    fail('invalid_argument', 'admission must be a synchronous function');
   const config = {
     clientId: typeof configured.clientId === 'string' ? configured.clientId : DEFAULT_CONFIG.clientId,
     authorization: { ...DEFAULT_CONFIG.authorization, ...(isPlainObject(configured.authorization) ? configured.authorization : {}) },
@@ -175,6 +181,25 @@ export function createTaskService(options = {}) {
       throw toServiceError(error);
     }
 
+    // 2b. Signed live-approval admission (B30-05), for NEW tasks only, after replay
+    //     resolution and repository inspection but before task persistence, workspace or
+    //     spawn. A synchronous trusted gate (never task text) verifies and binds the SSHSIG
+    //     and reserves the approval ID against the pre-generated taskId; any refusal throws
+    //     before the task record is written. When absent, admission stays passive (default).
+    let taskId;
+    if (admission !== undefined) {
+      taskId = randomUUID();
+      try {
+        const decision = admission(structuredClone(payload), { taskId, baseCommit: repoValidation.baseCommitSha, now: now() });
+        if (decision instanceof Promise) fail('internal', 'signed approval admission must be synchronous');
+      } catch (error) {
+        if (error?.code === 'authorization_denied') fail('authorization_denied', 'signed approval admission denied');
+        if (error?.code === 'invalid_argument') fail('invalid_argument', 'invalid signed approval submission');
+        if (error?.code === 'unavailable') fail('unavailable', 'signed approval admission unavailable');
+        throw toServiceError(error);
+      }
+    }
+
     // 3. Persist new task record with fixed full base SHA as immutable metadata.
     let created;
     try {
@@ -184,6 +209,7 @@ export function createTaskService(options = {}) {
         payload,
         baseCommit: repoValidation.baseCommitSha,
         now: now(),
+        ...(taskId !== undefined ? { taskId } : {}),
       });
     } catch (error) {
       throw toServiceError(error);

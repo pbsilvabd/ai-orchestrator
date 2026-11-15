@@ -9,8 +9,8 @@ import { FREE_MODEL, FREE_PACKAGE, validateFreeApproval } from './free-provider.
 // composition is closed: the pinned host follows model-request redirects and the guard
 // cannot see or block them (B29-05), so only an explicit loopback fixture composes.
 export async function createConfiguredTaskService({ home, config, approvalFile,
-  hostEnvironment = {} } = {}, { metadata, fixtureEndpoint } = {}) {
-  if (config?.worker === undefined) return createTaskService({ home, config });
+  hostEnvironment = {}, admission } = {}, { metadata, fixtureEndpoint } = {}) {
+  if (config?.worker === undefined) return createTaskService({ home, config, admission });
   const settings = config.worker;
   const invalid = () => { throw new Error('invalid free worker service configuration'); };
   if (!settings || settings.type !== 'opencode-free' ||
@@ -52,5 +52,5 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
     maxBudgetMs: config.limits.budgetMs, maxOutputBytes: config.limits.maxOutputBytes,
     testCommands: [{ executable: process.execPath, args: ['--test'], label: 'node --test', env: {} }],
   });
-  return createTaskService({ home, config, worker });
+  return createTaskService({ home, config, worker, admission });
 }

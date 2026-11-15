@@ -241,20 +241,32 @@ Not run / not established by this amendment (recorded `not_run`):
 - A real FIDO2-backed hardware-key signing dry run: the flag enforcement and
   `ssh-keygen -Y verify` plumbing are tested with disposable non-hardware keys and a
   synthesized sk-signature blob; a real `-sk` signature is refused unless it carries
-  presence+verification, but no hardware key was exercised.
-- Service-level uncertain-child-stop integration (B30-04), real signed-approval service
-  admission integration (B30-05), and the gateway TLS ingress chain (B30-07): not
-  exercised here.
+  presence+verification, but no hardware key was exercised. The cryptographic positive
+  admission path therefore remains `not_run`.
+- Service-level uncertain-child-stop integration (B30-04) and the gateway TLS ingress
+  chain (B30-07): not exercised here. The signed-approval service admission integration
+  (B30-05) is now wired and tested at the service level (see the assessment above), but
+  only its refusal paths and a mock-verified single-use path; the hardware positive path
+  remains `not_run`.
 - Public catalog GET and live inference: remain prohibited and `not_run`.
 
-Signed-approval service integration assessment (B30-05, not_run): the SSHSIG verification,
-policy/metadata binding, admission ordering and the atomic no-replace single-use ledger
-are implemented and tested standalone in `src/live-approval.mjs` / `test/live-approval.test.mjs`
-(with disposable non-hardware keys and a synthesized sk-signature blob). Wiring the signed
-approval into `createConfiguredTaskService`'s live admission is not performed here: a live
-admission only becomes meaningful once (a) a real FIDO2 hardware-key dry run and (b)
-verified firewall-filtered egress containment exist, both of which remain `not_run`. No
-signature or hardware is invented to close this gap.
+Signed-approval service integration assessment (B30-05): the SSHSIG verification,
+policy/metadata binding, resolved-base-commit binding, admission ordering and the atomic
+no-replace single-use ledger are implemented and tested standalone in
+`src/live-approval.mjs` / `test/live-approval.test.mjs` (with disposable non-hardware keys
+and a synthesized sk-signature blob). The standalone admission is now bound to service
+dispatch as an optional synchronous `createTaskService({ admission })` gate via
+`createSignedApprovalAdmission` (`createConfiguredTaskService` passes a supplied `admission`
+through). It runs for new tasks after idempotent replay resolution and repository
+inspection but before task persistence, workspace or spawn; a missing/forged/expired/
+stale/mismatched/already-consumed approval is refused before persistence, an identical
+replay remains readable without re-admission, and one approval ID cannot admit a second
+task. The service-level wiring, ordering, error mapping and single-use are exercised in
+`test/live-approval-service.test.mjs` with a clearly-labelled mock verifier over the real
+ledger, plus the real factory's negative refusal paths. The cryptographic positive path
+still requires a real FIDO2 hardware-key signature (presence + verification), which remains
+`not_run`; a non-hardware signature is always refused and no signature or hardware is
+invented to close this gap.
 
 Pinned-host-through-relay fixture (established, not `not_run`): on the pinned OpenCode
 2.2.5 host (Windows x64), `integration/opencode-free-relay.mjs` routes the free route

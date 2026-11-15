@@ -2306,3 +2306,34 @@ Template:
   open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
   WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
   run, catalog, live).
+
+## 2026-11-15 — B30 signed-approval service admission integration (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: bind the standalone SSHSIG verification/atomic single-use ledger to service
+  admission for new task dispatch (the prior ADR-010 `not_run` gap), fail-closed and offline.
+- Steps:
+  1. `createTaskService` gained an optional synchronous `admission` gate that runs after
+     idempotent replay resolution and repository inspection but before task persistence,
+     workspace or spawn; it pre-generates the taskId, passes the resolved baseCommit, and
+     maps `authorization_denied`/`invalid_argument`/`unavailable` to the contract.
+  2. `submit_task` gained optional `approval`/`signature` fields, excluded from the canonical
+     payload/idempotency hash and never persisted; `store.createTask` accepts an optional
+     validated UUIDv4 `taskId`.
+  3. `src/live-approval.mjs` gained `liveRequestHash` and `createSignedApprovalAdmission`
+     (verify + resolved-base-commit/policy/metadata binding + ledger reserve); the binding
+     now also checks `approval.repository.baseRef === baseCommit`.
+  4. `createConfiguredTaskService` passes a supplied `admission` through unchanged.
+  5. Added `test/live-approval-service.test.mjs` (service mechanism with a labelled mock,
+     real factory refusal paths, real-ledger single-use) and extended
+     `test/live-approval.test.mjs` for the base-commit binding.
+- Files: `src/tasks.mjs`, `src/service.mjs`, `src/live-approval.mjs`,
+  `src/configured-service.mjs`, `test/live-approval-service.test.mjs`,
+  `test/live-approval.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused 23/23 and full suite/demo rerun (see validation entry). No catalog
+  GET, live inference, host network change, hardware signing or B20; no hardware signature
+  is simulated or claimed.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal/VM deployment, catalog, live inference).

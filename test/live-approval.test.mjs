@@ -188,20 +188,23 @@ test('B30-05: canonical approval rejects unknown fields, expiry, paid budget, mu
 test('B30-05: approval binding refuses policy drift, stale or paid metadata', () => {
   const metadata = { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } };
   const a = approval({ metadataDigest: digestOf(metadata) });
+  const baseCommit = 'b'.repeat(40);
   assert.doesNotThrow(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
+    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
     metadata: { ...metadata } }));
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: '0'.repeat(64),
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /bind the submitted/);
+    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /bind the submitted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    relayPolicyDigest: '0'.repeat(64), gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /relay policy drifted/);
+    baseCommit, relayPolicyDigest: '0'.repeat(64), gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /relay policy drifted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: '0'.repeat(64), metadata }), /gateway policy drifted/);
+    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: '0'.repeat(64), metadata }), /gateway policy drifted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
+    baseCommit: 'c'.repeat(40), relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /base commit/);
+  assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
+    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
     metadata: { ...metadata, observedAt: Date.now() - 6 * 60 * 1000 } }), /stale/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
+    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
     metadata: { ...metadata, cost: { text: { input: { price: 1 }, output: { price: 0 } } } } }), /zero-price/);
 });
 
@@ -297,7 +300,7 @@ test('B30-05: admission verifies the signature before binding or reserving the I
   // The non-sk signature is refused at the signature gate; the ledger is never reached.
   assert.throws(() => admitLiveApproval({ approval: approval(), signature: armored,
     allowedSigners: allowed, principal: PRINCIPAL, requestHash: 'a'.repeat(64),
-    relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
+    baseCommit: 'b'.repeat(40), relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
     metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
     taskId: 'task-1', ledger, sshKeygen: SSH }), /presence and verification/);
   assert.equal(ledger.lookup('approval-0001'), undefined);

@@ -2803,3 +2803,44 @@ Claim: this entry supports the whole-mask `CapBnd` validation and its controlled
 based on the commands above. A bare-metal/VM deployment, the active provider WebSocket-
 bypass experiment, signed-approval service integration, hardware signing, catalog and live
 inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 signed-approval service admission integration (B30-05) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Binds the standalone SSHSIG verification/atomic ledger to
+service admission for new tasks; corrects the prior `not_run` "signed-approval service
+admission integration" gap in ADR-010.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{tasks,service,live-approval,configured-service}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/live-approval.test.mjs test/live-approval-service.test.mjs` | SSHSIG plumbing + new service admission integration (mechanism with a labelled mock, real factory refusal paths, real-ledger single-use) | 23 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 359 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `createTaskService` now accepts an optional synchronous `admission` gate that runs
+for new tasks after idempotent replay resolution and repository inspection but before task
+persistence, workspace or spawn. `createSignedApprovalAdmission` (`src/live-approval.mjs`)
+binds the standalone SSHSIG verification, resolved-base-commit binding and atomic no-replace
+single-use ledger to that gate; `createConfiguredTaskService` passes a supplied `admission`
+through. `submit_task` gains optional `approval`/`signature` fields that are excluded from
+the canonical payload/idempotency hash and never persisted. Tests demonstrate: an identical
+replay returns the original task without re-running admission; a refusal (missing envelope,
+expired, paid, malformed, non-hardware signature) throws `authorization_denied`/`invalid_argument`
+with zero task records persisted; one approval ID cannot admit a second task; and error codes
+map to the contract without leaking admission internals. The cryptographic positive path
+(real FIDO2 presence+verification) is not exercised — no hardware key was used and none is
+simulated.
+
+Evidence level: unit + local fixture (disposable non-hardware test keys, a mock verifier over
+the real ledger, and real `ssh-keygen -Y verify` refusal paths); not a real hardware-key dry
+run, not a live provider run.
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run (the cryptographic
+positive admission path); bare-metal/VM deployment; public catalog GET (maintainer-declined);
+live inference; active provider WebSocket-bypass experiment.
+
+Claim: this entry supports the signed-approval service admission wiring and its controlled
+self-tests. The hardware positive path, bare-metal/VM deployment, catalog and live inference
+remain `not_run` and the live route stays closed.

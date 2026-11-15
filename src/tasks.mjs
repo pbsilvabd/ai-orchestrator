@@ -26,6 +26,7 @@ const TRANSITIONS = {
 };
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export const DEFAULT_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -52,12 +53,14 @@ function unavailable(message, cause) {
 const isTimestamp = value => Number.isInteger(value) && value >= 0;
 
 // Canonical form used for the idempotency hash: sorted keys, no whitespace and no
-// clientSessionId, which is correlation metadata and never an authority.
+// clientSessionId (correlation metadata, never an authority) and no approval/signature
+// (the B30 signed-approval envelope). The maintainer signs the pure task request; the
+// approval wrapper is not part of the task's canonical identity.
 export function canonicalPayload(payload) {
   if (!payload || typeof payload !== 'object' || Array.isArray(payload))
     fail('invalid_argument', 'payload must be an object');
-  const { clientSessionId, ...rest } = payload;
-  void clientSessionId;
+  const { clientSessionId, approval, signature, ...rest } = payload;
+  void clientSessionId; void approval; void signature;
   return stringify(rest);
 }
 
@@ -266,12 +269,14 @@ function createTaskStore({ home, retentionMs }, maintenanceCapability) {
     return readTask(existing.taskId);
   };
 
-  const createTask = ({ clientId, idempotencyKey, payload, now = Date.now(), baseCommit = null } = {}) => {
+  const createTask = ({ clientId, idempotencyKey, payload, now = Date.now(), baseCommit = null, taskId } = {}) => {
     if (typeof clientId !== 'string' || !IDENTIFIER.test(clientId))
       fail('invalid_argument', 'clientId is not a valid identifier');
     if (typeof idempotencyKey !== 'string' || !IDENTIFIER.test(idempotencyKey))
       fail('invalid_argument', 'idempotencyKey is not a valid identifier');
     if (!isTimestamp(now)) fail('invalid_argument', 'now is not a timestamp');
+    if (taskId !== undefined && (typeof taskId !== 'string' || !UUID.test(taskId)))
+      fail('invalid_argument', 'taskId must be a UUIDv4 string');
     if (baseCommit !== null && baseCommit !== undefined && (typeof baseCommit !== 'string' || !/^[0-9a-f]{40,64}$/.test(baseCommit))) {
       fail('invalid_argument', 'baseCommit must be a full commit SHA or null');
     }
@@ -287,11 +292,11 @@ function createTaskStore({ home, retentionMs }, maintenanceCapability) {
       return { task: structuredClone(readTask(existing.taskId)), replay: true };
     }
 
-    const { clientSessionId, ...request } = payload;
-    void clientSessionId;
+    const { clientSessionId, approval, signature, ...request } = payload;
+    void clientSessionId; void approval; void signature;
     const task = {
       schemaVersion: SCHEMA_VERSION,
-      taskId: randomUUID(),
+      taskId: taskId ?? randomUUID(),
       clientId,
       idempotencyKey,
       payloadHash,

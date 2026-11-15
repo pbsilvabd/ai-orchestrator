@@ -123,9 +123,28 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   `blocked/worker-outcome-uncertain`, keeps one attempt and the workspace, halts
   new work and retains ownership for explicit B18 recovery. An identical replay
   remains readable. The label does not prove a subprocess ran or grant replay.
+- A service may additionally enable a synchronous trusted `admission` gate (B30-05,
+  [ADR-010](adr/010-live-egress-and-approval.md)) that runs for **new** tasks only, after
+  idempotent replay resolution and repository inspection but before task persistence,
+  workspace or spawn. The gate verifies and binds a signed live approval (SSHSIG under the
+  fixed namespace with FIDO2 presence/verification, unexpired, zero-paid, single-attempt,
+  bound to the canonical request hash, the resolved base commit and the relay/gateway policy
+  digests plus fresh zero-price metadata) and reserves its approval ID durably for at most
+  one task through an atomic no-replace ledger. The approval and its armored signature are
+  supplied as optional `submit_task` fields `approval` and `signature`; both are excluded
+  from the canonical payload/idempotency hash and are never persisted on the task record,
+  and neither is a task-text authority. Any missing, forged, expired, stale, mismatched or
+  already-consumed approval is refused before persistence with `authorization_denied`;
+  `invalid_argument`/`unavailable` map from malformed or unusable approval material. An
+  identical replay still returns the original record without re-running admission, and one
+  approval ID cannot admit a second task. Without a configured `admission`, the service
+  remains passive and unchanged. The cryptographic positive path still requires a real
+  FIDO2 hardware-key signature, which is `not_run`; the gate is never weakened to accept a
+  non-hardware signature.
 
-The canonical payload used for the idempotency hash excludes `clientSessionId` and
-is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.
+The canonical payload used for the idempotency hash excludes `clientSessionId`,
+`approval` and `signature`, and is serialized with sorted keys and no whitespace;
+SHA-256 is stored with the record.
 
 ### get_task_status
 
@@ -546,10 +565,12 @@ rather than storing a tail that could start midway through a credential. This ma
 diagnostic boundary is not service execution, M2b completion, M3 use or
 production-provider evidence.
 
-## B30 relay, egress gateway and signed live approval (2026-11-14)
+## B30 relay, egress gateway and signed live approval (2026-11-14; admission wiring 2026-11-15)
 
-The B30 fixture adds three deployable, service-owned components that are **not**
-wired into `createConfiguredTaskService`; live composition remains closed.
+The B30 fixture adds three deployable, service-owned components. The relay and egress
+gateway remain unwired into `createConfiguredTaskService`; the signed live approval is now
+bound to service admission through an optional synchronous `admission` gate (see
+`submit_task` above). Live composition remains closed.
 
 - **Relay** (`src/relay.mjs`) binds an explicit private/loopback address (rejecting
   the all-zero IPv4/IPv6 unspecified addresses, including compressed IPv6 aliases),
@@ -569,12 +590,16 @@ wired into `createConfiguredTaskService`; live composition remains closed.
   strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
   SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and
   user-verification flags, unexpired (at most 15 minutes), zero-paid, single-attempt,
-  and bound to the canonical request hash plus the relay and gateway policy digests and
-  fresh (at most five minutes) zero-price metadata. A non-hardware signature is refused.
-  One approval ID durably admits at most one task through an atomic no-replace claim
-  (write-then-hard-link; on collision the ledger re-reads and returns only an exact
-  replay, never overwriting an existing reservation); an identical read replays, a
-  different task is refused.
+  and bound to the canonical request hash, the resolved base commit, the relay and
+  gateway policy digests and fresh (at most five minutes) zero-price metadata. A
+  non-hardware signature is refused. One approval ID durably admits at most one task
+  through an atomic no-replace claim (write-then-hard-link; on collision the ledger
+  re-reads and returns only an exact replay, never overwriting an existing reservation);
+  an identical read replays, a different task is refused. `createSignedApprovalAdmission`
+  exposes this as a synchronous `createTaskService({ admission })` gate that runs after
+  idempotent replay resolution and repository inspection but before persistence,
+  workspace or spawn; `createConfiguredTaskService` passes a supplied `admission` through
+  unchanged.
 
 None of these opens live use. The relay/gateway admit only loopback fixtures in tests;
 the pinned OpenCode 2.2.5 host is routed through the relay→gateway→fixture-origin
@@ -592,8 +617,11 @@ routable-but-not-allowed relay port, with recorded nonzero exits and nftables
 packet/byte counters, while the WSL initial/host nftables ruleset stays empty. Relay
 failure/lifecycle fixtures (`test/relay.test.mjs`) cover port-conflict refusal,
 upstream-failure/timeout latch, partial-body drop without replay, and terminal stop that
-releases the port. No real FIDO2 hardware-key signing dry run, signed-approval service
-admission integration, catalog read or live inference has been performed. These are
-separate `not_run` gates; the live route stays closed until a platform provides verified
-firewall-filtered isolation in a bare-metal/VM deployment and a separately signed live
-approval.
+releases the port. The signed-approval service admission integration (ordering, replay
+preservation, before-persistence refusal, error mapping, single-use ledger and the real
+factory's negative refusal paths) is implemented and tested with disposable non-hardware
+keys and clearly-labelled mocks; a real FIDO2 hardware-key signing dry run, the
+cryptographic positive path, a catalog read and live inference have not been performed.
+These are separate `not_run` gates; the live route stays closed until a platform provides
+verified firewall-filtered isolation in a bare-metal/VM deployment and a separately signed
+live approval.

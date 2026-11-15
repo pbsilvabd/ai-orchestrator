@@ -5,6 +5,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync, linkSync, openSync,
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FREE_MODEL, FREE_ENDPOINT } from './free-provider.mjs';
+import { canonicalPayload } from './tasks.mjs';
 
 // Offline signed live approval (B30/ADR-010). The maintainer signs the exact bytes of a
 // strict canonical UTF-8 approval JSON with OpenSSH SSHSIG under a fixed namespace, using
@@ -179,12 +180,15 @@ export function verifyLiveApproval({
   };
 }
 
-// Bind the approval to the actual relay/gateway policy and fresh zero-price metadata.
-// Reject policy drift, stale or paid metadata, or a mismatched payload hash.
-export function verifyApprovalBinding({ approval, requestHash, relayPolicyDigest,
+// Bind the approval to the actual resolved base commit, relay/gateway policy and fresh
+// zero-price metadata. Reject policy drift, stale or paid metadata, a mismatched payload
+// hash, or a repository that does not match the resolved commit.
+export function verifyApprovalBinding({ approval, requestHash, baseCommit, relayPolicyDigest,
   gatewayPolicyDigest, metadata, now = Date.now() } = {}) {
   validateLiveApproval(approval, now);
   if (approval.requestHash !== requestHash) fail('authorization_denied', 'approval does not bind the submitted request');
+  if (typeof baseCommit !== 'string' || approval.repository.baseRef !== baseCommit)
+    fail('authorization_denied', 'approval does not bind the resolved base commit');
   if (approval.relayPolicyDigest !== relayPolicyDigest) fail('authorization_denied', 'relay policy drifted from the approval');
   if (approval.gatewayPolicyDigest !== gatewayPolicyDigest) fail('authorization_denied', 'gateway policy drifted from the approval');
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata))
@@ -290,15 +294,50 @@ export function locateSshKeygen(env = process.env) {
   return null;
 }
 
-// End-to-end admission order: verify the offline signature, bind the policy and
-// metadata, then reserve the approval ID. A live success path requires a real
+// End-to-end admission order: verify the offline signature, bind the policy, resolved base
+// commit and metadata, then reserve the approval ID. A live success path requires a real
 // hardware-key signature with presence/verification; the binding and ledger are never
 // reached for a refused signature.
 export function admitLiveApproval({ approval, signature, allowedSigners, principal, krl = '',
-  namespace = LIVE_NAMESPACE, requestHash, relayPolicyDigest, gatewayPolicyDigest, metadata,
+  namespace = LIVE_NAMESPACE, requestHash, baseCommit, relayPolicyDigest, gatewayPolicyDigest, metadata,
   taskId, ledger, now = Date.now(), sshKeygen = 'ssh-keygen' } = {}) {
   verifyLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace, now, sshKeygen });
-  verifyApprovalBinding({ approval, requestHash, relayPolicyDigest, gatewayPolicyDigest, metadata, now });
+  verifyApprovalBinding({ approval, requestHash, baseCommit, relayPolicyDigest, gatewayPolicyDigest, metadata, now });
   if (!ledger || typeof ledger.reserve !== 'function') fail('invalid_argument', 'approval ledger is required');
   return ledger.reserve({ approvalId: approval.approvalId, taskId, now });
+}
+
+// Canonical request hash bound by a live approval: the SHA-256 of the pure task payload
+// (clientSessionId, approval and signature excluded), matching the store's idempotency
+// identity so the maintainer signs the same canonical bytes the service hashes.
+export function liveRequestHash(payload) {
+  return createHash('sha256').update(canonicalPayload(payload)).digest('hex');
+}
+
+// Build a synchronous service-admission gate (see createTaskService's `admission` option)
+// that binds the standalone SSHSIG verification and atomic single-use ledger to a NEW task
+// submission. The approval and its armored signature are read from the submitted payload's
+// optional `approval` and `signature` fields (never from task text). The returned function
+// throws LiveApprovalError on any refusal; the service maps those to contract codes.
+export function createSignedApprovalAdmission({ allowedSigners, principal, krl = '',
+  namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, metadata,
+  ledger, sshKeygen = 'ssh-keygen' } = {}) {
+  if (typeof allowedSigners !== 'string' || typeof principal !== 'string' ||
+      typeof namespace !== 'string' || typeof krl !== 'string' ||
+      typeof relayPolicyDigest !== 'string' || typeof gatewayPolicyDigest !== 'string' ||
+      typeof sshKeygen !== 'string')
+    fail('invalid_argument', 'signed approval admission requires allowedSigners, principal, namespace, krl, policy digests and sshKeygen');
+  if (!ledger || typeof ledger.reserve !== 'function')
+    fail('invalid_argument', 'signed approval admission requires a reservation ledger');
+  return (payload, { taskId, baseCommit, now = Date.now() } = {}) => {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload))
+      fail('invalid_argument', 'submission payload is required for signed approval admission');
+    const approval = payload.approval;
+    const signature = payload.signature;
+    if (approval === undefined || signature === undefined)
+      fail('authorization_denied', 'a signed live approval is required for new tasks');
+    return admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
+      requestHash: liveRequestHash(payload), baseCommit, relayPolicyDigest, gatewayPolicyDigest, metadata,
+      taskId, ledger, now, sshKeygen });
+  };
 }
