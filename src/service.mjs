@@ -152,6 +152,15 @@ export function createTaskService(options = {}) {
       };
     }
     if (scheduler?.snapshot().stopped) fail('unavailable', 'task scheduler requires inspection');
+    // Trusted synchronous admission, after replay resolution but before new-task
+    // filesystem/persistence effects. Task text cannot supply this callback.
+    try {
+      const decision = options.worker?.validateSubmission?.(structuredClone(payload));
+      if (decision instanceof Promise) fail('internal', 'worker admission must be synchronous');
+    } catch (error) {
+      if (error?.code === 'authorization_denied') fail('authorization_denied', 'worker admission denied');
+      throw toServiceError(error);
+    }
 
     // 2. New request: validate repository identity, baseRef commit-ish, and branch availability.
     let repoValidation;

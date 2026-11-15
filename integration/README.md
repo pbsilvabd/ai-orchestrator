@@ -318,3 +318,63 @@ task transport, production provider or self-development gate is covered. It is n
 an OS sandbox or outbound network firewall. `PATH` and other required Windows OS variables remain in
 the explicit host environment and need deployment-specific review before any real
 provider or worker is authorized.
+
+## B29 free-route fixture harness
+
+Run separately with the pinned binary; it never calls the free route:
+
+```sh
+node integration/opencode-free.mjs /absolute/path/opencode.exe
+```
+
+It composes the configured service with an explicit loopback fixture endpoint, a local
+copy of the public metadata shape (never fetched) and an operator approval bound to the
+exact request. It runs eight scenarios in temporary directories: a normal run with one
+allowed `src/**` write and one out-of-scope write that must be denied, then HTTP 401,
+402 and 429 responses, a connection drop, a connection drop after an allowed fixture
+write, a held response ending in an uncertain worker deadline, and a 307 redirect
+to a second loopback origin.
+Each scenario asserts the fixed model, anonymous `Bearer public` credential, zero
+anomalies and the request count. The process prints JSON and exits 1 if any scenario
+fails. Poisoned `OPENCODE_API_KEY` and `OPENCODE_CONFIG` values are set in the parent
+process to show that they are not inherited.
+
+Observed on 2026-11-14 with OpenCode 2.2.5 (Windows x64): the normal scenario passed with
+three fixture requests, a denied out-of-scope write and an allowed diff; the 401, 402, 429
+and connection-drop scenarios each made exactly one request and failed the task. The
+`redirect-307` scenario failed: the host followed the redirect and sent the prompt body
+(7121 bytes in the observed run) to the alternate origin without the bearer credential.
+The exit code 1 is the intended result while the redirect remains uncontained by
+the separate B30 gate in [ADR-009](../docs/adr/009-free-anonymous-worker.md). The
+guard cannot prevent or detect that redirect on this host. The additional
+connection-loss-after-effects case preserves the allowed partial write/diff with
+one worker attempt; the held response leaves a blocked uncertain task and retains
+ownership. Neither result authorizes replay.
+The held-response fixture depends on the pinned host keeping its HTTP request
+open for at least the six-second task budget; an earlier host timeout must fail
+this scenario rather than be reported as an uncertain termination. The scheduler
+reports that human reconciliation is required; this does not prove descendants
+have stopped.
+
+The separate B29-04 pinned-client MCP workflow runs the actual MCP stdio transport,
+configured free-worker service and loopback model fixture:
+
+```sh
+node integration/mcp-free-workflow.mjs /absolute/path/opencode.exe
+```
+
+It drives `submit_task`, observes the persisted `queued`, `running` and terminal
+states through `get_task_status`, retrieves a diff and `node --test` exit through
+`get_task_result`, and repeats submission twice to check the stable ID without a
+second attempt, workspace or model request. The out-of-scope write is denied.
+`integration/fixtures/b29-free-mcp-server.mjs` is a test-only trusted composition
+entry point: only the harness supplies `B29_FIXTURE_ENDPOINT`; it must be an explicit
+`127.0.0.1` URL and cannot come from orchestrator config, task text or MCP arguments.
+The production `mcp-server.mjs` neither imports this entry point nor reads the
+fixture environment variable. `node --test test/b29-cli-composition.test.mjs`
+checks that production remains passive by default and refuses a free-worker
+configuration even when given fixture-like environment/config inputs.
+
+Not covered: the live free route, independently enforced egress, public catalog
+availability, quota, privacy or B20. The fixture and pinned-host observations are
+not production-provider evidence; the 307 failure remains visible above.
