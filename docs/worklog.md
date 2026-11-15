@@ -2560,7 +2560,9 @@ Template:
   output, exit 0. Two self-review passes covered ownership ordering, close/startup
   failure paths, old `createTaskService` callers, contract/ADR wording and the refusal
   evidence; the second pass found and fixed the failed-startup cleanup ownership gap.
-  The default-concurrency suite, WSL fixture, pinned OpenCode harnesses, deployed TLS,
+  Exact-head CI run `43760697682` succeeded on both OS jobs; the docs-only receipt commit
+  has its own PR run. The default-concurrency suite was not rerun locally (CI ran
+  `node --test` and passed); the WSL fixture, pinned OpenCode harnesses, deployed TLS,
   FIDO2 positive signature, WebSocket bypass, VM and live inference were not rerun.
 - Follow-up: keep PR #45 draft and reply to the two P1 findings with the new head;
   independent re-review of this ownership/authority correction is required before any

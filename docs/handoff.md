@@ -13,7 +13,9 @@ SSHSIG. `service.freeListenerAuthority` reports that actual authority; startup i
 as signature-verified. The same real gate refuses missing, malformed, non-FIDO2 and forged task
 signatures before persistence with zero task/workspace/worker effect (already-started listeners
 stay running). Focused tests cover competing owner, corrupt store, ownership-held composition,
-close-time and failed-startup uncertain stop and the real-gate refusal matrix. The positive FIDO2 signature path and
+close-time and failed-startup uncertain stop and the real-gate refusal matrix. Exact-head CI
+run `43760697682` at `b9e8483` passed on Windows and Ubuntu; independent re-review of this
+head is the next action. The positive FIDO2 signature path and
 every deployment gate remain `not_run`; PR #45 stays draft and unmerged. No FIDO2 hardware,
 network, VM, switch/reboot, provider inference or catalog action was performed.
 
