@@ -2282,3 +2282,27 @@ Template:
   open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
   WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
   run, catalog, live).
+
+## 2026-11-15 — B30 CapBnd whole-mask canonical validation
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the supervisor P2 re-review finding at `7a10cd3` (`cap_bit_set` validated
+  only the requested nibble, so a 16-character `CapBnd` with a non-hex character outside
+  bits 12/21 — e.g. `z00001ffffdfefff` — was accepted).
+- Steps:
+  1. Added a whole-mask `case *[!0-9a-fA-F]*` check to `cap_bit_set` right after the length
+     check, so any non-hex character anywhere in the 16-digit mask returns malformed (2)
+     before any nibble extraction; the specific-bit nibble arithmetic is unchanged.
+  2. Extended `--self-test-capability` with two non-hex corruptions outside the checked
+     nibbles (MSB `z00001ffffdfefff`, LSB `000001ffffdfeffz`), preserving the prior 18 checks.
+  3. Ran: `bash -n` clean; self-test-capability passed (1 accept + 19 rejects); full fixture
+     "containment verified" with the real `CapBnd=000001ffffdfefff`; host nft ruleset empty,
+     no residue.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).

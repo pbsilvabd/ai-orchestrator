@@ -432,14 +432,16 @@ identity via `setpriv` (`--reuid/--regid 65534`, `--clear-groups`, `--no-new-pri
 `--bounding-set=-net_admin,-sys_admin`); the fail-closed verdict requires a successful,
 parseable `/proc/self/status` inventory and asserts UID/GID 65534, `CapInh`/`CapPrm`/`CapEff`
 all-zero (a missing or malformed mask is rejected, never defaulted to zero), `NoNewPrivs` 1,
-and NET_ADMIN/SYS_ADMIN absent from `CapBnd`; it asserts an unprivileged `nft add` /
-`ip route add` mutation is refused ("Operation not permitted") and that the post-mutation
-`nft list tables` / `ip route show` reads themselves succeed before unauthorized state is
-treated as absent (a read failure is uncertainty, not absence). Any mutation success, wrong
-identity/capability, retained capability, or read failure fails the run — and
-`--self-test-capability` proves the check rejects simulated missing/malformed inventory,
-retained permitted/inheritable/bounding capability, mutation success and read failures —
-while the fixed worker→relay path stays reachable. It additionally
+and NET_ADMIN/SYS_ADMIN absent from `CapBnd`, which is first validated as a complete
+16-hex-digit mask so a non-hex character anywhere fails closed; it asserts an unprivileged
+`nft add` / `ip route add` mutation is refused ("Operation not permitted") and that the
+post-mutation `nft list tables` / `ip route show` reads themselves succeed before
+unauthorized state is treated as absent (a read failure is uncertainty, not absence). Any
+mutation success, wrong identity/capability, retained capability, or read failure fails the
+run — and `--self-test-capability` proves the check rejects simulated missing/malformed
+inventory, retained permitted/inheritable/bounding capability, whole-mask non-hex
+corruption, mutation success and read failures — while the fixed worker→relay path stays
+reachable. It additionally
 runs active negative egress probes from the worker: direct IPv6
 (`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an RFC 2606 `.invalid` hostname), a
 WebSocket-like `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port

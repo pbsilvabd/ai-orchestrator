@@ -192,14 +192,17 @@ host changes):
   the fail-closed verdict requires a successful, parseable `/proc/self/status` inventory and
   asserts UID/GID 65534, `CapInh`/`CapPrm`/`CapEff` all-zero (a missing or malformed mask is
   rejected, never defaulted to zero), `NoNewPrivs` 1, and NET_ADMIN (bit 12) / SYS_ADMIN
-  (bit 21) absent from `CapBnd`; it asserts an unprivileged `nft add`/`ip route add` mutation
+  (bit 21) absent from `CapBnd` — where `CapBnd` is first validated as a complete 16-hex-digit
+  mask so any non-hex character anywhere (not only the two checked nibbles) fails closed; it
+  asserts an unprivileged `nft add`/`ip route add` mutation
   is refused ("Operation not permitted", `nft` rc=1, `ip` rc=2), and requires the
   post-mutation `nft list tables` / `ip route show` reads to themselves succeed before
   treating unauthorized state as absent (a read failure is uncertainty, not absence). Any
   mutation success, wrong identity/capability, retained capability, or read failure fails
   the run; a controlled `--self-test-capability` mode proves the check rejects simulated
-  missing/malformed inventory, retained permitted/inheritable/bounding capability, mutation
-  success and read failures — while the fixed worker→relay path remains reachable. Active
+  missing/malformed inventory, retained permitted/inheritable/bounding capability, whole-mask
+  non-hex corruption, mutation success and read failures — while the fixed worker→relay path
+  remains reachable. Active
   negative egress probes from the worker — direct IPv4/IPv6 (`curl` to `192.0.2.1` /
   `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), a WebSocket-like
   `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port (`:18099`, whose

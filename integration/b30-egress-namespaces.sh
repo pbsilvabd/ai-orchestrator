@@ -314,10 +314,15 @@ cap_mask_zero() {
 }
 
 # cap_bit_set <16-hex-mask> <bit> : 0 if bit <bit> (0-63) is set, 1 if clear, 2 if the mask
-# is not a canonical 16-digit mask. Uses nibble extraction, never parses the full value.
+# is not a canonical 16-digit hex mask. The whole mask is validated as 16 hex digits first,
+# so a non-hex character anywhere (not only in the requested nibble) fails closed; only then
+# is the requested bit extracted via nibble arithmetic (never parsing the full 64-bit value).
 cap_bit_set() {
   local m="$1" bit="$2" idx off charidx d v
   [ ${#m} -eq 16 ] || return 2
+  case "$m" in
+    *[!0-9a-fA-F]*) return 2 ;;
+  esac
   idx=$(( bit / 4 ))
   off=$(( bit % 4 ))
   charidx=$(( 15 - idx ))
@@ -392,6 +397,10 @@ self_test_capability() {
   reject "retained NET_ADMIN CapBnd"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_NETADMIN" 1 1 2 1 1 1 1
   reject "retained SYS_ADMIN CapBnd"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_SYSADMIN" 1 1 2 1 1 1 1
   reject "missing CapBnd"               65534 65534 "$CAP0" "$CAP0" "$CAP0" "" 1 1 2 1 1 1 1
+  # Non-hex corruption OUTSIDE the two checked nibbles (bits 12/21 live in chars 12/10);
+  # the whole 16-hex mask must be canonical, so these must fail too.
+  reject "corrupt CapBnd MSB nibble"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "z00001ffffdfefff" 1 1 2 1 1 1 1
+  reject "corrupt CapBnd LSB nibble"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "000001ffffdfeffz" 1 1 2 1 1 1 1
   reject "unset NoNewPrivs"             65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 0 1 2 1 1 1 1
   reject "unauthorized nft table"       65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 0 1 1 1
   reject "unauthorized default route"   65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 0 1 1

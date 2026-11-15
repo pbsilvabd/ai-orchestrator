@@ -2767,3 +2767,39 @@ refusal, post-mutation read and its controlled self-test, based on the commands 
 bare-metal/VM deployment, the active provider WebSocket-bypass experiment, signed-approval
 service integration, hardware signing, catalog and live inference remain `not_run` and the
 live route stays closed.
+
+## M3 preparation: B30 CapBnd whole-mask canonical validation — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P2 re-review finding at `7a10cd3` (`cap_bit_set`
+validated only the requested nibble, so a 16-character mask with a non-hex character outside
+bits 12/21 — e.g. `z00001ffffdfefff` — was accepted).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... bash -n b30-egress-namespaces.sh` | Shell syntax check | clean | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-capability` | Controlled check incl. two non-hex corruptions outside the checked nibbles (MSB `z00001ffffdfefff`, LSB `000001ffffdfeffz`) | "self-test-capability passed" (1 accept + 19 rejects) | 0 |
+| `wsl ... b30-egress-namespaces.sh` (persistent log) | Full fixture with the fail-closed capability inventory verdict | "containment verified"; `PASS worker privilege boundary (uid=65534 gid=65534 CapInh=0000000000000000 CapPrm=0000000000000000 CapEff=0000000000000000 CapBnd=000001ffffdfefff NoNewPrivs=1 nft_rc=1 route_rc=2)`; forbidden `:18099` `rc=28`; drop counter incremented; no host residue | 0 |
+| `wsl ... wsl-nft-residue.sh` | Host residue verification | `nft list ruleset` empty; no host netns/links/10.100.x addresses | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `cap_bit_set` now validates the entire mask as 16 hex digits (case
+`*[!0-9a-fA-F]*`) before extracting any nibble, so a non-hex character anywhere in `CapBnd`
+fails the privilege verdict as uncertain. The `--self-test-capability` mode adds corruption
+outside both target nibbles (MSB and LSB) to the existing 1-accept/17-reject set and passes
+all 19 rejects; the real observed `CapBnd=000001ffffdfefff` still verifies. This closes the
+stated "any malformed inventory is fail-closed" guarantee.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+
+Claim: this entry supports the whole-mask `CapBnd` validation and its controlled self-test,
+based on the commands above. A bare-metal/VM deployment, the active provider WebSocket-
+bypass experiment, signed-approval service integration, hardware signing, catalog and live
+inference remain `not_run` and the live route stays closed.
