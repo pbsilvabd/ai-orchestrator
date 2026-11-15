@@ -588,9 +588,10 @@ production-provider evidence.
 ## B30 relay, egress gateway and signed live approval (2026-11-14; admission wiring 2026-11-15)
 
 The B30 fixture adds three deployable, service-owned components. The relay and egress
-gateway remain unwired into `createConfiguredTaskService`; the signed live approval is now
-bound to service admission through an optional synchronous `admission` gate (see
-`submit_task` above). Live composition remains closed.
+gateway are wired into `createConfiguredTaskService` only through the fixture-only
+`freeListeners` option (see the listener bullets below); the signed live approval is bound
+to service admission through an optional synchronous `admission` gate (see `submit_task`
+above). Live composition remains closed.
 
 - **Relay** (`src/relay.mjs`) binds an explicit private/loopback address (rejecting
   the all-zero IPv4/IPv6 unspecified addresses, including compressed IPv6 aliases),
@@ -615,7 +616,21 @@ bound to service admission through an optional synchronous `admission` gate (see
   released only after a confirmed exit; an unconfirmed stop, kill or ready timeout keeps
   the lock and refuses restart. Only `reconcileListenerLock` (exact token and pid,
   operator-confirmed stop) releases such a lock. Nothing restarts automatically, and an
-  orphaned child stops on disconnect. Not wired into `createConfiguredTaskService`.
+  orphaned child stops on disconnect. It is wired only into the fixture-only
+  `createConfiguredTaskService` path through the `freeListeners` option (below).
+- **Fixture-only composition of the supervised chain** (`src/free-listeners.mjs`, 2026-11-15
+  second correction). `createConfiguredTaskService(…, { freeListeners })` starts a gateway
+  (fixture mode, loopback origin) and then a relay (loopback, one fixed upstream, model
+  `opencode/deepseek-v4.1-flash-free`, path `/v1/chat/completions`) under the supervisor,
+  with fixed non-zero ports and the worker base URL derived from the relay port. It refuses,
+  before any effect, unless an approved run is supplied and the signed-admission gate exposes
+  relay and gateway policy digests equal to the plan's digests. A launch failure stops what
+  already started; an uncertain stop keeps its lock and surfaces `uncertain-stop`. Each
+  dispatch checks listener health before the worker prepares; a dead listener blocks the
+  already-reserved dispatch with no spawn or replay. `close()` stops listeners after the
+  scheduler is idle. The option cannot be combined with `fixtureEndpoint`; without it, live
+  composition stays closed as before. Task text cannot choose ports, addresses, provider or
+  model (unknown keys are refused by `submit_task`).
 - **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
   strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
   SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and

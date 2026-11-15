@@ -71,7 +71,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
 | M2b — One-worker delegation MVP | In progress; B12–B18 merged | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 - First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model. B29/#44 is merged as fixture-only. B30's relay/gateway/SSHSIG fixture and an isolated WSL2 netns/veth containment observation are implemented on `task/B30-free-relay`; nftables filtering, a real FIDO2 hardware-key signing dry run and live activation remain `not_run` under ADR-009/010; one bounded catalog GET was performed at `8e358a4` (dated snapshot, not repeated) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 - First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model. B29/#44 is merged as fixture-only. B30's relay/gateway/SSHSIG fixture and an isolated WSL2 netns/veth containment observation are implemented on `task/B30-free-relay`; nftables filtering, a real FIDO2 hardware-key signing dry run and live activation remain `not_run` under ADR-009/010; bounded catalog GETs were performed at `8e358a4` and at `2026-11-15T19:14:36Z` (dated snapshots, not repeated) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |
@@ -94,7 +94,15 @@ This is loopback/fixture evidence only: the deployed cross-namespace TLS chain, 
 certificates, a real DNS resolver or origin, the WebSocket bypass experiment, bare-metal/VM
 deployment, FIDO2 signing, live inference and merge remain `not_run`. The public catalog GET
 for the fixed free model was performed once at prior head `8e358a4` (HTTP 200, 104,821 bytes,
-dated snapshot); it was not repeated here and needs a separate narrow authorization if refreshed.
+dated snapshot). A second bounded GET at `2026-11-15T19:14:36Z` validated the same model as
+zero-price. Neither is repeated, and a fresh read needs a separate narrow authorization.
+
+2026-11-15 second correction (draft, not ready): the supervised relay and gateway are composed
+into the trusted service only through the fixture-only `freeListeners` option, with approved-run
+and digest gates, launch refusal, uncertain-stop retention, crash-to-blocked dispatch and
+close-time stop. Loopback only. The independent Ubuntu host, deployed TLS chain, FIDO2 positive
+signature, WebSocket-bypass experiment and any non-loopback listener decision remain open, so B30
+is not ready and not merged.
 
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.
 M3 may start with one authorized model and fallback disabled. Two models are

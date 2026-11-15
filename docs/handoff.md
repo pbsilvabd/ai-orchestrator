@@ -10,8 +10,9 @@ pid, stop verified). An orphaned child stops on IPC disconnect. The gateway name
 and refuses live-mode `NODE_TLS_REJECT_UNAUTHORIZED=0` (`tls-policy`). Offline fixtures
 (`test/gateway-tls.test.mjs`, `test/listener-supervisor.test.mjs`) use a disposable CA and
 `integration/tls-fixture-resolver.mjs` inside a child process; no DNS, hosts, firewall or
-network change and no external query. Live composition stays closed; the supervisor is not
-wired into `createConfiguredTaskService`. Evidence is local loopback/process fixture only:
+network change and no external query. Live composition stays closed; the supervisor is wired
+only into the fixture-only `freeListeners` path of `createConfiguredTaskService` (second
+correction below). Evidence is local loopback/process fixture only:
 the deployed cross-namespace TLS chain, expired certificates, a real resolver/origin, the
 WebSocket-bypass experiment, bare-metal/VM deployment, FIDO2 signing, live inference and
 merge remain `not_run`. The public catalog GET for the fixed free model was performed once,
@@ -22,14 +23,32 @@ revalidation + host/readable binding (B30-05) — 2026-11-15` section of
 this correction. A fresh read needs its own narrow authorization; neither the old GET nor this
 correction authorizes live inference. Recorded per ADR-010's 2026-11-15 amendment.
 
-## Next action (2026-11-15)
+2026-11-15 second correction (fixture-only wiring; same draft PR #45). `src/free-listeners.mjs`
+composes the supervised gateway and then relay through `createConfiguredTaskService(…,
+{ freeListeners })`. It needs an approved run and a signed-admission gate whose exposed relay
+and gateway digests equal the plan's digests; it refuses before any effect otherwise. Both
+listeners bind `127.0.0.1` on fixed ports, the worker base URL comes from the relay port, a
+launch failure stops what started, an uncertain stop keeps its lock, a dead listener blocks
+the reserved dispatch (no spawn, no replay), and `close()` stops the listeners after the
+scheduler is idle. Task text has no channel to ports, addresses, provider or model. Nine
+focused tests cover these paths (`test/free-listeners.test.mjs`); the serial suite is recorded
+in the validation entry. The admission in those tests is a labelled double that carries digests
+only. The signed SSHSIG path remains `not_run`. The second bounded catalog GET was performed at
+`2026-11-15T19:14:36Z` and validated `deepseek-v4.1-flash-free` as zero-price. It is dated and
+not repeated, and it authorizes no live inference (ADR-010, second 2026-11-15 amendment).
 
-1. Re-review draft PR #45 at the new head. Keep it draft; the maintainer decides ready/merge.
-2. Remaining B30 gates are deployment/hardware: an independent bare-metal or two-VM Ubuntu/
-   Hyper-V deployment with verified relay/gateway placement, a deployed TLS chain with a
-   real trust store and origin, a real FIDO2 `-sk` dry run, and the WebSocket-bypass
-   experiment. A fresh catalog read is needed only if the dated snapshot must be refreshed,
-   and then only under its own narrow authorization.
+## Next action (2026-11-15, second correction)
+
+1. Keep PR #45 draft. Do not mark it ready and do not merge: the B30 gates below are not all
+   satisfied, and the user's merge condition ("all gates pass") is therefore not met.
+2. Remaining gates, all `not_run` and none authorized here: an independent Ubuntu host with
+   the root-only namespace/nftables setup, real socket probes and teardown (checklist items
+   1–3 and 8 in `docs/deployment-prerequisites.md`); the deployed TLS chain with a real
+   resolver, trust store and origin, including expired and wrong-host cases (items 4–5); a
+   real FIDO2 `-sk` signature dry run (item 6); the active provider WebSocket-bypass
+   experiment (item 7); and a deployment decision for a non-loopback, worker-facing listener
+   (requires an ADR amendment before any code change).
+3. A further catalog read needs its own narrow authorization. No live inference is authorized.
 
 Earlier 2026-11-14 state (superseded for next action): B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
 with B29 main `11fcb42`), corrected after the supervisor reviews at `cff5265` and

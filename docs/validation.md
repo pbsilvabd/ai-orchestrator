@@ -3050,3 +3050,43 @@ Evidence level: no new evidence level. The focused run re-executes the Local HTT
 Not rerun: full serial and default-concurrency suites (no source or test file changed since the serial run recorded at `4cdc088`; see that entry); fallback demo (no executable behavior changed); the catalog GET (not repeated by policy, and no network request was made in this correction); live inference, provider calls, FIDO2 hardware signing, WebSocket-bypass experiment, bare-metal/VM deployment and the deployed TLS chain (all `not_run`, unchanged).
 
 Claim: This entry supports that the new handoff, backlog, roadmap, ADR-010 amendment, task-contract and PR text state the catalog GET as performed once at `8e358a4` (dated snapshot, not repeated), based on the static grep above and the `docs/validation.md` receipt. It does not support a fresh catalog read, any live inference authorization, or any deployed or FIDO2 gate, which require their own authorization and evidence.
+
+## M3 preparation: B30 fixture-only supervised composition and second catalog snapshot — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git for Windows `usr/bin` (openssl 3.5.7) on PATH. Date: 2026-11-15. Wires the supervised relay → gateway chain into `createConfiguredTaskService` through the fixture-only `freeListeners` option, and records one bounded public catalog GET that the user authorized for this correction. No live, provider, FIDO2, WebSocket, VM, host-network or paid action was taken.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/free-listeners.mjs`, `src/configured-service.mjs`, `src/live-approval.mjs` | Syntax of changed sources | clean | 0 |
+| one-shot catalog check (unversioned scratch script that imports `fetchFreeMetadata` and calls it once, with no retry) | Bounded public metadata read of `https://opencode.ai/inference/v1/models` | validated at `2026-11-15T19:14:36.242Z`; selected `deepseek-v4.1-flash-free`, `chat`, `owned_by` `opencode`, tools supported, zero price for text input, text output and cache read, base URL and SDK package equal to the fixed values; HTTP 2xx (`response.ok`), status not separately recorded | 0 |
+| `node --test test/free-listeners.test.mjs` | Nine fixture-only composition tests (approval and digest gates, launch refusal, uncertain cleanup with reconciliation, close and restart, crash-to-blocked, task-text isolation) | 9 pass / 0 fail / 0 skip | 0 |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Composition, approval, B29 and B30 focused set | 104 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` (first run) | Full serial suite on the final code | 1 fail: `test/mcp-server.test.mjs` `B15-01f` (`cancel_task` output wait, `timeout waiting for 1 output line(s)`), the pre-existing MCP output-wait flake; not caused by this change | 1 |
+| `node --test --test-concurrency=1` (rerun, same code) | Full serial suite rerun | 397 tests: 396 pass, 0 fail, 1 skip (the pre-existing platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Whitespace in the complete change | no output | 0 |
+
+Result: the new composition path passes all nine focused tests, and the composition, approval, B29 and B30 focused set passes 104 of 104. The serial suite failed once on the known MCP output-wait flake (`B15-01f`) and passed on rerun, 396 pass, 0 fail, 1 skip. Both runs are recorded; the first is not hidden. Two development defects were corrected during the work: a test submitted a request whose idempotency key differed from the approved request (the approval binds the canonical request hash, so the worker correctly refused it), and a failed test left listener children alive, which kept the runner waiting. The test now closes its service in `finally`. The first catalog attempt failed at module resolution before any function ran, so it made no network request; the successful attempt is the single GET. The second catalog GET is dated, is not repeated, and authorizes no live inference.
+
+Evidence level: Local HTTP — the composition tests use real child processes with IPC, real loopback ports and lock files, and real git fixtures; the signed-admission gate is a labelled test double that carries the policy digests only, so the cryptographic SSHSIG path is not exercised. The public catalog GET is a dated external metadata observation, not an integration or deployment evidence level; it does not establish any deployed behavior.
+
+Not rerun: `node --test` at default concurrency (the known parallel-load timing failures were recorded at `4cdc088` and at base `eb4968d`; no change in this run was attributed to them); `integration/b30-egress-namespaces.sh` (privileged WSL, unchanged); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates against a real origin (`not_run`); the FIDO2 positive signature (`not_run`); the active provider WebSocket-bypass experiment (`not_run`); bare-metal or two-VM deployment (`not_run`); live inference, paid calls and any further catalog read (not authorized).
+
+Claim: This entry supports that the supervised relay and gateway can be composed into the trusted service only through the fixture-only `freeListeners` option, which refuses without an approved run and matching digests, stops on failure, keeps uncertain locks and blocks dispatch on listener loss, based on the nine focused tests and the serial rerun. It also supports that the 2026-11-15 catalog metadata was validated as zero-price for the fixed model at the recorded time. It does not support deployed relay placement, a real TLS chain, FIDO2 signing, isolation on a separate host, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.
+
+## M3 preparation: B30 composition close-path final rerun — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git for Windows `usr/bin` (openssl 3.5.7) on PATH. Date: 2026-11-15. Records the final code after the second self-review of the composition: `close()` now stops the supervised listeners on a rejected scheduler close as well as on success.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/configured-service.mjs` | Syntax of the changed composition | clean | 0 |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Composition, approval, B29 and B30 focused set on the final code | 104 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial suite on the final code | 397 tests: 396 pass, 0 fail, 1 skip | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+
+Result: the final code passes the 104-test focused set, the 397-test serial suite (396 pass, 0 fail, 1 skip) and the demo. The rejected-close branch (`listeners.stop()` after a failed scheduler `close()`) is not exercised by a test: forcing the scheduler's close to reject needs a seam that does not exist, so that branch is reviewed by inspection only and is recorded as a limit. The earlier serial run with the MCP `B15-01f` flake is recorded in the preceding entry and is not repeated here.
+
+Evidence level: Local HTTP, unchanged from the preceding entry. Not rerun: default-concurrency suite, WSL fixture, pinned OpenCode host harnesses, deployed TLS, FIDO2, WebSocket-bypass, VM and live gates (`not_run`).
+
+Claim: This entry supports that the final composition code passes the focused, serial and demo checks, based on the commands above. It does not support the rejected-close branch under test, deployed relay placement, a real TLS chain, FIDO2 signing, WebSocket-bypass exclusion, live activation, ready-for-review or merge.

@@ -49,3 +49,50 @@ Bare-metal/VM deployment, a real FIDO2 hardware-key signing dry run (the cryptog
 positive admission path), the active provider WebSocket-bypass experiment, and live
 inference. The signed-admission code path is implemented and tested with mock/negative
 fixtures only.
+
+## Independent Ubuntu host: checklist and minimum permissions (plan only, 2026-11-15)
+
+Nothing below is installed, configured or run. It states what a future, separately
+authorized independent Ubuntu host must provide before the B30-03/04/07 deployment rows can
+be evidenced. The WSL2 fixture does not satisfy these rows.
+
+Host facts to record (read-only): distribution and release, kernel, architecture, `nft`
+and `ip` versions, whether the host firewall is empty, `ip netns list`, and the account
+used. The host must be dedicated to this test and must not be the developer workstation.
+
+Minimum privileges:
+- Root (or an equivalent single-purpose sudo rule) only for creating and deleting the
+  worker, relay and gateway namespaces and their nftables tables, and for teardown. Nothing
+  else runs as root.
+- Worker probes run as the unprivileged identity (UID/GID 65534) with `no_new_privs` and
+  NET_ADMIN/SYS_ADMIN removed from the bounding set, as the existing fixture does.
+- The gateway alone holds the approved upstream TLS path. It needs DNS resolution of the
+  fixed origin hostname and the system trust store; no private key, provider credential or
+  `NODE_TLS_REJECT_UNAUTHORIZED` setting is permitted.
+- No Windows or WSL host network, firewall, Hyper-V switch or Default switch change.
+
+Deployment checklist (each item needs its own authorization and evidence):
+1. Root-created worker, relay and gateway namespaces with one veth per link, no default
+   route on the worker or relay, no external DNS on the worker, and nftables default-drop
+   with recorded counters. Initial-namespace ruleset empty before and after.
+2. Real socket probes from inside the worker compartment: direct IPv4/IPv6, DNS, WebSocket
+   upgrade and an unapproved port, each denied with real exits.
+3. The relay listens only on the worker-facing address. The current code and composition
+   accept loopback only; a non-loopback deployment listener is a decision that needs its
+   own ADR amendment before code changes.
+4. Real TLS: the gateway reaches the fixed origin through the system trust store. Record the
+   certificate chain, the hostname validated and the resolver used. Offline disposable-CA
+   fixtures do not establish this.
+5. Pinned OpenCode 2.2.5 binary measured for `hostBinaryDigest` and run through the relay
+   chain. Expired, not-yet-valid and wrong-host certificates must fail closed.
+6. FIDO2 hardware dry run: an `ssh-keygen -Y sign` with a `-sk` key using presence and
+   verification, and `-Y verify` against a single-principal allowed-signers file. Requires
+   the physical key and separate maintainer authorization. Not performed.
+7. Active provider WebSocket-bypass experiment: requires separate authorization because it
+   contacts the provider from the worker compartment. Not performed.
+8. Teardown of only objects this run created, with verified-empty host residue.
+
+Remaining gates status (2026-11-15): items 1–8 are `not_run`. The public catalog GET for the
+fixed free model was performed once at `8e358a4` (dated snapshot, not repeated) and a second
+bounded GET is recorded in the 2026-11-15 validation entry. Neither authorizes live
+inference, and no live activation, ready or merge is authorized while these gates are open.

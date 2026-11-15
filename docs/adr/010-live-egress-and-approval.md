@@ -333,8 +333,8 @@ unresolved lock only through `reconcileListenerLock`, which requires `confirmedS
 true` and the exact token and pid, after the process tree is verified stopped. A child
 whose supervisor disconnects stops its listener, so an orphan does not hold the port.
 The supervisor's `env`, `execArgv`, `fork` and timeout options are trusted-composition
-inputs; task text cannot set them. The supervisor is not wired into
-`createConfiguredTaskService`.
+inputs; task text cannot set them. The supervisor is wired only into the fixture-only
+`createConfiguredTaskService` path (see the second 2026-11-15 amendment below).
 
 Decision (gateway TLS and DNS latches). Gateway upstream failures are classified into
 distinct terminal latches: `dns-failure` (`ENOTFOUND`, `EAI_AGAIN`), `tls-failure`
@@ -376,7 +376,8 @@ Not run / not established by this amendment (recorded `not_run`):
 - Service-level uncertain-child-stop through the task service (a worker child whose stop
   is unconfirmed): the worker path relies on the scheduler's existing uncertain-outcome
   handling from merged B12 (the scheduler keeps ownership and never replays); the listener
-  supervisor is a separate, unwired component and B14 cancellation evidence is not merged.
+  supervisor is wired only into the fixture-only composition (second 2026-11-15 amendment),
+  and B14 cancellation evidence is not merged.
 - The WebSocket bypass experiment, bare-metal/VM deployment, real FIDO2 signing and live
   inference remain `not_run`, as recorded above. The public catalog GET is not `not_run`:
   one bounded GET was performed at `8e358a4` under staged authorization (HTTP 200, 104,821
@@ -384,3 +385,47 @@ Not run / not established by this amendment (recorded `not_run`):
   pre-spawn revalidation + host/readable binding (B30-05) — 2026-11-15", line 2862). This
   amendment does not repeat it. The snapshot is dated and expires; a fresh read needs its
   own narrow authorization. No live inference is authorized.
+
+## Amendment — 2026-11-15 (second): fixture-only service wiring, dated catalog snapshot and deployment gates
+
+Decision (fixture-only wiring). The supervised relay → gateway chain may be composed into
+the trusted service only through the `freeListeners` option of `createConfiguredTaskService`
+(`src/free-listeners.mjs`). It is reachable only with an approved run and a signed-admission
+gate that exposes relay and gateway policy digests equal to the plan's digests (the factory
+now exposes both as read-only properties). Listeners bind `127.0.0.1` only, the gateway runs
+in fixture mode with a loopback origin, ports are fixed and non-zero, and task text has no
+channel to ports, addresses, origin, provider or model. The option is mutually exclusive with
+`fixtureEndpoint`. Without it, live composition is unchanged and still refused. Each dispatch
+refuses while a listener is not running: the reserved dispatch is recorded `blocked`, with no
+spawn and no replay. `close()` stops the listeners after the scheduler is idle. A launch that
+fails stops what already started. An unconfirmed stop keeps its lock and surfaces
+`uncertain-stop`, and a later start is refused until an operator reconciles the lock.
+
+Not decided here. A deployed relay must listen on a worker-facing private address in a
+separate compartment, and the current composition does not provide that. Choosing that
+listener, its trust boundary and its approval binding is a new decision. It needs an ADR
+amendment and the deployment evidence in `docs/deployment-prerequisites.md` before any code
+changes. Live activation remains closed.
+
+Catalog snapshot (second bounded GET, user-authorized 2026-11-15). One call to the existing
+`fetchFreeMetadata` against `https://opencode.ai/inference/v1/models`: `redirect: 'error'`,
+10 s timeout, a 2,000,000-byte cap, no credentials, no prompt, no retry. Outcome: validated.
+Observed at `2026-11-15T19:14:36.242Z` (request started `19:14:35.804Z`). Selected model
+`deepseek-v4.1-flash-free`: type `chat`, `owned_by` `opencode`, tools supported, text input
+and output modalities, zero price for text input, text output and cache read, and the
+`chat-completions` base URL and SDK package equal to the fixed endpoint and package. The HTTP
+status is not recorded separately because `fetchFreeMetadata` requires a successful
+`response.ok`. An earlier invocation failed at module resolution before any request, so
+it made no network call. This GET is dated evidence only and expires with the metadata TTL.
+It is not repeated, and any fresh read needs its own narrow authorization. It authorizes no
+live inference.
+
+Still `not_run` (no evidence in this amendment): the independent Ubuntu deployment and its
+namespace, nftables and socket-probe rows (checklist items 1–3 and 8 in
+`docs/deployment-prerequisites.md`); the deployed TLS chain with a real resolver, trust store
+and origin (item 4); expired and wrong-host certificates against a real origin (item 5); the
+FIDO2 positive signature dry run (item 6); the active provider WebSocket-bypass experiment
+(item 7); live inference; B20; ready-for-review; and merge. The offline TLS and wiring tests
+are Local HTTP evidence (loopback child processes, real lock files, a disposable CA and a
+labelled admission test double that carries digests only). They do not establish deployed
+behavior.

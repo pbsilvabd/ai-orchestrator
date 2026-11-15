@@ -2488,3 +2488,32 @@ Template:
 - Files: `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/validation.md`, `docs/worklog.md`.
 - Validation: focused `node --test` on the listener-supervisor, gateway-tls, egress-gateway and relay files → 50 pass, 0 fail, exit 0 (source unchanged); `git diff --check` clean; static grep of added `catalog` lines consistent with the `8e358a4` receipt. The full suite, demo and any live, FIDO2, WebSocket, VM or deployed-TLS gates were not rerun (see the validation entry).
 - Follow-up: keep PR #45 draft and re-review the new documentation head; a fresh catalog read, if ever needed, requires a separate narrow authorization and does not authorize live inference.
+
+## 2026-11-15 — B30 fixture-only supervised composition and second catalog snapshot
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: code, tests and docs; fixture-only composition with loopback listeners. No live composition, provider, FIDO2, WebSocket, VM, host-network or paid action; one bounded public catalog GET (user-authorized) recorded as dated metadata; no ready or merge.
+- Steps:
+  1. Read the PR feedback (no blocking findings; CI `c6c064e` green) and the composition path: `createConfiguredTaskService`, the scheduler's dispatch and close, the worker validation and the signed-admission gate.
+  2. Added `src/free-listeners.mjs`: a pure plan (fixed non-zero loopback ports, relay upstream to the gateway port, fixed model and path, both policy digests) and `startFreeListeners`, which starts the gateway and then the relay under the supervisor, checks the child-reported digests, and stops whatever started on any failure.
+  3. Changed `src/configured-service.mjs`: the `freeListeners` option requires an approved run and a signed-admission gate that exposes matching digests, both checked before metadata or any listener start; the worker base URL comes from the relay port; a dead listener blocks dispatch in `prepare`; `close()` stops listeners after the scheduler is idle; a failure after listener start stops them. Live composition is unchanged when the option is absent.
+  4. Changed `src/live-approval.mjs`: the signed-admission gate exposes its relay and gateway policy digests as read-only properties.
+  5. Changed the `src/listener-supervisor.mjs` header comment (no longer unwired).
+  6. Added `test/free-listeners.test.mjs` (nine cases) and fixed two of its defects (approval-bound request and listener cleanup on failure).
+  7. Performed one bounded catalog GET through `fetchFreeMetadata` and recorded the validated fields.
+  8. Updated `docs/adr/010-live-egress-and-approval.md` (second 2026-11-15 amendment, and the two earlier sentences that said the supervisor was unwired), `docs/task-contract.md` (composition bullet and the revised wiring sentence), `docs/deployment-prerequisites.md` (Ubuntu host checklist and minimum permissions, plan only), `docs/handoff.md`, `docs/backlog.md` and `docs/roadmap.md`.
+- Files: `src/configured-service.mjs`, `src/free-listeners.mjs`, `src/live-approval.mjs`, `src/listener-supervisor.mjs`, `test/free-listeners.test.mjs`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/deployment-prerequisites.md`, `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: nine focused composition tests pass; the 104-test composition, approval, B29 and B30 focused set passes; the serial suite failed once on the known MCP `B15-01f` output-wait flake and passed on rerun (396 pass, 0 fail, 1 skip); the demo returns 429 then 200; `git diff --cached --check` clean. The default-concurrency run, the pinned host, WSL, deployed TLS, FIDO2, WebSocket-bypass, VM and live gates were not rerun (see the validation entry).
+- Follow-up: keep PR #45 draft and do not merge. Before any ready decision, the `not_run` gates in the validation entry and the Ubuntu checklist in `docs/deployment-prerequisites.md` need separate authorization and evidence. A non-loopback worker-facing listener needs an ADR amendment before code changes.
+
+## 2026-11-15 — B30 composition close-path stop on rejection
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: code (one error path) and docs; fixture-only composition otherwise unchanged; no live, provider, FIDO2, WebSocket, VM, host-network or paid action.
+- Steps:
+  1. Second self-review of `src/configured-service.mjs`: `service.close` stopped the supervised listeners only when the scheduler close resolved; a rejection would have left them running.
+  2. Changed the close wrapper to stop the listeners on both outcomes and rethrow a rejection.
+  3. Reran the 104-test focused set, the 397-test serial suite (396 pass, 0 fail, 1 skip) and the demo (429 then 200) on the final code; recorded in the validation entry.
+- Files: `src/configured-service.mjs`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: see the final-rerun validation entry; the rejected-close branch is inspected but not tested.
+- Follow-up: unchanged from the previous entry (keep the draft, no merge, no ready). A test seam for the rejected-close branch is optional and can wait for the next composition change.

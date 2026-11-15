@@ -11,8 +11,8 @@ import { fileURLToPath } from 'node:url';
 // verifies the process tree and calls `reconcileListenerLock`. No path restarts a listener
 // automatically and no lock is deleted on uncertainty.
 //
-// This supervisor is not wired into `createConfiguredTaskService`; live composition stays
-// closed (ADR-009/010).
+// `src/free-listeners.mjs` wires it into the fixture-only `createConfiguredTaskService` path
+// (B30-04). Live composition stays closed (ADR-009/010).
 
 export class ListenerError extends Error {
   constructor(code, message) {

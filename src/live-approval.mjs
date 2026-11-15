@@ -396,5 +396,9 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
   // Expose the canonical host executable so trusted composition (createConfiguredTaskService)
   // can verify the gate measures the same executable the configured worker will start.
   Object.defineProperty(gate, 'hostExecutable', { value: canonicalExecutablePath(hostExecutable), enumerable: true });
+  // The relay/gateway digests the signed approval must bind, so composition can refuse a
+  // supervised listener configuration that differs from the approved policy.
+  Object.defineProperty(gate, 'relayPolicyDigest', { value: relayPolicyDigest, enumerable: true });
+  Object.defineProperty(gate, 'gatewayPolicyDigest', { value: gatewayPolicyDigest, enumerable: true });
   return gate;
 }
