@@ -2252,22 +2252,28 @@ Template:
   WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
   run, catalog, live).
 
-## 2026-11-15 — B30 fail-closed worker privilege-boundary verdict
+## 2026-11-15 — B30 fail-closed capability inventory (missing/malformed/retained rejected)
 
 - Branch: `task/B30-free-relay` (draft PR #45).
-- Scope: correct the supervisor P1 finding at `42396c9` (worker capability inventory and
-  nft/route mutation outcomes were logged, not asserted).
+- Scope: correct the supervisor P1 re-review finding at `2096d62` (missing CapEff defaulted
+  to zero; CapInh/CapPrm/CapBnd logged but not asserted; post-mutation read failures treated
+  as absence).
 - Steps:
-  1. Captured the unprivileged worker identity (UID), CapEff, NoNewPrivs, and the nft/ip
-     mutation return codes into variables, and added post-attempt checks that no
-     unauthorized nft table or default route was actually installed.
-  2. Added `verify_worker_privileges` (numeric-hex CapEff comparison, UID/NoNewPrivs/
-     mutation/table/route checks) and made the `containment verified` verdict depend on it;
-     any mutation success or wrong identity/capability fails the run.
-  3. Added `--self-test-capability`: a controlled non-privileged test proving the check
-     accepts good inputs and rejects each simulated bad input, with no netns/nft/ip effects.
-  4. Ran both: self-test-capability passed (8 checks); full fixture "containment verified"
-     with `PASS worker privilege boundary`; host nft ruleset empty, no residue.
+  1. Replaced the `$((16#${capeff:-0}))` arithmetic (fail-open on missing) with string-only
+     helpers: `cap_mask_zero` (rejects empty/malformed/nonzero masks) and `cap_bit_set`
+     (nibble-extraction bit test for NET_ADMIN bit 12 / SYS_ADMIN bit 21, no 64-bit math).
+  2. Expanded the captured inventory to UID/GID, CapInh/CapPrm/CapEff/CapBnd, NoNewPrivs,
+     and captured the nft/ip mutation return codes plus the post-mutation `nft list tables`
+     / `ip route show` read exit codes; read failures are now uncertainty (fail closed).
+  3. Rewrote `verify_worker_privileges` to gate `containment verified` on UID/GID 65534,
+     all-zero CapInh/CapPrm/CapEff, NET_ADMIN/SYS_ADMIN absent from CapBnd, NoNewPrivs 1,
+     both mutations refused, both reads succeeded, and no unauthorized table/default route.
+  4. Extended `--self-test-capability` to 1 accept + 17 reject cases (missing/malformed
+     CapEff, nonzero CapEff/CapPrm/CapInh, retained NET_ADMIN/SYS_ADMIN CapBnd, missing
+     CapBnd, wrong uid/gid, unset NoNewPrivs, mutation success, unauthorized table/route,
+     read failures).
+  5. Ran both: self-test-capability passed; full fixture "containment verified" with
+     `PASS worker privilege boundary (uid=65534 gid=65534 CapInh/CapPrm/CapEff=0 CapBnd=000001ffffdfefff NoNewPrivs=1 nft_rc=1 route_rc=2)`; host nft ruleset empty, no residue.
 - Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
   `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
 - Validation: full suite and demo rerun (see validation entry). No catalog GET, live

@@ -2728,3 +2728,42 @@ Claim: this entry supports the enforced worker privilege-boundary verdict and it
 self-test, based on the commands above. A bare-metal/VM deployment, the active provider
 WebSocket-bypass experiment, signed-approval service integration, hardware signing, catalog
 and live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 fail-closed capability inventory (missing/malformed/retained rejected) — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P1 re-review finding at `2096d62` (missing CapEff
+defaulted to zero; CapInh/CapPrm/CapBnd logged but not asserted; post-mutation read failures
+treated as absence).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... b30-egress-namespaces.sh --self-test-capability` | Controlled check that `verify_worker_privileges` accepts the observed good inventory and rejects missing/malformed CapEff, nonzero CapEff/CapPrm/CapInh, retained NET_ADMIN/SYS_ADMIN CapBnd, missing CapBnd, wrong uid/gid, unset NoNewPrivs, mutation success, unauthorized table/route, and nft/route read failure | "self-test-capability passed" (1 accept + 17 rejects) | 0 |
+| `wsl ... b30-egress-namespaces.sh` (persistent log) | Full fixture with the fail-closed capability inventory + mutation + post-read verdict | "containment verified"; `PASS worker privilege boundary (uid=65534 gid=65534 CapInh=0000000000000000 CapPrm=0000000000000000 CapEff=0000000000000000 CapBnd=000001ffffdfefff NoNewPrivs=1 nft_rc=1 route_rc=2)`; forbidden `:18099` `rc=28`; drop counter incremented; no host residue | 0 |
+| `wsl ... wsl-nft-residue.sh` | Host residue verification | `nft list ruleset` empty; no host netns/links/10.100.x addresses | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: the worker capability boundary is now fully fail-closed. The verdict requires a
+successful, parseable `/proc/self/status` inventory and asserts UID/GID 65534,
+`CapInh`/`CapPrm`/`CapEff` all-zero (missing/malformed masks are rejected, never defaulted
+to zero), `NoNewPrivs` 1, and NET_ADMIN/SYS_ADMIN absent from `CapBnd` (checked by
+nibble-extraction bit test, no 64-bit arithmetic); it asserts both mutation attempts are
+refused and that the post-mutation `nft list tables` / `ip route show` reads themselves
+succeed before unauthorized state is treated as absent (a read failure is uncertainty).
+The `--self-test-capability` mode proves each simulated bad input is rejected without any
+WSL netns/nft/ip side effects.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+
+Claim: this entry supports the enforced fail-closed worker capability inventory, mutation
+refusal, post-mutation read and its controlled self-test, based on the commands above. A
+bare-metal/VM deployment, the active provider WebSocket-bypass experiment, signed-approval
+service integration, hardware signing, catalog and live inference remain `not_run` and the
+live route stays closed.

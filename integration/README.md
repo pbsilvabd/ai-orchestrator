@@ -413,7 +413,7 @@ wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault    
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-delete-fault     # mock ip netns del failure
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-inventory-fault  # mock ip netns list failure
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-trap-status      # exits 1; trap forces nonzero
-wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-capability        # worker privilege-boundary verdict
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-capability        # fail-closed worker privilege-boundary verdict (missing/malformed/retained caps rejected)
 ```
 
 It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
@@ -429,12 +429,17 @@ real socket attempts proving the worker reaches only the relay, the relay reache
 the gateway, and the gateway reaches only the relay, while each is denied a direct
 Internet/TEST-NET destination. Worker-side probes drop to the unprivileged `nobody`
 identity via `setpriv` (`--reuid/--regid 65534`, `--clear-groups`, `--no-new-privs`,
-`--bounding-set=-net_admin,-sys_admin`); the fail-closed verdict asserts the capability
-inventory (`CapEff` all-zero, `NoNewPrivs` 1, UID 65534), that an unprivileged `nft add` /
-`ip route add` mutation is refused ("Operation not permitted"), and that no unauthorized
-nft table or default route was actually installed — any mutation success or wrong
-identity/capability fails the run (and `--self-test-capability` proves the check rejects
-simulated bad inputs) — while the fixed worker→relay path stays reachable. It additionally
+`--bounding-set=-net_admin,-sys_admin`); the fail-closed verdict requires a successful,
+parseable `/proc/self/status` inventory and asserts UID/GID 65534, `CapInh`/`CapPrm`/`CapEff`
+all-zero (a missing or malformed mask is rejected, never defaulted to zero), `NoNewPrivs` 1,
+and NET_ADMIN/SYS_ADMIN absent from `CapBnd`; it asserts an unprivileged `nft add` /
+`ip route add` mutation is refused ("Operation not permitted") and that the post-mutation
+`nft list tables` / `ip route show` reads themselves succeed before unauthorized state is
+treated as absent (a read failure is uncertainty, not absence). Any mutation success, wrong
+identity/capability, retained capability, or read failure fails the run — and
+`--self-test-capability` proves the check rejects simulated missing/malformed inventory,
+retained permitted/inheritable/bounding capability, mutation success and read failures —
+while the fixed worker→relay path stays reachable. It additionally
 runs active negative egress probes from the worker: direct IPv6
 (`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an RFC 2606 `.invalid` hostname), a
 WebSocket-like `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port

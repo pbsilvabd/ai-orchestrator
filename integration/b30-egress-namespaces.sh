@@ -298,40 +298,105 @@ self_test_trap_status() {
   exit 0
 }
 
-# Controlled (non-privileged) test of verify_worker_privileges: good inputs pass, and each
-# simulated bad input (mutation success, wrong uid, nonzero CapEff, unset NoNewPrivs,
-# unauthorized table/route) must fail. No netns/nft/ip side effects.
+# Capability-mask helpers. Pure string checks with no 64-bit arithmetic, so missing or
+# malformed input fails closed instead of defaulting to zero.
+
+# cap_mask_zero <label> <mask> : 0 if the mask is the canonical all-zero 64-bit mask
+# (16 hex zeros as printed by /proc/self/status); nonzero otherwise.
+cap_mask_zero() {
+  local label="$1" m="$2"
+  [ -n "$m" ] || { echo "$label missing" >&2; return 1; }
+  case "$m" in
+    *[!0-9a-fA-F]*) echo "$label malformed ($m)" >&2; return 1 ;;
+  esac
+  [ "$m" = "0000000000000000" ] || { echo "$label not empty ($m)" >&2; return 1; }
+  return 0
+}
+
+# cap_bit_set <16-hex-mask> <bit> : 0 if bit <bit> (0-63) is set, 1 if clear, 2 if the mask
+# is not a canonical 16-digit mask. Uses nibble extraction, never parses the full value.
+cap_bit_set() {
+  local m="$1" bit="$2" idx off charidx d v
+  [ ${#m} -eq 16 ] || return 2
+  idx=$(( bit / 4 ))
+  off=$(( bit % 4 ))
+  charidx=$(( 15 - idx ))
+  d="${m:$charidx:1}"
+  case "$d" in
+    0|1|2|3|4|5|6|7|8|9) v=$d ;;
+    a|A) v=10 ;; b|B) v=11 ;; c|C) v=12 ;; d|D) v=13 ;; e|E) v=14 ;; f|F) v=15 ;;
+    *) return 2 ;;
+  esac
+  [ $(( (v >> off) & 1 )) -eq 1 ]
+}
+
+# Fail-closed worker privilege boundary. Returns 0 only when the unprivileged worker shows
+# UID/GID 65534, CapInh/CapPrm/CapEff all-zero, NET_ADMIN (12) and SYS_ADMIN (21) absent
+# from CapBnd, NoNewPrivs=1, both mutation attempts refused, both post-mutation state reads
+# succeeded, and no unauthorized table/default route was installed. Any missing/malformed
+# inventory value fails the verdict (never defaults to zero).
 verify_worker_privileges() {
-  local uid="$1" capeff="$2" nnp="$3" nft_rc="$4" route_rc="$5" no_table="$6" no_route="$7"
-  local capeff_dec
-  if [ "$uid" != "$WORKER_UID" ]; then echo "worker identity wrong (uid=$uid)" >&2; return 1; fi
-  capeff_dec=$((16#${capeff:-0}))
-  if [ "$capeff_dec" -ne 0 ]; then echo "worker CapEff not empty ($capeff)" >&2; return 1; fi
-  if [ "$nnp" != "1" ]; then echo "worker NoNewPrivs not set ($nnp)" >&2; return 1; fi
-  if [ "$nft_rc" = "0" ]; then echo "worker nft mutation succeeded" >&2; return 1; fi
-  if [ "$route_rc" = "0" ]; then echo "worker route mutation succeeded" >&2; return 1; fi
-  if [ "$no_table" != "1" ]; then echo "unauthorized nft table installed" >&2; return 1; fi
-  if [ "$no_route" != "1" ]; then echo "unauthorized default route installed" >&2; return 1; fi
+  local uid="$1" gid="$2" capinh="$3" capprm="$4" capeff="$5" capbnd="$6" nnp="$7" \
+        nft_rc="$8" route_rc="$9" no_table="${10}" no_route="${11}" \
+        nft_read_ok="${12}" route_read_ok="${13}"
+  local b12 b21
+  [ "$uid" = "$WORKER_UID" ] || { echo "worker uid wrong (uid=$uid)" >&2; return 1; }
+  [ "$gid" = "$WORKER_GID" ] || { echo "worker gid wrong (gid=$gid)" >&2; return 1; }
+  cap_mask_zero "worker CapInh" "$capinh" || return 1
+  cap_mask_zero "worker CapPrm" "$capprm" || return 1
+  cap_mask_zero "worker CapEff" "$capeff" || return 1
+  cap_bit_set "$capbnd" 12; b12=$?
+  cap_bit_set "$capbnd" 21; b21=$?
+  if [ "$b12" != "1" ] || [ "$b21" != "1" ]; then
+    echo "worker CapBnd retains NET_ADMIN/SYS_ADMIN or is malformed (CapBnd=$capbnd)" >&2
+    return 1
+  fi
+  [ "$nnp" = "1" ] || { echo "worker NoNewPrivs not set ($nnp)" >&2; return 1; }
+  [ "$nft_rc" != "0" ] || { echo "worker nft mutation succeeded" >&2; return 1; }
+  [ "$route_rc" != "0" ] || { echo "worker route mutation succeeded" >&2; return 1; }
+  [ "$nft_read_ok" = "1" ] || { echo "post-mutation nft inventory read failed (uncertain)" >&2; return 1; }
+  [ "$route_read_ok" = "1" ] || { echo "post-mutation route inventory read failed (uncertain)" >&2; return 1; }
+  [ "$no_table" = "1" ] || { echo "unauthorized nft table installed" >&2; return 1; }
+  [ "$no_route" = "1" ] || { echo "unauthorized default route installed" >&2; return 1; }
   return 0
 }
 
 self_test_capability() {
   echo "=== self-test-capability: worker privilege-boundary verdict ===" | tee -a "$OUT"
-  local ok=1
+  local ok=1 CAP0="0000000000000000" CAPBND_OK="000001ffffdfefff"
+  local CAPBND_NETADMIN="000001ffffdfffff" CAPBND_SYSADMIN="000001ffffffefff"
+  reject() {
+    local label="$1"; shift
+    if verify_worker_privileges "$@"; then
+      echo "FAIL $label (bad input accepted)" | tee -a "$OUT"; ok=0
+    else
+      echo "PASS $label (rejected)" | tee -a "$OUT"
+    fi
+  }
   # Good inputs (the real observed unprivileged worker) must pass.
-  if verify_worker_privileges "65534" "0000000000000000" "1" "1" "2" "1" "1"; then
-    echo "PASS good worker inputs accepted" | tee -a "$OUT"
+  if verify_worker_privileges 65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 1 1; then
+    echo "PASS good worker inventory accepted" | tee -a "$OUT"
   else
-    echo "FAIL good worker inputs rejected" | tee -a "$OUT"; ok=0
+    echo "FAIL good worker inventory rejected" | tee -a "$OUT"; ok=0
   fi
-  # Each simulated bad input must be rejected.
-  verify_worker_privileges "65534" "0" "1" "0" "2" "1" "1" && { echo "FAIL nft mutation success not detected" | tee -a "$OUT"; ok=0; } || echo "PASS nft mutation success detected" | tee -a "$OUT"
-  verify_worker_privileges "65534" "0" "1" "1" "0" "1" "1" && { echo "FAIL route mutation success not detected" | tee -a "$OUT"; ok=0; } || echo "PASS route mutation success detected" | tee -a "$OUT"
-  verify_worker_privileges "0" "0" "1" "1" "2" "1" "1" && { echo "FAIL wrong uid not detected" | tee -a "$OUT"; ok=0; } || echo "PASS wrong uid detected" | tee -a "$OUT"
-  verify_worker_privileges "65534" "1" "1" "1" "2" "1" "1" && { echo "FAIL nonzero CapEff not detected" | tee -a "$OUT"; ok=0; } || echo "PASS nonzero CapEff detected" | tee -a "$OUT"
-  verify_worker_privileges "65534" "0" "0" "1" "2" "1" "1" && { echo "FAIL unset NoNewPrivs not detected" | tee -a "$OUT"; ok=0; } || echo "PASS unset NoNewPrivs detected" | tee -a "$OUT"
-  verify_worker_privileges "65534" "0" "1" "1" "2" "0" "1" && { echo "FAIL unauthorized table not detected" | tee -a "$OUT"; ok=0; } || echo "PASS unauthorized table detected" | tee -a "$OUT"
-  verify_worker_privileges "65534" "0" "1" "1" "2" "1" "0" && { echo "FAIL unauthorized default route not detected" | tee -a "$OUT"; ok=0; } || echo "PASS unauthorized default route detected" | tee -a "$OUT"
+  # Each simulated bad input must be rejected (fail closed, never defaults to zero).
+  reject "nft mutation success"         65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 0 2 1 1 1 1
+  reject "route mutation success"       65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 0 1 1 1 1
+  reject "wrong uid"                    0     65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "wrong gid"                    65534 0     "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "missing CapEff"               65534 65534 "$CAP0" "$CAP0" ""     "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "malformed CapEff"             65534 65534 "$CAP0" "$CAP0" "0x1"  "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "nonzero CapEff"               65534 65534 "$CAP0" "$CAP0" "0000000000000001" "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "nonzero CapPrm (permitted)"   65534 65534 "$CAP0" "0000000000000001" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "nonzero CapInh (inheritable)" 65534 65534 "0000000000000001" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 1 1
+  reject "retained NET_ADMIN CapBnd"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_NETADMIN" 1 1 2 1 1 1 1
+  reject "retained SYS_ADMIN CapBnd"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_SYSADMIN" 1 1 2 1 1 1 1
+  reject "missing CapBnd"               65534 65534 "$CAP0" "$CAP0" "$CAP0" "" 1 1 2 1 1 1 1
+  reject "unset NoNewPrivs"             65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 0 1 2 1 1 1 1
+  reject "unauthorized nft table"       65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 0 1 1 1
+  reject "unauthorized default route"   65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 0 1 1
+  reject "nft inventory read failed"    65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 0 1
+  reject "route inventory read failed"  65534 65534 "$CAP0" "$CAP0" "$CAP0" "$CAPBND_OK" 1 1 2 1 1 1 0
   if [ "$ok" = "1" ]; then echo "RESULT: self-test-capability passed" | tee -a "$OUT"; exit 0; else echo "RESULT: self-test-capability FAILED" | tee -a "$OUT"; exit 1; fi
 }
 
@@ -513,26 +578,41 @@ else
 fi
 
 # Unprivileged worker capability inventory + mutation refusal. Captured as variables so
-# the verdict can enforce them (not merely log them).
-worker_cap=$(ip netns exec "$WORKER_NS" $UNPRIV sh -c 'grep -E "^(CapEff|NoNewPrivs)" /proc/self/status' 2>&1)
-worker_capeff=$(printf '%s\n' "$worker_cap" | awk '/^CapEff:/{print $2}')
-worker_nnp=$(printf '%s\n' "$worker_cap" | awk '/^NoNewPrivs:/{print $2}')
+# the verdict can enforce them (not merely log them). The inventory read must itself yield
+# every required field; a missing/malformed field fails the verdict (never defaults to zero).
+worker_cap_out=$(ip netns exec "$WORKER_NS" $UNPRIV sh -c 'grep -E "^(CapInh|CapPrm|CapEff|CapBnd|NoNewPrivs)" /proc/self/status' 2>&1)
+worker_capinh=$(printf '%s\n' "$worker_cap_out" | awk '/^CapInh:/{print $2}')
+worker_capprm=$(printf '%s\n' "$worker_cap_out" | awk '/^CapPrm:/{print $2}')
+worker_capeff=$(printf '%s\n' "$worker_cap_out" | awk '/^CapEff:/{print $2}')
+worker_capbnd=$(printf '%s\n' "$worker_cap_out" | awk '/^CapBnd:/{print $2}')
+worker_nnp=$(printf '%s\n' "$worker_cap_out" | awk '/^NoNewPrivs:/{print $2}')
 worker_uid=$(ip netns exec "$WORKER_NS" $UNPRIV id -u 2>&1)
+worker_gid=$(ip netns exec "$WORKER_NS" $UNPRIV id -g 2>&1)
 nft_mut_out=$(ip netns exec "$WORKER_NS" $UNPRIV nft add table inet b30evil 2>&1); nft_mut_rc=$?
 route_mut_out=$(ip netns exec "$WORKER_NS" $UNPRIV ip route add default via "$RELAY_IP" 2>&1); route_mut_rc=$?
-# After the attempts, confirm no unauthorized table/default route was actually installed.
-if ip netns exec "$WORKER_NS" nft list tables 2>/dev/null | grep -q "b30evil"; then no_unauth_table=0; else no_unauth_table=1; fi
-if ip netns exec "$WORKER_NS" ip route show 2>/dev/null | grep -q "^default"; then no_unauth_route=0; else no_unauth_route=1; fi
+# Post-attempt reads of the actual namespace state. The reads must succeed (authoritative
+# root observation); a failed read is uncertainty (fail closed), not "no unauthorized state".
+nft_tables_out=$(ip netns exec "$WORKER_NS" nft list tables 2>&1); nft_tables_rc=$?
+route_show_out=$(ip netns exec "$WORKER_NS" ip route show 2>&1); route_show_rc=$?
+if [ "$nft_tables_rc" = "0" ]; then nft_read_ok=1; else nft_read_ok=0; fi
+if [ "$route_show_rc" = "0" ]; then route_read_ok=1; else route_read_ok=0; fi
+if [ "$nft_read_ok" = "1" ] && printf '%s\n' "$nft_tables_out" | grep -q "b30evil"; then no_unauth_table=0; else no_unauth_table=1; fi
+if [ "$route_read_ok" = "1" ] && printf '%s\n' "$route_show_out" | grep -q "^default"; then no_unauth_route=0; else no_unauth_route=1; fi
 {
   echo "=== unprivileged worker capability inventory ==="
-  ip netns exec "$WORKER_NS" $UNPRIV sh -c 'grep -E "^(CapInh|CapPrm|CapEff|CapBnd|NoNewPrivs)" /proc/self/status' 2>&1
-  echo "worker_uid=$worker_uid"
+  echo "$worker_cap_out"
+  echo "worker_uid=$worker_uid worker_gid=$worker_gid"
   echo "=== unprivileged nft mutation attempt (expect refusal) ==="
   echo "$nft_mut_out"
   echo "nft_mutation_rc=$nft_mut_rc"
   echo "=== unprivileged route mutation attempt (expect refusal) ==="
   echo "$route_mut_out"
   echo "route_mutation_rc=$route_mut_rc"
+  echo "=== post-mutation state reads (must succeed) ==="
+  echo "$nft_tables_out"
+  echo "nft_tables_rc=$nft_tables_rc"
+  echo "$route_show_out"
+  echo "route_show_rc=$route_show_rc"
   echo "no_unauth_table=$no_unauth_table no_unauth_route=$no_unauth_route"
 } >> "$LOG" 2>&1
 
@@ -573,12 +653,12 @@ else
 fi
 check_true   "forbidden probe incremented the nft drop counter" "$forbidden_drop_delta"
 
-# 7b. Worker privilege boundary: the capability inventory and both mutation outcomes must
-#     satisfy fail-closed expectations, or the run fails.
-if verify_worker_privileges "$worker_uid" "$worker_capeff" "$worker_nnp" "$nft_mut_rc" "$route_mut_rc" "$no_unauth_table" "$no_unauth_route"; then
-  echo "PASS worker privilege boundary (uid=$worker_uid CapEff=$worker_capeff NoNewPrivs=$worker_nnp nft_rc=$nft_mut_rc route_rc=$route_mut_rc)" | tee -a "$OUT"
+# 7b. Worker privilege boundary: the capability inventory, both mutation outcomes, and the
+#     post-mutation state reads must satisfy fail-closed expectations, or the run fails.
+if verify_worker_privileges "$worker_uid" "$worker_gid" "$worker_capinh" "$worker_capprm" "$worker_capeff" "$worker_capbnd" "$worker_nnp" "$nft_mut_rc" "$route_mut_rc" "$no_unauth_table" "$no_unauth_route" "$nft_read_ok" "$route_read_ok"; then
+  echo "PASS worker privilege boundary (uid=$worker_uid gid=$worker_gid CapInh=$worker_capinh CapPrm=$worker_capprm CapEff=$worker_capeff CapBnd=$worker_capbnd NoNewPrivs=$worker_nnp nft_rc=$nft_mut_rc route_rc=$route_mut_rc)" | tee -a "$OUT"
 else
-  echo "FAIL worker privilege boundary (uid=$worker_uid CapEff=$worker_capeff NoNewPrivs=$worker_nnp nft_rc=$nft_mut_rc route_rc=$route_mut_rc)" | tee -a "$OUT"; fail=1
+  echo "FAIL worker privilege boundary (uid=$worker_uid gid=$worker_gid CapInh=$worker_capinh CapPrm=$worker_capprm CapEff=$worker_capeff CapBnd=$worker_capbnd NoNewPrivs=$worker_nnp nft_rc=$nft_mut_rc route_rc=$route_mut_rc)" | tee -a "$OUT"; fail=1
 fi
 
 # 8. Explicit teardown + verification. A failed deletion or unreadable inventory is

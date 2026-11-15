@@ -189,12 +189,17 @@ host changes):
   the relay; worker/relay/gateway are each denied a direct Internet/TEST-NET destination.
   Worker-side probes run as the unprivileged `nobody` identity via `setpriv` (real/effective
   UID/GID 65534, `--clear-groups`, `--no-new-privs`, `--bounding-set=-net_admin,-sys_admin`);
-  the fail-closed verdict asserts the capability inventory (`CapEff` all-zero, `NoNewPrivs`
-  1, UID 65534), that an unprivileged `nft add`/`ip route add` mutation is refused
-  ("Operation not permitted", `nft` rc=1, `ip` rc=2), and that no unauthorized nft table or
-  default route was actually installed — any mutation success or wrong identity/capability
-  fails the run, and a controlled `--self-test-capability` mode proves the check rejects
-  simulated bad inputs — while the fixed worker→relay path remains reachable. Active
+  the fail-closed verdict requires a successful, parseable `/proc/self/status` inventory and
+  asserts UID/GID 65534, `CapInh`/`CapPrm`/`CapEff` all-zero (a missing or malformed mask is
+  rejected, never defaulted to zero), `NoNewPrivs` 1, and NET_ADMIN (bit 12) / SYS_ADMIN
+  (bit 21) absent from `CapBnd`; it asserts an unprivileged `nft add`/`ip route add` mutation
+  is refused ("Operation not permitted", `nft` rc=1, `ip` rc=2), and requires the
+  post-mutation `nft list tables` / `ip route show` reads to themselves succeed before
+  treating unauthorized state as absent (a read failure is uncertainty, not absence). Any
+  mutation success, wrong identity/capability, retained capability, or read failure fails
+  the run; a controlled `--self-test-capability` mode proves the check rejects simulated
+  missing/malformed inventory, retained permitted/inheritable/bounding capability, mutation
+  success and read failures — while the fixed worker→relay path remains reachable. Active
   negative egress probes from the worker — direct IPv4/IPv6 (`curl` to `192.0.2.1` /
   `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), a WebSocket-like
   `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port (`:18099`, whose
