@@ -275,9 +275,14 @@ test('B30-05: approval ID is single-use across two competing processes', async t
 });
 
 test('approval digest is stable over canonical bytes', () => {
-  assert.match(approvalDigest(approval()), /^[a-f0-9]{64}$/);
-  assert.equal(approvalDigest(approval()), approvalDigest({ ...approval() }));
-  assert.notEqual(approvalDigest(approval()), approvalDigest(approval({ approvalId: 'approval-0002' })));
+  // Construct one approval once so the digest comparison uses the same timestamped bytes,
+  // then compare against a spread copy and a deliberate field change. The previous form
+  // called approval() twice, so a millisecond clock boundary made the hashes legitimately
+  // differ (flaky, as seen on Ubuntu CI).
+  const a = approval();
+  assert.match(approvalDigest(a), /^[a-f0-9]{64}$/);
+  assert.equal(approvalDigest(a), approvalDigest({ ...a }));
+  assert.notEqual(approvalDigest(a), approvalDigest({ ...a, approvalId: 'approval-0002' }));
 });
 
 test('B30-05: admission verifies the signature before binding or reserving the ID', { skip: !hasSsh }, t => {

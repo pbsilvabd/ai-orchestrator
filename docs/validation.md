@@ -2541,3 +2541,32 @@ partial-body negative and the corrected six-scenario pinned-host result, based o
 commands above. Firewall-filtered isolation, bare-metal/VM deployment, the active
 WebSocket-bypass negative, service signing integration, hardware signing, catalog and
 live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 digest-stability test fix (failing Ubuntu CI) — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Date: 2026-11-14. This entry
+records the exact-head CI failure and its correction.
+
+Failing run (blocking, not green): Actions run `43669588038` at head `6d48763` —
+Ubuntu Node 24.22.1 job `132676436112` concluded `failure`: 346 tests / 341 pass / 1
+fail / 4 skip; Windows passed. The failure was `test/live-approval.test.mjs:277-280`
+(`approval digest is stable over canonical bytes`), which called the `approval()` helper
+twice, each call deriving `issuedAt`/`expiresAt` from a separate `Date.now()`; when the
+clock crossed a millisecond the canonical bytes differed and the hashes legitimately
+differed. Production hash behavior was correct; the test was nondeterministic.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/live-approval.test.mjs` | Focused digest-stability + SSHSIG cases after the fix | 12 passed, 0 failed, 0 skipped | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression (two runs) | run 1: 344 pass / 1 fail (pre-existing `B15-03b` output-wait timeout) / 1 skip; run 2: 345 pass / 0 fail / 1 skip | run 2: 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Correction: `test/live-approval.test.mjs` now builds one `approval()` once, asserts its
+digest matches `^[a-f0-9]{64}$`, equals the digest of a spread copy of those same bytes,
+and differs from a deliberate `approvalId` change. No production hashing or canonical
+behavior changed.
+
+Claim: this entry records the failing Ubuntu CI receipt and the deterministic test fix,
+based on the commands above. The exact-head Windows/Ubuntu CI at the corrected head must
+be observed green separately.

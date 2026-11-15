@@ -2138,3 +2138,23 @@ Template:
   open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, active
   WebSocket-bypass negative, service signing integration, FIDO2 hardware dry run,
   catalog, live).
+
+## 2026-11-14 — B30 digest-stability test fix (failing Ubuntu CI)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: fix the nondeterministic digest-stability test that failed exact-head Ubuntu CI
+  run `43669588038` (Windows passed). No production hashing behavior changed.
+- Steps:
+  1. Reproduced the cause: `test/live-approval.test.mjs` (`approval digest is stable over
+     canonical bytes`) called `approval()` twice, and each call derived `issuedAt`/
+     `expiresAt` from a separate `Date.now()`; a millisecond clock boundary made the
+     canonical bytes differ and the two `approvalDigest` hashes legitimately differ.
+  2. Fixed the test to build one `approval()` once, compare its digest with a spread copy
+     of the same bytes, and assert a deliberate `approvalId` change differs.
+  3. Recorded the failing run as a blocking CI receipt in `docs/validation.md` (not green).
+- Files: `test/live-approval.test.mjs`, `docs/validation.md`, `docs/worklog.md`,
+  `docs/handoff.md`.
+- Validation: focused `test/live-approval.test.mjs` 12/12 pass; full serial suite and demo
+  rerun (see validation entry); `git diff --check` clean.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; verify exact-head
+  Windows/Ubuntu CI at the corrected head. Remaining gates stay `not_run`.
