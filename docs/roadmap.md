@@ -100,7 +100,11 @@ zero-price. Neither is repeated, and a fresh read needs a separate narrow author
 2026-11-15 second correction (draft, not ready): the supervised relay and gateway are composed
 into the trusted service only through the fixture-only `freeListeners` option, with approved-run
 and digest gates, launch refusal, uncertain-stop retention, crash-to-blocked dispatch and
-close-time stop. Loopback only. The independent Ubuntu host, deployed TLS chain, FIDO2 positive
+close-time stop. Loopback only. A same-day correction acquires and reconciles task-home
+ownership before any listener bind and holds it through a confirmed stop; startup authority is
+trusted composition (unsigned operator artifact plus a digest-bound gate, not an SSHSIG), while
+each task submission is signature-verified and missing/forged signatures are refused with zero
+task/workspace/worker effect. The independent Ubuntu host, deployed TLS chain, FIDO2 positive
 signature, WebSocket-bypass experiment and any non-loopback listener decision remain open, so B30
 is not ready and not merged.
 

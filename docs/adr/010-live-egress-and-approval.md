@@ -390,9 +390,10 @@ Not run / not established by this amendment (recorded `not_run`):
 
 Decision (fixture-only wiring). The supervised relay → gateway chain may be composed into
 the trusted service only through the `freeListeners` option of `createConfiguredTaskService`
-(`src/free-listeners.mjs`). It is reachable only with an approved run and a signed-admission
-gate that exposes relay and gateway policy digests equal to the plan's digests (the factory
-now exposes both as read-only properties). Listeners bind `127.0.0.1` only, the gateway runs
+(`src/free-listeners.mjs`). It is reachable only with an operator approval artifact (shape,
+expiry and zero budget only, not a signature) and an admission gate that exposes relay and
+gateway policy digests equal to the plan's digests (the factory now exposes both as read-only
+properties). Listeners bind `127.0.0.1` only, the gateway runs
 in fixture mode with a loopback origin, ports are fixed and non-zero, and task text has no
 channel to ports, addresses, origin, provider or model. The option is mutually exclusive with
 `fixtureEndpoint`. Without it, live composition is unchanged and still refused. Each dispatch
@@ -400,6 +401,22 @@ refuses while a listener is not running: the reserved dispatch is recorded `bloc
 spawn and no replay. `close()` stops the listeners after the scheduler is idle. A launch that
 fails stops what already started. An unconfirmed stop keeps its lock and surfaces
 `uncertain-stop`, and a later start is refused until an operator reconciles the lock.
+
+Decision (startup authority and ownership, 2026-11-15 correction). Listener infrastructure
+startup is a separate authority from task admission. Before either child may bind, the service
+takes exclusive task-home ownership and reconciles the store (`openTaskHome`); a competing
+task-home owner or a corrupt store refuses with zero new child, port or lock, and ownership is
+held until the listeners have stopped. Task-home ownership is released only after a confirmed
+listener stop; an unconfirmable stop, at close or during failed-startup cleanup, keeps the
+task-home owner lock and every listener lock.
+Startup is gated by an unsigned operator approval artifact (shape, expiry and zero paid budget)
+plus a gate exposing the relay and gateway policy digests. Those digests identify the policy,
+not a signature: startup is **not** SSHSIG-verified and is not described as a signed-approved
+start. The same gate verifies the SSHSIG for each submitted task; a missing, malformed,
+non-FIDO2 or forged task signature is refused before persistence with zero task/workspace/worker
+effect. `service.freeListenerAuthority` records the actual authority, and a gate without an
+exposed host-executable identity is labelled a test double or generic gate. The positive
+FIDO2 signature path remains `not_run`.
 
 Not decided here. A deployed relay must listen on a worker-facing private address in a
 separate compartment, and the current composition does not provide that. Choosing that

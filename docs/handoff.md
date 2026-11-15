@@ -1,5 +1,22 @@
 # Continuation point — 2026-11-15
 
+2026-11-15 third correction (ownership and startup authority; same draft PR #45). Corrected the
+two P1 findings from the independent re-review at `c8645d6`. (1) `openTaskHome` now acquires
+exclusive task-home ownership and reconciles the store **before** either supervised listener
+child may bind. Ownership is held through listener startup and stop, released only after a
+confirmed stop; a competing owner or corrupt store refuses with zero new child, port or lock,
+and an unconfirmable stop at close or during failed-startup cleanup keeps the task-home and
+listener locks. (2) Listener startup
+authority is now explicitly separated from task admission: the operator approval artifact is
+unsigned JSON (shape/expiry/zero budget) and the gate contributes policy digests, not an
+SSHSIG. `service.freeListenerAuthority` reports that actual authority; startup is not described
+as signature-verified. The same real gate refuses missing, malformed, non-FIDO2 and forged task
+signatures before persistence with zero task/workspace/worker effect (already-started listeners
+stay running). Focused tests cover competing owner, corrupt store, ownership-held composition,
+close-time and failed-startup uncertain stop and the real-gate refusal matrix. The positive FIDO2 signature path and
+every deployment gate remain `not_run`; PR #45 stays draft and unmerged. No FIDO2 hardware,
+network, VM, switch/reboot, provider inference or catalog action was performed.
+
 2026-11-15 B30-04/07 offline correction on `task/B30-free-relay` (draft PR #45, base
 `11fcb42`). Added `src/listener-supervisor.mjs` and `src/listener-child.mjs`: a relay or
 gateway runs in a supervised child with a durable lock created before spawn. Only a confirmed
@@ -25,13 +42,15 @@ correction authorizes live inference. Recorded per ADR-010's 2026-11-15 amendmen
 
 2026-11-15 second correction (fixture-only wiring; same draft PR #45). `src/free-listeners.mjs`
 composes the supervised gateway and then relay through `createConfiguredTaskService(…,
-{ freeListeners })`. It needs an approved run and a signed-admission gate whose exposed relay
-and gateway digests equal the plan's digests; it refuses before any effect otherwise. Both
+{ freeListeners })`. It needs an operator approval artifact and an admission gate whose exposed
+relay and gateway digests equal the plan's digests; it refuses before any effect otherwise.
+Startup is not SSHSIG-verified (corrected above: trusted composition only). Both
 listeners bind `127.0.0.1` on fixed ports, the worker base URL comes from the relay port, a
 launch failure stops what started, an uncertain stop keeps its lock, a dead listener blocks
 the reserved dispatch (no spawn, no replay), and `close()` stops the listeners after the
-scheduler is idle. Task text has no channel to ports, addresses, provider or model. Nine
-focused tests cover these paths (`test/free-listeners.test.mjs`); the serial suite is recorded
+scheduler is idle, releasing task-home ownership only after a confirmed stop. Task text has
+no channel to ports, addresses, provider or model. Nine focused tests cover these paths
+(`test/free-listeners.test.mjs`); the serial suite is recorded
 in the validation entry. The admission in those tests is a labelled double that carries digests
 only. The signed SSHSIG path remains `not_run`. The second bounded catalog GET was performed at
 `2026-11-15T19:14:36Z` and validated `deepseek-v4.1-flash-free` as zero-price. It is dated and

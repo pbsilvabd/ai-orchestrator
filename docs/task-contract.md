@@ -619,18 +619,30 @@ above). Live composition remains closed.
   orphaned child stops on disconnect. It is wired only into the fixture-only
   `createConfiguredTaskService` path through the `freeListeners` option (below).
 - **Fixture-only composition of the supervised chain** (`src/free-listeners.mjs`, 2026-11-15
-  second correction). `createConfiguredTaskService(…, { freeListeners })` starts a gateway
+  second correction; ownership/authority correction same day).
+  `createConfiguredTaskService(…, { freeListeners })` first acquires and reconciles exclusive
+  task-home ownership (`openTaskHome`), then starts a gateway
   (fixture mode, loopback origin) and then a relay (loopback, one fixed upstream, model
   `opencode/deepseek-v4.1-flash-free`, path `/v1/chat/completions`) under the supervisor,
-  with fixed non-zero ports and the worker base URL derived from the relay port. It refuses,
-  before any effect, unless an approved run is supplied and the signed-admission gate exposes
-  relay and gateway policy digests equal to the plan's digests. A launch failure stops what
-  already started; an uncertain stop keeps its lock and surfaces `uncertain-stop`. Each
-  dispatch checks listener health before the worker prepares; a dead listener blocks the
-  already-reserved dispatch with no spawn or replay. `close()` stops listeners after the
-  scheduler is idle. The option cannot be combined with `fixtureEndpoint`; without it, live
-  composition stays closed as before. Task text cannot choose ports, addresses, provider or
-  model (unknown keys are refused by `submit_task`).
+  with fixed non-zero ports and the worker base URL derived from the relay port. A competing
+  task-home owner or a corrupt store therefore refuses with zero new listener child, port or
+  lock; ownership is held until the listeners have stopped. Startup authority is trusted
+  composition, not a task signature: the operator approval artifact is unsigned JSON (shape,
+  expiry and zero-paid budget only) and the admission gate contributes relay/gateway policy
+  digests, not an SSHSIG. The service reports that authority
+  (`service.freeListenerAuthority`) and never labels startup as signature-verified. The same
+  gate verifies each submitted task's signed approval; a missing, malformed, non-FIDO2 or
+  forged signature is refused before persistence with zero task/workspace/worker effect while
+  already-started listeners keep running. A launch failure stops what already started; an
+  unconfirmable stop during that cleanup keeps the task-home owner and the unconfirmed
+  listener lock and surfaces `uncertain-stop`. Each dispatch checks listener
+  health before the worker prepares; a dead listener blocks the already-reserved dispatch with
+  no spawn or replay. `close()` stops listeners after the scheduler is idle and releases
+  task-home ownership only after a confirmed stop; an unconfirmable stop at close or during
+  failed-startup cleanup keeps both. The option
+  cannot be combined with `fixtureEndpoint`; without it, live composition stays closed as
+  before. Task text cannot choose ports, addresses, provider or model (unknown keys are
+  refused by `submit_task`).
 - **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
   strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
   SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and

@@ -135,7 +135,7 @@ test('B30-05: admission that does not bind the supervised relay and gateway dige
   };
   for (const admission of [undefined, wrong()]) {
     await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig(f), approvalFile, admission },
-      { metadata: metadataSource, freeListeners: listeners }), /does not bind the supervised relay and gateway policy/);
+      { metadata: metadataSource, freeListeners: listeners }), /admission gate bound to the relay and gateway policy digests/);
   }
   await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig(f), approvalFile,
     admission: admissionDouble(plan) },
@@ -217,7 +217,7 @@ test('B30-04: restart after a confirmed close composes again with new ownership'
   assert.deepEqual(await locks(f.home), []);
 });
 
-test('B30-04: an uncertain stop during launch cleanup keeps both locks, refuses restart, and reconciles only with exact evidence', async t => {
+test('B30-04: an uncertain stop during launch cleanup keeps the owner and both listener locks, refuses restart, and reconciles only with exact evidence', async t => {
   const f = fixture(t);
   const children = [];
   const { listeners } = await listenerPorts(t, { supervisor: {
@@ -238,10 +238,12 @@ test('B30-04: an uncertain stop during launch cleanup keeps both locks, refuses 
   { metadata: async () => metadata(), freeListeners: listeners }), /did not exit/);
   const retained = await locks(f.home);
   assert.equal(retained.length, 2, 'both unconfirmed listeners keep ownership');
-  // A default-supervisor restart is refused while those locks exist.
+  // The retained task-home owner refuses a restart before any listener start; the listener
+  // locks above independently keep their ports and locks until operator reconciliation.
   await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig(f), approvalFile,
     admission: admissionDouble(plan) },
-  { metadata: async () => metadata(), freeListeners: { ...listeners, supervisor: {} } }), /lock is held/);
+  { metadata: async () => metadata(), freeListeners: { ...listeners, supervisor: {} } }), /another service owns/);
+  assert.equal(children.length, 2, 'the refused restart spawned no child');
   // Only after the processes are verified stopped may a maintainer release each lock.
   await killAndWait(children[0]);
   await killAndWait(children[1]);

@@ -1,6 +1,6 @@
 import { isAbsolute, join } from 'node:path';
 import { readFileSync } from 'node:fs';
-import { createTaskService } from './service.mjs';
+import { createTaskService, openTaskHome } from './service.mjs';
 import { createOpenCodeWorker } from './opencode.mjs';
 import { FREE_MODEL, FREE_PACKAGE, validateFreeApproval } from './free-provider.mjs';
 import { canonicalExecutablePath } from './live-approval.mjs';
@@ -11,7 +11,10 @@ import { freeListenerPlan, startFreeListeners } from './free-listeners.mjs';
 // composition is closed: the pinned host follows model-request redirects and the guard
 // cannot see or block them (B29-05), so only an explicit loopback fixture composes.
 // `freeListeners` (B30-04) replaces the fixture endpoint with a supervised loopback
-// relay → gateway chain, and only after an approved run and a matching signed-admission gate.
+// relay → gateway chain. Its startup authority is trusted composition only: an operator
+// approval artifact (shape, expiry and zero budget checked; not a signature) plus a gate
+// whose exposed digests match the plan. It is NOT an SSHSIG-verified startup. The signed
+// gate verifies each submitted task (B30-05 partial).
 export async function createConfiguredTaskService({ home, config, approvalFile,
   hostEnvironment = {}, admission } = {}, { metadata, fixtureEndpoint, freeListeners } = {}) {
   if (config?.worker === undefined) return createTaskService({ home, config, admission });
@@ -53,25 +56,33 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
     catch { invalid(); }
     validateFreeApproval(approval);
   }
-  // Listener start requires an approved run and a signed-admission gate that binds the same
-  // relay and gateway digests as the supervised configuration. All checks precede any effect.
+  // All refusals below are pure: no lock, listener, metadata lookup or store write happens yet.
   if (plan !== undefined) {
     if (approval === undefined) throw new Error('supervised free listeners require an approved run before any start');
     if (typeof admission !== 'function' || admission.relayPolicyDigest !== plan.relayPolicyDigest ||
         admission.gatewayPolicyDigest !== plan.gatewayPolicyDigest) {
-      throw new Error('signed approval does not bind the supervised relay and gateway policy');
+      throw new Error('supervised free listeners require an admission gate bound to the relay and gateway policy digests');
     }
   }
-  // Missing approval creates a locked preparation service with no metadata lookup.
-  // Metadata is trusted input from the caller, required only when approval is supplied.
-  let snapshot;
-  if (approval !== undefined) {
-    if (typeof metadata !== 'function') invalid();
-    snapshot = await metadata();
-  }
-  const listeners = plan === undefined ? undefined
-    : await startFreeListeners({ home, listeners: freeListeners, plan });
+  // Supervised listeners require task-home ownership first (no double acquisition): the owner
+  // lock is taken and the store reconciled before any child may bind, and it is held until the
+  // listeners have stopped. A competing owner or a corrupt store therefore has zero listener
+  // effects. The passive path keeps its original acquisition inside createTaskService.
+  const owner = plan === undefined ? undefined : openTaskHome({ home });
+  let listeners;
+  const releaseOwner = async () => {
+    if (listeners !== undefined) await listeners.stop();
+    owner.releaseOwner();
+  };
   try {
+    // Missing approval creates a locked preparation service with no metadata lookup.
+    // Metadata is trusted input from the caller, required only when approval is supplied.
+    let snapshot;
+    if (approval !== undefined) {
+      if (typeof metadata !== 'function') invalid();
+      snapshot = await metadata();
+    }
+    if (plan !== undefined) listeners = await startFreeListeners({ home, listeners: freeListeners, plan });
     const provider = { kind: 'opencode-free-fixture', package: FREE_PACKAGE,
       baseURL: listeners?.workerBaseURL ?? fixtureEndpoint };
     const worker = createOpenCodeWorker({ executable: settings.executable,
@@ -88,10 +99,12 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       if (!listeners.healthy()) throw Object.assign(new Error('supervised listener is not running'), { code: 'unavailable' });
       return worker.prepare(invocation);
     } };
-    const service = createTaskService({ home, config, worker: guarded, admission });
+    const service = createTaskService({ home, config, worker: guarded, admission,
+      ownership: { store: owner.store, releaseOwner } });
     const closeService = service.close;
     let closing;
     // Listeners stop only after the scheduler is idle, so a running worker keeps its relay.
+    // Ownership is released by the scheduler close only after `releaseOwner` has stopped them.
     service.close = () => (closing ??= closeService().then(async result => {
       await listeners.stop();
       return result;
@@ -100,9 +113,24 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       throw error;
     }));
     service.freeListenerStates = listeners.states;
+    // Report the actual startup authority instead of implying the listeners were started by a
+    // verified task signature. A gate that exposes no canonical host executable is a test
+    // double or a generic gate and is labelled as such; that never becomes task authority.
+    service.freeListenerAuthority = admission.hostExecutable === undefined
+      ? `${plan.startupAuthority}; admission gate identity not exposed (test double or generic gate)`
+      : plan.startupAuthority;
     return service;
   } catch (error) {
-    if (listeners !== undefined) await listeners.stop();
+    if (listeners !== undefined) {
+      // Stop before releasing: a stop that cannot be confirmed throws and keeps ownership.
+      await listeners.stop();
+      owner.releaseOwner();
+    } else if (owner !== undefined && error?.code !== 'uncertain-stop') {
+      // A failed start cleans up inside `startFreeListeners`. If that cleanup could not be
+      // confirmed, keep the task-home owner for the same operator reconciliation as a
+      // close-time uncertain stop; otherwise no listener is left behind.
+      owner.releaseOwner();
+    }
     throw error;
   }
 }

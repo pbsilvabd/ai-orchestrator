@@ -89,7 +89,23 @@ export const DEFAULT_CONFIG = {
 };
 
 export function createTaskService(options = {}) {
-  const store = options.store ?? openTaskStore({ home: options.home });
+  const ownership = options.ownership;
+  if (ownership !== undefined) {
+    // A caller that acquired ownership must hand over the store it opened for the same home.
+    // Accepting a store for a different home would let this service run against a directory
+    // whose lock/reconciliation the caller never performed.
+    if (!isPlainObject(ownership) || !ownership.store ||
+        typeof ownership.releaseOwner !== 'function' || options.store !== undefined ||
+        typeof options.home !== 'string') {
+      fail('invalid_argument', 'ownership must be a pre-acquired store and release function for the requested home');
+    }
+    let ownedHome;
+    try { ownedHome = typeof ownership.store.home === 'string' ? resolve(ownership.store.home) : undefined; }
+    catch { ownedHome = undefined; }
+    if (ownedHome !== resolve(options.home))
+      fail('invalid_argument', 'ownership store does not belong to the requested task home');
+  }
+  const store = ownership?.store ?? options.store ?? openTaskStore({ home: options.home });
   const configured = isPlainObject(options.config) ? options.config : {};
   const admission = options.admission;
   if (admission !== undefined && typeof admission !== 'function')
@@ -101,15 +117,22 @@ export function createTaskService(options = {}) {
   };
   const startupNow = typeof options.now === 'function' ? options.now() :
     (Number.isInteger(options.now) ? options.now : Date.now());
-  const releaseOwner = acquireServiceOwnership(store.home);
-  // Reconcile exactly once as the service starts. Never accept requests against an
-  // ambiguous index or an unresolved in-flight task.
-  try {
-    const reconciliation = store.reconcile({ now: startupNow, ownershipToken: releaseOwner.token });
-    if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
-  } catch (error) {
-    releaseOwner();
-    throw toServiceError(error);
+  let releaseOwner;
+  if (options.ownership === undefined) {
+    releaseOwner = acquireServiceOwnership(store.home);
+    // Reconcile exactly once as the service starts. Never accept requests against an
+    // ambiguous index or an unresolved in-flight task.
+    try {
+      const reconciliation = store.reconcile({ now: startupNow, ownershipToken: releaseOwner.token });
+      if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
+    } catch (error) {
+      releaseOwner();
+      throw toServiceError(error);
+    }
+  } else {
+    // Ownership was acquired and reconciled by `openTaskHome` before any caller effect; this
+    // service must not acquire or reconcile a second time (no double acquisition).
+    releaseOwner = options.ownership.releaseOwner;
   }
   const now = () => {
     if (typeof options.now === 'function') return options.now();
@@ -136,7 +159,13 @@ export function createTaskService(options = {}) {
   try {
     if (options.worker !== undefined) scheduler = createTaskScheduler({ store,
       clientId: config.clientId, worker: options.worker, now, revalidate });
-  } catch (error) { releaseOwner(); throw toServiceError(error); }
+  } catch (error) {
+    // Ownership supplied by the caller is released by that caller, which may first have to
+    // stop external effects (for example supervised listeners). Releasing here as well would
+    // race a second, concurrent stop/release. A locally acquired lock is released here.
+    if (options.ownership === undefined) releaseOwner();
+    throw toServiceError(error);
+  }
 
   // Ownership: the task owner is the client that submitted it; the caller is the
   // service-configured client. Other clients receive not_owner.
@@ -423,13 +452,33 @@ export function createTaskService(options = {}) {
     schedulerStatus: () => scheduler?.snapshot() ?? null,
     close: () => {
       closed = true;
-      if (!scheduler) { releaseOwner(); return; }
-      closing ??= scheduler.close().then(result => {
-        if (result.releaseOwnership) releaseOwner();
+      if (!scheduler) return Promise.resolve(releaseOwner());
+      // Ownership is released only after the caller-supplied release has run (for example
+      // after supervised listeners stop), so a failed release keeps the task-home owner.
+      closing ??= scheduler.close().then(async result => {
+        if (result.releaseOwnership) await releaseOwner();
         return result;
       });
       return closing;
     } };
+}
+
+// Acquire task-home ownership and reconcile the store before any caller starts effects that
+// depend on it (for example supervised listener children). On any refusal the owner lock is
+// released and no task-store write has been accepted.
+export function openTaskHome({ home, now = Date.now } = {}) {
+  if (typeof home !== 'string' || !isAbsolute(home)) fail('invalid_argument', 'task home must be an absolute path');
+  const releaseOwner = acquireServiceOwnership(home);
+  try {
+    const store = openTaskStore({ home });
+    const reconciliation = store.reconcile({ now: typeof now === 'function' ? now() : now,
+      ownershipToken: releaseOwner.token });
+    if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
+    return { store, releaseOwner };
+  } catch (error) {
+    releaseOwner();
+    throw toServiceError(error);
+  }
 }
 
 function acquireServiceOwnership(home) {

@@ -3090,3 +3090,25 @@ Result: the final code passes the 104-test focused set, the 397-test serial suit
 Evidence level: Local HTTP, unchanged from the preceding entry. Not rerun: default-concurrency suite, WSL fixture, pinned OpenCode host harnesses, deployed TLS, FIDO2, WebSocket-bypass, VM and live gates (`not_run`).
 
 Claim: This entry supports that the final composition code passes the focused, serial and demo checks, based on the commands above. It does not support the rejected-close branch under test, deployed relay placement, a real TLS chain, FIDO2 signing, WebSocket-bypass exclusion, live activation, ready-for-review or merge.
+
+## M3 preparation: B30 listener ownership and startup authority correction – 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm) with Git for Windows `usr/bin` (openssl 3.5.7 and `ssh-keygen`) on PATH.
+Date: 2026-11-15.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/service.mjs`, `src/configured-service.mjs`, `src/free-listeners.mjs`, `test/free-listeners-authority.test.mjs`, `integration/listener-fixture-child.mjs` | Syntax of every changed source, test and fixture | clean | 0 |
+| `node --test test/free-listeners-authority.test.mjs` | Ownership-before-bind, corrupt store, ownership-held composition, real-gate refusal matrix, close-time uncertainty and failed-startup cleanup uncertainty | 8 pass / 0 fail / 0 skip | 0 |
+| `node --test test/free-listeners-authority.test.mjs test/free-listeners.test.mjs test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Composition, approval, B29 and B30 focused set | 112 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial suite on the final code | 405 tests: 404 pass, 0 fail, 1 skip (the pre-existing platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Whitespace in the complete change | no output | 0 |
+
+Result: the ownership/authority test file passes eight of eight, including a competing task-home owner and a corrupt store that each start zero listener children and create zero listener ports or locks, ownership held while listeners run, a real signed-approval gate that refuses a missing signature and (with a disposable non-hardware key) malformed, non-FIDO2 and forged signatures with zero task, workspace or worker effect, a close-time unconfirmable stop that rejects, keeps the task-home and both listener locks, and refuses a second composition, and a failed startup whose cleanup `stop` cannot be confirmed, which also keeps the task-home owner and the started listener's lock. The focused composition/approval/B29/B30 set passes 112 of 112 and the full serial suite passes 404 of 405 with one pre-existing skip. The demo prints 429 then 200 and `git diff --check` is clean.
+
+Evidence level: Local HTTP – real child processes with IPC, real loopback ports and durable lock files, plus the real `ssh-keygen -Y verify` gate with a disposable non-hardware test key. It covers refusals and no-effect assertions only; it does not demonstrate a positive FIDO2/hardware signature, deployed relay/gateway placement, a real TLS chain, OS isolation or live inference.
+
+Not rerun: `node --test` at default concurrency (the known parallel-load timing failures were recorded at `4cdc088` and at base `eb4968d`; the serial run above is the claimed result); `integration/b30-egress-namespaces.sh` (privileged WSL, unchanged); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates against a real origin (`not_run`); the FIDO2 positive signature dry run (`not_run`); the active provider WebSocket-bypass experiment (`not_run`); bare-metal or two-VM deployment (`not_run`); live inference, paid calls and any catalog read (not authorized; the dated snapshots were not repeated).
+
+Claim: This entry supports that supervised listener startup now requires exclusive task-home ownership and reconciliation first, holds that ownership through a confirmed stop (including a failed startup whose cleanup cannot be confirmed), and reports a separate trusted-composition startup authority rather than an SSHSIG, based on `node --test test/free-listeners-authority.test.mjs` and the focused set. It also supports that the real gate refuses missing and forged task signatures with zero task/workspace/worker effect. It does not support a positive hardware/FIDO2 signature, deployed containment, the deployed TLS chain, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.

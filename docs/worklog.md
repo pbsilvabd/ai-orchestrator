@@ -2517,3 +2517,51 @@ Template:
 - Files: `src/configured-service.mjs`, `docs/validation.md`, `docs/worklog.md`.
 - Validation: see the final-rerun validation entry; the rejected-close branch is inspected but not tested.
 - Follow-up: unchanged from the previous entry (keep the draft, no merge, no ready). A test seam for the rejected-close branch is optional and can wait for the next composition change.
+
+## 2026-11-15 – M3: B30 listener ownership and startup authority correction
+
+- Branch: `task/B30-free-relay`
+- Scope: code, tests and docs; fixture-only loopback composition, correcting two P1
+  review findings; no live composition, provider, deployment or hardware path changed.
+- Steps:
+  1. Acquired and reconciled exclusive task-home ownership in `openTaskHome` before any
+     supervised listener child may bind, and handed that store and release function to
+     `createTaskService` so it does not acquire or reconcile twice; a competing owner,
+     corrupt store or mismatched home refuses before a child, port or lock.
+  2. Kept ownership through startup and shutdown: listener stop precedes owner release,
+     an unconfirmable stop at close or during failed-startup cleanup keeps the task-home
+     owner lock and every unconfirmed listener lock, and the construction-failure path
+     leaves release to the owner instead of racing a second stop.
+  3. Separated startup authority from task admission: `freeListenerPlan` records
+     `FREE_LISTENER_START_AUTHORITY` (unsigned operator artifact plus a digest-bound gate,
+     not an SSHSIG), `createConfiguredTaskService` exposes it as
+     `service.freeListenerAuthority`, and a gate without an exposed host identity is
+     labelled a test double.
+  4. Added `test/free-listeners-authority.test.mjs`: competing owner and corrupt store
+     spawn no child, port or lock; ownership is held while listeners run; the real
+     signed-gate factory with a disposable non-hardware key refuses missing, malformed,
+     non-FIDO2 and forged task signatures with zero task/workspace/worker effect; a
+     close-time or failed-startup uncertain stop keeps owner and listener locks and refuses
+     restart.
+  5. Extended the test-only `integration/listener-fixture-child.mjs` with an
+     `ignore-stop-valid` mode that reports the real policy digest and binds the configured
+     fixed port, so close-time and failed-startup uncertainty are exercised without
+     production changes.
+  6. Updated the normative contract, ADR-010 amendment, handoff, backlog row and both
+     evidence files.
+- Files: `src/service.mjs`, `src/configured-service.mjs`, `src/free-listeners.mjs`,
+  `integration/listener-fixture-child.mjs`, `test/free-listeners-authority.test.mjs`,
+  `test/free-listeners.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/backlog.md`,
+  `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused composition/approval/B29/B30 set → 112 pass, 0 fail, exit 0;
+  `node --test --test-concurrency=1` → 405 tests, 404 pass, 0 fail, 1 skip, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200, exit 0; `git diff --check` → no
+  output, exit 0. Two self-review passes covered ownership ordering, close/startup
+  failure paths, old `createTaskService` callers, contract/ADR wording and the refusal
+  evidence; the second pass found and fixed the failed-startup cleanup ownership gap.
+  The default-concurrency suite, WSL fixture, pinned OpenCode harnesses, deployed TLS,
+  FIDO2 positive signature, WebSocket bypass, VM and live inference were not rerun.
+- Follow-up: keep PR #45 draft and reply to the two P1 findings with the new head;
+  independent re-review of this ownership/authority correction is required before any
+  ready or merge decision. All B30 deployment gates remain `not_run`.

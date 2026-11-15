@@ -5,12 +5,16 @@ import { FREE_MODEL } from './free-provider.mjs';
 
 // Trusted composition of the supervised fixture relay → gateway chain (B30-04). It is only
 // reachable from `createConfiguredTaskService` with an approved run and a signed-admission
-// gate whose relay/gateway digests match the configuration below. Ports are fixed and
-// non-zero so both policy digests are known before any child starts. Every listener binds
-// 127.0.0.1 and the gateway is fixture-mode, so this path cannot reach a live origin. Task
-// text never supplies a host, port, origin or path.
+// gate whose relay/gateway digests match the configuration below. Startup itself is NOT
+// SSHSIG-verified: the operator approval artifact is unsigned JSON (shape/expiry/zero budget
+// only) and the gate digests are not a signature. The signed gate verifies each submitted
+// task instead. Ports are fixed and non-zero so both policy digests are known before any
+// child starts. Every listener binds 127.0.0.1 and the gateway is fixture-mode, so this path
+// cannot reach a live origin. Task text never supplies a host, port, origin or path.
 
 export const FREE_RELAY_PATH = '/v1/chat/completions';
+export const FREE_LISTENER_START_AUTHORITY =
+  'trusted-composition infrastructure startup: unsigned operator approval artifact (shape, expiry and zero paid budget) plus a digest-bound admission gate; not SSHSIG-verified at startup; each submitted task is signature-verified by the gate (B30-05 partial)';
 const LOOPBACK = '127.0.0.1';
 const RELAY_NAME = 'b30-free-relay';
 const GATEWAY_NAME = 'b30-free-gateway';
@@ -45,6 +49,7 @@ export function freeListenerPlan(listeners) {
     gatewayConfig,
     relayPolicyDigest: relayPolicyDigest(relayConfig),
     gatewayPolicyDigest: gatewayPolicyDigest(gatewayConfig),
+    startupAuthority: FREE_LISTENER_START_AUTHORITY,
     workerBaseURL: `http://${LOOPBACK}:${relayPort}/v1`,
   };
 }
