@@ -192,6 +192,76 @@ test('B30-07: gateway logs are sanitized (no body or authorization material)', a
   assert.equal(events[0].detail, 'connect');
 });
 
+test('B30-04: gateway refuses to launch on a port conflict', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const first = createEgressGateway(gatewayConfig(origin.origin));
+  await first.start();
+  t.after(() => first.stop());
+  const boundPort = first.status().address.port;
+
+  const second = createEgressGateway({ ...gatewayConfig(origin.origin), listen: { host: '127.0.0.1', port: boundPort } });
+  await assert.rejects(() => second.start(), /port already in use|unavailable/);
+});
+
+test('B30-04: gateway stop is terminal and a stopped gateway cannot be restarted', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const gateway = createEgressGateway(gatewayConfig(origin.origin));
+  await gateway.start();
+  await gateway.stop();
+  assert.equal(gateway.status().stopped, true);
+  await assert.rejects(() => gateway.start(), /lifecycle/);
+});
+
+test('B30-04: gateway stop releases the port (no dangling unowned listener)', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const gateway = createEgressGateway(gatewayConfig(origin.origin));
+  await gateway.start();
+  const port = gateway.status().address.port;
+  await gateway.stop();
+  const second = createEgressGateway({ ...gatewayConfig(origin.origin), listen: { host: '127.0.0.1', port } });
+  await second.start();
+  t.after(() => second.stop());
+  assert.equal(second.status().address.port, port);
+});
+
+test('B30-04: gateway upstream timeout latches with a terminal error and no second request', async t => {
+  const origin = await startServer((req, res) => { /* hold the request; the timeout must fire */ });
+  t.after(() => origin.stop());
+  const config = gatewayConfig(origin.origin);
+  config.limits.timeoutMs = 500;
+  const gateway = createEgressGateway(config);
+  await gateway.start();
+  const base = `http://127.0.0.1:${gateway.status().address.port}${PATH}`;
+  t.after(() => gateway.stop());
+
+  const response = await post(base);
+  assert.equal(response.status, 502);
+  assert.equal(gateway.status().latched, true);
+  assert.equal(gateway.status().latchReason, 'upstream-unavailable');
+  assert.equal(origin.requests.length, 1, 'timeout must not produce a second upstream request');
+});
+
+test('B30-04: gateway upstream partial-body drop latches and never replays', async t => {
+  const origin = await startServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json', 'content-length': '100' });
+    res.write('{"partial":');
+    setTimeout(() => res.destroy(), 20);
+  });
+  t.after(() => origin.stop());
+  const { gateway, base } = await startGateway(origin.origin);
+  t.after(() => gateway.stop());
+
+  const response = await post(base);
+  assert.equal(response.status, 200); // headers already sent before the drop
+  await response.text().catch(() => {});
+  const status = gateway.status();
+  assert.equal(status.latched, true, 'partial-body drop must latch the gateway');
+  assert.equal(origin.requests.length, 1, 'partial-body drop must not replay the request');
+});
+
 test('gateway rejects unspecified/wildcard bind addresses including compressed all-zero IPv6', () => {
   const unspecified = [
     '0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0',

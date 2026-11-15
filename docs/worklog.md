@@ -2435,3 +2435,25 @@ Template:
   open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
   signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
   experiment, live inference).
+
+## 2026-11-15 — B30 relay/gateway lifecycle symmetry (B30-04)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: close the B30-04 lifecycle gap — the egress gateway lacked the failure/lifecycle
+  fixtures the relay already had; add temporary child/process/port fixtures (no green-path
+  only).
+- Steps:
+  1. Added to `test/egress-gateway.test.mjs`: port-conflict refusal, terminal `stop()` with
+     restart refusal, `stop()` releasing the port (a second gateway binds it), an upstream
+     timeout latched to `upstream-unavailable` with exactly one origin request (no replay),
+     and an upstream partial-body drop that latches `response-stream` without replay.
+  2. Confirmed relay + gateway fixtures pass together (36/36) and re-recorded levels/limits.
+- Files: `test/egress-gateway.test.mjs`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused 36/36 + full suite/demo rerun (see validation entry). No external
+  network or provider call, no catalog GET, no install, no WSL/host network/firewall change,
+  no hardware signing, no B20/live activation.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (relay/gateway service-level uncertain-child-stop,
+  upstream DNS/TLS-failure latches, live-mode TLS hostname validation and the full
+  cross-namespace TLS chain, bare-metal/VM deployment, active WebSocket-bypass experiment,
+  live inference).

@@ -2969,3 +2969,43 @@ Claim: this entry supports tying the measured host executable to the configured 
 The hardware positive path, deployed relay/gateway policy-drift, bare-metal/VM deployment,
 WebSocket-bypass experiment and live inference remain `not_run` and the live route stays
 closed.
+
+## M3 preparation: B30 relay/gateway lifecycle symmetry (B30-04) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Date: 2026-11-15. Closes the B30-04
+lifecycle gap: the egress gateway previously lacked the failure/lifecycle fixtures the relay
+already had (port conflict, terminal stop/restart, port release, upstream timeout, partial
+body drop).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs` | Relay + gateway lifecycle and refusal fixtures | 36 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 372 passed, 1 failed (pre-existing flaky `mcp-server` B15-03b 3s submit timeout under load; passes in isolation 30/30), 1 skipped | 1 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `test/egress-gateway.test.mjs` now covers, with temporary loopback HTTP origins only:
+port-conflict refusal, terminal `stop()` with restart refusal, `stop()` releasing the port
+(no dangling unowned listener, proven by a second gateway binding it), an upstream timeout
+latched to `upstream-unavailable` with exactly one origin request (no replay), and an
+upstream partial-body drop that latches `response-stream` without replay. These mirror the
+relay's existing B30-04 fixtures, so the gateway is no longer tested only on the green path.
+The full serial suite has one pre-existing flaky failure (`test/mcp-server.test.mjs`
+`B15-03b`, a 3-second `submit_task` response timeout that intermittently exceeds the bound
+under full-suite serial load); it passes 30/30 in isolation and is unrelated to these
+gateway-lifecycle changes.
+
+Evidence level: local loopback HTTP fixture (temporary child/process/port fixtures), not a
+deployed relay/gateway and not a live provider.
+
+Not rerun / not_run: relay/gateway service-level uncertain-child-stop integration (the relay
+and gateway are standalone listeners, not service children, so no uncertain child-stop path
+exists in this architecture); upstream DNS failure and TLS-failure latches (DNS requires an
+external resolver query; the gateway's live-mode TLS hostname validation requires an HTTPS
+real hostname, which is not testable offline without DNS/hosts changes or broadening the
+network surface); the full cross-namespace TLS chain (needs a pinned Linux OpenCode binary
+and a deployed gateway).
+
+Claim: this entry supports the relay/gateway lifecycle symmetry. Uncertain child stop, DNS/
+TLS-failure latches, the cross-namespace TLS chain, bare-metal/VM deployment and live
+inference remain `not_run` and the live route stays closed.
