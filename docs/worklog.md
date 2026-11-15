@@ -2072,3 +2072,35 @@ Template:
 - Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
   open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
   FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 pinned OpenCode 2.2.5 through the relay (normal + redirect)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: run the pinned OpenCode 2.2.5 host through the service-owned relay and L7
+  gateway against loopback fixtures; close the B29 307 prompt-leak baseline. Fixture-only;
+  live closed; no catalog, provider inference or external host contact.
+- Steps:
+  1. Relaxed the relay's fixed-model identifier to accept a bare model ID (the host sends
+     `body.model = deepseek-v4.1-flash-free`, not `opencode/...`), and made both relay and
+     gateway forward the upstream `content-type` (the fixture origin returns
+     `text/event-stream`, which the host requires).
+  2. Added `integration/opencode-free-relay.mjs`, which starts a loopback fixture origin,
+     a loopback gateway and a loopback relay, then composes the pinned host with
+     `fixtureEndpoint` set to the relay. It runs a normal scenario plus one redirect
+     scenario per 301/302/303/307/308 to a second loopback alternate origin.
+  3. Ran it with the pinned OpenCode 2.2.5 binary (Windows x64): all six scenarios
+     passed (exit 0). Normal succeeded with three `Bearer public` POST
+     `/v1/chat/completions` origin requests and no WebSocket/upgrade or non-POST method;
+     each redirect made the task `failed` with exactly one attempt and one origin request,
+     and the alternate origin received zero requests and zero body bytes.
+- Files: `src/relay.mjs`, `src/egress-gateway.mjs`, `integration/opencode-free-relay.mjs`,
+  `integration/README.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/task-contract.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: relay/gateway focused tests 28/28 pass after the identifier/content-type
+  change; pinned-host relay harness exit 0 with the exact counts above; full serial suite
+  and demo rerun (see validation entry). No catalog GET, live inference, package install,
+  host/Windows network change or FIDO2 hardware run.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, service signing
+  integration, FIDO2 hardware dry run, catalog, live).

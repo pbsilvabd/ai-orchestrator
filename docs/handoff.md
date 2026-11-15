@@ -21,13 +21,18 @@ closed and no merge is authorized.
   veth pair created **inside** a disposable namespace (only the peer moved), so no
   `ip link add` runs in the WSL initial/host namespace; owned-only collision-safe
   teardown, `--self-test` mode, real socket probes and verified-empty teardown.
+- `integration/opencode-free-relay.mjs` — pinned OpenCode 2.2.5 routed through the
+  relay→gateway→fixture-origin loopback chain: normal run succeeds with three
+  `Bearer public` origin requests; each of 301/302/303/307/308 fails the task with one
+  attempt and zero alternate-origin requests/bytes (the B29 307 prompt leak is closed
+  through the relay).
 
 `not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
 (absent, install not authorized — containment is routing-based); bare-metal Ubuntu
-or two-VM Hyper-V deployment (WSL2 observation only); pinned OpenCode 2.2.5 through
-the relay; a real FIDO2 hardware-key signing dry run; public catalog GET; live
-inference and B20/#43. The live route stays closed until a platform provides
-verified firewall-filtered isolation and a separately signed live approval.
+or two-VM Hyper-V deployment (WSL2 observation only); a real FIDO2 hardware-key signing
+dry run; public catalog GET; live inference and B20/#43. The live route stays closed
+until a platform provides verified firewall-filtered isolation and a separately signed
+live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
 B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft
@@ -38,10 +43,12 @@ PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-on
 1. The supervisor reviews at `cff5265`, `32c0339`, `ad010a7` and `cc3e917` (P1 ledger; P2
    gateway/bind/WSL scope; residual in-namespace veth + compressed IPv6 aliases; cleanup
    reporting + fault injection; and EXIT-trap status + inventory-error handling) have
-   been corrected on this branch; the reply with the new head SHA and evidence is posted
-   on PR #45. Re-review the corrected head, then the maintainer decides draft-to-ready.
-   The draft lists the unmet criteria (firewall filtering, hardware signing, catalog,
-   live activation) as `not_run`, not passed.
+   been corrected on this branch, and the pinned-host-through-relay fixture now passes
+   (normal succeeds; 301/302/303/307/308 fail the task with zero alternate-origin bytes).
+   The reply with the new head SHA and evidence is posted on PR #45. Re-review the
+   corrected head, then the maintainer decides draft-to-ready. The draft lists the unmet
+   criteria (firewall filtering, hardware signing, catalog, live activation) as `not_run`,
+   not passed.
 2. Remaining B30 gates are platform/hardware, not code: nftables (or an approved
    alternative), a real FIDO2 `-sk` signing dry run, and a separately authorized
    catalog read before any live experiment.

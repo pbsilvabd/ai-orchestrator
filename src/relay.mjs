@@ -140,7 +140,7 @@ function respond(res, status, text) {
 }
 
 export function createRelay({ listen, upstream, model, limits } = {}) {
-  if (typeof model !== 'string' || !/^[A-Za-z0-9._-]+\/[A-Za-z0-9._:-]+$/.test(model)) {
+  if (typeof model !== 'string' || !/^[A-Za-z0-9._:-]+(\/[A-Za-z0-9._:-]+)?$/.test(model)) {
     fail('invalid_argument', 'relay model must be a single fixed identifier');
   }
   validateListen(listen);
@@ -237,7 +237,9 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
 
     try {
       const reader = upstreamResponse.body?.getReader();
-      res.writeHead(upstreamResponse.status, { 'content-type': 'application/json' });
+      res.writeHead(upstreamResponse.status, {
+        'content-type': upstreamResponse.headers.get('content-type') ?? 'application/json',
+      });
       if (!reader) { res.end(); return; }
       for (;;) {
         const { done, value } = await reader.read();

@@ -2467,3 +2467,40 @@ discrimination and the mocked-`ip` failed-delete/inventory/trap-status fault inj
 based on the commands above. Firewall-filtered isolation, bare-metal/VM deployment,
 pinned-host relay, hardware signing, catalog and live inference remain `not_run` and the
 live route stays closed.
+
+## M3 preparation: B30 pinned OpenCode 2.2.5 through the relay — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Pinned binary outside the
+repository: `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs`, `integration/opencode-free-relay.mjs` | Syntax of changed/new modules | no output | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs` | Relay/gateway regression after identifier + content-type change | 28 passed, 0 failed, 0 skipped | 0 |
+| `node integration/opencode-free-relay.mjs <pinned binary>` | Pinned OpenCode 2.2.5 through relay→gateway→fixture-origin, normal + 301/302/303/307/308 | six scenarios passed: normal `succeeded` (3 `Bearer public` POST origin requests, no WebSocket/upgrade, no non-POST method); each redirect `failed` with 1 attempt, 1 origin request, 0 alternate-origin requests and 0 alternate-origin body bytes | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 345 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the pinned OpenCode 2.2.5 host's free-route model requests now flow through the
+service-owned relay and L7 gateway to the loopback fixture origin; the host no longer
+follows a model-endpoint redirect because the gateway refuses the 3xx and returns a
+terminal refusal. The B29 307 prompt-leak baseline is therefore closed through the relay:
+each of 301/302/303/307/308 made the task `failed` with a single attempt and zero
+alternate-origin requests/body bytes, with no replay.
+
+Evidence level: OpenCode integration — the pinned host exercised real hooks, permissions
+and failures through the relay against loopback fixtures. The relay→gateway→origin chain
+is additionally local-HTTP evidence. Neither level demonstrates live-provider, network
+containment, firewall or TLS behavior.
+
+Not rerun / not_run: public catalog GET (maintainer-declined) and live inference
+(prohibited); nftables/iptables filtering (absent, install not authorized); bare-metal
+Ubuntu / two-VM Hyper-V deployment; real service signing integration and a real FIDO2
+`-sk` hardware-key signing dry run; full cross-namespace TLS gateway chain.
+
+Claim: this entry supports the pinned-host-through-relay normal and redirect results,
+based on the commands above. Firewall-filtered isolation, bare-metal/VM deployment,
+service signing integration, hardware signing, catalog and live inference remain
+`not_run` and the live route stays closed.

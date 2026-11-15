@@ -577,12 +577,15 @@ wired into `createConfiguredTaskService`; live composition remains closed.
   different task is refused.
 
 None of these opens live use. The relay/gateway admit only loopback fixtures in tests;
-the OS-network placement is observed only in an isolated WSL2 netns/veth fixture
-(`integration/b30-egress-namespaces.sh`) using three disposable namespaces (worker,
-relay, gateway) with unique per-run names, where each veth pair is created inside a
-disposable namespace and only the peer is moved (no `ip link add` in the WSL
+the pinned OpenCode 2.2.5 host is routed through the relay→gateway→fixture-origin
+loopback chain by `integration/opencode-free-relay.mjs` (normal run succeeded; each of
+301/302/303/307/308 made the task `failed` with one attempt and zero alternate-origin
+requests/bytes). The OS-network placement is observed only in an isolated WSL2 netns/veth
+fixture (`integration/b30-egress-namespaces.sh`) using three disposable namespaces
+(worker, relay, gateway) with unique per-run names, where each veth pair is created
+inside a disposable namespace and only the peer is moved (no `ip link add` in the WSL
 initial/host namespace), routing-based containment and no nftables/iptables filtering;
-no real FIDO2 hardware-key signing dry run, pinned-host-through-relay run, catalog read
-or live inference has been performed. These are separate `not_run` gates; the live
-route stays closed until a platform provides verified firewall-filtered isolation and
-a separately signed live approval.
+no real FIDO2 hardware-key signing dry run, catalog read or live inference has been
+performed. These are separate `not_run` gates; the live route stays closed until a
+platform provides verified firewall-filtered isolation and a separately signed live
+approval.

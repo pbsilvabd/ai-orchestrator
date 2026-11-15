@@ -222,7 +222,9 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
 
     try {
       const reader = upstreamResponse.body?.getReader();
-      res.writeHead(upstreamResponse.status, { 'content-type': 'application/json' });
+      res.writeHead(upstreamResponse.status, {
+        'content-type': upstreamResponse.headers.get('content-type') ?? 'application/json',
+      });
       if (!reader) { res.end(); return; }
       for (;;) {
         const { done, value } = await reader.read();

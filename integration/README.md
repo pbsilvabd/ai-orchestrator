@@ -436,7 +436,39 @@ routing-based: nftables/iptables are not installed and default-drop filtering is
 `not_run`.
 
 Not covered / `not_run`: the live free route, public catalog GET, live inference,
-nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, the
-pinned-host-through-relay run, and a real FIDO2 hardware-key signing dry run. A
-deployment without verifiable firewall-filtered isolation and a separately signed live
-approval stays closed.
+nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, and a real FIDO2
+hardware-key signing dry run. A deployment without verifiable firewall-filtered
+isolation and a separately signed live approval stays closed.
+
+## B30 pinned OpenCode 2.2.5 through the relay (fixture)
+
+Run the pinned OpenCode 2.2.5 free route through the service-owned relay and L7 egress
+gateway against loopback fixtures only; the free endpoint and every external host are
+not contacted:
+
+```sh
+node integration/opencode-free-relay.mjs /absolute/path/opencode.exe
+```
+
+It starts a loopback fixture origin (the model endpoint), a loopback L7 gateway pointing
+at that origin, and a loopback relay pointing at the gateway, then composes the pinned
+host with `fixtureEndpoint` set to the relay. It runs six scenarios: a normal run
+(tool-call writes, one denied and one allowed) and a redirect for each of
+301/302/303/307/308 to a second loopback alternate origin.
+
+- Normal: the task succeeds; exactly the fixed model, `Bearer public`, and POST
+  `/v1/chat/completions` reach the origin through relay→gateway (three provider requests
+  for the two tool-call turns plus the completion), with no WebSocket/Upgrade header and
+  no non-POST method.
+- Each redirect: the gateway refuses the 3xx (never following it), the host receives the
+  terminal refusal, the task becomes `failed` with exactly one attempt and one origin
+  request, and the alternate origin receives **zero requests and zero body bytes** (the
+  B29 307 prompt-leak baseline is closed through the relay).
+
+This is loopback fixture evidence, not live-provider or network-containment evidence;
+the free endpoint, public catalog and paid providers are never contacted.
+
+Observed on 2026-11-14 with OpenCode 2.2.5 (Windows x64), Node 24.22.1: all six
+scenarios passed (exit 0); normal succeeded with three origin requests and `Bearer
+public`; each of 301/302/303/307/308 failed the task with one attempt and zero
+alternate-origin requests/bytes.
