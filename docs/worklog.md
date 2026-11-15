@@ -2375,3 +2375,37 @@ Template:
   open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
   signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
   experiment, live inference).
+
+## 2026-11-15 — B30 just-before-spawn revalidation + admission result + host-path binding (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the three P1 findings at `8e358a4` (review `6897600299`): revalidation is
+  before `worker.prepare`, not just before spawn; a returned admission value without a
+  callable verifier silently passes; the factory does not itself measure the configured host
+  executable.
+- Steps:
+  1. `createTaskScheduler` now re-checks the receipt a second time synchronously just before
+     `runSubprocess` (after `createTaskWorkspace` + `worker.prepare`); a refusal there records
+     the dispatched task as `blocked` (executionStopped unknown, dispatch attempt preserved),
+     never `cancelled`, never replayed.
+  2. `createTaskService` requires an admission result of `{ admitted: true, revalidate }`;
+     `false`/`true`/`undefined`/`null`/`{admitted:true}` without a verifier are refused before
+     persistence, and the dispatch hook fails closed on a missing/invalid receipt.
+  3. `createSignedApprovalAdmission` now takes the absolute `hostExecutable` path and measures
+     its SHA-256 itself at admission and revalidation (removed the caller-supplied
+     `hostBinaryDigest`/`remeasureHostBinaryDigest`); an unreadable path is `unavailable`.
+  4. Tests: expiry/drift during `worker.prepare` (marker-file zero-spawn assertion → `blocked`),
+     the admission return-value matrix, and the self-measured host path (unreadable → `unavailable`).
+- Files: `src/live-approval.mjs`, `src/service.mjs`, `src/scheduler.mjs`,
+  `test/live-approval-service.test.mjs`, `test/live-approval-pre-spawn.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused 30/30 and full suite/demo rerun (see validation entry). No catalog GET
+  repeat, no FIDO2 hardware action, no host network change, no WebSocket-bypass call, no live
+  inference or B20; the host identity is bound at the factory interface to the supplied
+  `hostExecutable` path (the caller must pass the configured worker's executable), and the
+  end-to-end positive signature path remains `not_run`.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
+  experiment, live inference).

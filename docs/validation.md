@@ -2888,3 +2888,47 @@ The catalog GET is a dated evidence snapshot, not perpetual authority and not li
 Claim: this entry supports the pre-spawn revalidation and host/readable binding. The hardware
 positive path, bare-metal/VM deployment, WebSocket-bypass experiment and live inference
 remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 pre-spawn just-before-runSubprocess + admission result + host-path binding — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Corrects the three P1 findings at `8e358a4` (review comment
+`6897600299`): (1) revalidation is before `worker.prepare`, not just before process spawn;
+(2) a returned admission value without a callable verifier silently passes; (3) the factory
+does not itself measure the configured host executable.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{live-approval,service,scheduler}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | SSHSIG plumbing + admission result validation + second pre-spawn check (expiry/drift during `worker.prepare` → `blocked`, zero spawn) + host-path measurement | 30 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 366 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: (1) `createTaskScheduler` now re-checks the receipt synchronously a **second time**
+just before `runSubprocess` (after `createTaskWorkspace` + `worker.prepare`); a refusal there
+records the already-dispatched task as `blocked` (`executionStopped: unknown`, dispatch
+attempt preserved) — never `cancelled`, never replayed. (2) `createTaskService` now requires
+an admission result of `{ admitted: true, revalidate }` (a callable verifier bound to the
+task); `false`/`true`/`undefined`/`null`/`{admitted:true}` without a verifier are refused
+before persistence, and the dispatch hook also fails closed on a missing/invalid receipt.
+(3) `createSignedApprovalAdmission` now measures the SHA-256 of the absolute `hostExecutable`
+path itself at admission and again at revalidation (no caller-supplied digest/callback); an
+unreadable path is refused as `unavailable`. Tests cover drift/expiry during `worker.prepare`
+with a marker file asserting zero spawn, and the admission return-value matrix.
+
+Evidence level: unit + local fixture (mock verifier over the real ledger, real
+`ssh-keygen -Y verify` refusal paths, a self-measured disposable host executable). The
+end-to-end host binding positive path (valid signature → measure → reserve) still requires a
+real FIDO2 hardware-key signature and remains `not_run`; the host identity is bound at the
+factory interface to the supplied `hostExecutable` path (the caller must pass the configured
+worker's executable).
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run; bare-metal Ubuntu /
+two-VM Hyper-V deployment; the active provider WebSocket-bypass experiment; live inference.
+The catalog GET remains a dated one-shot snapshot (not repeated here).
+
+Claim: this entry supports the just-before-spawn revalidation, the admission result contract
+and the self-measured host-path binding. The hardware positive path, bare-metal/VM
+deployment, WebSocket-bypass experiment and live inference remain `not_run` and the live
+route stays closed.

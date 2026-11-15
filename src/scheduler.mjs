@@ -106,6 +106,22 @@ export function createTaskScheduler({ store, clientId, worker, now, revalidate }
       const remaining = running.request.limits.budgetMs - Math.ceil(performance.now() - started);
       if (remaining <= 0) throw new Error('budget exhausted during preparation');
       if (stopped) return;
+      // Revalidate signed admission AGAIN just before the child process starts (ADR-010 §5):
+      // a slow/blocking workspace creation or worker.prepare can pass the approval deadline
+      // or the host binary can change during preparation. A failure here must NOT be
+      // reported as `cancelled`; a dispatch reservation is already durable, so block it as
+      // uncertain and never spawn/replay.
+      if (revalidate !== undefined) {
+        const at2 = now();
+        try {
+          revalidate(taskId, at2);
+        } catch (error) {
+          uncertain = true;
+          stopped = true; // No next worker while a task with a dispatch reservation is uncertain.
+          try { block(taskId, 'signed-approval-invalid-before-spawn'); } catch { /* retain dispatch record */ }
+          return;
+        }
+      }
       // Adapter configuration cannot increase accepted output or duration limits.
       const result = await runSubprocess({ ...invocation,
         timeoutMs: Math.min(invocation.timeoutMs ?? remaining, remaining),

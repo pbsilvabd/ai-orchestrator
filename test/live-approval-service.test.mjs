@@ -123,7 +123,7 @@ test('a passive service without admission accepts a plain request and ignores ap
 test('admission runs for a new task, after replay resolution and before persistence', t => {
   const calls = [];
   const { dir, service, store } = makeService(t, {
-    extra: { admission: (payload, { taskId }) => { calls.push({ taskId, requestHash: liveRequestHash(payload) }); } },
+    extra: { admission: (payload, { taskId }) => { calls.push({ taskId, requestHash: liveRequestHash(payload) }); return { admitted: true, revalidate() {} }; } },
   });
   const result = service.submitTask(validRequest(dir));
   assert.equal(calls.length, 1);
@@ -137,7 +137,7 @@ test('admission runs for a new task, after replay resolution and before persiste
 
 test('an identical replay returns the original task without re-running admission', t => {
   let calls = 0;
-  const { dir, service } = makeService(t, { extra: { admission: () => { calls += 1; } } });
+  const { dir, service } = makeService(t, { extra: { admission: () => { calls += 1; return { admitted: true, revalidate() {} }; } } });
   const first = service.submitTask(validRequest(dir));
   assert.equal(calls, 1);
   const replay = service.submitTask(validRequest(dir));
@@ -173,15 +173,29 @@ test('an async admission is rejected as an internal service error', t => {
   assert.equal(taskFiles(dir).length, 0);
 });
 
+test('admission results lacking admitted:true and a callable revalidate are refused before persistence', t => {
+  const bad = [false, true, undefined, null, { admitted: true }, { revalidate() {} }, { admitted: false, revalidate() {} }];
+  for (const value of bad) {
+    const { dir, service } = makeService(t, { extra: { admission: () => value } });
+    assert.throws(() => service.submitTask(validRequest(dir)), expected('authorization_denied'));
+    assert.equal(taskFiles(dir).length, 0, `return ${JSON.stringify(value)} must not persist a task`);
+  }
+});
+
 // --- Real factory negative (refusal) paths, no hardware needed ------------------------
 
 const RELAY = 'd'.repeat(64);
 const GATEWAY = 'e'.repeat(64);
-// A measured host-binary digest. The real factory compares the approval's hostBinaryDigest
-// to this measured value; for refusal-path tests any fixed digest is sufficient since the
-// signature gate (or structural validation) refuses before the host check is reached.
-const HOST = 'c'.repeat(64);
-const hostIdentity = () => ({ hostBinaryDigest: HOST, remeasureHostBinaryDigest: () => HOST });
+// The real factory now measures the trusted host executable itself (never a caller-supplied
+// digest). For refusal-path tests the factory is given a disposable host executable whose
+// digest may differ from the approval's, because the structural/signature refusal fires
+// before the host binding is reached.
+function makeHostExecutable(dir) {
+  const path = join(dir, 'host-exe');
+  writeFileSync(path, 'fixture-host-binary');
+  return path;
+}
+const hostIdentity = dir => ({ hostExecutable: makeHostExecutable(dir) });
 
 test('the real factory refuses a submission with no approval envelope before persistence', t => {
   const { dir, service } = makeService(t, {
@@ -190,11 +204,30 @@ test('the real factory refuses a submission with no approval envelope before per
         allowedSigners: 'principal namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
-        ...hostIdentity(),
+        ...hostIdentity(d),
       }),
     }),
   });
   assert.throws(() => service.submitTask(validRequest(dir)), expected('authorization_denied'));
+  assert.equal(taskFiles(dir).length, 0);
+});
+
+test('the real factory measures the host executable itself and refuses an unreadable path', t => {
+  const { dir, service } = makeService(t, {
+    extra: d => ({
+      admission: createSignedApprovalAdmission({
+        allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
+        relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
+        ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        hostExecutable: join(d, 'does-not-exist'),
+      }),
+    }),
+  });
+  const payload = validRequest(dir);
+  const approval = boundApproval(payload, { relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(), baseCommit: resolveCommit(dir) });
+  // measure() runs before the signature gate; an unreadable path must fail as unavailable,
+  // proving the factory derives the digest from the executable file, never a caller digest.
+  assert.throws(() => service.submitTask({ ...payload, approval, signature: '-----BEGIN SSH SIGNATURE-----\nAA==\n-----END SSH SIGNATURE-----\n' }), expected('unavailable'));
   assert.equal(taskFiles(dir).length, 0);
 });
 
@@ -205,7 +238,7 @@ test('the real factory refuses an expired approval before persistence', t => {
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
-        ...hostIdentity(),
+        ...hostIdentity(d),
       }),
     }),
   });
@@ -222,7 +255,7 @@ test('the real factory refuses a paid approval before persistence', t => {
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
-        ...hostIdentity(),
+        ...hostIdentity(d),
       }),
     }),
   });
@@ -255,7 +288,7 @@ test('the real factory refuses a non-hardware signature before the ledger reserv
     store,
     config: { clientId: 'opencode-primary', authorization: { models: ['mock/a'], tools: ['read', 'edit'], writableRoots: [dir] }, limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 } },
     now: NOW,
-    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL, relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger, sshKeygen: SSH, ...hostIdentity() }),
+    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL, relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger, sshKeygen: SSH, ...hostIdentity(dir) }),
   });
   t.after(() => service.close());
 
@@ -277,6 +310,7 @@ test('single-use: one approval ID admits exactly one task; a second key is refus
     if (approvalId === undefined) { const e = new Error('missing approval'); e.code = 'authorization_denied'; throw e; }
     // Real durable single-use ledger; only the hardware signature check is not exercised.
     ledger.reserve({ approvalId, taskId });
+    return { admitted: true, revalidate() {} };
   };
   const service = createTaskService({
     store,

@@ -255,26 +255,37 @@ policy/metadata binding, resolved-base-commit binding, effective-request binding
 objective, branch, attempt/limits) and measured host-binary binding, admission ordering and
 the atomic no-replace single-use ledger are implemented and tested standalone in
 `src/live-approval.mjs` / `test/live-approval.test.mjs` (with disposable non-hardware keys
-and a synthesized sk-signature blob). The standalone admission is now bound to service
-dispatch as an optional synchronous `createTaskService({ admission })` gate via
-`createSignedApprovalAdmission` (`createConfiguredTaskService` passes a supplied `admission`
-through). It runs for new tasks after idempotent replay resolution and repository
-inspection but before task persistence, workspace or spawn; a missing/forged/expired/
-stale/mismatched/already-consumed approval is refused before persistence, an identical
-replay remains readable without re-admission, and one approval ID cannot admit a second
-task. A successful admission returns a trusted **in-memory receipt** (never `false` or
-`{admitted:false}`, never persisted, never in task text); the scheduler re-checks it
-synchronously **again immediately before spawn** — before any dispatch reservation,
-workspace or child execution — re-asserting approval expiry, metadata freshness and the
-measured host-binary digest, and records a durable `cancelled`/`executionStopped:true`
-refusal with an `admission-refused` progress entry (never spawn/replay) when it fails or is
-missing. The service-level wiring, ordering, error mapping, single-use and pre-spawn
-revalidation are exercised in `test/live-approval-service.test.mjs` and
-`test/live-approval-pre-spawn.test.mjs` with a clearly-labelled mock verifier over the real
-ledger, plus the real factory's negative refusal paths. The cryptographic positive path
+and a synthesized sk-signature blob). The host identity is derived by the factory itself:
+`createSignedApprovalAdmission` measures the SHA-256 of the trusted configured
+`hostExecutable` path both at admission and again at revalidation (never a caller-supplied
+digest/callback). The standalone admission is bound to service dispatch as an optional
+synchronous `createTaskService({ admission })` gate (`createConfiguredTaskService` passes a
+supplied `admission` through). It runs for new tasks after idempotent replay resolution and
+repository inspection but before task persistence, workspace or spawn; a missing/forged/
+expired/stale/mismatched/already-consumed approval is refused before persistence, an
+identical replay remains readable without re-admission, and one approval ID cannot admit a
+second task. A successful admission MUST return `{ admitted: true, revalidate }`; any other
+return (`false`, `true`, `undefined`, `null`, or an object without a callable verifier) is
+refused before persistence. The returned trusted in-memory receipt (never persisted, never
+in task text) is re-checked synchronously **twice**: before the dispatch reservation/
+workspace, and **again just before `runSubprocess`** (after `createTaskWorkspace` and
+`worker.prepare`), re-asserting approval expiry, metadata freshness and the re-measured
+host-binary digest. The relay/gateway policy digests are fixed at factory creation and are
+immutable configuration, so they cannot drift within a service lifetime and are not
+re-measured; a real policy identity is established only with a deployed relay/gateway
+(`not_run`). A refusal before any dispatch is recorded `cancelled`/
+`executionStopped:true`; a refusal after the dispatch reservation is recorded `blocked`
+(`executionStopped:unknown`, dispatch attempt preserved) — never `cancelled`, never
+replayed. The service-level wiring, ordering, error mapping, single-use and pre-spawn
+revalidation (including drift/expiry during `worker.prepare`) are exercised in
+`test/live-approval-service.test.mjs` and `test/live-approval-pre-spawn.test.mjs` with a
+clearly-labelled mock verifier over the real ledger, plus the real factory's negative
+refusal paths and its self-measured host-executable path. The cryptographic positive path
 still requires a real FIDO2 hardware-key signature (presence + verification), which remains
 `not_run`; a non-hardware signature is always refused and no signature or hardware is
-invented to close this gap.
+invented to close this gap. The host identity is bound at the factory interface to the
+supplied `hostExecutable` path; the caller must pass the same absolute executable the
+configured worker uses.
 
 Deployment prerequisites ([deployment-prerequisites.md](deployment-prerequisites.md)) are
 recorded as a plan only: no independent Ubuntu/Hyper-V environment or enrolled FIDO2

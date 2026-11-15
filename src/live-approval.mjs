@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, linkSync, openSync,
   fsyncSync, closeSync, unlinkSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FREE_MODEL, FREE_ENDPOINT } from './free-provider.mjs';
 import { canonicalPayload } from './tasks.mjs';
@@ -341,13 +341,14 @@ export function liveRequestHash(payload) {
 // Build a synchronous service-admission gate (see createTaskService's `admission` option)
 // that binds the standalone SSHSIG verification and atomic single-use ledger to a NEW task
 // submission. The approval and its armored signature are read from the submitted payload's
-// optional `approval` and `signature` fields (never from task text). On success the gate
-// returns a trusted in-memory receipt with a `revalidate(now)` method that re-checks the
-// approval's expiry, metadata freshness and host-binary digest immediately before dispatch;
-// a failed revalidation throws, so the scheduler fails closed without spawning.
+// optional `approval` and `signature` fields (never from task text). The host identity is
+// NOT caller-supplied: the factory measures the SHA-256 of the trusted configured
+// executable at `hostExecutable` (the same path the configured worker uses) both at
+// admission and again at pre-spawn revalidation, so a stale/foreign digest cannot pass. On
+// success the gate returns a trusted in-memory receipt with a `revalidate(now)` method.
 export function createSignedApprovalAdmission({ allowedSigners, principal, krl = '',
   namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, metadata, ledger,
-  hostBinaryDigest, remeasureHostBinaryDigest, sshKeygen = 'ssh-keygen' } = {}) {
+  hostExecutable, sshKeygen = 'ssh-keygen' } = {}) {
   if (typeof allowedSigners !== 'string' || typeof principal !== 'string' ||
       typeof namespace !== 'string' || typeof krl !== 'string' ||
       typeof relayPolicyDigest !== 'string' || typeof gatewayPolicyDigest !== 'string' ||
@@ -355,8 +356,12 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     fail('invalid_argument', 'signed approval admission requires allowedSigners, principal, namespace, krl, policy digests and sshKeygen');
   if (!ledger || typeof ledger.reserve !== 'function')
     fail('invalid_argument', 'signed approval admission requires a reservation ledger');
-  if (typeof hostBinaryDigest !== 'string' || typeof remeasureHostBinaryDigest !== 'function')
-    fail('invalid_argument', 'signed approval admission requires a measured host binary digest and a re-measurement function');
+  if (typeof hostExecutable !== 'string' || !isAbsolute(hostExecutable))
+    fail('invalid_argument', 'signed approval admission requires the absolute trusted host executable path');
+  const measure = () => {
+    try { return measureHostBinaryDigest(hostExecutable); }
+    catch { fail('unavailable', 'cannot measure the trusted host executable'); }
+  };
   return (payload, { taskId, baseCommit, now = Date.now() } = {}) => {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload))
       fail('invalid_argument', 'submission payload is required for signed approval admission');
@@ -364,17 +369,18 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     const signature = payload.signature;
     if (approval === undefined || signature === undefined)
       fail('authorization_denied', 'a signed live approval is required for new tasks');
+    const hostBinaryDigest = measure();
     const result = admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
       requestHash: liveRequestHash(payload), baseCommit, request: payload, hostBinaryDigest,
       relayPolicyDigest, gatewayPolicyDigest, metadata, taskId, ledger, now, sshKeygen });
     // A trusted in-memory receipt: never persisted, never in task text. Its closure re-checks
-    // freshness and host identity without the (already-verified) signature.
+    // freshness and host identity (re-measuring the same executable) without the signature.
     return {
       ...result,
       revalidate(at = Date.now()) {
         if (at >= result.expiresAt) fail('authorization_denied', 'approval expired before dispatch');
         if (at - result.metadataObservedAt > METADATA_TTL_MS) fail('authorization_denied', 'metadata stale before dispatch');
-        if (result.hostBinaryDigest !== remeasureHostBinaryDigest())
+        if (measure() !== result.hostBinaryDigest)
           fail('authorization_denied', 'host binary changed before dispatch');
       },
     };
