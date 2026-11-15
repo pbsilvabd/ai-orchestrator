@@ -7,6 +7,7 @@ import { FREE_MODEL, FREE_ENDPOINT, FREE_MODEL_ID, METADATA_TTL_MS,
 import { buildOpenCodeInvocation, createOpenCodeWorker } from '../src/opencode.mjs';
 import { createTaskService } from '../src/service.mjs';
 import { createConfiguredTaskService } from '../src/configured-service.mjs';
+import { createSignedApprovalAdmission, openApprovalLedger } from '../src/live-approval.mjs';
 import { freeGuardPlugin, freeGuardSource } from '../src/free-guard.mjs';
 import { approvalFor, fixture, metadata } from './fixtures/free-worker.mjs';
 
@@ -277,4 +278,48 @@ test('B29-04: live composition is closed; fixture composition stays locked witho
   f.services.push(approved);
   assert.equal(gets, 1);
   assert.equal(approved.submitTask(f.request).idempotentReplay, true);
+});
+
+test('B30-05: a signed admission measuring a different executable than the configured worker is refused', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  const metadataSource = async () => metadata();
+  // A real disposable host executable (A) distinct from the worker executable (B).
+  const hostA = join(f.home, 'host-a');
+  writeFileSync(hostA, 'host-a-binary');
+  const admission = createSignedApprovalAdmission({
+    allowedSigners: `maintainer namespaces="ai-orchestrator-live@pbsilvabd" ssh-ed25519 AAA`, principal: 'maintainer',
+    relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
+    metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
+    ledger: openApprovalLedger({ home: join(f.home, 'ledger') }),
+    hostExecutable: hostA,
+  });
+  // A (hostA) != B (process.execPath): trusted composition must refuse before any service
+  // exists, so no task/child can ever run under a mismatched host identity.
+  await assert.rejects(
+    createConfiguredTaskService({ home: f.home, config: activeConfig, admission },
+      { metadata: metadataSource, fixtureEndpoint }),
+    /invalid free worker service configuration/);
+});
+
+test('B30-05: a signed admission measuring the configured worker executable composes', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  const metadataSource = async () => metadata();
+  const admission = createSignedApprovalAdmission({
+    allowedSigners: `maintainer namespaces="ai-orchestrator-live@pbsilvabd" ssh-ed25519 AAA`, principal: 'maintainer',
+    relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
+    metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
+    ledger: openApprovalLedger({ home: join(f.home, 'ledger') }),
+    hostExecutable: process.execPath, // A == B
+  });
+  // A == B: composition succeeds (the gate is never invoked here; no hardware signature).
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig, admission },
+    { metadata: metadataSource, fixtureEndpoint });
+  f.services.push(service);
+  assert.equal(service.schedulerStatus().activeTaskId, null);
 });

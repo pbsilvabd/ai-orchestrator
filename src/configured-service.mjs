@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { createTaskService } from './service.mjs';
 import { createOpenCodeWorker } from './opencode.mjs';
 import { FREE_MODEL, FREE_PACKAGE, validateFreeApproval } from './free-provider.mjs';
+import { canonicalExecutablePath } from './live-approval.mjs';
 
 // No account discovery, ambient credentials or task-supplied configuration.
 // The second argument is trusted application code, never JSON/MCP input. Live
@@ -26,6 +27,12 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       config.limits.budgetMs < 1 || config.limits.budgetMs > 600_000 ||
       !Number.isSafeInteger(config.limits.maxOutputBytes) || config.limits.maxOutputBytes < 0 ||
       config.limits.maxOutputBytes > 1_048_576) invalid();
+  // The signed-admission gate (when supplied) must measure the SAME canonical executable the
+  // configured worker will actually start. A gate built with hostExecutable A but a worker
+  // configured with executable B would admit a signature for A and dispatch to B.
+  if (admission?.hostExecutable !== undefined &&
+      canonicalExecutablePath(admission.hostExecutable) !== canonicalExecutablePath(settings.executable))
+    invalid();
   if (fixtureEndpoint === undefined) {
     throw new Error('live free route is blocked: pinned host redirects are not controlled (B29-05)');
   }

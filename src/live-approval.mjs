@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync, linkSync, openSync,
-  fsyncSync, closeSync, unlinkSync } from 'node:fs';
+  fsyncSync, closeSync, unlinkSync, realpathSync } from 'node:fs';
 import { join, resolve, isAbsolute } from 'node:path';
 import { tmpdir } from 'node:os';
 import { FREE_MODEL, FREE_ENDPOINT } from './free-provider.mjs';
@@ -314,6 +314,14 @@ export function measureHostBinaryDigest(path) {
   return createHash('sha256').update(readFileSync(path)).digest('hex');
 }
 
+// Canonical identity of an executable path: resolves symlinks/junctions/aliases so a signed
+// admission's host executable and the configured worker executable can be compared for
+// equality; falls back to lexical resolution when the file does not yet exist.
+export function canonicalExecutablePath(path) {
+  try { return realpathSync.native(path); }
+  catch { return resolve(path); }
+}
+
 // End-to-end admission order: verify the offline signature, bind the effective request, the
 // measured host binary, the resolved base commit, the policy and metadata, then reserve the
 // approval ID. A live success path requires a real hardware-key signature with
@@ -362,7 +370,7 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     try { return measureHostBinaryDigest(hostExecutable); }
     catch { fail('unavailable', 'cannot measure the trusted host executable'); }
   };
-  return (payload, { taskId, baseCommit, now = Date.now() } = {}) => {
+  const gate = (payload, { taskId, baseCommit, now = Date.now() } = {}) => {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload))
       fail('invalid_argument', 'submission payload is required for signed approval admission');
     const approval = payload.approval;
@@ -385,4 +393,8 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
       },
     };
   };
+  // Expose the canonical host executable so trusted composition (createConfiguredTaskService)
+  // can verify the gate measures the same executable the configured worker will start.
+  Object.defineProperty(gate, 'hostExecutable', { value: canonicalExecutablePath(hostExecutable), enumerable: true });
+  return gate;
 }

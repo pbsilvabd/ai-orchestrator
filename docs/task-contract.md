@@ -133,7 +133,10 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   trusted host-binary digest** (the factory derives it by SHA-256 of the configured
   `hostExecutable` path, never a caller-supplied digest), and the relay/gateway policy
   digests plus fresh zero-price metadata) and reserves its approval ID durably for at most
-  one task through an atomic no-replace ledger. The approval and its armored signature are
+  one task through an atomic no-replace ledger. The gate exposes its canonical measured
+  executable, and `createConfiguredTaskService` enforces that it equals the canonical
+  `settings.executable` the configured worker actually starts (a mismatch is refused before
+  any service/task/child exists). The approval and its armored signature are
   supplied as optional `submit_task` fields `approval` and `signature`; both are excluded
   from the canonical payload/idempotency hash and are never persisted on the task record,
   and neither is a task-text authority. Any missing, forged, expired, stale, mismatched or

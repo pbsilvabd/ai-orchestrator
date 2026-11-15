@@ -2932,3 +2932,40 @@ Claim: this entry supports the just-before-spawn revalidation, the admission res
 and the self-measured host-path binding. The hardware positive path, bare-metal/VM
 deployment, WebSocket-bypass experiment and live inference remain `not_run` and the live
 route stays closed.
+
+## M3 preparation: B30 tie measured host executable to the configured worker — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Corrects the remaining P1 #3 at `9b91845` (review comment
+`6898063391`): the measured host path is not tied to the executable the configured worker
+actually starts.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{live-approval,configured-service}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/free-provider.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | A/B host-executable composition (negative `A != B` refused, positive `A == B` composes) + prior approval tests | 42 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 368 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `createSignedApprovalAdmission` exposes the canonical measured executable
+(`gate.hostExecutable`, resolved through symlink/junction/alias identity via
+`canonicalExecutablePath`), and `createConfiguredTaskService` enforces it equals the
+canonical `settings.executable` the configured worker actually starts; a signed admission
+measuring A while the worker starts B is refused before any service/task/child exists.
+Negative (`A != B`) and positive (`A == B`) composition fixtures are in
+`test/free-provider.test.mjs`. The relay/gateway policy-drift and signer-revocation checks at
+dispatch remain partial/`not_run` pending a deployed relay/gateway and are not claimed from
+the mock fixture.
+
+Evidence level: unit + local fixture (mock signature; no hardware). The full positive
+signature path remains `not_run`.
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run; bare-metal Ubuntu /
+two-VM Hyper-V deployment; the active provider WebSocket-bypass experiment; live inference.
+The catalog GET remains a dated one-shot snapshot (not repeated here).
+
+Claim: this entry supports tying the measured host executable to the configured worker.
+The hardware positive path, deployed relay/gateway policy-drift, bare-metal/VM deployment,
+WebSocket-bypass experiment and live inference remain `not_run` and the live route stays
+closed.

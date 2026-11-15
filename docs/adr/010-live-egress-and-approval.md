@@ -283,9 +283,12 @@ clearly-labelled mock verifier over the real ledger, plus the real factory's neg
 refusal paths and its self-measured host-executable path. The cryptographic positive path
 still requires a real FIDO2 hardware-key signature (presence + verification), which remains
 `not_run`; a non-hardware signature is always refused and no signature or hardware is
-invented to close this gap. The host identity is bound at the factory interface to the
-supplied `hostExecutable` path; the caller must pass the same absolute executable the
-configured worker uses.
+invented to close this gap. The gate exposes its canonical measured executable
+(`gate.hostExecutable`), and `createConfiguredTaskService` enforces that it equals the
+canonical `settings.executable` the configured worker actually starts (resolved through
+symlink/junction/alias identity); a signed admission measuring A while the worker starts B is
+refused before any service/task/child exists. Negative (`A != B`) and positive (`A == B`)
+composition fixtures live in `test/free-provider.test.mjs`.
 
 Deployment prerequisites ([deployment-prerequisites.md](deployment-prerequisites.md)) are
 recorded as a plan only: no independent Ubuntu/Hyper-V environment or enrolled FIDO2

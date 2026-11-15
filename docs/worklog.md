@@ -2409,3 +2409,29 @@ Template:
   open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
   signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
   experiment, live inference).
+
+## 2026-11-15 — B30 tie measured host executable to the configured worker (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the remaining P1 #3 at `9b91845` (review `6898063391`): the measured host
+  path is not tied to the executable the configured worker actually starts.
+- Steps:
+  1. `createSignedApprovalAdmission` now exposes the canonical measured executable on the
+     returned gate (`gate.hostExecutable`, resolved via `canonicalExecutablePath` using
+     `realpathSync.native` with a lexical-resolve fallback).
+  2. `createConfiguredTaskService` enforces that a supplied signed-admission gate's canonical
+     `hostExecutable` equals the canonical `settings.executable` the configured worker starts;
+     a mismatch is refused before any service/task/child exists.
+  3. Added negative (`A != B`) and positive (`A == B`) composition fixtures in
+     `test/free-provider.test.mjs` (mock signature only, no hardware).
+- Files: `src/live-approval.mjs`, `src/configured-service.mjs`, `test/free-provider.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused 42/42 and full suite/demo rerun (see validation entry). No catalog GET
+  repeat, no FIDO2 hardware action, no host network change, no WebSocket-bypass call, no live
+  inference or B20. The relay/gateway policy-drift and signer-revocation dispatch checks remain
+  partial/`not_run` pending deployment.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
+  experiment, live inference).
