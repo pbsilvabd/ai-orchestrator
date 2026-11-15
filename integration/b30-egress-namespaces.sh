@@ -11,10 +11,12 @@
 # Safety: namespaces use a unique per-run suffix; the script tracks exactly which
 # namespaces it created and tears down only those; it refuses a name collision without
 # touching the pre-existing object; it fails (nonzero) on any partially failed `ip`
-# configuration; and teardown reports any failed `ip netns del` with the owned-name
-# inventory on every exit path (the EXIT trap re-runs cleanup, so an early failure
-# still cleans and reports). On unresolved teardown it requires manual reconciliation
-# and never claims "nothing remains".
+# configuration; and teardown reports a failed `ip netns del` or an unreadable namespace
+# inventory with the owned-name inventory on every exit path. The EXIT trap forces a
+# nonzero process status when cleanup or inventory verification is uncertain (Bash keeps
+# an already-decided `exit 0` otherwise), so a run never reports success with unresolved
+# owned namespaces. Ownership is cleared only after every owned namespace is confirmed
+# gone; otherwise manual reconciliation is required and never claimed complete.
 #
 # This is a deployment observation, not a unit test. It does not contact a provider or
 # the Internet; all probes target private or TEST-NET addresses that fail locally.
@@ -44,24 +46,40 @@ RELAY_PORT=18081
 GATEWAY_PORT=18082
 
 # Ownership tracking: only namespaces in this array are ever deleted. LEFTOVER_NS holds
-# the inventory of owned namespaces whose deletion failed (requiring manual
-# reconciliation); CREATED_NS is only cleared after every owned namespace is confirmed
-# gone.
+# the inventory of owned namespaces whose deletion failed or whose absence could not be
+# confirmed (requiring manual reconciliation). CREATED_NS is cleared only after every
+# owned namespace is confirmed gone.
 CREATED_NS=()
 LEFTOVER_NS=()
 relay_pid=""
 gateway_pid=""
 
+# Returns 0 if the namespace exists, 1 if it is confirmed absent, 2 if the namespace
+# inventory is unreadable (uncertain). Callers must distinguish 1 from 2.
 namespace_exists() {
-  ip netns list 2>/dev/null | awk '{print $1}' | grep -qxF "$1"
+  local list
+  if ! list=$(ip netns list 2>/dev/null); then
+    echo "WARNING: cannot read namespace inventory (ip netns list failed)" >&2
+    return 2
+  fi
+  if printf '%s\n' "$list" | awk '{print $1}' | grep -qxF "$1"; then
+    return 0
+  fi
+  return 1
 }
 
-# Creates a namespace or refuses. Returns nonzero on collision/failure WITHOUT
-# touching pre-existing state; the caller decides whether to fail.
+# Creates a namespace or refuses. Returns nonzero on collision/failure/uncertainty
+# WITHOUT touching pre-existing state; the caller decides whether to fail.
 create_ns() {
-  local name="$1"
-  if namespace_exists "$name"; then
+  local name="$1" state
+  namespace_exists "$name"
+  state=$?
+  if [ "$state" = "0" ]; then
     echo "refusing: namespace '$name' already exists (no pre-existing state touched)" >&2
+    return 1
+  fi
+  if [ "$state" = "2" ]; then
+    echo "refusing: namespace inventory unreadable (uncertain pre-existing state)" >&2
     return 1
   fi
   ip netns add "$name" || return 1
@@ -69,40 +87,64 @@ create_ns() {
   return 0
 }
 
-# Deletes only the namespaces this run created. Reports any failed deletion with the
-# owned-name inventory and returns 1 (leaving CREATED_NS intact) instead of silently
-# proceeding; returns 0 (and clears CREATED_NS) only when nothing owned remains.
+# Deletes only the namespaces this run created. Reports a failed deletion or an
+# unreadable inventory with the owned-name inventory and returns 1 (leaving CREATED_NS
+# intact); returns 0 (and clears CREATED_NS) only when nothing owned remains.
 do_cleanup() {
   [ -n "$relay_pid" ] && kill "$relay_pid" 2>/dev/null || true
   [ -n "$gateway_pid" ] && kill "$gateway_pid" 2>/dev/null || true
-  local i ns
+  local i ns state
   local failed=0
   LEFTOVER_NS=()
   for ((i = ${#CREATED_NS[@]} - 1; i >= 0; i--)); do
     ns="${CREATED_NS[$i]}"
-    if namespace_exists "$ns"; then
+    namespace_exists "$ns"
+    state=$?
+    if [ "$state" = "0" ]; then
       if ! ip netns del "$ns" 2>/dev/null; then
         LEFTOVER_NS+=("$ns")
         failed=1
       fi
+    elif [ "$state" = "2" ]; then
+      LEFTOVER_NS+=("$ns(inventory-unreadable)")
+      failed=1
     fi
+    # state=1: confirmed absent; nothing to do.
   done
   if [ "$failed" = "1" ]; then
-    echo "WARNING: teardown failed; the following owned namespaces remain and require manual reconciliation:" >&2
+    echo "WARNING: teardown incomplete; the following owned namespaces are uncertain/remaining and require manual reconciliation:" >&2
     printf '  - %s\n' "${LEFTOVER_NS[@]}" >&2
     return 1
   fi
   CREATED_NS=()
   return 0
 }
-trap do_cleanup EXIT
+
+# Runs on every exit. Bash preserves an already-decided exit status even if the trap
+# returns nonzero, so this trap re-runs cleanup and then explicitly calls `exit` to force
+# a nonzero status when cleanup or inventory verification is uncertain.
+on_exit() {
+  local code=$?
+  local cleanup_rc=0 verify_rc=0
+  do_cleanup; cleanup_rc=$?
+  verify_cleanup; verify_rc=$?
+  if [ "$cleanup_rc" != "0" ] || [ "$verify_rc" != "0" ]; then
+    echo "FATAL: cleanup or inventory verification uncertain; exiting nonzero for manual reconciliation" >&2
+    exit 1
+  fi
+  exit "$code"
+}
+trap on_exit EXIT
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
 
 verify_cleanup() {
-  # No residue from this run may remain in the shared namespace list, and no 10.100.x
-  # address/route may exist in the initial namespace (which was never touched).
-  if ip netns list 2>/dev/null | grep -q "b30-"; then
+  local list
+  if ! list=$(ip netns list 2>/dev/null); then
+    echo "FAIL: cannot read namespace inventory; residue state unknown" >&2
+    return 1
+  fi
+  if printf '%s\n' "$list" | grep -q "b30-"; then
     echo "FAIL: b30-* namespace residue remains" >&2
     return 1
   fi
@@ -117,8 +159,7 @@ verify_cleanup() {
   return 0
 }
 
-# Self-test: exercise collision refusal and owned-only cleanup using disposable
-# namespaces only (no veth pairs, no host mutation). Safe under the narrow permission.
+# Self-test: collision refusal + owned-only cleanup using disposable namespaces only.
 self_test() {
   echo "=== self-test: collision refusal + owned cleanup ===" | tee -a "$OUT"
   local pre="b30-selftest-existing-$SUFFIX"
@@ -147,9 +188,6 @@ self_test() {
   else
     echo "FAIL: cleanup left residue" | tee -a "$OUT"; exit 1
   fi
-  if namespace_exists "$owned"; then
-    echo "FAIL: owned namespace not cleaned" | tee -a "$OUT"; exit 1
-  fi
   if verify_cleanup; then
     echo "PASS: no residue remains" | tee -a "$OUT"
   else
@@ -159,10 +197,10 @@ self_test() {
   exit 0
 }
 
-# Controlled fault injection (run as a separate top-level invocation with
+# Controlled early-failure injection (run as a separate top-level invocation with
 # `--self-test-fault`): create owned disposable namespaces, then fail so the EXIT trap
-# must clean them up. Confined to disposable namespaces only. The caller verifies the
-# owned namespaces are gone after this exits nonzero.
+# must remove them. The caller verifies no `b30-fault-*` residue remains after the
+# nonzero exit.
 self_test_fault() {
   echo "=== self-test-fault: partial-failure cleanup via EXIT trap ===" | tee -a "$OUT"
   local a="b30-fault-a-$SUFFIX"
@@ -173,8 +211,87 @@ self_test_fault() {
   fail "SIMULATED: partial configuration failure"
 }
 
+# Controlled delete-failure injection: shadow `ip` so `ip netns del` fails, and verify
+# do_cleanup reports it and preserves ownership. Confined to disposable namespaces.
+self_test_delete_fault() {
+  echo "=== self-test-delete-fault: failed ip netns del ===" | tee -a "$OUT"
+  local owned="b30-delfault-$SUFFIX"
+  ip netns add "$owned" || fail "delete-fault setup failed"
+  CREATED_NS+=("$owned")
+  ip() {
+    if [ "$1" = "netns" ] && [ "$2" = "del" ]; then
+      echo "fake ip: simulated netns del failure" >&2
+      return 1
+    fi
+    command ip "$@"
+  }
+  if do_cleanup; then
+    echo "FAIL: cleanup reported success despite a failed delete" | tee -a "$OUT"; unset -f ip; exit 1
+  fi
+  if [ "${#CREATED_NS[@]}" = "0" ]; then
+    echo "FAIL: ownership was cleared despite a failed delete" | tee -a "$OUT"; unset -f ip; exit 1
+  fi
+  unset -f ip
+  command ip netns del "$owned" 2>/dev/null || true
+  CREATED_NS=()
+  echo "PASS: failed delete reported, ownership preserved, inventory listed" | tee -a "$OUT"
+  echo "RESULT: self-test-delete-fault passed" | tee -a "$OUT"
+  exit 0
+}
+
+# Controlled inventory-failure injection: shadow `ip` so `ip netns list` fails, and verify
+# do_cleanup treats it as uncertain and preserves ownership. Confined to disposable
+# namespaces.
+self_test_inventory_fault() {
+  echo "=== self-test-inventory-fault: unreadable ip netns list ===" | tee -a "$OUT"
+  local owned="b30-invfault-$SUFFIX"
+  ip netns add "$owned" || fail "inventory-fault setup failed"
+  CREATED_NS+=("$owned")
+  ip() {
+    if [ "$1" = "netns" ] && [ "$2" = "list" ]; then
+      echo "fake ip: simulated netns list failure" >&2
+      return 1
+    fi
+    command ip "$@"
+  }
+  if do_cleanup; then
+    echo "FAIL: cleanup reported success despite unreadable inventory" | tee -a "$OUT"; unset -f ip; exit 1
+  fi
+  if [ "${#CREATED_NS[@]}" = "0" ]; then
+    echo "FAIL: ownership was cleared despite unreadable inventory" | tee -a "$OUT"; unset -f ip; exit 1
+  fi
+  unset -f ip
+  command ip netns del "$owned" 2>/dev/null || true
+  CREATED_NS=()
+  echo "PASS: unreadable inventory reported as uncertain, ownership preserved" | tee -a "$OUT"
+  echo "RESULT: self-test-inventory-fault passed" | tee -a "$OUT"
+  exit 0
+}
+
+# Controlled trap-status injection: shadow `ip` so `ip netns del` fails, then reach a
+# deliberate `exit 0`; the EXIT trap must override it to nonzero because cleanup is
+# uncertain. The caller verifies a nonzero exit and manually reconciles the leftover.
+self_test_trap_status() {
+  echo "=== self-test-trap-status: EXIT trap forces nonzero on cleanup failure ===" | tee -a "$OUT"
+  local owned="b30-trapstatus-$SUFFIX"
+  ip netns add "$owned" || fail "trap-status setup failed"
+  CREATED_NS+=("$owned")
+  ip() {
+    if [ "$1" = "netns" ] && [ "$2" = "del" ]; then
+      echo "fake ip: simulated netns del failure" >&2
+      return 1
+    fi
+    command ip "$@"
+  }
+  echo "SIMULATED: success-path exit 0 with an unresolved owned namespace" | tee -a "$OUT"
+  exit 0
+}
+
 [ "${1:-}" = "--self-test" ] && self_test
 [ "${1:-}" = "--self-test-fault" ] && self_test_fault
+[ "${1:-}" = "--self-test-delete-fault" ] && self_test_delete_fault
+[ "${1:-}" = "--self-test-inventory-fault" ] && self_test_inventory_fault
+[ "${1:-}" = "--self-test-trap-status" ] && self_test_trap_status
 
 : > "$LOG"
 echo "=== B30 egress namespace fixture ===" | tee "$OUT"
@@ -285,8 +402,8 @@ check_denied "relay->internet socket denied"  "$relay_inet_sock"
 check_ok     "relay->gateway socket ok"       "$relay_gw_sock"
 check_denied "gateway->internet socket denied" "$gw_inet_sock"
 
-# 8. Explicit teardown + verification. A failed deletion is reported (not silent) and
-#    makes the run fail closed; the trap re-runs cleanup on exit.
+# 8. Explicit teardown + verification. A failed deletion or unreadable inventory is
+#    reported (not silent) and makes the run fail closed.
 if do_cleanup; then
   if verify_cleanup; then
     echo "PASS: teardown removed all owned objects, no initial-namespace residue" | tee -a "$OUT"
@@ -294,7 +411,7 @@ if do_cleanup; then
     echo "FAIL: teardown left residue (requires manual reconciliation)" | tee -a "$OUT"; fail=1
   fi
 else
-  echo "FAIL: teardown could not remove owned namespaces (see inventory above; manual reconciliation required)" | tee -a "$OUT"; fail=1
+  echo "FAIL: teardown could not confirm removal of owned namespaces (see inventory above; manual reconciliation required)" | tee -a "$OUT"; fail=1
 fi
 
 if [ "$fail" = "0" ]; then echo "RESULT: containment verified" | tee -a "$OUT"; exit 0; else echo "RESULT: containment FAILED" | tee -a "$OUT"; exit 1; fi

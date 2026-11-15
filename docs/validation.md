@@ -2424,3 +2424,46 @@ Claim: this entry supports the cleanup-error reporting, owned-only collision-saf
 teardown and the fault-injection EXIT-trap cleanup, based on the commands above.
 Firewall-filtered isolation, bare-metal/VM deployment, pinned-host relay, hardware
 signing, catalog and live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 re-review correction 3 (EXIT trap status + inventory error) — 2026-11-14
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`,
+root). Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting
+it. No Node/test code changed, so the prior focused (40/40) and serial full-suite
+(345 pass / 0 fail / 1 skip) results remain valid and were not rerun.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `bash -c 'trap "false" EXIT; exit 0'` | Reproduce the reviewer's Bash trap-status behavior | exit 0 (trap return value does not change status) | 0 |
+| `bash -c 'trap "exit 1" EXIT; exit 0'` | Confirm a trap calling `exit` overrides status | exit 1 (no recursion) | 1 |
+| `wsl ... b30-egress-namespaces.sh --self-test` | Collision refusal + owned cleanup | "self-test passed" | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-fault` | Early-failure EXIT-trap cleanup | nonzero as designed; no residue | 1 |
+| `wsl ... b30-egress-namespaces.sh --self-test-delete-fault` | Mock `ip netns del` failure | "teardown incomplete" inventory reported, ownership preserved | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-inventory-fault` | Mock `ip netns list` failure | "inventory unreadable" reported, ownership preserved | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-trap-status` | Deliberate `exit 0` with a failed delete | EXIT trap overrides to nonzero ("FATAL ... exiting nonzero") | 1 |
+| `wsl ... b30-egress-namespaces.sh` | Full in-namespace veth fixture | "containment verified"; "teardown removed all owned objects, no initial-namespace residue" | 0 |
+| `wsl ... <cleanup>` + `<residue-check>` | Reconcile the trap-status leftover; verify no residue | no `b30-*` netns/veth, no `10.100.x` address/route | 0 |
+| `git diff --cached --check` | Staged change whitespace | no output | 0 |
+
+Result: the EXIT trap now forces a nonzero process status when cleanup or inventory
+verification is uncertain (`exit 1` inside the trap overrides an already-decided `exit 0`
+without recursion), `namespace_exists` distinguishes "confirmed absent" from "inventory
+unreadable", and a failed delete or unreadable inventory is reported with the owned-name
+inventory while ownership is preserved for manual reconciliation. The mocked-`ip`
+self-test modes exercise each path with a `command ip` pass-through confined to
+disposable namespaces.
+
+Evidence level: WSL2 routing-only deployment observation plus mocked-`ip` function tests,
+confined to disposable namespaces; not a firewall (nftables) proof and not a bare-metal/
+VM deployment.
+
+Not rerun / not_run: focused and full Node suite/demo (no Node/test change); nftables/
+iptables filtering (absent, install not authorized); bare-metal Ubuntu / two-VM Hyper-V;
+pinned OpenCode 2.2.5 through the relay; a real FIDO2 `-sk` hardware-key signing dry run;
+public catalog GET and live inference.
+
+Claim: this entry supports the corrected trap-forces-nonzero status, the inventory-error
+discrimination and the mocked-`ip` failed-delete/inventory/trap-status fault injection,
+based on the commands above. Firewall-filtered isolation, bare-metal/VM deployment,
+pinned-host relay, hardware signing, catalog and live inference remain `not_run` and the
+live route stays closed.

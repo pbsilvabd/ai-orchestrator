@@ -2037,3 +2037,38 @@ Template:
 - Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
   open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
   FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 re-review correction 3 (EXIT trap status + inventory-error handling)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `cc3e917`).
+- Scope: correct the residual failure-propagation finding from the re-review at `cc3e917`;
+  PR stays draft and live closed.
+- Steps:
+  1. Verified the Bash behavior the reviewer cited: `trap "false" EXIT; exit 0` returns
+     exit 0, but `trap "exit N" EXIT; exit 0` returns exit N (a trap that calls `exit`
+     can override the process status without recursion).
+  2. Replaced `trap do_cleanup EXIT` with `trap on_exit EXIT`, where `on_exit` re-runs
+     `do_cleanup` and `verify_cleanup` and calls `exit 1` when either is uncertain, so a
+     cleanup or inventory failure always forces a nonzero process status.
+  3. `namespace_exists` now returns 0 (exists), 1 (confirmed absent) or 2 (inventory
+     unreadable). `do_cleanup` treats 2 as uncertain (records the owned name and returns
+     nonzero, leaving `CREATED_NS` intact), `create_ns` refuses on 2, and `verify_cleanup`
+     returns nonzero on an unreadable inventory instead of treating it as clean.
+  4. Added mocked-`ip` self-test modes: `--self-test-delete-fault` (failed `ip netns
+     del`), `--self-test-inventory-fault` (unreadable `ip netns list`) and
+     `--self-test-trap-status` (a deliberate `exit 0` with a failed delete that the trap
+     overrides to exit 1), each confined to disposable namespaces with a `command ip`
+     pass-through mock.
+  5. Reran all self-test modes and the full fixture under the narrow permission; cleaned
+     the single leftover from the trap-status test and verified no `b30-*` residue.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `--self-test` exit 0; `--self-test-fault` exit 1 with no residue;
+  `--self-test-delete-fault` and `--self-test-inventory-fault` exit 0 (both report the
+  uncertain inventory and preserve ownership); `--self-test-trap-status` exit 1 (trap
+  overrides `exit 0`); full fixture exit 0 with no residue. No Node/test code changed,
+  so prior focused 40/40 and serial 345/0/1 results remain valid.
+- Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
+  FIDO2 hardware dry run, catalog, live).

@@ -409,7 +409,10 @@ never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
 ```sh
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test
-wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault   # exits 1; caller verifies no b30-fault-* residue
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault            # exits 1; verify no b30-fault-* residue
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-delete-fault     # mock ip netns del failure
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-inventory-fault  # mock ip netns list failure
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-trap-status      # exits 1; trap forces nonzero
 ```
 
 It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
@@ -421,14 +424,16 @@ no default route, records the full `ip netns`/`ip addr`/`ip route` inventory, th
 real socket attempts proving the worker reaches only the relay, the relay reaches only
 the gateway, and the gateway reaches only the relay, while each is denied a direct
 Internet/TEST-NET destination. Teardown removes only the namespaces this run created
-(refusing name collisions without touching pre-existing state); a failed `ip netns del`
-is reported with the owned-name inventory on every exit path (the EXIT trap re-runs
-cleanup, so an early failure still cleans and reports) and unresolved teardown requires
-manual reconciliation rather than claiming "nothing remains". The `--self-test` mode
-exercises collision refusal and owned-only cleanup, and `--self-test-fault` exercises
-the EXIT-trap cleanup after a simulated partial failure, each confined to disposable
-namespaces. Containment is routing-based: nftables/iptables are not installed and
-default-drop filtering is `not_run`.
+(refusing name collisions without touching pre-existing state). A failed `ip netns del`
+or an unreadable `ip netns list` is reported with the owned-name inventory and treated
+as uncertain (ownership is not cleared); the `EXIT` trap re-runs cleanup on every exit
+path and calls `exit 1` when cleanup or inventory verification is uncertain, so a run
+never reports success with unresolved owned namespaces and unresolved teardown requires
+manual reconciliation. The `--self-test*` modes exercise collision refusal, owned-only
+cleanup, early-failure trap cleanup, and mock `ip` failed-delete / unreadable-inventory /
+trap-forces-nonzero paths, each confined to disposable namespaces. Containment is
+routing-based: nftables/iptables are not installed and default-drop filtering is
+`not_run`.
 
 Not covered / `not_run`: the live free route, public catalog GET, live inference,
 nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, the

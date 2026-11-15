@@ -184,12 +184,15 @@ Observed deployment containment (isolated WSL2 Ubuntu, routing-based, no host ch
   relay, the relay reaches only the gateway, and the gateway reaches only the relay;
   worker/relay/gateway are each denied a direct Internet/TEST-NET destination. Teardown
   removes only the namespaces this run created (refusing name collisions without
-  touching pre-existing state); a failed `ip netns del` is reported with the owned-name
-  inventory on every exit path (the EXIT trap re-runs cleanup, so an early or partial
-  failure still cleans and reports), and unresolved teardown requires manual
-  reconciliation rather than claiming nothing remains. A `--self-test` mode exercises
-  collision refusal and owned-only cleanup, and `--self-test-fault` exercises the EXIT
-  trap after a simulated partial failure, each confined to disposable namespaces.
+  touching pre-existing state); a failed `ip netns del` or an unreadable `ip netns list`
+  is reported with the owned-name inventory and treated as uncertain (ownership is not
+  cleared), and the `EXIT` trap forces a nonzero process status on cleanup or inventory
+  uncertainty, so unresolved teardown requires manual reconciliation and is never claimed
+  complete. `--self-test` exercises collision refusal and owned-only cleanup, and the
+  `--self-test-fault` / `--self-test-delete-fault` / `--self-test-inventory-fault` /
+  `--self-test-trap-status` modes exercise early-failure, failed-delete, unreadable-
+  inventory and trap-forces-nonzero paths with mocked `ip` outcomes, each confined to
+  disposable namespaces.
 
 Not run / not established by this amendment (recorded `not_run`):
 
