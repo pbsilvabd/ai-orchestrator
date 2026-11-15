@@ -12,8 +12,9 @@ is still held; a failed cleanup or lock release leaves the capability unusable a
 retained. Passive default close is synchronous again; a capability handoff returns the release
 Promise. `test/service-ownership-handoff.test.mjs` covers forged/copied/reused/released/
 mismatched/competing-owner and uncertain-release cases, and the existing B12/B30 lock and
-listener-lock tests still pass. All deployment gates remain `not_run`; PR #45 stays draft and
-unmerged.
+listener-lock tests still pass. Exact-head CI run `43764489116` at `0c90518` passed on Windows
+and Ubuntu; the docs-only receipt commit has its own PR run. All deployment gates remain
+`not_run`; PR #45 stays draft and unmerged.
 
 2026-11-15 third correction (ownership and startup authority; same draft PR #45). Corrected the
 two P1 findings from the independent re-review at `c8645d6`. (1) `openTaskHome` now acquires

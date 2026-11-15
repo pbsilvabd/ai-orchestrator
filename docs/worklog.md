@@ -2608,7 +2608,9 @@ Template:
   429 then 200, exit 0; `git diff --check` -> no output, exit 0. Two self-review passes
   covered the capability boundary, release/uncertainty and close paths, old callers and
   the contract wording; the second pass restored the documented passive-close behavior.
-  Default-concurrency local suite, WSL fixture, pinned OpenCode harnesses, deployed TLS,
+  Exact-head CI run `43764489116` succeeded on both OS jobs; the docs-only receipt commit
+  has its own PR run. Default-concurrency local suite, WSL fixture, pinned OpenCode
+  harnesses, deployed TLS,
   FIDO2 positive signature, WebSocket bypass, VM and live inference were not rerun.
 - Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
   independent re-review of the new head is required. All B30 deployment gates remain
