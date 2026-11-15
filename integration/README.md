@@ -420,29 +420,37 @@ with a unique per-run suffix. Each veth pair is created **inside** an already-cr
 disposable namespace (`ip netns exec <ns> ip link add ...`) and only the peer is moved
 to the other compartment, so `ip link add` never runs in the WSL initial/host namespace
 and no host address, route or link is ever assigned. It assigns private addresses with
-no default route, records the full `ip netns`/`ip addr`/`ip route` inventory, then runs
+no default route and installs a per-namespace nftables default-drop `inet b30fw` table in
+the worker and relay namespaces (OUTPUT and FORWARD `policy drop`; allow only
+worker→relay:18081 and relay→gateway:18082 via `counter accept`; a final `counter drop`),
+records the full `ip netns`/`ip addr`/`ip route`/nftables inventory and counters, then runs
 real socket attempts proving the worker reaches only the relay, the relay reaches only
 the gateway, and the gateway reaches only the relay, while each is denied a direct
 Internet/TEST-NET destination. It additionally runs active negative egress probes from
 the worker: direct IPv6 (`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an
-RFC 2606 `.invalid` hostname), and a WebSocket-like `Upgrade` request to TEST-NET — each
-is denied with a recorded nonzero exit (`rc=7` for the unrouted IPv4/IPv6/upgrade
-connections, `rc=6` for the unresolved DNS name), with no external address contacted.
+RFC 2606 `.invalid` hostname), a WebSocket-like `Upgrade` request to TEST-NET, and a
+routable-but-not-allowed relay port (`:18099`) — each denied with a recorded nonzero exit
+(`rc=7` for unrouted connections, `rc=6` for the unresolved DNS name, `rc=28` timeout for
+the nft-dropped port), with no external address contacted and the nftables counters
+recording accepted/dropped packets.
 Teardown removes only the namespaces this run created (refusing name collisions without
-touching pre-existing state). A failed `ip netns del` or an unreadable `ip netns list`
-is reported with the owned-name inventory and treated as uncertain (ownership is not
-cleared); the `EXIT` trap re-runs cleanup on every exit path and calls `exit 1` when
-cleanup or inventory verification is uncertain, so a run never reports success with
-unresolved owned namespaces and unresolved teardown requires manual reconciliation. The
-`--self-test*` modes exercise collision refusal, owned-only cleanup, early-failure trap
-cleanup, and mock `ip` failed-delete / unreadable-inventory / trap-forces-nonzero paths,
-each confined to disposable namespaces. Containment is routing-based: nftables/iptables
-are not installed and default-drop filtering is `not_run`.
+touching pre-existing state), which also removes the per-namespace nftables rulesets. A
+failed `ip netns del` or an unreadable `ip netns list` is reported with the owned-name
+inventory and treated as uncertain (ownership is not cleared); the `EXIT` trap re-runs
+cleanup on every exit path and calls `exit 1` when cleanup or inventory verification is
+uncertain, so a run never reports success with unresolved owned namespaces and unresolved
+teardown requires manual reconciliation. The `--self-test*` modes exercise collision
+refusal, owned-only cleanup, early-failure trap cleanup, and mock `ip` failed-delete /
+unreadable-inventory / trap-forces-nonzero paths, each confined to disposable namespaces.
+The WSL initial/host nftables ruleset is verified empty before and after; this is a WSL2
+observation (nftables v1.0.9 installed in the distribution), not a bare-metal/VM
+deployment, and the gateway namespace has no external route (fixture terminal point).
 
-Not covered / `not_run`: the live free route, public catalog GET, live inference,
-nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, and a real FIDO2
-hardware-key signing dry run. A deployment without verifiable firewall-filtered
-isolation and a separately signed live approval stays closed.
+Not covered / `not_run`: the live free route, public catalog GET, live inference, a
+bare-metal Ubuntu or two-VM Hyper-V deployment (the nftables/routing observation is WSL2
+only), and a real FIDO2 hardware-key signing dry run. A deployment without verifiable
+firewall-filtered isolation in a bare-metal/VM deployment and a separately signed live
+approval stays closed.
 
 ## B30 pinned OpenCode 2.2.5 through the relay (fixture)
 

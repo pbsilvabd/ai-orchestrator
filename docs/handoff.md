@@ -19,9 +19,11 @@ closed and no merge is authorized.
 - `integration/b30-egress-namespaces.sh` — isolated WSL2 worker/relay/gateway
   netns + veth fixture: three disposable namespaces with unique per-run names, each
   veth pair created **inside** a disposable namespace (only the peer moved), so no
-  `ip link add` runs in the WSL initial/host namespace; owned-only collision-safe
-  teardown, `--self-test` mode, real socket probes (including active IPv4/IPv6/DNS/
-  WebSocket-upgrade negative egress probes, all denied) and verified-empty teardown.
+  `ip link add` runs in the WSL initial/host namespace; per-namespace nftables default-drop
+  (OUTPUT/FORWARD, allow only worker→relay and relay→gateway, with counters); owned-only
+  collision-safe teardown, `--self-test` mode, real socket probes (including active
+  IPv4/IPv6/DNS/WebSocket-upgrade and a routable-but-not-allowed port negative egress
+  probes, all denied) and verified-empty teardown (host nftables ruleset stays empty).
 - `integration/opencode-free-relay.mjs` — pinned OpenCode 2.2.5 routed through the
   relay→gateway→fixture-origin loopback chain: normal run succeeds with three
   `Bearer public` origin requests; each of 301/302/303/307/308 fails the task with one
@@ -30,14 +32,13 @@ closed and no merge is authorized.
   through the relay). `--self-test` proves an aborted partial body increments the
   alternate-origin counters.
 
-`not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
-(absent, install not authorized — containment is routing-based); bare-metal Ubuntu
-or two-VM Hyper-V deployment (WSL2 observation only); the active worker-compartment
-WebSocket-bypass negative (routing denies worker WebSocket-upgrade egress, but an
-active provider-WebSocket experiment is not run); signed-approval service admission
-integration; a real FIDO2 hardware-key signing dry run; public catalog GET; live
-inference and B20/#43. The live route stays closed until a platform provides verified
-firewall-filtered isolation and a separately signed live approval.
+`not_run` / still closed (ADR-009/010): bare-metal Ubuntu or two-VM Hyper-V deployment
+(the nftables/routing observation is WSL2 only; the gateway namespace has no external
+route); the active worker-compartment provider WebSocket-bypass experiment; signed-approval
+service admission integration; a real FIDO2 hardware-key signing dry run; public catalog
+GET; live inference and B20/#43. The live route stays closed until a platform provides
+verified firewall-filtered isolation in a bare-metal/VM deployment and a separately
+signed live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
 B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft

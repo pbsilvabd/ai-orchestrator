@@ -46,6 +46,7 @@ LOG="${B30_LOG:-/tmp/b30-egress.log}"
 OUT="${B30_OUT:-/tmp/b30-egress-out.txt}"
 RELAY_PORT=18081
 GATEWAY_PORT=18082
+FORBIDDEN_PORT=18099
 
 # Ownership tracking: only namespaces in this array are ever deleted. LEFTOVER_NS holds
 # the inventory of owned namespaces whose deletion failed or whose absence could not be
@@ -55,6 +56,7 @@ CREATED_NS=()
 LEFTOVER_NS=()
 relay_pid=""
 gateway_pid=""
+forbidden_pid=""
 
 # Returns 0 if the namespace exists, 1 if it is confirmed absent, 2 if the namespace
 # inventory is unreadable (uncertain). Callers must distinguish 1 from 2.
@@ -95,6 +97,7 @@ create_ns() {
 do_cleanup() {
   [ -n "$relay_pid" ] && kill "$relay_pid" 2>/dev/null || true
   [ -n "$gateway_pid" ] && kill "$gateway_pid" 2>/dev/null || true
+  [ -n "$forbidden_pid" ] && kill "$forbidden_pid" 2>/dev/null || true
   local i ns state
   local failed=0
   LEFTOVER_NS=()
@@ -329,6 +332,27 @@ for ns in "$WORKER_NS" "$RELAY_NS" "$GATEWAY_NS"; do
   ip -n "$ns" -6 addr flush scope global 2>/dev/null || true
 done
 
+# 3a. nftables default-drop OUTPUT/FORWARD inside the worker and relay namespaces only.
+#     The gateway namespace keeps no external route (fixture terminal point) and is left
+#     without egress rules. The WSL initial/host namespace is never touched. Each chain
+#     uses `policy drop`; a final `counter drop` makes dropped packets observable, and the
+#     allow rules carry `counter` so accepted traffic is observable too.
+command -v nft >/dev/null 2>&1 || fail "nftables is not installed (host firewall untouched)"
+# Worker: allow only worker -> relay fixed port.
+ip netns exec "$WORKER_NS" nft add table inet b30fw || fail "worker nft table"
+ip netns exec "$WORKER_NS" nft add chain inet b30fw output '{ type filter hook output priority 0; policy drop; }' || fail "worker nft output"
+ip netns exec "$WORKER_NS" nft add chain inet b30fw forward '{ type filter hook forward priority 0; policy drop; }' || fail "worker nft forward"
+ip netns exec "$WORKER_NS" nft add rule inet b30fw output ct state established,related accept || fail "worker nft conntrack"
+ip netns exec "$WORKER_NS" nft add rule inet b30fw output ip daddr "$RELAY_IP" tcp dport "$RELAY_PORT" counter accept || fail "worker allow relay"
+ip netns exec "$WORKER_NS" nft add rule inet b30fw output counter drop || fail "worker nft drop"
+# Relay: allow only relay -> gateway fixed port.
+ip netns exec "$RELAY_NS" nft add table inet b30fw || fail "relay nft table"
+ip netns exec "$RELAY_NS" nft add chain inet b30fw output '{ type filter hook output priority 0; policy drop; }' || fail "relay nft output"
+ip netns exec "$RELAY_NS" nft add chain inet b30fw forward '{ type filter hook forward priority 0; policy drop; }' || fail "relay nft forward"
+ip netns exec "$RELAY_NS" nft add rule inet b30fw output ct state established,related accept || fail "relay nft conntrack"
+ip netns exec "$RELAY_NS" nft add rule inet b30fw output ip daddr "$GATEWAY_IP" tcp dport "$GATEWAY_PORT" counter accept || fail "relay allow gateway"
+ip netns exec "$RELAY_NS" nft add rule inet b30fw output counter drop || fail "relay nft drop"
+
 # 4. Inventory.
 {
   echo "=== ip netns list ==="; ip netns list
@@ -336,6 +360,7 @@ done
     echo "=== $ns addr ==="; ip -n "$ns" addr
     echo "=== $ns route ==="; ip -n "$ns" route
     echo "=== $ns -6 route ==="; ip -n "$ns" -6 route
+    echo "=== $ns nft ruleset ==="; ip netns exec "$ns" nft list ruleset 2>&1
   done
 } >> "$LOG" 2>&1
 
@@ -366,6 +391,9 @@ ip netns exec "$RELAY_NS" python3 -m http.server "$RELAY_PORT" --bind "$RELAY_IP
 relay_pid=$!
 ip netns exec "$GATEWAY_NS" python3 -m http.server "$GATEWAY_PORT" --bind "$GATEWAY_IP" >> "$LOG" 2>&1 &
 gateway_pid=$!
+# A forbidden service on the relay at a non-allowed port: routable but nft-dropped.
+ip netns exec "$RELAY_NS" python3 -m http.server "$FORBIDDEN_PORT" --bind "$RELAY_IP" >> "$LOG" 2>&1 &
+forbidden_pid=$!
 sleep 1
 
 probe_curl() {
@@ -411,6 +439,16 @@ probe_curl "$GATEWAY_NS" "http://$INTERNET_V4/";          gw_inet_sock=$?
 probe_curl6 "$WORKER_NS" "http://[$INTERNET_V6]/";        worker_inet6_sock=$?
 probe_curl "$WORKER_NS" "http://$DNS_PROBE_HOST/";        worker_dns_sock=$?
 probe_upgrade "$WORKER_NS" "http://$INTERNET_V4/";        worker_ws_sock=$?
+# nft OUTPUT default-drop: the forbidden port is routable (same relay subnet) but not
+# allowed, so the SYN is dropped and the connection times out.
+probe_curl "$WORKER_NS" "http://$RELAY_IP:$FORBIDDEN_PORT/"; worker_forbidden_sock=$?
+
+# Record the per-namespace nft ruleset with counters after the probes.
+{
+  echo "=== nft counters (post-probe) ==="
+  ip netns exec "$WORKER_NS" nft list ruleset 2>&1
+  ip netns exec "$RELAY_NS" nft list ruleset 2>&1
+} >> "$LOG" 2>&1
 
 # 7. Assert the containment.
 echo "=== verdict ===" | tee -a "$OUT"
@@ -433,6 +471,7 @@ check_denied "gateway->internet socket denied" "$gw_inet_sock"
 check_denied "worker->IPv6 egress denied"     "$worker_inet6_sock"
 check_denied "worker->DNS resolution denied"  "$worker_dns_sock"
 check_denied "worker->WebSocket upgrade denied" "$worker_ws_sock"
+check_denied "worker->forbidden relay port denied (nft OUTPUT)" "$worker_forbidden_sock"
 
 # 8. Explicit teardown + verification. A failed deletion or unreadable inventory is
 #    reported (not silent) and makes the run fail closed.

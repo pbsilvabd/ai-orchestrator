@@ -2607,3 +2607,51 @@ probes and the relay timeout/partial-body/port-release fixtures, based on the co
 above. Firewall-filtered isolation, the active provider WebSocket-bypass experiment,
 signed-approval service integration, hardware signing, catalog and live inference remain
 `not_run` and the live route stays closed.
+
+## M3 preparation: B30 nftables default-drop inside disposable namespaces — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS (kernel
+`6.6.87.2-microsoft-standard-WSL2`, root, CapEff `=ep`), Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Maintainer-authorized package install and ephemeral per-namespace
+nftables rules.
+
+Preflight (read-only) before install: `nft`/`iptables` absent; host firewall snapshot
+empty (`nft list ruleset` and `iptables -S`); `apt-get -s install nftables` planned exactly
+`libnftnl11 1.2.6-2build1`, `libnftables1 1.0.9-1build1`, `nftables 1.0.9-1build1`
+(3 new, 0 upgraded, 0 removed, no service/host-firewall side effects).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `apt-get install -y nftables` | Install nftables (maintainer-authorized) | 3 packages installed: nftables 1.0.9-1build1, libnftables1 1.0.9-1build1, libnftnl11 1.2.6-2build1; `nftables` systemd unit `disabled` | 0 |
+| `nft list ruleset` (host, after install) | Verify no host firewall activated | empty | 0 |
+| disposable `nft` namespace probe | Confirm nft works per-namespace and host stays empty | default-drop output chain added inside a disposable namespace; host ruleset empty | 0 |
+| `wsl ... integration/b30-egress-namespaces.sh` (persistent log) | Full fixture with per-namespace nftables default-drop + active negatives | "containment verified"; worker `nft` counters: `dport 18081 accept packets 1`, `drop packets 7`; relay: `dport 18082 accept packets 1`, `drop packets 10`; forbidden port `:18099` `rc=28` timeout (nft-dropped); no host residue | 0 |
+| `wsl ... <residue-check>` | Verify host nft/netns/veth clean after teardown | host `nft list ruleset` empty; no `b30-*` netns/veth; no `10.100.x` address/route | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the worker and relay namespaces each install a per-namespace nftables
+default-drop `inet b30fw` table (OUTPUT and FORWARD `policy drop`, allow only
+worker→relay:18081 and relay→gateway:18082 via `counter accept`, final `counter drop`).
+Combined with no default route, this denies the worker's direct IPv4/IPv6/DNS/WebSocket-
+upgrade and a routable-but-not-allowed relay port; the nftables counters record the
+accepted/dropped packets, and the WSL initial/host nftables ruleset stays empty before and
+after. The forbidden port `:18099` times out (`rc=28`) — a routable address whose SYN is
+dropped by the OUTPUT policy — proving the nftables layer, not just routing.
+
+Evidence level: WSL2 routing + nftables deployment observation confined to disposable
+namespaces; not a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable),
+and the gateway namespace has no external route (fixture terminal point).
+
+Not rerun / not_run: a bare-metal Ubuntu or two-VM Hyper-V deployment; the active provider
+WebSocket-bypass experiment; signed-approval service admission integration; a real FIDO2
+`-sk` hardware-key signing dry run; public catalog GET (maintainer-declined); live
+inference. The nftables package remains installed in the distribution (rules/namespaces
+were removed and verified absent; no unrelated state was removed).
+
+Claim: this entry supports the per-namespace nftables default-drop enforcement, the
+counters and the active negative probes, based on the commands above. A bare-metal/VM
+deployment, the active provider WebSocket-bypass experiment, signed-approval service
+integration, hardware signing, catalog and live inference remain `not_run` and the live
+route stays closed.

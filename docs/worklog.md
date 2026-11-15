@@ -2191,3 +2191,36 @@ Template:
   open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, active provider
   WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry run,
   catalog, live).
+
+## 2026-11-15 — B30 nftables default-drop inside disposable namespaces
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: maintainer-authorized nftables install in WSL2 Ubuntu, then per-namespace
+  default-drop OUTPUT/FORWARD with allow rules, counters and active negative probes.
+- Steps:
+  1. Read-only preflight: nft/iptables absent, host firewall empty, `apt-get -s install
+     nftables` = 3 new packages with no service/host-firewall side effects.
+  2. Installed `nftables` (1.0.9-1build1) + `libnftables1` + `libnftnl11` via apt
+     (exit 0); verified host `nft list ruleset` empty and the `nftables` systemd unit
+     `disabled` after install.
+  3. Confirmed nft works inside a disposable namespace with a per-namespace ruleset
+     (host ruleset stays empty).
+  4. Extended `integration/b30-egress-namespaces.sh` to install a per-namespace nftables
+     `inet b30fw` table in the worker and relay namespaces (OUTPUT/FORWARD `policy drop`,
+     allow worker→relay:18081 and relay→gateway:18082 via `counter accept`, final
+     `counter drop`), record the nft ruleset/counters, and add a routable-but-not-allowed
+     relay port (`:18099`) negative probe.
+  5. Ran the fixture: "containment verified" (exit 0); worker nft counters `dport 18081
+     accept packets 1`, `drop packets 7`; relay `dport 18082 accept packets 1`, `drop
+     packets 10`; forbidden `:18099` `rc=28` timeout (nft-dropped); host nft ruleset empty
+     and no residue after teardown.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/backlog.md`,
+  `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20. The nftables package
+  remains installed; namespaces/rules were removed and verified absent.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).

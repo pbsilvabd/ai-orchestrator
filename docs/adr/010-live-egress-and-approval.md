@@ -172,32 +172,38 @@ Implemented and tested (fixture/loopback and temporary-process only):
   `test/live-approval.test.mjs` (B30-05), including a two-process competition and a
   restart re-read, with disposable test-only keys.
 
-Observed deployment containment (isolated WSL2 Ubuntu, routing-based, no host changes):
+Observed deployment containment (isolated WSL2 Ubuntu, routing- and nftables-based, no
+host changes):
 
 - `integration/b30-egress-namespaces.sh` creates three temporary network namespaces
   (`b30-worker`, `b30-relay`, `b30-gw`) with a unique per-run suffix. Each veth pair is
   created **inside** an already-created disposable namespace (`ip netns exec <ns> ip
   link add ...`) and only the peer is moved to the other compartment, so `ip link add`
   never runs in the WSL initial/host namespace and no host address, route or link is
-  ever assigned. It assigns private addresses with no default IPv4/IPv6 route, records
-  the full inventory, then runs real socket attempts: the worker reaches only the
-  relay, the relay reaches only the gateway, and the gateway reaches only the relay;
-  worker/relay/gateway are each denied a direct Internet/TEST-NET destination. It also
-  runs active negative egress probes from the worker — direct IPv6 (`curl -6` to
-  `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), and a WebSocket-like
-  `Upgrade` request to TEST-NET — each denied with a recorded nonzero exit (`rc=7` for the
-  unrouted IPv4/IPv6/upgrade connections, `rc=6` for the unresolved DNS name), with no
-  external address contacted. Teardown
+  ever assigned. It assigns private addresses with no default IPv4/IPv6 route, installs a
+  per-namespace nftables default-drop `inet b30fw` table in the worker and relay
+  namespaces (OUTPUT and FORWARD `policy drop`; allow only worker→relay:18081 and
+  relay→gateway:18082 via `counter accept`; a final `counter drop`), records the full
+  routing + nftables inventory and counters, then runs real socket attempts: the worker
+  reaches only the relay, the relay reaches only the gateway, and the gateway reaches only
+  the relay; worker/relay/gateway are each denied a direct Internet/TEST-NET destination.
+  Active negative egress probes from the worker — direct IPv4/IPv6 (`curl` to `192.0.2.1`
+  / `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), a WebSocket-like
+  `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port (`:18099`) —
+  are each denied: `rc=7` for unrouted connections, `rc=6` for the unresolved DNS name,
+  and `rc=28` (timeout) for the nft-dropped forbidden port; the nftables counters record
+  the accepted and dropped packets. No external address is contacted. Teardown
   removes only the namespaces this run created (refusing name collisions without
-  touching pre-existing state); a failed `ip netns del` or an unreadable `ip netns list`
-  is reported with the owned-name inventory and treated as uncertain (ownership is not
-  cleared), and the `EXIT` trap forces a nonzero process status on cleanup or inventory
-  uncertainty, so unresolved teardown requires manual reconciliation and is never claimed
-  complete. `--self-test` exercises collision refusal and owned-only cleanup, and the
-  `--self-test-fault` / `--self-test-delete-fault` / `--self-test-inventory-fault` /
-  `--self-test-trap-status` modes exercise early-failure, failed-delete, unreadable-
-  inventory and trap-forces-nonzero paths with mocked `ip` outcomes, each confined to
-  disposable namespaces.
+  touching pre-existing state), which also removes the per-namespace nftables rulesets; a
+  failed `ip netns del` or an unreadable `ip netns list` is reported with the owned-name
+  inventory and treated as uncertain (ownership is not cleared), and the `EXIT` trap forces
+  a nonzero process status on cleanup or inventory uncertainty, so unresolved teardown
+  requires manual reconciliation and is never claimed complete. The WSL initial/host
+  nftables ruleset is verified empty before and after. `--self-test` exercises collision
+  refusal and owned-only cleanup, and the `--self-test-fault` / `--self-test-delete-fault` /
+  `--self-test-inventory-fault` / `--self-test-trap-status` modes exercise early-failure,
+  failed-delete, unreadable-inventory and trap-forces-nonzero paths with mocked `ip`
+  outcomes, each confined to disposable namespaces.
 
 Relay failure/lifecycle fixtures (B30-04, established at the relay level): `test/relay.test.mjs`
 covers port-conflict refusal, upstream-failure latch, an upstream-timeout latch with a
@@ -209,19 +215,18 @@ is not proven here.
 
 Not run / not established by this amendment (recorded `not_run`):
 
-- `nftables`/`iptables` default-drop filtering: neither binary is present in the
-  observed distribution, and installing packages is not authorized. Containment is
-  routing-based (no default route), not firewall-filtered.
-- Bare-metal Ubuntu or Windows Hyper-V deployment: the observation is WSL2 Ubuntu
-  (kernel `6.6.87.2-microsoft-standard-WSL2`), not a validated standalone Ubuntu or
-  a two-VM Hyper-V deployment.
+- Bare-metal Ubuntu or Windows Hyper-V deployment: the nftables/routing observation is
+  WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`, nftables v1.0.9 installed
+  inside the distribution), not a validated standalone Ubuntu or a two-VM Hyper-V
+  deployment; the gateway namespace has no external route in the fixture (it is the
+  terminal point).
 - A real FIDO2-backed hardware-key signing dry run: the flag enforcement and
   `ssh-keygen -Y verify` plumbing are tested with disposable non-hardware keys and a
   synthesized sk-signature blob; a real `-sk` signature is refused unless it carries
   presence+verification, but no hardware key was exercised.
-- Firewall inventory (B30-03), service-level uncertain-child-stop integration (B30-04),
-  real signed-approval service admission integration (B30-05), and the gateway TLS
-  ingress chain (B30-07): not exercised here.
+- Service-level uncertain-child-stop integration (B30-04), real signed-approval service
+  admission integration (B30-05), and the gateway TLS ingress chain (B30-07): not
+  exercised here.
 - Public catalog GET and live inference: remain prohibited and `not_run`.
 
 Signed-approval service integration assessment (B30-05, not_run): the SSHSIG verification,
