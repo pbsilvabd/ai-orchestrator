@@ -2251,3 +2251,28 @@ Template:
   open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
   WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
   run, catalog, live).
+
+## 2026-11-15 — B30 fail-closed worker privilege-boundary verdict
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the supervisor P1 finding at `42396c9` (worker capability inventory and
+  nft/route mutation outcomes were logged, not asserted).
+- Steps:
+  1. Captured the unprivileged worker identity (UID), CapEff, NoNewPrivs, and the nft/ip
+     mutation return codes into variables, and added post-attempt checks that no
+     unauthorized nft table or default route was actually installed.
+  2. Added `verify_worker_privileges` (numeric-hex CapEff comparison, UID/NoNewPrivs/
+     mutation/table/route checks) and made the `containment verified` verdict depend on it;
+     any mutation success or wrong identity/capability fails the run.
+  3. Added `--self-test-capability`: a controlled non-privileged test proving the check
+     accepts good inputs and rejects each simulated bad input, with no netns/nft/ip effects.
+  4. Ran both: self-test-capability passed (8 checks); full fixture "containment verified"
+     with `PASS worker privilege boundary`; host nft ruleset empty, no residue.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).

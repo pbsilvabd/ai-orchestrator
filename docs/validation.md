@@ -2695,3 +2695,36 @@ refusal and the verified forbidden-port nft drop, based on the commands above. A
 bare-metal/VM deployment, the active provider WebSocket-bypass experiment, signed-approval
 service integration, hardware signing, catalog and live inference remain `not_run` and the
 live route stays closed.
+
+## M3 preparation: B30 fail-closed worker privilege-boundary verdict — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P1 finding at `42396c9` (capability inventory and
+mutation outcomes were logged, not asserted).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... b30-egress-namespaces.sh --self-test-capability` | Controlled check that `verify_worker_privileges` accepts good inputs and rejects simulated mutation success / wrong uid / nonzero CapEff / unset NoNewPrivs / unauthorized table / unauthorized default route | "self-test-capability passed" (8 checks) | 0 |
+| `wsl ... b30-egress-namespaces.sh` (persistent log) | Full fixture with the fail-closed privilege-boundary verdict | "containment verified"; `PASS worker privilege boundary (uid=65534 CapEff=0000000000000000 NoNewPrivs=1 nft_rc=1 route_rc=2)`; forbidden `:18099` `rc=28`; drop counter incremented; no host residue | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the worker privilege boundary is now an enforced verdict, not a log line. The run
+asserts the unprivileged identity (UID 65534), empty CapEff (numeric hex comparison), set
+NoNewPrivs, both mutation attempts refused (nft rc=1, ip rc=2), and no unauthorized nft
+table or default route installed; any of these failing makes `RESULT: containment FAILED`.
+A controlled `--self-test-capability` mode proves the check would fail on simulated
+mutation success or unexpected capabilities, without WSL netns/nft/ip side effects.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+
+Claim: this entry supports the enforced worker privilege-boundary verdict and its controlled
+self-test, based on the commands above. A bare-metal/VM deployment, the active provider
+WebSocket-bypass experiment, signed-approval service integration, hardware signing, catalog
+and live inference remain `not_run` and the live route stays closed.

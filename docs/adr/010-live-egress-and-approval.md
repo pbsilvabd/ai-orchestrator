@@ -189,9 +189,12 @@ host changes):
   the relay; worker/relay/gateway are each denied a direct Internet/TEST-NET destination.
   Worker-side probes run as the unprivileged `nobody` identity via `setpriv` (real/effective
   UID/GID 65534, `--clear-groups`, `--no-new-privs`, `--bounding-set=-net_admin,-sys_admin`);
-  the recorded capability inventory is `CapEff: 0`, `CapPrm: 0`, `NoNewPrivs: 1`, and an
-  unprivileged `nft add`/`ip route add` mutation attempt returns "Operation not permitted"
-  (`nft` rc=1, `ip` rc=2), while the fixed worker→relay path remains reachable. Active
+  the fail-closed verdict asserts the capability inventory (`CapEff` all-zero, `NoNewPrivs`
+  1, UID 65534), that an unprivileged `nft add`/`ip route add` mutation is refused
+  ("Operation not permitted", `nft` rc=1, `ip` rc=2), and that no unauthorized nft table or
+  default route was actually installed — any mutation success or wrong identity/capability
+  fails the run, and a controlled `--self-test-capability` mode proves the check rejects
+  simulated bad inputs — while the fixed worker→relay path remains reachable. Active
   negative egress probes from the worker — direct IPv4/IPv6 (`curl` to `192.0.2.1` /
   `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), a WebSocket-like
   `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port (`:18099`, whose

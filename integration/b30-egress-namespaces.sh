@@ -298,11 +298,49 @@ self_test_trap_status() {
   exit 0
 }
 
+# Controlled (non-privileged) test of verify_worker_privileges: good inputs pass, and each
+# simulated bad input (mutation success, wrong uid, nonzero CapEff, unset NoNewPrivs,
+# unauthorized table/route) must fail. No netns/nft/ip side effects.
+verify_worker_privileges() {
+  local uid="$1" capeff="$2" nnp="$3" nft_rc="$4" route_rc="$5" no_table="$6" no_route="$7"
+  local capeff_dec
+  if [ "$uid" != "$WORKER_UID" ]; then echo "worker identity wrong (uid=$uid)" >&2; return 1; fi
+  capeff_dec=$((16#${capeff:-0}))
+  if [ "$capeff_dec" -ne 0 ]; then echo "worker CapEff not empty ($capeff)" >&2; return 1; fi
+  if [ "$nnp" != "1" ]; then echo "worker NoNewPrivs not set ($nnp)" >&2; return 1; fi
+  if [ "$nft_rc" = "0" ]; then echo "worker nft mutation succeeded" >&2; return 1; fi
+  if [ "$route_rc" = "0" ]; then echo "worker route mutation succeeded" >&2; return 1; fi
+  if [ "$no_table" != "1" ]; then echo "unauthorized nft table installed" >&2; return 1; fi
+  if [ "$no_route" != "1" ]; then echo "unauthorized default route installed" >&2; return 1; fi
+  return 0
+}
+
+self_test_capability() {
+  echo "=== self-test-capability: worker privilege-boundary verdict ===" | tee -a "$OUT"
+  local ok=1
+  # Good inputs (the real observed unprivileged worker) must pass.
+  if verify_worker_privileges "65534" "0000000000000000" "1" "1" "2" "1" "1"; then
+    echo "PASS good worker inputs accepted" | tee -a "$OUT"
+  else
+    echo "FAIL good worker inputs rejected" | tee -a "$OUT"; ok=0
+  fi
+  # Each simulated bad input must be rejected.
+  verify_worker_privileges "65534" "0" "1" "0" "2" "1" "1" && { echo "FAIL nft mutation success not detected" | tee -a "$OUT"; ok=0; } || echo "PASS nft mutation success detected" | tee -a "$OUT"
+  verify_worker_privileges "65534" "0" "1" "1" "0" "1" "1" && { echo "FAIL route mutation success not detected" | tee -a "$OUT"; ok=0; } || echo "PASS route mutation success detected" | tee -a "$OUT"
+  verify_worker_privileges "0" "0" "1" "1" "2" "1" "1" && { echo "FAIL wrong uid not detected" | tee -a "$OUT"; ok=0; } || echo "PASS wrong uid detected" | tee -a "$OUT"
+  verify_worker_privileges "65534" "1" "1" "1" "2" "1" "1" && { echo "FAIL nonzero CapEff not detected" | tee -a "$OUT"; ok=0; } || echo "PASS nonzero CapEff detected" | tee -a "$OUT"
+  verify_worker_privileges "65534" "0" "0" "1" "2" "1" "1" && { echo "FAIL unset NoNewPrivs not detected" | tee -a "$OUT"; ok=0; } || echo "PASS unset NoNewPrivs detected" | tee -a "$OUT"
+  verify_worker_privileges "65534" "0" "1" "1" "2" "0" "1" && { echo "FAIL unauthorized table not detected" | tee -a "$OUT"; ok=0; } || echo "PASS unauthorized table detected" | tee -a "$OUT"
+  verify_worker_privileges "65534" "0" "1" "1" "2" "1" "0" && { echo "FAIL unauthorized default route not detected" | tee -a "$OUT"; ok=0; } || echo "PASS unauthorized default route detected" | tee -a "$OUT"
+  if [ "$ok" = "1" ]; then echo "RESULT: self-test-capability passed" | tee -a "$OUT"; exit 0; else echo "RESULT: self-test-capability FAILED" | tee -a "$OUT"; exit 1; fi
+}
+
 [ "${1:-}" = "--self-test" ] && self_test
 [ "${1:-}" = "--self-test-fault" ] && self_test_fault
 [ "${1:-}" = "--self-test-delete-fault" ] && self_test_delete_fault
 [ "${1:-}" = "--self-test-inventory-fault" ] && self_test_inventory_fault
 [ "${1:-}" = "--self-test-trap-status" ] && self_test_trap_status
+[ "${1:-}" = "--self-test-capability" ] && self_test_capability
 
 : > "$LOG"
 echo "=== B30 egress namespace fixture ===" | tee "$OUT"
@@ -474,16 +512,28 @@ else
   forbidden_drop_delta=0
 fi
 
-# Unprivileged worker capability inventory and mutation refusal.
+# Unprivileged worker capability inventory + mutation refusal. Captured as variables so
+# the verdict can enforce them (not merely log them).
+worker_cap=$(ip netns exec "$WORKER_NS" $UNPRIV sh -c 'grep -E "^(CapEff|NoNewPrivs)" /proc/self/status' 2>&1)
+worker_capeff=$(printf '%s\n' "$worker_cap" | awk '/^CapEff:/{print $2}')
+worker_nnp=$(printf '%s\n' "$worker_cap" | awk '/^NoNewPrivs:/{print $2}')
+worker_uid=$(ip netns exec "$WORKER_NS" $UNPRIV id -u 2>&1)
+nft_mut_out=$(ip netns exec "$WORKER_NS" $UNPRIV nft add table inet b30evil 2>&1); nft_mut_rc=$?
+route_mut_out=$(ip netns exec "$WORKER_NS" $UNPRIV ip route add default via "$RELAY_IP" 2>&1); route_mut_rc=$?
+# After the attempts, confirm no unauthorized table/default route was actually installed.
+if ip netns exec "$WORKER_NS" nft list tables 2>/dev/null | grep -q "b30evil"; then no_unauth_table=0; else no_unauth_table=1; fi
+if ip netns exec "$WORKER_NS" ip route show 2>/dev/null | grep -q "^default"; then no_unauth_route=0; else no_unauth_route=1; fi
 {
   echo "=== unprivileged worker capability inventory ==="
   ip netns exec "$WORKER_NS" $UNPRIV sh -c 'grep -E "^(CapInh|CapPrm|CapEff|CapBnd|NoNewPrivs)" /proc/self/status' 2>&1
+  echo "worker_uid=$worker_uid"
   echo "=== unprivileged nft mutation attempt (expect refusal) ==="
-  ip netns exec "$WORKER_NS" $UNPRIV nft add table inet b30evil 2>&1
-  echo "nft_mutation_rc=$?"
+  echo "$nft_mut_out"
+  echo "nft_mutation_rc=$nft_mut_rc"
   echo "=== unprivileged route mutation attempt (expect refusal) ==="
-  ip netns exec "$WORKER_NS" $UNPRIV ip route add default via "$RELAY_IP" 2>&1
-  echo "route_mutation_rc=$?"
+  echo "$route_mut_out"
+  echo "route_mutation_rc=$route_mut_rc"
+  echo "no_unauth_table=$no_unauth_table no_unauth_route=$no_unauth_route"
 } >> "$LOG" 2>&1
 
 # Record the per-namespace nft ruleset with counters after the probes.
@@ -522,6 +572,14 @@ else
   echo "FAIL worker->forbidden relay port (expected rc=28, got rc=$worker_forbidden_sock)" | tee -a "$OUT"; fail=1
 fi
 check_true   "forbidden probe incremented the nft drop counter" "$forbidden_drop_delta"
+
+# 7b. Worker privilege boundary: the capability inventory and both mutation outcomes must
+#     satisfy fail-closed expectations, or the run fails.
+if verify_worker_privileges "$worker_uid" "$worker_capeff" "$worker_nnp" "$nft_mut_rc" "$route_mut_rc" "$no_unauth_table" "$no_unauth_route"; then
+  echo "PASS worker privilege boundary (uid=$worker_uid CapEff=$worker_capeff NoNewPrivs=$worker_nnp nft_rc=$nft_mut_rc route_rc=$route_mut_rc)" | tee -a "$OUT"
+else
+  echo "FAIL worker privilege boundary (uid=$worker_uid CapEff=$worker_capeff NoNewPrivs=$worker_nnp nft_rc=$nft_mut_rc route_rc=$route_mut_rc)" | tee -a "$OUT"; fail=1
+fi
 
 # 8. Explicit teardown + verification. A failed deletion or unreadable inventory is
 #    reported (not silent) and makes the run fail closed.

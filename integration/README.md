@@ -413,6 +413,7 @@ wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault    
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-delete-fault     # mock ip netns del failure
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-inventory-fault  # mock ip netns list failure
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-trap-status      # exits 1; trap forces nonzero
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-capability        # worker privilege-boundary verdict
 ```
 
 It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
@@ -428,10 +429,13 @@ real socket attempts proving the worker reaches only the relay, the relay reache
 the gateway, and the gateway reaches only the relay, while each is denied a direct
 Internet/TEST-NET destination. Worker-side probes drop to the unprivileged `nobody`
 identity via `setpriv` (`--reuid/--regid 65534`, `--clear-groups`, `--no-new-privs`,
-`--bounding-set=-net_admin,-sys_admin`), record the capability inventory (`CapEff: 0`,
-`CapPrm: 0`, `NoNewPrivs: 1`), and verify that an unprivileged `nft add`/`ip route add`
-mutation is refused ("Operation not permitted") while the fixed worker→relay path stays
-reachable. It additionally runs active negative egress probes from the worker: direct IPv6
+`--bounding-set=-net_admin,-sys_admin`); the fail-closed verdict asserts the capability
+inventory (`CapEff` all-zero, `NoNewPrivs` 1, UID 65534), that an unprivileged `nft add` /
+`ip route add` mutation is refused ("Operation not permitted"), and that no unauthorized
+nft table or default route was actually installed — any mutation success or wrong
+identity/capability fails the run (and `--self-test-capability` proves the check rejects
+simulated bad inputs) — while the fixed worker→relay path stays reachable. It additionally
+runs active negative egress probes from the worker: direct IPv6
 (`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an RFC 2606 `.invalid` hostname), a
 WebSocket-like `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port
 (`:18099`, whose listener is first verified bound via `ss -ltn`) — each denied with a
