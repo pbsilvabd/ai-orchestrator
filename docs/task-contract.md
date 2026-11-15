@@ -545,3 +545,34 @@ the probe/startup result. If a raw stream hit its retention cap, that stream is 
 rather than storing a tail that could start midway through a credential. This manual
 diagnostic boundary is not service execution, M2b completion, M3 use or
 production-provider evidence.
+
+## B30 relay, egress gateway and signed live approval (2026-11-14)
+
+The B30 fixture adds three deployable, service-owned components that are **not**
+wired into `createConfiguredTaskService`; live composition remains closed.
+
+- **Relay** (`src/relay.mjs`) binds an explicit private/loopback address (never
+  `0.0.0.0`/`::`), accepts only the fixed model request shape with `Bearer public`
+  against one fixed upstream, never follows a redirect (301/302/303/307/308 are a
+  terminal refusal with zero bytes forwarded to the redirect target), and bounds
+  requests, bytes and duration independently of the worker. It refuses to launch on a
+  port conflict, latches on upstream failure, and stops terminally.
+- **Egress gateway** (`src/egress-gateway.mjs`) has one fixed origin, refuses CONNECT,
+  unapproved paths and redirects, and keeps logs free of bodies and authorization
+  material. Live mode requires an HTTPS non-IP origin and is never exercised here.
+- **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
+  strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
+  SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and
+  user-verification flags, unexpired (at most 15 minutes), zero-paid, single-attempt,
+  and bound to the canonical request hash plus the relay and gateway policy digests and
+  fresh (at most five minutes) zero-price metadata. A non-hardware signature is refused.
+  One approval ID durably admits at most one task; an identical read replays, a
+  different task is refused.
+
+None of these opens live use. The relay/gateway admit only loopback fixtures in tests;
+the OS-network placement is observed only in an isolated WSL2 netns/veth fixture
+(`integration/b30-egress-namespaces.sh`) with routing-based containment and no
+nftables/iptables filtering, and no real FIDO2 hardware-key signing dry run, catalog
+read or live inference has been performed. These are separate `not_run` gates; the
+live route stays closed until a platform provides verified firewall-filtered
+isolation and a separately signed live approval.

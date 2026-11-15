@@ -1897,3 +1897,38 @@ Template:
 - Follow-up: after B29 fixture acceptance and merge, amend ADR-009 to reconcile
   the host-only listener, then implement/review B30 or split oversized
   deployment work into sequential cards without relaxing the live gate.
+
+## 2026-11-14 — M3 preparation: B30 relay, gateway, SSHSIG admission and WSL2 containment
+
+- Branch: `task/B30-free-relay`
+- Scope: fixture-only relay/egress-gateway/SSHSIG/admission implementation and one
+  isolated WSL2 netns/veth containment observation; live composition stays closed.
+- Steps:
+  1. Merged B29 main `11fcb42` into the branch with an ordinary merge; resolved the
+     handoff/validation/worklog conflicts preserving both append-only entry sets.
+  2. Implemented `src/relay.mjs`: one fixed upstream, no arbitrary target, `Bearer
+     public` only, terminal refusal of 301/302/303/307/308 without forwarding,
+     independent request/byte/time bounds and a fail-closed lifecycle.
+  3. Implemented `src/egress-gateway.mjs`: one fixed origin, CONNECT/redirect and
+     unapproved-path refusal, sanitized body-free logging and a policy digest.
+  4. Implemented `src/live-approval.mjs`: strict canonical SSHSIG approval,
+     `ssh-keygen -Y verify` against a single-principal `allowed_signers` plus a KRL,
+     FIDO2 presence/verification flag enforcement, policy/metadata binding, a durable
+     single-use approval ledger and an admission-ordering function.
+  5. Added `integration/b30-egress-namespaces.sh` and ran it in WSL2 Ubuntu (root,
+     CAP_NET_ADMIN): worker/relay netns + veth with no default route, full inventory,
+     then real socket probes (worker→relay reachable, worker→gateway and worker/
+     relay→Internet denied, relay→gateway reachable); fail-closed teardown verified empty.
+- Files: `src/relay.mjs`, `src/egress-gateway.mjs`, `src/live-approval.mjs`,
+  `test/relay.test.mjs`, `test/egress-gateway.test.mjs`, `test/live-approval.test.mjs`,
+  `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`,
+  `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused relay/gateway/approval tests 31/31 pass; WSL containment fixture
+  printed "containment verified" (exit 0); serial full suite and fallback demo pass
+  (see validation entry for exact counts). `git diff --check` clean.
+- Follow-up: publish the single draft PR; answer any review findings. Remaining B30
+  gates are platform/hardware (`nftables` or an approved alternative, a real FIDO2
+  `-sk` signing dry run) plus a separately authorized public-catalog read before any
+  live experiment. Live, catalog, nftables and hardware signing remain `not_run`.

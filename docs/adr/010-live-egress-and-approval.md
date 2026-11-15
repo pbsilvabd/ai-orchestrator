@@ -140,3 +140,53 @@ not authority to use the ordinary host network or an unsigned approval.
   this host-only boundary before implementation review.
 - A platform cannot provide the specified isolation, L7 gateway or FIDO2 SSHSIG
   verifier: stay fixture-only and request a new, reviewed ADR rather than fall back.
+
+## Amendment — 2026-11-14: fixture-only implementation and WSL2 containment observation
+
+The B30 card and this ADR are now backed by fixture-only code, tests and one
+isolated WSL2 deployment observation. Live composition remains closed; no public
+catalog read, provider inference, live activation or merge is authorized.
+
+Implemented and tested (fixture/loopback and temporary-process only):
+
+- `src/relay.mjs` — a service-owned relay with one fixed upstream, no arbitrary
+  target, `redirect: manual` with terminal refusal on 301/302/303/307/308,
+  explicit `Bearer public` only, independent request/byte/time bounds and a
+  fail-closed lifecycle (port-conflict refusal, upstream-failure latch, terminal
+  stop). Tested by `test/relay.test.mjs` (B30-01, B30-02, B30-04).
+- `src/egress-gateway.mjs` — a layer-7 egress gateway with one fixed origin,
+  CONNECT/redirect/unapproved-path refusal, body-free sanitized logging and a
+  policy digest; live mode requires an HTTPS non-IP origin, never exercised here.
+  Tested by `test/egress-gateway.test.mjs` (B30-07 gateway-policy side).
+- `src/live-approval.mjs` — strict canonical approval schema, `ssh-keygen -Y verify`
+  SSHSIG verification against a single-principal `allowed_signers` plus KRL, FIDO2
+  presence/verification flag enforcement parsed from the SSHSIG blob, policy/metadata
+  binding, and a durable single-use approval ledger. Tested by
+  `test/live-approval.test.mjs` (B30-05) with disposable test-only keys.
+
+Observed deployment containment (isolated WSL2 Ubuntu, routing-based):
+
+- `integration/b30-egress-namespaces.sh` creates two temporary network namespaces
+  (`b30-worker`, `b30-relay`) and two veth pairs with private addresses and no
+  default IPv4/IPv6 route, records the full `ip netns`/`ip addr`/`ip route`
+  inventory, then runs real socket attempts: the worker reaches only the relay,
+  the relay reaches only the host gateway, and both worker and relay are denied a
+  direct Internet/TEST-NET destination. Teardown is fail-closed and verified empty.
+
+Not run / not established by this amendment (recorded `not_run`):
+
+- `nftables`/`iptables` default-drop filtering: neither binary is present in the
+  observed distribution, and installing packages is not authorized. Containment is
+  routing-based (no default route), not firewall-filtered.
+- Bare-metal Ubuntu or Windows Hyper-V deployment: the observation is WSL2 Ubuntu
+  (kernel `6.6.87.2-microsoft-standard-WSL2`), not a validated standalone Ubuntu or
+  a two-VM Hyper-V deployment.
+- A real FIDO2-backed hardware-key signing dry run: the flag enforcement and
+  `ssh-keygen -Y verify` plumbing are tested with disposable non-hardware keys and a
+  synthesized sk-signature blob; a real `-sk` signature is refused unless it carries
+  presence+verification, but no hardware key was exercised.
+- Public catalog GET and live inference: remain prohibited and `not_run`.
+
+Until a platform provides verified firewall-filtered isolation, a real hardware-key
+signing dry run and the separately signed live approval, the live composition stays
+closed.

@@ -2262,3 +2262,47 @@ implemented); catalog GET and real inference (not authorized).
 Claim: this entry supports only a concrete design and acceptance plan, not
 relay safety, verifiable egress enforcement, a real maintainer signature,
 live-model availability or M3.
+
+## M3 preparation: B30 relay, gateway, SSHSIG admission and WSL2 containment — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen`
+(Git for Windows `C:\Program Files\Git\usr\bin\ssh-keygen.exe`), and WSL2 Ubuntu
+(kernel `6.6.87.2-microsoft-standard-WSL2`, root). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git merge origin/main` | Incorporate merged B29 main into `task/B30-free-relay` | Conflicts in `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md` resolved preserving both append-only entry sets; merge committed at `205a1f8` | 0 |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs`, `src/live-approval.mjs` | Syntax of the three new modules | no output for each | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | B30 focused relay/gateway/approval cases | 31 passed, 0 failed, 0 skipped | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Isolated WSL2 worker/relay netns + veth: inventory plus real socket probes | worker→relay reachable; worker→gateway and worker/relay→Internet denied; relay→gateway reachable; "containment verified"; teardown left no `b30-*` netns/veth | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression on the final code | 335 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the relay forwards exactly the fixed method/path/model with `Bearer public`
+and an independent request counter; every 301/302/303/307/308 from the upstream is
+refused with the alternate origin receiving zero requests/bytes; the gateway refuses
+CONNECT, unapproved paths and redirects with sanitized logs; the SSHSIG plumbing
+round-trips and refuses wrong namespace/signer, edited bytes, revoked keys and any
+non-hardware signature; the approval ledger refuses a second task for one approval ID.
+The WSL2 fixture proves routing-based worker/relay containment with real socket
+attempts and fail-closed teardown.
+
+Evidence level: Unit (relay/gateway/approval use temporary loopback processes and
+disposable keys); the WSL2 run is a deployment observation of real netns/veth
+routing in an isolated distribution, not a bare-metal Ubuntu or Windows Hyper-V
+deployment and not a firewall (nftables) proof.
+
+Not rerun / not_run: nftables/iptables default-drop filtering (binaries absent;
+installing packages is not authorized); bare-metal Ubuntu or two-VM Hyper-V
+deployment; a real FIDO2 `-sk` hardware-key signing dry run (disposable ed25519 keys
+and a synthesized sk-signature blob only); public catalog GET and live inference
+(prohibited); the pinned-host-through-relay end-to-end run (the relay is not wired
+into the closed live composition path). `integration/opencode-free.mjs` and the B29
+MCP fixture were not rerun (their production composition path is unchanged).
+
+Claim: this entry supports the B30 relay/gateway/SSHSIG fixture behavior, the
+routing-based WSL2 containment observation and the no-replay approval ledger, based
+on the commands above. It does not support firewall-filtered isolation, a
+bare-metal/VM deployment, a hardware-key signature, catalog availability, live
+inference, B20/M3 or merge; those remain `not_run` and the live route stays closed.

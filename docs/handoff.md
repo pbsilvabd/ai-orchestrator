@@ -1,47 +1,53 @@
 # Continuation point — 2026-11-14
 
-Card-only update on `task/B30-free-relay` (2026-11-14): the new card specifies
-a future service-owned loopback relay plus independently verified worker egress
-restriction; this branch has not implemented or approved a live route. Wait for
-B29/#44 fixture MCP evidence and merge/review decision, then reconcile this
-card with the accepted ADR-009 amendment before executing B30. The historical
-checkpoint below predates this decision. No live inference or merge is authorized.
+B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
+with B29 main `11fcb42`). The relay, egress gateway, SSHSIG approval/admission and
+an isolated WSL2 netns/veth containment observation are implemented and tested;
+live composition remains closed and no merge is authorized.
 
-2026-11-14 design refinement: [ADR-010](adr/010-live-egress-and-approval.md)
-specifies separate worker/relay compartments (Hyper-V Internal switches on
-Windows; network namespaces/veth on Ubuntu), a host-side origin-restricting
-L7 egress gateway, and an offline FIDO2-backed SSHSIG from the maintainer.
-These are **requirements**, not observed deployment or a signed live approval.
-The B29 fixture remains loopback-only; reconcile ADR-009's future live listener
-wording after B29 merges. If the required isolation/gateway/signature cannot
-be verified, do not open the live route or replace it with ambient host egress.
+- `src/relay.mjs` — fixed single-upstream relay, redirect refusal (301/302/303/
+  307/308), independent request/byte/time bounds, fail-closed lifecycle.
+- `src/egress-gateway.mjs` — L7 egress gateway, CONNECT/redirect/unapproved-path
+  refusal, sanitized logs, policy digest.
+- `src/live-approval.mjs` — canonical SSHSIG live approval with `ssh-keygen -Y
+  verify`, FIDO2 presence/verification flag enforcement, policy/metadata binding
+  and a durable single-use approval ledger.
+- `integration/b30-egress-namespaces.sh` — isolated WSL2 worker/relay netns + veth
+  fixture with real socket probes (worker→relay reachable, worker→gateway/Internet
+  denied, relay→Internet denied, relay→gateway reachable), fail-closed teardown.
+
+`not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
+(absent, install not authorized — containment is routing-based); bare-metal Ubuntu
+or two-VM Hyper-V deployment (WSL2 observation only); a real FIDO2 hardware-key
+signing dry run; public catalog GET; live inference and B20/#43. The live route
+stays closed until a platform provides verified firewall-filtered isolation and a
+separately signed live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
-B12–B19 are merged; B29 is merged as fixture-only preparation (see below) and
-does not claim live availability or M3. B20 remains draft PR #43 and unmerged.
-B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
-`43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
-not production model-quality/provider evidence. ADR-007 still selects MCP stdio
-revision `2026-07-28`.
+B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft
+PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-only.
 
-## Current implementation status: B29 fixture preparation, blocked for live use
+## Next action
+
+1. Review the B30 draft PR at its current head, answer any findings, then the
+   maintainer decides draft-to-ready. The draft PR lists the unmet criteria:
+   firewall-filtered isolation, hardware-key signing dry run, catalog read and
+   live activation are `not_run`, not passed.
+2. Remaining B30 gates are platform/hardware, not code: nftables (or an approved
+   alternative), a real FIDO2 `-sk` signing dry run, and a separately authorized
+   catalog read before any live experiment.
+
+## Historical B29 checkpoint (merged as PR #44)
 
 B29 (`task/B29-opencode-free-provider`, base `688da04`) prepares one anonymous free route,
 `opencode/deepseek-v4.1-flash-free`, with zero-price metadata validation, expiring
 payload-bound operator approval, a service-owned guard plugin and the B11 launch
-builder. The pinned OpenCode 2.2.5 host loads the guard through `plugins`, sends only the
-fixed model with `Bearer public`, and makes one request after 401/402/429 or a dropped
-connection. At the earlier B29 preparation checkpoint, the full suite had 299
-passes, 0 failures and 1 platform skip; that is not a result for the current PR
-head. Later default-concurrency runs exposed the B10-03 timing failure, and
-the Windows CI at `762c133` failed in the maintenance recovery test.
-
-Blocker: on the pinned host a 307 from the model endpoint is followed and the prompt body
-reaches the alternate origin. The guard cannot prevent or detect it. Live composition is
-therefore refused by `createConfiguredTaskService`, and
+builder. On the pinned host a 307 from the model endpoint is followed and the prompt
+body reaches the alternate origin; the guard cannot prevent or detect it, so live
+composition is refused by `createConfiguredTaskService` and
 [ADR-009](adr/009-free-anonymous-worker.md) is accepted only for fixture
-preparation; live activation remains prohibited. The integration harness
-`integration/opencode-free.mjs` exits 1 on this scenario by design. B20 remains unexecuted.
+preparation. `integration/opencode-free.mjs` exits 1 on this scenario by design.
+B20 remains unexecuted.
 
 ## Historical B19 checkpoint (merged as PR #42)
 

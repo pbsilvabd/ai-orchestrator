@@ -378,3 +378,41 @@ configuration even when given fixture-like environment/config inputs.
 Not covered: the live free route, independently enforced egress, public catalog
 availability, quota, privacy or B20. The fixture and pinned-host observations are
 not production-provider evidence; the 307 failure remains visible above.
+
+## B30 relay, egress gateway and signed live approval (fixture-only)
+
+B30 adds three deployable, service-owned components that are not wired into the live
+composition path (`createConfiguredTaskService` keeps live closed). Each is tested by
+its own temporary-process/loopback fixture:
+
+- `src/relay.mjs` + `test/relay.test.mjs` — one fixed upstream, no arbitrary target,
+  `Bearer public` only, terminal refusal of 301/302/303/307/308 without forwarding,
+  independent request/byte/time bounds, fail-closed bind/upstream/teardown.
+- `src/egress-gateway.mjs` + `test/egress-gateway.test.mjs` — one fixed origin, CONNECT
+  and redirect refusal, unapproved-path refusal, sanitized body-free logging, policy
+  digest.
+- `src/live-approval.mjs` + `test/live-approval.test.mjs` — canonical SSHSIG live
+  approval, `ssh-keygen -Y verify` against a single-principal `allowed_signers` plus a
+  revocation list, FIDO2 presence/verification flag enforcement parsed from the SSHSIG
+  blob, policy/metadata binding and a durable single-use approval ledger. Tests use
+  disposable non-hardware keys only; a real maintainer signing key is never created.
+
+The OS-network containment gate is an isolated WSL2 Ubuntu fixture run by a maintainer,
+never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
+
+```sh
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh
+```
+
+It creates two temporary network namespaces (`b30-worker`, `b30-relay`) and two veth
+pairs with private addresses and no default route, records the full `ip netns`/`ip
+addr`/`ip route` inventory, then runs real socket attempts proving the worker reaches
+only the relay and the relay reaches only the host gateway, while both are denied a
+direct Internet/TEST-NET destination. Teardown is fail-closed. Containment is
+routing-based: nftables/iptables are not installed and default-drop filtering is
+`not_run`.
+
+Not covered / `not_run`: the live free route, public catalog GET, live inference,
+nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, and a real
+FIDO2 hardware-key signing dry run. A deployment without verifiable firewall-filtered
+isolation and a separately signed live approval stays closed.
