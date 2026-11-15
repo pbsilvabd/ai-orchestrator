@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { connect } from 'node:net';
 import { createEgressGateway, gatewayPolicyDigest } from '../src/egress-gateway.mjs';
+import { createRelay } from '../src/relay.mjs';
 
 const PATH = '/v1/chat/completions';
+const MODEL = 'opencode/deepseek-v4.1-flash-free';
+const AUTH = { 'content-type': 'application/json', authorization: 'Bearer public' };
 
 // Node's fetch (undici) and http.request treat CONNECT as a tunnel, so send the
 // request line over a raw socket and read the status line back.
@@ -28,7 +31,7 @@ async function startServer(handler) {
     req.on('data', c => chunks.push(c));
     req.on('end', () => {
       const body = Buffer.concat(chunks);
-      requests.push({ method: req.method, url: req.url, body });
+      requests.push({ method: req.method, url: req.url, authorization: req.headers.authorization ?? null, body });
       handler(req, res, body, requests);
     });
   });
@@ -51,24 +54,108 @@ async function startGateway(origin, overrides) {
   return { gateway, base };
 }
 
-test('B30-07: gateway forwards only the fixed path and refuses CONNECT and other paths', async t => {
+const post = (base, body = { model: MODEL }, headers = AUTH) =>
+  fetch(base, { method: 'POST', headers, body: JSON.stringify(body) });
+
+test('B30-07: gateway refuses a CONNECT tunnel and latches', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const { gateway } = await startGateway(origin.origin);
+  t.after(() => gateway.stop());
+
+  const connectText = await connectRequest(gateway.status().address.port);
+  assert.match(connectText, /405/);
+  assert.equal(origin.requests.length, 0);
+  assert.equal(gateway.status().latchReason, 'connect');
+  assert.deepEqual(gateway.status().refused, ['connect']);
+});
+
+test('B30-07: gateway forwards only the fixed path, method and credential', async t => {
   const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
   t.after(() => origin.stop());
   const { gateway, base } = await startGateway(origin.origin);
   t.after(() => gateway.stop());
 
-  // CONNECT is a tunnel attempt.
-  const connectText = await connectRequest(gateway.status().address.port);
-  assert.match(connectText, /405/);
-  // Wrong path.
-  const wrong = await fetch(`http://127.0.0.1:${gateway.status().address.port}/other`, { method: 'POST', body: '{}' });
+  // Wrong path latches and forwards nothing.
+  const wrong = await fetch(`http://127.0.0.1:${gateway.status().address.port}/other`, { method: 'POST', headers: AUTH, body: '{}' });
   assert.equal(wrong.status, 404);
   assert.equal(origin.requests.length, 0);
+  assert.equal(gateway.status().latchReason, 'path');
+});
 
-  const ok = await fetch(base, { method: 'POST', body: JSON.stringify({ model: 'x' }) });
+test('B30-07: gateway forwards a valid POST with the fixed bearer upstream', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const { gateway, base } = await startGateway(origin.origin);
+  t.after(() => gateway.stop());
+
+  const ok = await post(base);
   assert.equal(ok.status, 200);
   assert.equal(origin.requests.length, 1);
-  assert.deepEqual(gateway.status().refused, ['connect', 'path']);
+  assert.equal(origin.requests[0].authorization, 'Bearer public');
+  assert.equal(gateway.status().latched, false);
+});
+
+test('B30-07: gateway enforces the fixed ingress credential and never forwards arbitrary headers', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const { gateway, base } = await startGateway(origin.origin);
+  t.after(() => gateway.stop());
+
+  // Missing credential plus an arbitrary header: refused, nothing forwarded, latched.
+  const missing = await fetch(base, { method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-evil-header': 'injected' }, body: '{}' });
+  assert.equal(missing.status, 401);
+  assert.equal(origin.requests.length, 0);
+  assert.equal(gateway.status().latchReason, 'credential');
+});
+
+test('B30-01/07: end-to-end relay→gateway→fixture-origin sends exactly one Bearer public request', async t => {
+  const origin = await startServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json' });
+    res.end(JSON.stringify({ ok: true }));
+  });
+  t.after(() => origin.stop());
+  const gateway = createEgressGateway(gatewayConfig(origin.origin));
+  await gateway.start();
+  const gatewayPort = gateway.status().address.port;
+  t.after(() => gateway.stop());
+  const relay = createRelay({
+    listen: { host: '127.0.0.1', port: 0 },
+    upstream: { origin: `http://127.0.0.1:${gatewayPort}`, path: PATH, method: 'POST' },
+    model: MODEL,
+    limits: { maxRequests: 12, maxRequestBytes: 64 * 1024, maxResponseBytes: 64 * 1024, timeoutMs: 5_000 },
+  });
+  await relay.start();
+  const relayBase = `http://127.0.0.1:${relay.status().address.port}${PATH}`;
+  t.after(() => relay.stop());
+
+  const res = await post(relayBase);
+  assert.equal(res.status, 200);
+  assert.deepEqual(await res.json(), { ok: true });
+  assert.equal(origin.requests.length, 1);
+  assert.equal(origin.requests[0].authorization, 'Bearer public');
+  assert.equal(JSON.parse(origin.requests[0].body.toString('utf8')).model, MODEL);
+  assert.equal(relay.status().requests, 1);
+  assert.equal(gateway.status().requests, 1);
+  assert.equal(gateway.status().latched, false);
+});
+
+test('B30-07: gateway enforces its independent request cap', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const baseConfig = gatewayConfig(origin.origin);
+  const gateway = createEgressGateway({ ...baseConfig, limits: { ...baseConfig.limits, maxRequests: 2 } });
+  await gateway.start();
+  const base = `http://127.0.0.1:${gateway.status().address.port}${PATH}`;
+  t.after(() => gateway.stop());
+
+  await post(base); await post(base);
+  const third = await post(base);
+  assert.equal(third.status, 429);
+  assert.equal(origin.requests.length, 2);
+  assert.equal(gateway.status().requests, 3);
+  assert.equal(gateway.status().latchReason, 'request-count');
 });
 
 for (const code of [301, 302, 303, 307, 308]) {
@@ -83,7 +170,7 @@ for (const code of [301, 302, 303, 307, 308]) {
     const { gateway, base } = await startGateway(origin.origin);
     t.after(() => gateway.stop());
 
-    const response = await fetch(base, { method: 'POST', body: JSON.stringify({ model: 'x' }) });
+    const response = await post(base);
     assert.equal(response.status, 502);
     assert.equal(alternate.requests.length, 0);
     assert.ok(gateway.status().refused.includes('redirect-refused'));
@@ -96,7 +183,6 @@ test('B30-07: gateway logs are sanitized (no body or authorization material)', a
   const events = [];
   const gateway = createEgressGateway(gatewayConfig(origin.origin, { log: e => events.push(e) }));
   await gateway.start();
-  const base = `http://127.0.0.1:${gateway.status().address.port}${PATH}`;
   t.after(() => gateway.stop());
 
   await connectRequest(gateway.status().address.port);
@@ -104,6 +190,13 @@ test('B30-07: gateway logs are sanitized (no body or authorization material)', a
   assert.deepEqual(Object.keys(events[0]).sort(), ['at', 'detail', 'type']);
   assert.equal(events[0].type, 'refused');
   assert.equal(events[0].detail, 'connect');
+});
+
+test('gateway rejects unspecified/wildcard bind addresses', () => {
+  for (const host of ['0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0']) {
+    assert.throws(() => createEgressGateway(gatewayConfig('http://127.0.0.1:1', { listen: { host, port: 0 } })),
+      /must not be unspecified/);
+  }
 });
 
 test('gateway policy digest binds mode/origin/path/limits', () => {

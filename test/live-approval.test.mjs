@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawn } from 'node:child_process';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FREE_MODEL, FREE_ENDPOINT } from '../src/free-provider.mjs';
@@ -216,6 +216,62 @@ test('B30-05: one approval ID cannot admit two tasks; identical replay is readab
   assert.equal(replay.taskId, 'task-1111');
   assert.throws(() => ledger.reserve({ approvalId: 'approval-0001', taskId: 'task-2222' }), /different task/);
   assert.equal(ledger.lookup('approval-0001').taskId, 'task-1111');
+});
+
+test('B30-05: a claim survives restart (a new ledger instance reads it, never re-admits)', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'b30-ledger-'));
+  t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  openApprovalLedger({ home: dir }).reserve({ approvalId: 'approval-0001', taskId: 'task-1111' });
+  // New instance simulates a restart.
+  const reopened = openApprovalLedger({ home: dir });
+  assert.deepEqual(reopened.reserve({ approvalId: 'approval-0001', taskId: 'task-1111' }),
+    { admitted: false, replay: true, taskId: 'task-1111' });
+  assert.throws(() => reopened.reserve({ approvalId: 'approval-0001', taskId: 'task-2222' }), /different task/);
+});
+
+test('B30-05: approval ID is single-use across two competing processes', async t => {
+  const dir = mkdtempSync(join(tmpdir(), 'b30-claim-'));
+  t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  const home = join(dir, 'home');
+  const readyA = join(dir, 'ready-a');
+  const readyB = join(dir, 'ready-b');
+  const go = join(dir, 'go');
+  const fixture = join(import.meta.dirname, 'fixtures', 'approval-claim.mjs');
+
+  const runChild = (taskId, readyFile) => new Promise(resolve => {
+    const child = spawn(process.execPath, [fixture, home, 'shared-id', taskId, readyFile, go],
+      { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true });
+    let out = '';
+    let err = '';
+    child.stdout.on('data', chunk => { out += chunk; });
+    child.stderr.on('data', chunk => { err += chunk; });
+    child.on('close', code => resolve({ code, out: out.trim(), err }));
+  });
+
+  const childA = runChild('task-A', readyA);
+  const childB = runChild('task-B', readyB);
+  const waitFor = async path => {
+    const deadline = Date.now() + 10_000;
+    while (!existsSync(path)) {
+      if (Date.now() > deadline) throw new Error(`timeout waiting for ${path}`);
+      await new Promise(resolve => setTimeout(resolve, 5));
+    }
+  };
+  await waitFor(readyA);
+  await waitFor(readyB);
+  writeFileSync(go, 'go', 'utf8');
+
+  const [a, b] = await Promise.all([childA, childB]);
+  assert.equal(a.code, 0, a.err);
+  assert.equal(b.code, 0, b.err);
+  const resultA = JSON.parse(a.out);
+  const resultB = JSON.parse(b.out);
+  const admitted = [resultA, resultB].filter(r => r.ok && r.result?.admitted === true);
+  assert.equal(admitted.length, 1, `exactly one process must admit; got ${JSON.stringify([resultA, resultB])}`);
+  const losers = [resultA, resultB].filter(r => !(r.ok && r.result?.admitted === true));
+  assert.equal(losers.length, 1);
+  assert.equal(losers[0].ok, false);
+  assert.equal(losers[0].code, 'authorization_denied');
 });
 
 test('approval digest is stable over canonical bytes', () => {

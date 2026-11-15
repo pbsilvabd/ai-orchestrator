@@ -170,3 +170,11 @@ test('relay policy digest binds the exact configuration', () => {
   changed.upstream.path = '/other';
   assert.notEqual(relayPolicyDigest(config), relayPolicyDigest(changed));
 });
+
+test('relay rejects unspecified/wildcard bind addresses', () => {
+  for (const host of ['0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0']) {
+    const config = relayConfig('http://127.0.0.1:1234');
+    config.listen = { host, port: 0 };
+    assert.throws(() => createRelay(config), /must not be unspecified/);
+  }
+});

@@ -1,27 +1,30 @@
 # Continuation point — 2026-11-14
 
 B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
-with B29 main `11fcb42`). The relay, egress gateway, SSHSIG approval/admission and
-an isolated WSL2 netns/veth containment observation are implemented and tested;
-live composition remains closed and no merge is authorized.
+with B29 main `11fcb42`), corrected after the supervisor review at `cff5265`. The
+relay, egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth
+containment observation are implemented and tested; live composition remains closed
+and no merge is authorized.
 
 - `src/relay.mjs` — fixed single-upstream relay, redirect refusal (301/302/303/
-  307/308), independent request/byte/time bounds, fail-closed lifecycle.
-- `src/egress-gateway.mjs` — L7 egress gateway, CONNECT/redirect/unapproved-path
-  refusal, sanitized logs, policy digest.
+  307/308), independent request/byte/time bounds, rejects `0.0.0.0`/`::` bind,
+  fail-closed lifecycle.
+- `src/egress-gateway.mjs` — L7 egress gateway, fixed `Bearer public` forwarded
+  upstream, CONNECT/redirect/unapproved-path refusal, independent request cap,
+  rejects `0.0.0.0`/`::` bind, sanitized logs, policy digest.
 - `src/live-approval.mjs` — canonical SSHSIG live approval with `ssh-keygen -Y
   verify`, FIDO2 presence/verification flag enforcement, policy/metadata binding
-  and a durable single-use approval ledger.
-- `integration/b30-egress-namespaces.sh` — isolated WSL2 worker/relay netns + veth
-  fixture with real socket probes (worker→relay reachable, worker→gateway/Internet
-  denied, relay→Internet denied, relay→gateway reachable), fail-closed teardown.
+  and a durable atomic no-replace single-use approval ledger.
+- `integration/b30-egress-namespaces.sh` — isolated WSL2 worker/relay/gateway
+  netns + veth fixture (three disposable namespaces, no WSL host-namespace changes),
+  real socket probes and verified-empty fail-closed teardown.
 
 `not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
 (absent, install not authorized — containment is routing-based); bare-metal Ubuntu
-or two-VM Hyper-V deployment (WSL2 observation only); a real FIDO2 hardware-key
-signing dry run; public catalog GET; live inference and B20/#43. The live route
-stays closed until a platform provides verified firewall-filtered isolation and a
-separately signed live approval.
+or two-VM Hyper-V deployment (WSL2 observation only); pinned OpenCode 2.2.5 through
+the relay; a real FIDO2 hardware-key signing dry run; public catalog GET; live
+inference and B20/#43. The live route stays closed until a platform provides
+verified firewall-filtered isolation and a separately signed live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
 B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft
@@ -29,10 +32,11 @@ PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-on
 
 ## Next action
 
-1. Review the B30 draft PR at its current head, answer any findings, then the
-   maintainer decides draft-to-ready. The draft PR lists the unmet criteria:
-   firewall-filtered isolation, hardware-key signing dry run, catalog read and
-   live activation are `not_run`, not passed.
+1. The supervisor review at `cff5265` (P1 ledger, P2 gateway/bind/WSL scope) has been
+   corrected on this branch; the reply with the new head SHA and evidence is posted
+   on PR #45. Re-review the corrected head, then the maintainer decides draft-to-ready.
+   The draft lists the unmet criteria (firewall filtering, hardware signing, catalog,
+   live activation) as `not_run`, not passed.
 2. Remaining B30 gates are platform/hardware, not code: nftables (or an approved
    alternative), a real FIDO2 `-sk` signing dry run, and a separately authorized
    catalog read before any live experiment.

@@ -27,6 +27,19 @@ function fail(code, message) {
 const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
 const MAX_TIMEOUT_MS = 2_147_483_647;
 
+// Reject unspecified/wildcard bind addresses: 0.0.0.0, :: and the uncompressed all-zero
+// IPv6 form. The gateway must never bind every interface.
+function isUnspecifiedAddress(host) {
+  const family = isIP(host);
+  if (family === 4) return host === '0.0.0.0';
+  if (family === 6) {
+    if (host === '::' || host === '::0') return true;
+    const groups = host.split(':');
+    return groups.length === 8 && groups.every(group => group === '0' || group === '0000');
+  }
+  return false;
+}
+
 function validateListen(listen) {
   if (!listen || typeof listen !== 'object' || Array.isArray(listen)) {
     fail('invalid_argument', 'gateway listen must be an object');
@@ -34,7 +47,7 @@ function validateListen(listen) {
   if (typeof listen.host !== 'string' || !listen.host || !isIP(listen.host)) {
     fail('invalid_argument', 'gateway listen host must be a concrete IP address');
   }
-  if (isIP(listen.host) === 0) fail('invalid_argument', 'gateway listen host must not be unspecified');
+  if (isUnspecifiedAddress(listen.host)) fail('invalid_argument', 'gateway listen host must not be unspecified');
   if (!Number.isInteger(listen.port) || listen.port < 0 || listen.port > 65535) {
     fail('invalid_argument', 'gateway listen port is invalid');
   }
@@ -125,54 +138,71 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
   let requests = 0;
   let bytesOut = 0;
   let refused = [];
+  let latched = false;
+  let latchReason = null;
   let boundAddress = null;
+
+  const latch = reason => {
+    latched = true;
+    latchReason = reason;
+    refused.push(reason);
+    log(sanitizedEvent('refused', reason));
+  };
 
   const handle = async (req, res) => {
     requests += 1;
+    if (latched) return respond(res, 503, 'gateway latched');
+    if (requests > limits.maxRequests) {
+      latch('request-count');
+      return respond(res, 429, 'gateway request limit exceeded');
+    }
     // A CONNECT request is a tunnel attempt; refuse before any upstream I/O.
     if (req.method === 'CONNECT') {
-      refused.push('connect');
-      log(sanitizedEvent('refused', 'connect'));
+      latch('connect');
       return respond(res, 405, 'tunnel refused');
     }
     if (req.method !== 'POST') {
-      refused.push('method');
-      log(sanitizedEvent('refused', 'method'));
+      latch('method');
       return respond(res, 405, 'method not allowed');
     }
     if (req.url !== path && req.url.split('?')[0] !== path) {
-      refused.push('path');
-      log(sanitizedEvent('refused', 'path'));
+      latch('path');
       return respond(res, 404, 'not found');
+    }
+    if (req.headers.authorization !== 'Bearer public') {
+      latch('credential');
+      return respond(res, 401, 'unauthorized');
     }
     let body;
     try {
       body = await readBody(req, limits.maxRequestBytes);
     } catch {
-      refused.push('body-bound');
-      log(sanitizedEvent('refused', 'body-bound'));
+      latch('body-bound');
       return respond(res, 413, 'request body exceeds gateway bound');
     }
 
+    // Forward only the fixed method/path to the fixed origin with the fixed anonymous
+    // credential. Never inherit arbitrary client headers. Redirects are refused.
     let upstreamResponse;
     try {
       upstreamResponse = await fetch(`${origin}${path}`, {
         method: 'POST',
-        headers: { 'content-type': 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          authorization: 'Bearer public',
+        },
         body,
         redirect: 'manual',
         signal: AbortSignal.timeout(limits.timeoutMs),
       });
     } catch {
-      refused.push('upstream-unavailable');
-      log(sanitizedEvent('refused', 'upstream-unavailable'));
+      latch('upstream-unavailable');
       return respond(res, 502, 'upstream unavailable');
     }
 
     if (REDIRECT_STATUS.has(upstreamResponse.status)) {
       try { await upstreamResponse.body?.cancel(); } catch { /* discard */ }
-      refused.push('redirect-refused');
-      log(sanitizedEvent('refused', 'redirect-refused'));
+      latch('redirect-refused');
       return respond(res, 502, 'upstream redirect refused');
     }
 
@@ -185,7 +215,7 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
         if (done) break;
         bytesOut += value.byteLength;
         if (bytesOut > limits.maxResponseBytes) {
-          refused.push('response-bound');
+          latch('response-bound');
           res.destroy();
           await reader.cancel().catch(() => {});
           return;
@@ -194,7 +224,7 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
       }
       res.end();
     } catch {
-      refused.push('response-stream');
+      latch('response-stream');
       try { res.destroy(); } catch { /* already failing */ }
     }
   };
@@ -211,8 +241,7 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
         // Refuse any tunnel attempt before it can establish a relay to an upstream.
         server.on('connect', (req, socket) => {
           requests += 1;
-          refused.push('connect');
-          log(sanitizedEvent('refused', 'connect'));
+          if (!latched && requests <= limits.maxRequests) latch('connect');
           socket.write('HTTP/1.1 405 Method Not Allowed\r\nConnection: close\r\n\r\n');
           socket.destroy();
         });
@@ -240,7 +269,7 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
       });
     },
     status() {
-      return { started, stopped, requests, bytesOut, refused: [...refused], policyDigest, address: boundAddress };
+      return { started, stopped, requests, bytesOut, refused: [...refused], latched, latchReason, policyDigest, address: boundAddress };
     },
   };
 }

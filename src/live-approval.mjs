@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync, renameSync, openSync,
+import { existsSync, mkdirSync, readFileSync, writeFileSync, linkSync, openSync,
   fsyncSync, closeSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -201,20 +201,32 @@ export function verifyApprovalBinding({ approval, requestHash, relayPolicyDigest
 // Durable single-use reservation: one approval ID admits at most one task, and an
 // identical read never dispatches a second task. This is a cooperative local-file
 // ledger (same trust model as the task store), not OS authentication.
+//
+// The claim is atomic and no-replace: the complete record is written to a private
+// temp file, fsynced, then hard-linked to the target. link(2) fails with EEXIST when
+// the target already exists, so exactly one process can claim an ID and the winner's
+// content is already durable before the link becomes visible. A later claim never
+// overwrites an existing reservation; callers re-read on EEXIST.
 export function openApprovalLedger({ home } = {}) {
   const root = resolve(home);
   const dir = join(root, 'approvals');
   try { mkdirSync(dir, { recursive: true, mode: 0o700 }); } catch (error) { fail('unavailable', 'cannot prepare approval ledger'); }
   const pathFor = id => join(dir, `${id}.json`);
   const read = id => {
+    let text;
     try {
-      return JSON.parse(readFileSync(pathFor(id), 'utf8'));
+      text = readFileSync(pathFor(id), 'utf8');
     } catch (error) {
       if (error.code === 'ENOENT') return undefined;
       fail('unavailable', 'approval ledger is unreadable');
     }
+    try {
+      return JSON.parse(text);
+    } catch {
+      fail('unavailable', 'approval ledger record is unreadable');
+    }
   };
-  const write = (id, record) => {
+  const claim = (id, record) => {
     const target = pathFor(id);
     const temp = join(dir, `.${id}.${randomUUID()}.tmp`);
     let fd;
@@ -224,12 +236,14 @@ export function openApprovalLedger({ home } = {}) {
       fsyncSync(fd);
       closeSync(fd);
       fd = undefined;
-      renameSync(temp, target);
+      // Atomic no-replace claim: fails with EEXIST when another process won.
+      linkSync(temp, target);
     } catch (error) {
+      if (fd !== undefined) { try { closeSync(fd); } catch { /* failing */ } }
+      if (error.code === 'EEXIST') fail('already-claimed', 'approval ID already claimed');
       fail('unavailable', 'cannot persist approval reservation');
     } finally {
-      if (fd !== undefined) { try { closeSync(fd); } catch { /* failing */ } }
-      try { unlinkSync(temp); } catch { /* absent */ }
+      try { unlinkSync(temp); } catch { /* already removed */ }
     }
   };
   return {
@@ -241,7 +255,17 @@ export function openApprovalLedger({ home } = {}) {
         if (existing.taskId === taskId) return { admitted: false, replay: true, taskId };
         fail('authorization_denied', 'approval ID already admitted a different task');
       }
-      write(approvalId, { approvalId, taskId, admittedAt: now });
+      try {
+        claim(approvalId, { approvalId, taskId, admittedAt: now });
+      } catch (error) {
+        if (error instanceof LiveApprovalError && error.code === 'already-claimed') {
+          // A competing process claimed it first. Only an exact replay is readable.
+          const winner = read(approvalId);
+          if (winner && winner.taskId === taskId) return { admitted: false, replay: true, taskId };
+          fail('authorization_denied', 'approval ID already admitted a different task');
+        }
+        throw error;
+      }
       return { admitted: true, replay: false, taskId };
     },
     lookup(approvalId) {

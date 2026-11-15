@@ -1932,3 +1932,41 @@ Template:
   gates are platform/hardware (`nftables` or an approved alternative, a real FIDO2
   `-sk` signing dry run) plus a separately authorized public-catalog read before any
   live experiment. Live, catalog, nftables and hardware signing remain `not_run`.
+
+## 2026-11-14 — B30 review corrections (P1 ledger, P2 gateway/bind/WSL scope)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `cff5265`).
+- Scope: correct the four blocking supervisor findings at `cff5265` without widening
+  the live boundary; PR stays draft and live closed.
+- Steps:
+  1. P1 — rewrote `openApprovalLedger` to claim atomically with no overwrite: write the
+     complete record to a private temp file, fsync, then hard-link to the target
+     (`linkSync` fails `EEXIST` on collision); on collision re-read and return only an
+     exact replay. Added a two-process competition test and a restart re-read test.
+  2. P2 — gateway now enforces the fixed ingress `Bearer public` and forwards only that
+     credential upstream (never inheriting arbitrary client headers), enforces its own
+     independent request cap, and both relay and gateway reject unspecified `0.0.0.0`/
+     `::` bind addresses. Added a relay→gateway→fixture-origin end-to-end test, cap and
+     wildcard tests.
+  3. P2 — rewrote `integration/b30-egress-namespaces.sh` to use three disposable
+     namespaces (`b30-worker`, `b30-relay`, `b30-gw`) and moved both ends of every veth
+     into a namespace, so the WSL initial/host namespace is never assigned an address,
+     route or link. Reran the new version: "containment verified" (exit 0); verified no
+     `b30-*` netns/veth and no `10.100.x` address/route remain in the host namespace.
+     The earlier observation (host-side veth + `ip addr add` in the initial namespace)
+     was out of scope and is corrected, not repeated.
+  4. Corrected whole-row `pass` overclaims to `partial`/`not_run` in the PR body, ADR,
+     contract, handoff and validation; recorded the concrete not-run subgates.
+- Files: `src/live-approval.mjs`, `src/egress-gateway.mjs`, `src/relay.mjs`,
+  `test/fixtures/approval-claim.mjs`, `test/live-approval.test.mjs`,
+  `test/egress-gateway.test.mjs`, `test/relay.test.mjs`,
+  `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`,
+  `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused relay/gateway/approval tests (now 40) pass; new 3-namespace WSL
+  fixture "containment verified" (exit 0) with verified empty host residue; serial full
+  suite and demo pass (see validation entry). No catalog GET, live inference, package
+  install, host/Windows network change or FIDO2 hardware run.
+- Follow-up: reply to the supervisor finding with the new head SHA and evidence; keep
+  the draft open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host
+  relay, FIDO2 hardware dry run, catalog, live).

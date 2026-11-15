@@ -28,6 +28,19 @@ function fail(code, message) {
 const REDIRECT_STATUS = new Set([301, 302, 303, 307, 308]);
 const MAX_TIMEOUT_MS = 2_147_483_647;
 
+// Reject unspecified/wildcard bind addresses: 0.0.0.0, :: and the uncompressed all-zero
+// IPv6 form. The relay must never bind every interface.
+function isUnspecifiedAddress(host) {
+  const family = isIP(host);
+  if (family === 4) return host === '0.0.0.0';
+  if (family === 6) {
+    if (host === '::' || host === '::0') return true;
+    const groups = host.split(':');
+    return groups.length === 8 && groups.every(group => group === '0' || group === '0000');
+  }
+  return false;
+}
+
 // A private/loopback bind address only. Reject 0.0.0.0, :: and empty hosts: the relay
 // never binds a public/unspecified interface. Fixtures use 127.0.0.1; deployments use
 // an explicit private address on the dedicated worker-facing interface.
@@ -38,7 +51,7 @@ function validateListen(listen) {
   if (typeof listen.host !== 'string' || !listen.host || !isIP(listen.host)) {
     fail('invalid_argument', 'relay listen host must be a concrete IP address');
   }
-  if (isIP(listen.host) === 0) fail('invalid_argument', 'relay listen host must not be unspecified');
+  if (isUnspecifiedAddress(listen.host)) fail('invalid_argument', 'relay listen host must not be unspecified');
   if (!Number.isInteger(listen.port) || listen.port < 0 || listen.port > 65535) {
     fail('invalid_argument', 'relay listen port is invalid');
   }

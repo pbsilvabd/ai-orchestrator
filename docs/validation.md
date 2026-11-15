@@ -2306,3 +2306,44 @@ routing-based WSL2 containment observation and the no-replay approval ledger, ba
 on the commands above. It does not support firewall-filtered isolation, a
 bare-metal/VM deployment, a hardware-key signature, catalog availability, live
 inference, B20/M3 or merge; those remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 review corrections (P1 ledger, P2 gateway/bind/WSL scope) — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen`
+(Git for Windows), WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`, root).
+Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting it.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs`, `src/live-approval.mjs` | Syntax of the three corrected modules | no output for each | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | Corrected focused cases: atomic single-use ledger (two-process competition + restart), gateway fixed bearer/request-cap/wildcard-bind, relay→gateway→fixture-origin chain | 40 passed, 0 failed, 0 skipped | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Corrected 3-namespace fixture (worker/relay/gateway, no host-namespace changes) with real socket probes | worker→relay reachable; worker/relay/gateway→Internet denied; relay→gateway reachable; gateway→worker denied; "containment verified" | 0 |
+| `wsl -d Ubuntu -- bash <residue-check>` | Verify teardown leaves no host-namespace residue | no `b30-*` netns/veth, no `10.100.x` address/route in the host namespace | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression on the corrected code | 345 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the approval ledger now claims atomically with no overwrite (write-then-hard-
+link, `EEXIST` collision re-read) and is proven single-use across two competing
+processes and across a restart; the gateway forwards the fixed `Bearer public` and
+enforces its own request cap; both listeners reject `0.0.0.0`/`::`; the WSL fixture
+now confines the gateway to its own disposable namespace and leaves the WSL
+initial/host namespace untouched (verified empty after teardown).
+
+Evidence level: Unit (temporary loopback processes, disposable keys, a two-process
+claim fixture); the corrected WSL2 run is a routing-only deployment observation in
+three disposable namespaces, not a firewall (nftables) proof and not a bare-metal/VM
+deployment.
+
+Not rerun / not_run: the earlier out-of-scope host-namespace WSL observation was
+corrected, not repeated; nftables/iptables default-drop filtering (absent, install not
+authorized); bare-metal Ubuntu / two-VM Hyper-V; pinned OpenCode 2.2.5 through the
+relay; a real FIDO2 `-sk` hardware-key signing dry run; public catalog GET and live
+inference.
+
+Claim: this entry supports the corrected atomic single-use ledger, gateway credential/
+cap/bind enforcement, the relay→gateway→fixture-origin chain and the no-host-change
+WSL2 containment observation, based on the commands above. The whole-row `pass`
+overclaims in the earlier PR body are corrected to partial/`not_run`; firewall-filtered
+isolation, bare-metal/VM deployment, pinned-host relay, hardware signing, catalog and
+live inference remain `not_run` and the live route stays closed.

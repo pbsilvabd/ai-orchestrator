@@ -387,15 +387,20 @@ its own temporary-process/loopback fixture:
 
 - `src/relay.mjs` + `test/relay.test.mjs` — one fixed upstream, no arbitrary target,
   `Bearer public` only, terminal refusal of 301/302/303/307/308 without forwarding,
-  independent request/byte/time bounds, fail-closed bind/upstream/teardown.
-- `src/egress-gateway.mjs` + `test/egress-gateway.test.mjs` — one fixed origin, CONNECT
-  and redirect refusal, unapproved-path refusal, sanitized body-free logging, policy
-  digest.
+  independent request/byte/time bounds, rejection of `0.0.0.0`/`::` bind addresses,
+  fail-closed bind/upstream/teardown.
+- `src/egress-gateway.mjs` + `test/egress-gateway.test.mjs` — one fixed origin, fixed
+  ingress `Bearer public` forwarded upstream (never inheriting arbitrary client
+  headers), CONNECT and redirect refusal, unapproved-path refusal, an independent
+  request cap, rejection of `0.0.0.0`/`::` bind addresses, sanitized body-free logging,
+  policy digest, and an end-to-end relay→gateway→fixture-origin chain test.
 - `src/live-approval.mjs` + `test/live-approval.test.mjs` — canonical SSHSIG live
   approval, `ssh-keygen -Y verify` against a single-principal `allowed_signers` plus a
   revocation list, FIDO2 presence/verification flag enforcement parsed from the SSHSIG
-  blob, policy/metadata binding and a durable single-use approval ledger. Tests use
-  disposable non-hardware keys only; a real maintainer signing key is never created.
+  blob, policy/metadata binding and a durable atomic no-replace single-use approval
+  ledger (write-then-hard-link, collision re-read, two-process competition and restart
+  tests). Tests use disposable non-hardware keys only; a real maintainer signing key is
+  never created.
 
 The OS-network containment gate is an isolated WSL2 Ubuntu fixture run by a maintainer,
 never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
@@ -404,15 +409,19 @@ never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh
 ```
 
-It creates two temporary network namespaces (`b30-worker`, `b30-relay`) and two veth
-pairs with private addresses and no default route, records the full `ip netns`/`ip
-addr`/`ip route` inventory, then runs real socket attempts proving the worker reaches
-only the relay and the relay reaches only the host gateway, while both are denied a
-direct Internet/TEST-NET destination. Teardown is fail-closed. Containment is
-routing-based: nftables/iptables are not installed and default-drop filtering is
-`not_run`.
+It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
+and two veth pairs, moving both ends of every veth into a namespace so the WSL
+initial/host namespace is never assigned an address, route or link. It assigns private
+addresses with no default route, records the full `ip netns`/`ip addr`/`ip route`
+inventory, then runs real socket attempts proving the worker reaches only the relay,
+the relay reaches only the gateway, and the gateway reaches only the relay, while each
+is denied a direct Internet/TEST-NET destination. Teardown is fail-closed and verified:
+no `b30-*` netns/veth and no `10.100.x` address/route remain in the host namespace.
+Containment is routing-based: nftables/iptables are not installed and default-drop
+filtering is `not_run`.
 
 Not covered / `not_run`: the live free route, public catalog GET, live inference,
-nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, and a real
-FIDO2 hardware-key signing dry run. A deployment without verifiable firewall-filtered
-isolation and a separately signed live approval stays closed.
+nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, the
+pinned-host-through-relay run, and a real FIDO2 hardware-key signing dry run. A
+deployment without verifiable firewall-filtered isolation and a separately signed live
+approval stays closed.
