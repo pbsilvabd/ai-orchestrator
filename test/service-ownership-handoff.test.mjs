@@ -121,3 +121,68 @@ test('B30-04: a failed pre-release cleanup keeps ownership and the capability un
   const recovered = createTaskService({ home });
   await recovered.close();
 });
+
+test('B30-04: the creator release cannot release a consumed capability while its service is active', async t => {
+  const home = makeHome(t, 'owner-early-release-');
+  const cap = openTaskHome({ home });
+  const service = createTaskService({ home, ownership: cap });
+  const held = readFileSync(lockPath(home), 'utf8');
+  // Release authority transferred to the service at consumption: the creator-facing release
+  // must refuse rather than remove the active owner's lock.
+  assert.throws(() => cap.releaseOwner(), error => error.code === 'invalid_argument');
+  assert.equal(readFileSync(lockPath(home), 'utf8'), held, 'the active service keeps its lock');
+  assert.throws(() => createTaskService({ home }), error => error.code === 'unavailable');
+  // The refused early release did not disable the service: it is still the only writer.
+  const { task } = service.store.createTask({ clientId: 'opencode-primary',
+    idempotencyKey: 'early-release', payload: {}, now: 1000 });
+  assert.equal(service.store.readTask(task.taskId).taskId, task.taskId);
+  await service.close();
+  assert.equal(existsSync(lockPath(home)), false);
+  // The creator still cannot release a consumed capability after close; the service path did.
+  assert.throws(() => cap.releaseOwner(), error => error.code === 'invalid_argument');
+  // Restart after the confirmed close acquires the home normally.
+  const next = createTaskService({ home });
+  await next.close();
+});
+
+test('B30-04: close is idempotent and releases once after scheduler idle', async t => {
+  const home = makeHome(t, 'owner-close-idempotent-');
+  const cap = openTaskHome({ home });
+  const service = createTaskService({ home, ownership: cap });
+  const first = service.close();
+  const second = service.close();
+  assert.equal(first, second, 'repeated close returns the same release operation');
+  await Promise.all([first, second]);
+  assert.equal(existsSync(lockPath(home)), false);
+  assert.throws(() => cap.releaseOwner(), error => error.code === 'invalid_argument');
+  const next = createTaskService({ home });
+  await next.close();
+});
+
+test('B30-04: close runs beforeRelease cleanup while ownership is still held', async t => {
+  const home = makeHome(t, 'owner-before-release-');
+  let lockedDuringCleanup;
+  const cap = openTaskHome({ home, beforeRelease: async () => {
+    lockedDuringCleanup = existsSync(lockPath(home));
+  } });
+  const service = createTaskService({ home, ownership: cap });
+  await service.close();
+  assert.equal(lockedDuringCleanup, true, 'cleanup runs before the owner lock is removed');
+  assert.equal(existsSync(lockPath(home)), false);
+});
+
+test('B30-04: a failed construction returns the capability to its creator for cleanup', async t => {
+  const home = makeHome(t, 'owner-failed-construction-');
+  let cleanups = 0;
+  const cap = openTaskHome({ home, beforeRelease: async () => { cleanups++; } });
+  // A worker without `prepare` makes scheduler creation fail after consumption. No service
+  // exists, so release authority returns to the creator.
+  assert.throws(() => createTaskService({ home, ownership: cap, worker: {} }),
+    error => error.code === 'internal');
+  assert.equal(existsSync(lockPath(home)), true);
+  await cap.releaseOwner();
+  assert.equal(cleanups, 1);
+  assert.equal(existsSync(lockPath(home)), false);
+  const next = createTaskService({ home });
+  await next.close();
+});

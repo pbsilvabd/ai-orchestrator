@@ -409,7 +409,11 @@ task-home owner or a corrupt store refuses with zero new child, port or lock, an
 held until the listeners have stopped. The handoff to the service is an opaque, frozen,
 single-use capability minted only after that acquisition and reconciliation; shaped, copied,
 released, reused and wrong-home handoffs are refused, so a second service cannot be constructed
-beside an active owner. Task-home ownership is released only after a confirmed
+beside an active owner. Release authority transfers at consumption: the creator-facing release
+refuses once the service has taken the capability, only that service's close path stops the
+listeners (via `beforeRelease`, while ownership is held) and removes the lock after scheduler
+idle, a failed construction returns the unconsumed capability to its creator for cleanup, and
+an uncertain cleanup keeps the lock. Task-home ownership is released only after a confirmed
 listener stop; an unconfirmable stop, at close or during failed-startup cleanup, keeps the
 task-home owner lock and every listener lock.
 Startup is gated by an unsigned operator approval artifact (shape, expiry and zero paid budget)

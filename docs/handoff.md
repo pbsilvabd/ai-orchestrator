@@ -1,5 +1,20 @@
 # Continuation point — 2026-11-15
 
+2026-11-15 fifth correction (release-authority transfer; same draft PR #45). The independent
+re-review at `f6fdd1e` confirmed the forged-handoff fix but found that the original capability
+holder could still call `cap.releaseOwner()` after `createTaskService` had consumed it, removing
+the active service's lock and letting a second service acquire the home. Release authority now
+transfers at consumption: the creator-facing `releaseOwner` is valid only while the capability
+is minted and unconsumed (failed-construction cleanup), and only the consuming service's private
+close path releases after scheduler idle, running `beforeRelease` listener stop while ownership
+is held. A private release is memoized, so repeated `close()` and concurrent close share one
+release; an early or concurrent creator release is refused with `invalid_argument` without
+touching the lock. Passive default close stays synchronous; a capability handoff returns the
+release Promise. `test/service-ownership-handoff.test.mjs` now covers the early-release bypass,
+close idempotency, `beforeRelease` ordering, and failed-construction cleanup in addition to the
+forged/copied/reused/released/mismatched/competing-owner and uncertain-release cases. All
+deployment gates remain `not_run`; PR #45 stays draft and unmerged.
+
 2026-11-15 fourth correction (ownership handoff capability; same draft PR #45). The independent
 re-review at `6ea76d8` confirmed the two earlier P1s in the configured path but found that the
 exported `ownership` option accepted a caller-shaped `{ store, releaseOwner }` object, allowing a

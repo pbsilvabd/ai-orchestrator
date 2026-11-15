@@ -2615,3 +2615,41 @@ Template:
 - Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
   independent re-review of the new head is required. All B30 deployment gates remain
   `not_run`.
+
+## 2026-11-15 – M3: B30 release-authority transfer correction
+
+- Branch: `task/B30-free-relay`
+- Scope: code, tests and docs; closes the P1 from the independent re-review at `f6fdd1e`
+  without changing live composition, provider, deployment or hardware paths.
+- Steps:
+  1. Split the capability's release into a private, memoized `record.release` and a
+     creator-facing `releaseOwner` that refuses with `invalid_argument` unless the
+     capability is still `minted` and unconsumed. The frozen capability never exposes the
+     private release, so a creator cannot release a lock that an active service owns.
+  2. Moved consumption to immediately before the first effect (after every pure argument
+     check). The consuming service's close path uses the private release, which runs
+     `beforeRelease` while ownership is held and removes the lock only after scheduler
+     idle; repeated or concurrent `close()` calls share one release.
+  3. A failed construction (for example an invalid worker) returns the unconsumed
+     capability to its creator so the documented cleanup path, including
+     `beforeRelease`, can release; an uncertain cleanup still retains the lock.
+  4. Preserved passive default synchronous `close()`, capability-composed passive close
+     returning the release Promise, and the pre-bind listener ownership order.
+  5. Extended `test/service-ownership-handoff.test.mjs` with early creator release beside
+     an active service, close idempotency, `beforeRelease`-before-unlock ordering and
+     failed-construction cleanup; revalidated the B12 owner tests. A standalone
+     reproduction of the reviewer trigger outside the repository exited 0 with the second
+     service refused.
+- Files: `src/service.mjs`, `test/service-ownership-handoff.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/backlog.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused B29/B30/ownership set -> 125 pass, 0 fail, exit 0; full serial
+  `node --test --test-concurrency=1` -> 416 tests, 415 pass, 0 fail, 1 skip, exit 0
+  (two earlier attempts hit the known `B15-03b` output-wait flake, the first also
+  `B10-03`; the passing rerun is claimed, the failures are not erased);
+  `node examples/fallback-demo.mjs` -> 429 then 200, exit 0; `git diff --check` -> no
+  output, exit 0. Two self-review passes covered the release split, construction
+  rollback, close/uncertainty paths and the contract wording.
+- Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
+  independent re-review of the new head is required. All B30 deployment gates remain
+  `not_run`.

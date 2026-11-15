@@ -471,7 +471,13 @@ or production provider is enabled by this option.
   single-use capability returned by `openTaskHome`; a shaped or copied `{ store, releaseOwner }`
   object, a released or reused capability and a capability minted for another home are refused
   with `invalid_argument`, and a forged or mismatched handoff never releases or replaces an
-  active owner. An optional `beforeRelease` cleanup (trusted composition) runs while ownership
+  active owner. Release authority transfers at consumption: the creator-facing `releaseOwner`
+  is valid only while the capability is minted and unconsumed (for example cleanup after a
+  failed construction); once a service consumes it, only that service's close path releases,
+  after scheduler idle and any `beforeRelease` cleanup, and repeated `close()` calls share one
+  release. An early or concurrent creator release is refused with `invalid_argument` and never
+  removes the active service's lock. An optional `beforeRelease` cleanup (trusted composition)
+  runs while ownership
   is still held; if it or the lock release fails, the capability becomes unusable and the lock
   is retained for explicit maintainer recovery. A lock left by a crash is not removed
   automatically; inspect the
@@ -636,7 +642,9 @@ above). Live composition remains closed.
   pre-acquired store is handed over only as the opaque, frozen, single-use capability returned
   by `openTaskHome`; a shaped or copied `{ store, releaseOwner }` object, a released or reused
   capability and a capability for another home are refused, so caller honesty is not an
-  ownership boundary. A competing
+  ownership boundary. Once the service consumes the capability the creator cannot release it:
+  the listener path's private close releases only after the scheduler is idle, running the
+  `beforeRelease` listener stop while ownership is still held. A competing
   task-home owner or a corrupt store therefore refuses with zero new listener child, port or
   lock; ownership is held until the listeners have stopped. Startup authority is trusted
   composition, not a task signature: the operator approval artifact is unsigned JSON (shape,
