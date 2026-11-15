@@ -2004,3 +2004,36 @@ Template:
 - Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
   open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
   FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 re-review correction 2 (cleanup-error reporting + fault injection)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `ad010a7`).
+- Scope: correct the residual cleanup finding from the re-review at `ad010a7`; PR stays
+  draft and live closed.
+- Steps:
+  1. Reworked `do_cleanup` so a failed `ip netns del` is reported with the owned-name
+     inventory (`LEFTOVER_NS`) and a nonzero return instead of being silently ignored;
+     `CREATED_NS` is cleared only after every owned namespace is confirmed gone, so
+     unresolved teardown requires manual reconciliation and never claims "nothing
+     remains". The EXIT trap re-runs cleanup on every exit path, so an early `fail` or
+     partial configuration failure still cleans and reports.
+  2. Tracked the self-test's collision object in `CREATED_NS` so a failed assertion
+     cannot leak it.
+  3. Added `--self-test-fault`: a controlled partial-failure injection that creates two
+     owned disposable namespaces and then fails, so the EXIT trap must remove them; the
+     caller verifies no `b30-fault-*` residue remains after the nonzero exit.
+  4. Reran `--self-test` (exit 0), `--self-test-fault` (exit 1, then verified no
+     `b30-fault-*` residue), and the full fixture ("containment verified" exit 0 with
+     "teardown removed all owned objects, no initial-namespace residue"); external
+     residue check confirmed no `b30-*` netns/veth and no `10.100.x` address/route.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: WSL `--self-test` exit 0, `--self-test-fault` exit 1 with no residue, full
+  fixture exit 0 with no residue. No Node/test code changed in this correction, so the
+  prior focused 40/40 and serial 345/0/1 results remain valid for the unchanged modules.
+  No catalog GET, live inference, package install, host/Windows network change or FIDO2
+  hardware run.
+- Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
+  FIDO2 hardware dry run, catalog, live).

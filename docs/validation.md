@@ -2386,3 +2386,41 @@ Claim: this entry supports the corrected in-namespace veth creation, collision-s
 owned cleanup and the sound all-zero IPv6 rejection, based on the commands above.
 Firewall-filtered isolation, bare-metal/VM deployment, pinned-host relay, hardware
 signing, catalog and live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 re-review correction 2 (cleanup-error reporting + fault injection) — 2026-11-14
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`,
+root). Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting
+it. No Node/test code changed in this correction, so the prior focused (40/40) and
+serial full-suite (345 pass / 0 fail / 1 skip) results remain valid for the unchanged
+modules and were not rerun.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test` | Collision refusal + owned-only cleanup | "self-test passed" | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault` | Controlled partial-failure cleanup via EXIT trap | "SIMULATED: partial configuration failure"; exit nonzero as designed | 1 |
+| `wsl -d Ubuntu -- bash -c 'ip netns list \| grep b30-fault'` | Verify fault-injection teardown removed owned namespaces | no `b30-fault-*` residue | 1 (grep no match) |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Full in-namespace veth fixture | "containment verified"; "teardown removed all owned objects, no initial-namespace residue" | 0 |
+| `wsl -d Ubuntu -- bash <residue-check>` | Verify no host-namespace residue | no `b30-*` netns/veth, no `10.100.x` address/route | 0 |
+| `git diff --cached --check` | Staged change whitespace | no output | 0 |
+
+Result: a failed `ip netns del` is now reported with the owned-name inventory and a
+nonzero return on every exit path (the EXIT trap re-runs cleanup), `CREATED_NS` is only
+cleared after every owned namespace is confirmed gone, the self-test collision object is
+tracked, and `--self-test-fault` proves the EXIT trap removes owned namespaces after a
+simulated partial failure.
+
+Evidence level: WSL2 routing-only deployment observation confined to disposable
+namespaces; not a firewall (nftables) proof and not a bare-metal/VM deployment. The
+fault-injection exit 1 is the intended simulated failure, with the caller-verified empty
+residue as the cleanup evidence.
+
+Not rerun / not_run: focused and full Node suite/demo (no Node/test change in this
+correction); nftables/iptables filtering (absent, install not authorized); bare-metal
+Ubuntu / two-VM Hyper-V; pinned OpenCode 2.2.5 through the relay; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET and live inference.
+
+Claim: this entry supports the cleanup-error reporting, owned-only collision-safe
+teardown and the fault-injection EXIT-trap cleanup, based on the commands above.
+Firewall-filtered isolation, bare-metal/VM deployment, pinned-host relay, hardware
+signing, catalog and live inference remain `not_run` and the live route stays closed.

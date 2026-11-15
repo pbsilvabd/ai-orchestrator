@@ -409,6 +409,7 @@ never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
 ```sh
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh
 wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault   # exits 1; caller verifies no b30-fault-* residue
 ```
 
 It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
@@ -420,11 +421,14 @@ no default route, records the full `ip netns`/`ip addr`/`ip route` inventory, th
 real socket attempts proving the worker reaches only the relay, the relay reaches only
 the gateway, and the gateway reaches only the relay, while each is denied a direct
 Internet/TEST-NET destination. Teardown removes only the namespaces this run created
-(refusing name collisions without touching pre-existing state) and verifies no `b30-*`
-netns/veth and no `10.100.x` address/route remain. The `--self-test` mode exercises
-collision refusal and owned-only cleanup with disposable namespaces only. Containment
-is routing-based: nftables/iptables are not installed and default-drop filtering is
-`not_run`.
+(refusing name collisions without touching pre-existing state); a failed `ip netns del`
+is reported with the owned-name inventory on every exit path (the EXIT trap re-runs
+cleanup, so an early failure still cleans and reports) and unresolved teardown requires
+manual reconciliation rather than claiming "nothing remains". The `--self-test` mode
+exercises collision refusal and owned-only cleanup, and `--self-test-fault` exercises
+the EXIT-trap cleanup after a simulated partial failure, each confined to disposable
+namespaces. Containment is routing-based: nftables/iptables are not installed and
+default-drop filtering is `not_run`.
 
 Not covered / `not_run`: the live free route, public catalog GET, live inference,
 nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, the

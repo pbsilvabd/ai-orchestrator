@@ -8,10 +8,13 @@
 # the peer is moved to the other compartment. No host address, route, link or firewall
 # is assigned, and `ip link add` never runs in the initial namespace.
 #
-# Safety: namespaces and links use a unique per-run suffix; the script tracks exactly
-# which namespaces it created and tears down only those; it refuses a name collision
-# without touching the pre-existing object; and it fails (nonzero) on any partially
-# failed `ip` configuration while the trap removes only the objects this run created.
+# Safety: namespaces use a unique per-run suffix; the script tracks exactly which
+# namespaces it created and tears down only those; it refuses a name collision without
+# touching the pre-existing object; it fails (nonzero) on any partially failed `ip`
+# configuration; and teardown reports any failed `ip netns del` with the owned-name
+# inventory on every exit path (the EXIT trap re-runs cleanup, so an early failure
+# still cleans and reports). On unresolved teardown it requires manual reconciliation
+# and never claims "nothing remains".
 #
 # This is a deployment observation, not a unit test. It does not contact a provider or
 # the Internet; all probes target private or TEST-NET addresses that fail locally.
@@ -40,8 +43,12 @@ OUT="${B30_OUT:-/tmp/b30-egress-out.txt}"
 RELAY_PORT=18081
 GATEWAY_PORT=18082
 
-# Ownership tracking: only namespaces in this array are ever deleted.
+# Ownership tracking: only namespaces in this array are ever deleted. LEFTOVER_NS holds
+# the inventory of owned namespaces whose deletion failed (requiring manual
+# reconciliation); CREATED_NS is only cleared after every owned namespace is confirmed
+# gone.
 CREATED_NS=()
+LEFTOVER_NS=()
 relay_pid=""
 gateway_pid=""
 
@@ -62,15 +69,31 @@ create_ns() {
   return 0
 }
 
-# Deletes only the namespaces this run created, in reverse order. Idempotent.
+# Deletes only the namespaces this run created. Reports any failed deletion with the
+# owned-name inventory and returns 1 (leaving CREATED_NS intact) instead of silently
+# proceeding; returns 0 (and clears CREATED_NS) only when nothing owned remains.
 do_cleanup() {
   [ -n "$relay_pid" ] && kill "$relay_pid" 2>/dev/null || true
   [ -n "$gateway_pid" ] && kill "$gateway_pid" 2>/dev/null || true
-  local i
+  local i ns
+  local failed=0
+  LEFTOVER_NS=()
   for ((i = ${#CREATED_NS[@]} - 1; i >= 0; i--)); do
-    ip netns del "${CREATED_NS[$i]}" 2>/dev/null || true
+    ns="${CREATED_NS[$i]}"
+    if namespace_exists "$ns"; then
+      if ! ip netns del "$ns" 2>/dev/null; then
+        LEFTOVER_NS+=("$ns")
+        failed=1
+      fi
+    fi
   done
+  if [ "$failed" = "1" ]; then
+    echo "WARNING: teardown failed; the following owned namespaces remain and require manual reconciliation:" >&2
+    printf '  - %s\n' "${LEFTOVER_NS[@]}" >&2
+    return 1
+  fi
   CREATED_NS=()
+  return 0
 }
 trap do_cleanup EXIT
 
@@ -100,6 +123,7 @@ self_test() {
   echo "=== self-test: collision refusal + owned cleanup ===" | tee -a "$OUT"
   local pre="b30-selftest-existing-$SUFFIX"
   ip netns add "$pre" || fail "self-test setup failed"
+  CREATED_NS+=("$pre")   # tracked so any exit path cleans it up
 
   if create_ns "$pre"; then
     echo "FAIL: collision refusal did not trigger" | tee -a "$OUT"; exit 1
@@ -109,7 +133,7 @@ self_test() {
   else
     echo "FAIL: pre-existing namespace was deleted" | tee -a "$OUT"; exit 1
   fi
-  ip netns del "$pre"
+  ip netns del "$pre" || fail "self-test pre cleanup failed"
 
   local owned="b30-selftest-owned-$SUFFIX"
   create_ns "$owned" || fail "self-test create failed"
@@ -118,16 +142,39 @@ self_test() {
   else
     echo "FAIL: owned namespace missing" | tee -a "$OUT"; exit 1
   fi
-  do_cleanup
+  if do_cleanup; then
+    echo "PASS: cleanup removed owned namespaces" | tee -a "$OUT"
+  else
+    echo "FAIL: cleanup left residue" | tee -a "$OUT"; exit 1
+  fi
   if namespace_exists "$owned"; then
     echo "FAIL: owned namespace not cleaned" | tee -a "$OUT"; exit 1
   fi
-  echo "PASS: cleanup removed only the owned namespace" | tee -a "$OUT"
+  if verify_cleanup; then
+    echo "PASS: no residue remains" | tee -a "$OUT"
+  else
+    echo "FAIL: residue remains" | tee -a "$OUT"; exit 1
+  fi
   echo "RESULT: self-test passed" | tee -a "$OUT"
   exit 0
 }
 
+# Controlled fault injection (run as a separate top-level invocation with
+# `--self-test-fault`): create owned disposable namespaces, then fail so the EXIT trap
+# must clean them up. Confined to disposable namespaces only. The caller verifies the
+# owned namespaces are gone after this exits nonzero.
+self_test_fault() {
+  echo "=== self-test-fault: partial-failure cleanup via EXIT trap ===" | tee -a "$OUT"
+  local a="b30-fault-a-$SUFFIX"
+  local b="b30-fault-b-$SUFFIX"
+  create_ns "$a" || fail "fault setup a"
+  create_ns "$b" || fail "fault setup b"
+  echo "SIMULATED: partial configuration failure after two namespaces; EXIT trap must clean up" | tee -a "$OUT"
+  fail "SIMULATED: partial configuration failure"
+}
+
 [ "${1:-}" = "--self-test" ] && self_test
+[ "${1:-}" = "--self-test-fault" ] && self_test_fault
 
 : > "$LOG"
 echo "=== B30 egress namespace fixture ===" | tee "$OUT"
@@ -176,9 +223,9 @@ done
 # 5. Routing probes (deterministic, no packets).
 probe_route() {
   local ns="$1" dst="$2"
-  local msg
+  local msg rc
   msg=$(ip netns exec "$ns" ip route get "$dst" 2>&1)
-  local rc=$?
+  rc=$?
   printf '%-10s route-get %-18s rc=%d %s\n' "$ns" "$dst" "$rc" "$msg" | tee -a "$OUT"
   case "$msg" in
     *"unreachable"*) return 1 ;;
@@ -204,9 +251,9 @@ sleep 1
 
 probe_curl() {
   local ns="$1" url="$2"
-  local msg
+  local msg rc
   msg=$(ip netns exec "$ns" curl -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' "$url" 2>&1)
-  local rc=$?
+  rc=$?
   printf '%-10s curl      %-26s rc=%d result=%s\n' "$ns" "$url" "$rc" "$msg" | tee -a "$OUT"
   return "$rc"
 }
@@ -238,12 +285,16 @@ check_denied "relay->internet socket denied"  "$relay_inet_sock"
 check_ok     "relay->gateway socket ok"       "$relay_gw_sock"
 check_denied "gateway->internet socket denied" "$gw_inet_sock"
 
-# 8. Explicit teardown + verification.
-do_cleanup
-if verify_cleanup; then
-  echo "PASS: teardown removed all owned objects, no initial-namespace residue" | tee -a "$OUT"
+# 8. Explicit teardown + verification. A failed deletion is reported (not silent) and
+#    makes the run fail closed; the trap re-runs cleanup on exit.
+if do_cleanup; then
+  if verify_cleanup; then
+    echo "PASS: teardown removed all owned objects, no initial-namespace residue" | tee -a "$OUT"
+  else
+    echo "FAIL: teardown left residue (requires manual reconciliation)" | tee -a "$OUT"; fail=1
+  fi
 else
-  echo "FAIL: teardown left residue" | tee -a "$OUT"; fail=1
+  echo "FAIL: teardown could not remove owned namespaces (see inventory above; manual reconciliation required)" | tee -a "$OUT"; fail=1
 fi
 
 if [ "$fail" = "0" ]; then echo "RESULT: containment verified" | tee -a "$OUT"; exit 0; else echo "RESULT: containment FAILED" | tee -a "$OUT"; exit 1; fi

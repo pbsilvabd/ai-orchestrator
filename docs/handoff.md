@@ -35,12 +35,13 @@ PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-on
 
 ## Next action
 
-1. The supervisor reviews at `cff5265` and `32c0339` (P1 ledger; P2 gateway/bind/WSL
-   scope; residual WSL in-namespace veth + compressed IPv6 aliases) have been corrected
-   on this branch; the reply with the new head SHA and evidence is posted on PR #45.
-   Re-review the corrected head, then the maintainer decides draft-to-ready. The draft
-   lists the unmet criteria (firewall filtering, hardware signing, catalog, live
-   activation) as `not_run`, not passed.
+1. The supervisor reviews at `cff5265`, `32c0339` and `ad010a7` (P1 ledger; P2
+   gateway/bind/WSL scope; residual in-namespace veth + compressed IPv6 aliases; and
+   cleanup-error reporting + fault injection) have been corrected on this branch; the
+   reply with the new head SHA and evidence is posted on PR #45. Re-review the
+   corrected head, then the maintainer decides draft-to-ready. The draft lists the
+   unmet criteria (firewall filtering, hardware signing, catalog, live activation) as
+   `not_run`, not passed.
 2. Remaining B30 gates are platform/hardware, not code: nftables (or an approved
    alternative), a real FIDO2 `-sk` signing dry run, and a separately authorized
    catalog read before any live experiment.
