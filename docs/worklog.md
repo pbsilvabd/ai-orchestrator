@@ -2158,3 +2158,36 @@ Template:
   rerun (see validation entry); `git diff --check` clean.
 - Follow-up: reply to the supervisor with the new head SHA and evidence; verify exact-head
   Windows/Ubuntu CI at the corrected head. Remaining gates stay `not_run`.
+
+## 2026-11-15 — B30 active egress negatives + relay failure/lifecycle fixtures
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: continue safe local B30 gates: active worker IPv4/IPv6/DNS/WebSocket-upgrade
+  negative probes inside disposable WSL2 namespaces, and relay timeout/partial-body/
+  port-release fixtures; assess signed-approval service integration.
+- Steps:
+  1. Extended `integration/b30-egress-namespaces.sh` with active negative probes from the
+     worker: direct IPv6 (`curl -6` to `2001:db8::1`), DNS resolution (`.invalid` hostname),
+     and a WebSocket-like `Upgrade` request to TEST-NET. All denied with recorded exits
+     (`rc=7` unrouted connections, `rc=6` unresolved DNS); no external address contacted;
+     teardown verified empty.
+  2. Added `test/relay.test.mjs` fixtures: upstream timeout latches with a terminal 502 and
+     no second request; upstream partial-body drop latches without replay; terminal stop
+     releases the port (a second relay binds it, no dangling unowned listener).
+  3. Assessed signed-approval service integration: the SSHSIG verification, binding,
+     admission ordering and atomic no-replace ledger are implemented and tested standalone;
+     wiring them into live `createConfiguredTaskService` admission is not performed because
+     it requires a real FIDO2 hardware dry run and verified firewall-filtered egress (both
+     `not_run`). Documented as `not_run`, no invented signature/hardware.
+- Files: `integration/b30-egress-namespaces.sh`, `test/relay.test.mjs`,
+  `integration/README.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/task-contract.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: WSL fixture "containment verified" (exit 0, no residue) with the new
+  IPv6/DNS/WebSocket-upgrade negatives; relay tests 16/16; focused 43/43; full suite and
+  demo rerun (see validation entry). No catalog GET, live inference, install, host/Windows
+  network change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry run,
+  catalog, live).

@@ -2570,3 +2570,40 @@ behavior changed.
 Claim: this entry records the failing Ubuntu CI receipt and the deterministic test fix,
 based on the commands above. The exact-head Windows/Ubuntu CI at the corrected head must
 be observed green separately.
+
+## M3 preparation: B30 active egress negatives + relay failure/lifecycle fixtures — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), WSL2 Ubuntu (kernel
+`6.6.87.2-microsoft-standard-WSL2`, root). Date: 2026-11-15.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Isolated worker/relay/gateway netns + veth with active IPv4/IPv6/DNS/WebSocket-upgrade negative probes | "containment verified": worker→relay reachable; worker/relay/gateway→Internet denied; worker→IPv6 `rc=7`, worker→DNS `.invalid` `rc=6`, worker→WebSocket-upgrade `rc=7`; no host residue | 0 |
+| `node --test test/relay.test.mjs` | Relay failure/lifecycle: port-conflict, upstream failure/timeout latch, partial-body drop (no replay), stop + port release | 16 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | Focused B30 regression | 43 passed, 0 failed, 0 skipped | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the worker compartment's direct IPv4, IPv6, DNS and WebSocket-upgrade egress to
+private/TEST-NET/no-route addresses is denied by routing (no external address contacted,
+no nftables filtering). The relay's local HTTP/process fixtures cover a timeout latch with
+a terminal 502 and no second request, a partial-body drop that latches without replay, and
+a terminal stop that releases the port (no dangling unowned listener).
+
+Evidence level: the WSL2 run is a routing-only deployment observation confined to
+disposable namespaces (not firewall-filtered, not a bare-metal/VM deployment); the relay
+fixtures are local HTTP/process evidence. The relay is not spawned as a child of the
+service, so service-level uncertain-child-stop integration is not proven.
+
+Not rerun / not_run: signed-approval service admission integration and a real FIDO2 `-sk`
+hardware-key signing dry run (assessed as requiring hardware + verified egress, neither
+available; the SSHSIG verification/no-replay ledger are implemented and tested standalone);
+public catalog GET (maintainer-declined); live inference; nftables filtering; bare-metal
+Ubuntu / two-VM Hyper-V; full cross-namespace TLS gateway chain.
+
+Claim: this entry supports the active worker IPv4/IPv6/DNS/WebSocket-upgrade negative
+probes and the relay timeout/partial-body/port-release fixtures, based on the commands
+above. Firewall-filtered isolation, the active provider WebSocket-bypass experiment,
+signed-approval service integration, hardware signing, catalog and live inference remain
+`not_run` and the live route stays closed.

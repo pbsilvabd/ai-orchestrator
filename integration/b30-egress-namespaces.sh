@@ -39,6 +39,8 @@ WORKER_IP="10.100.1.2"
 GATEWAY_IP="10.100.2.1"
 RELAY_GW_IP="10.100.2.2"
 INTERNET_V4="192.0.2.1"       # TEST-NET-1, never routed
+INTERNET_V6="2001:db8::1"     # IPv6 documentation prefix, never routed
+DNS_PROBE_HOST="b30-dns-probe.invalid"   # RFC 2606 .invalid TLD, never resolvable
 
 LOG="${B30_LOG:-/tmp/b30-egress.log}"
 OUT="${B30_OUT:-/tmp/b30-egress-out.txt}"
@@ -375,6 +377,29 @@ probe_curl() {
   return "$rc"
 }
 
+# Force IPv6 egress attempt.
+probe_curl6() {
+  local ns="$1" url="$2"
+  local msg rc
+  msg=$(ip netns exec "$ns" curl -6 -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' "$url" 2>&1)
+  rc=$?
+  printf '%-10s curl6     %-26s rc=%d result=%s\n' "$ns" "$url" "$rc" "$msg" | tee -a "$OUT"
+  return "$rc"
+}
+
+# WebSocket-like upgrade attempt (HTTP GET with Upgrade headers). A real WebSocket
+# handshake cannot start unless this TCP connection succeeds.
+probe_upgrade() {
+  local ns="$1" url="$2"
+  local msg rc
+  msg=$(ip netns exec "$ns" curl -sS --http1.1 --connect-timeout 2 -o /dev/null -w '%{http_code}' \
+    -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: SGVsbG8=' \
+    "$url" 2>&1)
+  rc=$?
+  printf '%-10s upgrade   %-26s rc=%d result=%s\n' "$ns" "$url" "$rc" "$msg" | tee -a "$OUT"
+  return "$rc"
+}
+
 echo "=== socket probes ===" | tee -a "$OUT"
 probe_curl "$WORKER_NS" "http://$INTERNET_V4/";           worker_inet_sock=$?
 probe_curl "$WORKER_NS" "http://$GATEWAY_IP:$GATEWAY_PORT/"; worker_gw_sock=$?
@@ -382,6 +407,10 @@ probe_curl "$WORKER_NS" "http://$RELAY_IP:$RELAY_PORT/";  worker_relay_sock=$?
 probe_curl "$RELAY_NS" "http://$INTERNET_V4/";            relay_inet_sock=$?
 probe_curl "$RELAY_NS" "http://$GATEWAY_IP:$GATEWAY_PORT/"; relay_gw_sock=$?
 probe_curl "$GATEWAY_NS" "http://$INTERNET_V4/";          gw_inet_sock=$?
+# Active negative probes: direct IPv6, DNS, and WebSocket/upgrade egress from the worker.
+probe_curl6 "$WORKER_NS" "http://[$INTERNET_V6]/";        worker_inet6_sock=$?
+probe_curl "$WORKER_NS" "http://$DNS_PROBE_HOST/";        worker_dns_sock=$?
+probe_upgrade "$WORKER_NS" "http://$INTERNET_V4/";        worker_ws_sock=$?
 
 # 7. Assert the containment.
 echo "=== verdict ===" | tee -a "$OUT"
@@ -401,6 +430,9 @@ check_ok     "worker->relay socket ok"        "$worker_relay_sock"
 check_denied "relay->internet socket denied"  "$relay_inet_sock"
 check_ok     "relay->gateway socket ok"       "$relay_gw_sock"
 check_denied "gateway->internet socket denied" "$gw_inet_sock"
+check_denied "worker->IPv6 egress denied"     "$worker_inet6_sock"
+check_denied "worker->DNS resolution denied"  "$worker_dns_sock"
+check_denied "worker->WebSocket upgrade denied" "$worker_ws_sock"
 
 # 8. Explicit teardown + verification. A failed deletion or unreadable inventory is
 #    reported (not silent) and makes the run fail closed.

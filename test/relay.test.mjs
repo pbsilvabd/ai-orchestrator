@@ -163,6 +163,58 @@ test('B30-04: stop is terminal and a stopped relay cannot be restarted', async t
   await assert.rejects(() => relay.start(), /lifecycle/);
 });
 
+test('B30-04: stop releases the port (no dangling unowned listener)', async t => {
+  const origin = await startServer((req, res) => { res.writeHead(200); res.end('{}'); });
+  t.after(() => origin.stop());
+  const relay = createRelay(relayConfig(origin.origin));
+  await relay.start();
+  const port = relay.status().address.port;
+  await relay.stop();
+  // A different relay can bind the same port: the first listener is fully gone.
+  const second = createRelay({ ...relayConfig(origin.origin), listen: { host: '127.0.0.1', port } });
+  await second.start();
+  t.after(() => second.stop());
+  assert.equal(second.status().started, true);
+  assert.equal(second.status().address.port, port);
+});
+
+test('B30-04: upstream timeout latches with a terminal error and no second request', async t => {
+  const origin = await startServer((req, res) => {
+    // Hold the request without responding; the relay timeout must fire.
+  });
+  t.after(() => origin.stop());
+  const config = relayConfig(origin.origin);
+  config.limits.timeoutMs = 500;
+  const relay = createRelay(config);
+  await relay.start();
+  const base = `http://127.0.0.1:${relay.status().address.port}${PATH}`;
+  t.after(() => relay.stop());
+
+  const response = await post(base);
+  assert.equal(response.status, 502);
+  assert.equal(relay.status().latched, true);
+  assert.equal(relay.status().latchReason, 'upstream-unavailable');
+  assert.equal(origin.requests.length, 1, 'timeout must not produce a second upstream request');
+});
+
+test('B30-04: upstream partial-body drop latches and never replays', async t => {
+  const origin = await startServer((req, res) => {
+    res.writeHead(200, { 'content-type': 'application/json', 'content-length': '100' });
+    res.write('{"partial":');
+    setTimeout(() => res.destroy(), 20);
+  });
+  t.after(() => origin.stop());
+  const { relay, base } = await startRelay(origin.origin);
+  t.after(() => relay.stop());
+
+  const response = await post(base);
+  assert.equal(response.status, 200); // headers already sent before the drop
+  await response.text().catch(() => {});
+  const status = relay.status();
+  assert.equal(status.latched, true, 'partial-body drop must latch the relay');
+  assert.equal(origin.requests.length, 1, 'partial-body drop must not replay the request');
+});
+
 test('relay policy digest binds the exact configuration', () => {
   const config = relayConfig('http://127.0.0.1:1234');
   assert.match(relayPolicyDigest(config), /^[a-f0-9]{64}$/);

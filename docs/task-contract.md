@@ -584,8 +584,12 @@ requests/bytes). The OS-network placement is observed only in an isolated WSL2 n
 fixture (`integration/b30-egress-namespaces.sh`) using three disposable namespaces
 (worker, relay, gateway) with unique per-run names, where each veth pair is created
 inside a disposable namespace and only the peer is moved (no `ip link add` in the WSL
-initial/host namespace), routing-based containment and no nftables/iptables filtering;
-no real FIDO2 hardware-key signing dry run, catalog read or live inference has been
-performed. These are separate `not_run` gates; the live route stays closed until a
+initial/host namespace); routing-based containment denies the worker's direct
+IPv4/IPv6/DNS/WebSocket-upgrade egress to private/TEST-NET/no-route addresses, with no
+nftables/iptables filtering. Relay failure/lifecycle fixtures (`test/relay.test.mjs`)
+cover port-conflict refusal, upstream-failure/timeout latch, partial-body drop without
+replay, and terminal stop that releases the port. No real FIDO2 hardware-key signing dry
+run, signed-approval service admission integration, catalog read or live inference has
+been performed. These are separate `not_run` gates; the live route stays closed until a
 platform provides verified firewall-filtered isolation and a separately signed live
 approval.

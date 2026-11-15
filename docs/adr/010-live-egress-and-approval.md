@@ -182,7 +182,12 @@ Observed deployment containment (isolated WSL2 Ubuntu, routing-based, no host ch
   ever assigned. It assigns private addresses with no default IPv4/IPv6 route, records
   the full inventory, then runs real socket attempts: the worker reaches only the
   relay, the relay reaches only the gateway, and the gateway reaches only the relay;
-  worker/relay/gateway are each denied a direct Internet/TEST-NET destination. Teardown
+  worker/relay/gateway are each denied a direct Internet/TEST-NET destination. It also
+  runs active negative egress probes from the worker — direct IPv6 (`curl -6` to
+  `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), and a WebSocket-like
+  `Upgrade` request to TEST-NET — each denied with a recorded nonzero exit (`rc=7` for the
+  unrouted IPv4/IPv6/upgrade connections, `rc=6` for the unresolved DNS name), with no
+  external address contacted. Teardown
   removes only the namespaces this run created (refusing name collisions without
   touching pre-existing state); a failed `ip netns del` or an unreadable `ip netns list`
   is reported with the owned-name inventory and treated as uncertain (ownership is not
@@ -193,6 +198,14 @@ Observed deployment containment (isolated WSL2 Ubuntu, routing-based, no host ch
   `--self-test-trap-status` modes exercise early-failure, failed-delete, unreadable-
   inventory and trap-forces-nonzero paths with mocked `ip` outcomes, each confined to
   disposable namespaces.
+
+Relay failure/lifecycle fixtures (B30-04, established at the relay level): `test/relay.test.mjs`
+covers port-conflict refusal, upstream-failure latch, an upstream-timeout latch with a
+terminal 502 and no second request, an upstream partial-body drop that latches without
+replay, and a terminal stop that releases the port (a second relay binds it, so no
+dangling unowned listener remains). These are local HTTP/process fixtures; the relay is
+not spawned as a child of the service, so service-level uncertain-child-stop integration
+is not proven here.
 
 Not run / not established by this amendment (recorded `not_run`):
 
@@ -206,10 +219,19 @@ Not run / not established by this amendment (recorded `not_run`):
   `ssh-keygen -Y verify` plumbing are tested with disposable non-hardware keys and a
   synthesized sk-signature blob; a real `-sk` signature is refused unless it carries
   presence+verification, but no hardware key was exercised.
-- IPv6/DNS/WebSocket negatives and firewall inventory (B30-03), partial-body/deadline/
-  uncertain-stop behavior (B30-04), real service admission integration (B30-05), and
-  the gateway TLS ingress chain (B30-07): not exercised here.
+- Firewall inventory (B30-03), service-level uncertain-child-stop integration (B30-04),
+  real signed-approval service admission integration (B30-05), and the gateway TLS
+  ingress chain (B30-07): not exercised here.
 - Public catalog GET and live inference: remain prohibited and `not_run`.
+
+Signed-approval service integration assessment (B30-05, not_run): the SSHSIG verification,
+policy/metadata binding, admission ordering and the atomic no-replace single-use ledger
+are implemented and tested standalone in `src/live-approval.mjs` / `test/live-approval.test.mjs`
+(with disposable non-hardware keys and a synthesized sk-signature blob). Wiring the signed
+approval into `createConfiguredTaskService`'s live admission is not performed here: a live
+admission only becomes meaningful once (a) a real FIDO2 hardware-key dry run and (b)
+verified firewall-filtered egress containment exist, both of which remain `not_run`. No
+signature or hardware is invented to close this gap.
 
 Pinned-host-through-relay fixture (established, not `not_run`): on the pinned OpenCode
 2.2.5 host (Windows x64), `integration/opencode-free-relay.mjs` routes the free route

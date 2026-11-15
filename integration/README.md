@@ -423,17 +423,21 @@ and no host address, route or link is ever assigned. It assigns private addresse
 no default route, records the full `ip netns`/`ip addr`/`ip route` inventory, then runs
 real socket attempts proving the worker reaches only the relay, the relay reaches only
 the gateway, and the gateway reaches only the relay, while each is denied a direct
-Internet/TEST-NET destination. Teardown removes only the namespaces this run created
-(refusing name collisions without touching pre-existing state). A failed `ip netns del`
-or an unreadable `ip netns list` is reported with the owned-name inventory and treated
-as uncertain (ownership is not cleared); the `EXIT` trap re-runs cleanup on every exit
-path and calls `exit 1` when cleanup or inventory verification is uncertain, so a run
-never reports success with unresolved owned namespaces and unresolved teardown requires
-manual reconciliation. The `--self-test*` modes exercise collision refusal, owned-only
-cleanup, early-failure trap cleanup, and mock `ip` failed-delete / unreadable-inventory /
-trap-forces-nonzero paths, each confined to disposable namespaces. Containment is
-routing-based: nftables/iptables are not installed and default-drop filtering is
-`not_run`.
+Internet/TEST-NET destination. It additionally runs active negative egress probes from
+the worker: direct IPv6 (`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an
+RFC 2606 `.invalid` hostname), and a WebSocket-like `Upgrade` request to TEST-NET — each
+is denied with a recorded nonzero exit (`rc=7` for the unrouted IPv4/IPv6/upgrade
+connections, `rc=6` for the unresolved DNS name), with no external address contacted.
+Teardown removes only the namespaces this run created (refusing name collisions without
+touching pre-existing state). A failed `ip netns del` or an unreadable `ip netns list`
+is reported with the owned-name inventory and treated as uncertain (ownership is not
+cleared); the `EXIT` trap re-runs cleanup on every exit path and calls `exit 1` when
+cleanup or inventory verification is uncertain, so a run never reports success with
+unresolved owned namespaces and unresolved teardown requires manual reconciliation. The
+`--self-test*` modes exercise collision refusal, owned-only cleanup, early-failure trap
+cleanup, and mock `ip` failed-delete / unreadable-inventory / trap-forces-nonzero paths,
+each confined to disposable namespaces. Containment is routing-based: nftables/iptables
+are not installed and default-drop filtering is `not_run`.
 
 Not covered / `not_run`: the live free route, public catalog GET, live inference,
 nftables filtering, a bare-metal Ubuntu or two-VM Hyper-V deployment, and a real FIDO2

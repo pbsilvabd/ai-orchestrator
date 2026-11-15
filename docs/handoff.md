@@ -20,7 +20,8 @@ closed and no merge is authorized.
   netns + veth fixture: three disposable namespaces with unique per-run names, each
   veth pair created **inside** a disposable namespace (only the peer moved), so no
   `ip link add` runs in the WSL initial/host namespace; owned-only collision-safe
-  teardown, `--self-test` mode, real socket probes and verified-empty teardown.
+  teardown, `--self-test` mode, real socket probes (including active IPv4/IPv6/DNS/
+  WebSocket-upgrade negative egress probes, all denied) and verified-empty teardown.
 - `integration/opencode-free-relay.mjs` — pinned OpenCode 2.2.5 routed through the
   relay→gateway→fixture-origin loopback chain: normal run succeeds with three
   `Bearer public` origin requests; each of 301/302/303/307/308 fails the task with one
@@ -32,9 +33,11 @@ closed and no merge is authorized.
 `not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
 (absent, install not authorized — containment is routing-based); bare-metal Ubuntu
 or two-VM Hyper-V deployment (WSL2 observation only); the active worker-compartment
-WebSocket-bypass negative; a real FIDO2 hardware-key signing dry run; public catalog GET;
-live inference and B20/#43. The live route stays closed until a platform provides
-verified firewall-filtered isolation and a separately signed live approval.
+WebSocket-bypass negative (routing denies worker WebSocket-upgrade egress, but an
+active provider-WebSocket experiment is not run); signed-approval service admission
+integration; a real FIDO2 hardware-key signing dry run; public catalog GET; live
+inference and B20/#43. The live route stays closed until a platform provides verified
+firewall-filtered isolation and a separately signed live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
 B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft
