@@ -8,7 +8,7 @@ import { join } from 'node:path';
 import { FREE_MODEL, FREE_ENDPOINT } from '../src/free-provider.mjs';
 import { LIVE_NAMESPACE, canonical, canonicalApprovalBytes, validateLiveApproval, verifyLiveApproval,
   verifyApprovalBinding, parseSshSig, securityKeyFlags, openApprovalLedger,
-  locateSshKeygen, approvalDigest, admitLiveApproval } from '../src/live-approval.mjs';
+  locateSshKeygen, approvalDigest, admitLiveApproval, measureHostBinaryDigest } from '../src/live-approval.mjs';
 
 const SSH = locateSshKeygen();
 const PRINCIPAL = 'maintainer';
@@ -189,22 +189,44 @@ test('B30-05: approval binding refuses policy drift, stale or paid metadata', ()
   const metadata = { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } };
   const a = approval({ metadataDigest: digestOf(metadata) });
   const baseCommit = 'b'.repeat(40);
+  const hostBinaryDigest = 'c'.repeat(64);
+  const request = { objective: a.objective, repository: { branch: a.repository.branch },
+    limits: { maxAttempts: a.maxAttempts, budgetMs: a.limits.budgetMs, maxOutputBytes: a.limits.maxOutputBytes } };
   assert.doesNotThrow(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
+    baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
     metadata: { ...metadata } }));
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: '0'.repeat(64),
-    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /bind the submitted/);
+    baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /bind the submitted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    baseCommit, relayPolicyDigest: '0'.repeat(64), gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /relay policy drifted/);
+    baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: '0'.repeat(64), gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /relay policy drifted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: '0'.repeat(64), metadata }), /gateway policy drifted/);
+    baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: '0'.repeat(64), metadata }), /gateway policy drifted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    baseCommit: 'c'.repeat(40), relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /base commit/);
+    baseCommit: 'c'.repeat(40), request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /base commit/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
+    baseCommit, request: { ...request, objective: 'Different objective' }, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /objective/);
+  assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
+    baseCommit, request: { ...request, repository: { branch: 'task/other' } }, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /branch/);
+  assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
+    baseCommit, request: { ...request, limits: { ...request.limits, maxAttempts: 2 } }, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /attempt limit/);
+  assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
+    baseCommit, request, hostBinaryDigest: '0'.repeat(64),
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /host binary/);
+  assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
+    baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
     metadata: { ...metadata, observedAt: Date.now() - 6 * 60 * 1000 } }), /stale/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
-    baseCommit, relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
+    baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
     metadata: { ...metadata, cost: { text: { input: { price: 1 }, output: { price: 0 } } } } }), /zero-price/);
 });
 
@@ -275,6 +297,14 @@ test('B30-05: approval ID is single-use across two competing processes', async t
   assert.equal(losers.length, 1);
   assert.equal(losers[0].ok, false);
   assert.equal(losers[0].code, 'authorization_denied');
+});
+
+test('measureHostBinaryDigest hashes the executable bytes', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'b30-host-'));
+  t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  const path = join(dir, 'exe');
+  writeFileSync(path, 'binary-bytes');
+  assert.equal(measureHostBinaryDigest(path), createHash('sha256').update('binary-bytes').digest('hex'));
 });
 
 test('approval digest is stable over canonical bytes', () => {

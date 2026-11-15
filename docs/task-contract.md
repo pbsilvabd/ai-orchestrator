@@ -128,19 +128,31 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   idempotent replay resolution and repository inspection but before task persistence,
   workspace or spawn. The gate verifies and binds a signed live approval (SSHSIG under the
   fixed namespace with FIDO2 presence/verification, unexpired, zero-paid, single-attempt,
-  bound to the canonical request hash, the resolved base commit and the relay/gateway policy
-  digests plus fresh zero-price metadata) and reserves its approval ID durably for at most
-  one task through an atomic no-replace ledger. The approval and its armored signature are
-  supplied as optional `submit_task` fields `approval` and `signature`; both are excluded
-  from the canonical payload/idempotency hash and are never persisted on the task record,
-  and neither is a task-text authority. Any missing, forged, expired, stale, mismatched or
-  already-consumed approval is refused before persistence with `authorization_denied`;
+  bound to the canonical request hash, the resolved base commit, the **effective readable
+  request** — objective, repository branch, attempt and budget/output limits — the **measured
+  trusted host-binary digest**, and the relay/gateway policy digests plus fresh zero-price
+  metadata) and reserves its approval ID durably for at most one task through an atomic
+  no-replace ledger. The approval and its armored signature are supplied as optional
+  `submit_task` fields `approval` and `signature`; both are excluded from the canonical
+  payload/idempotency hash and are never persisted on the task record, and neither is a
+  task-text authority. Any missing, forged, expired, stale, mismatched or already-consumed
+  approval is refused before persistence with `authorization_denied`;
   `invalid_argument`/`unavailable` map from malformed or unusable approval material. An
   identical replay still returns the original record without re-running admission, and one
   approval ID cannot admit a second task. Without a configured `admission`, the service
   remains passive and unchanged. The cryptographic positive path still requires a real
   FIDO2 hardware-key signature, which is `not_run`; the gate is never weakened to accept a
   non-hardware signature.
+- A successful admission returns a **trusted in-memory receipt** (never `false` or
+  `{admitted:false}`, never persisted, never in task text). The scheduler re-checks that
+  receipt synchronously **again immediately before spawn** — before any dispatch reservation,
+  workspace creation or child execution — re-asserting approval expiry, metadata freshness
+  and the measured host-binary digest. A task whose admission expires, drifts or whose
+  receipt is missing at that point is recorded durably as `cancelled` with
+  `executionStopped: true` (no worker process started) and an `admission-refused` progress
+  entry, and is never spawned or replayed; the queue halts for inspection. The receipt is
+  in-memory, so a service restart does not retain it, and a queued task is never
+  auto-dispatched after restart (consistent with existing scheduler behavior).
 
 The canonical payload used for the idempotency hash excludes `clientSessionId`,
 `approval` and `signature`, and is serialized with sorted keys and no whitespace;

@@ -117,9 +117,26 @@ export function createTaskService(options = {}) {
     return Date.now();
   };
   let scheduler;
+  // In-memory trusted receipts from a signed-approval admission gate, keyed by taskId.
+  // They are never persisted and never entered into task text; the scheduler re-checks
+  // them immediately before spawn (B30-05 pre-dispatch revalidation).
+  const receipts = new Map();
+  const revalidate = admission === undefined ? undefined : (taskId, at) => {
+    const receipt = receipts.get(taskId);
+    if (receipt === undefined) fail('authorization_denied', 'signed approval receipt is missing before dispatch');
+    if (typeof receipt.revalidate === 'function') {
+      try {
+        receipt.revalidate(at);
+      } catch (error) {
+        if (error?.code === 'authorization_denied' || error?.code === 'invalid_argument' || error?.code === 'unavailable')
+          fail(error.code, error.message);
+        throw toServiceError(error);
+      }
+    }
+  };
   try {
     if (options.worker !== undefined) scheduler = createTaskScheduler({ store,
-      clientId: config.clientId, worker: options.worker, now });
+      clientId: config.clientId, worker: options.worker, now, revalidate });
   } catch (error) { releaseOwner(); throw toServiceError(error); }
 
   // Ownership: the task owner is the client that submitted it; the caller is the
@@ -186,12 +203,17 @@ export function createTaskService(options = {}) {
     //     spawn. A synchronous trusted gate (never task text) verifies and binds the SSHSIG
     //     and reserves the approval ID against the pre-generated taskId; any refusal throws
     //     before the task record is written. When absent, admission stays passive (default).
+    //     A successful gate returns an optional trusted receipt (never false or
+    //     {admitted:false}); the service retains it in memory for pre-spawn revalidation.
     let taskId;
     if (admission !== undefined) {
       taskId = randomUUID();
       try {
         const decision = admission(structuredClone(payload), { taskId, baseCommit: repoValidation.baseCommitSha, now: now() });
         if (decision instanceof Promise) fail('internal', 'signed approval admission must be synchronous');
+        if (decision === false || (decision && decision.admitted === false))
+          fail('authorization_denied', 'signed approval admission denied');
+        if (decision !== undefined && decision !== true) receipts.set(taskId, decision);
       } catch (error) {
         if (error?.code === 'authorization_denied') fail('authorization_denied', 'signed approval admission denied');
         if (error?.code === 'invalid_argument') fail('invalid_argument', 'invalid signed approval submission');

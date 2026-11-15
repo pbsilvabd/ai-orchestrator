@@ -2337,3 +2337,41 @@ Template:
 - Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
   open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
   signature path, bare-metal/VM deployment, catalog, live inference).
+
+## 2026-11-15 — B30 signed-approval pre-spawn revalidation + host/readable binding (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the two P1 findings at `0f5bbd1` (review `6897307203`): no re-validation
+  immediately before spawn; and the signed host identity / readable approval scope not bound
+  to the effective task/worker.
+- Steps:
+  1. `verifyApprovalBinding` now binds the signed readable objective / repository.branch /
+     maxAttempts / budget+output limits to the effective validated request, and the signed
+     `hostBinaryDigest` to a measured trusted executable (`measureHostBinaryDigest`), before
+     the ledger reserve.
+  2. `createSignedApprovalAdmission` requires `hostBinaryDigest` + `remeasureHostBinaryDigest`
+     and returns a trusted in-memory receipt with a `revalidate(now)` closure (expiry +
+     metadata freshness + host digest); `admitLiveApproval` surfaces the receipt fields.
+  3. `createTaskScheduler` accepts a `revalidate` hook and calls it synchronously before the
+     dispatch reservation/workspace/spawn; a failure records the queued task as `cancelled`
+     (`executionStopped: true`, `admission-refused` progress, no attempt) and halts the queue.
+  4. `createTaskService` retains receipts in-memory keyed by taskId, maps admission return
+     `false`/`{admitted:false}` to refusal, and passes `revalidate` to the scheduler.
+  5. Added `test/live-approval-pre-spawn.test.mjs` (positive mock spawn + expiry/drift/
+     missing-receipt negatives) and extended the host/readable binding tests.
+  6. Performed the staged one-shot bounded catalog GET (HTTP 200, 104,821 bytes, zero-price
+     `deepseek-v4.1-flash-free`, endpoint/package match) and a non-invasive FIDO2 tooling
+     inventory (OpenSSH 9.5p2 `ssh-keygen` + `ssh-sk-helper` present; hardware presence not
+     inferred); added `docs/deployment-prerequisites.md` as a plan only.
+- Files: `src/live-approval.mjs`, `src/service.mjs`, `src/scheduler.mjs`,
+  `test/live-approval.test.mjs`, `test/live-approval-service.test.mjs`,
+  `test/live-approval-pre-spawn.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/deployment-prerequisites.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused 28/28 and full suite/demo rerun (see validation entry). The catalog
+  GET is dated evidence, not live activation; no FIDO2 hardware action, host network change,
+  WebSocket-bypass call, paid call, live inference or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
+  experiment, live inference).

@@ -180,15 +180,29 @@ export function verifyLiveApproval({
   };
 }
 
-// Bind the approval to the actual resolved base commit, relay/gateway policy and fresh
-// zero-price metadata. Reject policy drift, stale or paid metadata, a mismatched payload
-// hash, or a repository that does not match the resolved commit.
-export function verifyApprovalBinding({ approval, requestHash, baseCommit, relayPolicyDigest,
-  gatewayPolicyDigest, metadata, now = Date.now() } = {}) {
+// Bind the approval to the actual resolved base commit, the effective validated request
+// (readable objective, branch, attempt/limits), the measured trusted host binary, the
+// relay/gateway policy and fresh zero-price metadata. Reject any mismatch before the ledger
+// is reserved.
+export function verifyApprovalBinding({ approval, requestHash, baseCommit, request, hostBinaryDigest,
+  relayPolicyDigest, gatewayPolicyDigest, metadata, now = Date.now() } = {}) {
   validateLiveApproval(approval, now);
   if (approval.requestHash !== requestHash) fail('authorization_denied', 'approval does not bind the submitted request');
   if (typeof baseCommit !== 'string' || approval.repository.baseRef !== baseCommit)
     fail('authorization_denied', 'approval does not bind the resolved base commit');
+  // The signed human-readable scope must equal the effective validated request.
+  if (!request || approval.objective !== request.objective)
+    fail('authorization_denied', 'approval objective does not match the request');
+  if (approval.repository.branch !== request.repository?.branch)
+    fail('authorization_denied', 'approval branch does not match the request');
+  if (approval.maxAttempts !== request.limits?.maxAttempts)
+    fail('authorization_denied', 'approval attempt limit does not match the request');
+  if (approval.limits.budgetMs !== request.limits?.budgetMs ||
+      approval.limits.maxOutputBytes !== request.limits?.maxOutputBytes)
+    fail('authorization_denied', 'approval limits do not match the request');
+  // The signed host identity must match the measured trusted executable bytes.
+  if (typeof hostBinaryDigest !== 'string' || approval.hostBinaryDigest !== hostBinaryDigest)
+    fail('authorization_denied', 'approval host binary digest does not match the measured executable');
   if (approval.relayPolicyDigest !== relayPolicyDigest) fail('authorization_denied', 'relay policy drifted from the approval');
   if (approval.gatewayPolicyDigest !== gatewayPolicyDigest) fail('authorization_denied', 'gateway policy drifted from the approval');
   if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata))
@@ -199,7 +213,7 @@ export function verifyApprovalBinding({ approval, requestHash, baseCommit, relay
     fail('authorization_denied', 'metadata is not zero-price');
   const metadataDigest = createHash('sha256').update(canonical(metadata)).digest('hex');
   if (metadataDigest !== approval.metadataDigest) fail('authorization_denied', 'metadata does not match the approval digest');
-  return { bound: true, metadataDigest };
+  return { bound: true, metadataDigest, expiresAt: approval.expiresAt };
 }
 
 // Durable single-use reservation: one approval ID admits at most one task, and an
@@ -294,17 +308,27 @@ export function locateSshKeygen(env = process.env) {
   return null;
 }
 
-// End-to-end admission order: verify the offline signature, bind the policy, resolved base
-// commit and metadata, then reserve the approval ID. A live success path requires a real
-// hardware-key signature with presence/verification; the binding and ledger are never
-// reached for a refused signature.
+// SHA-256 of the trusted configured executable bytes. The approval's hostBinaryDigest must
+// equal this measured value, both at admission and again immediately before spawn.
+export function measureHostBinaryDigest(path) {
+  return createHash('sha256').update(readFileSync(path)).digest('hex');
+}
+
+// End-to-end admission order: verify the offline signature, bind the effective request, the
+// measured host binary, the resolved base commit, the policy and metadata, then reserve the
+// approval ID. A live success path requires a real hardware-key signature with
+// presence/verification; the binding and ledger are never reached for a refused signature.
 export function admitLiveApproval({ approval, signature, allowedSigners, principal, krl = '',
-  namespace = LIVE_NAMESPACE, requestHash, baseCommit, relayPolicyDigest, gatewayPolicyDigest, metadata,
+  namespace = LIVE_NAMESPACE, requestHash, baseCommit, request, hostBinaryDigest,
+  relayPolicyDigest, gatewayPolicyDigest, metadata,
   taskId, ledger, now = Date.now(), sshKeygen = 'ssh-keygen' } = {}) {
   verifyLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace, now, sshKeygen });
-  verifyApprovalBinding({ approval, requestHash, baseCommit, relayPolicyDigest, gatewayPolicyDigest, metadata, now });
+  const binding = verifyApprovalBinding({ approval, requestHash, baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest, gatewayPolicyDigest, metadata, now });
   if (!ledger || typeof ledger.reserve !== 'function') fail('invalid_argument', 'approval ledger is required');
-  return ledger.reserve({ approvalId: approval.approvalId, taskId, now });
+  const reservation = ledger.reserve({ approvalId: approval.approvalId, taskId, now });
+  return { ...reservation, expiresAt: binding.expiresAt, metadataObservedAt: metadata.observedAt,
+    hostBinaryDigest: approval.hostBinaryDigest };
 }
 
 // Canonical request hash bound by a live approval: the SHA-256 of the pure task payload
@@ -317,11 +341,13 @@ export function liveRequestHash(payload) {
 // Build a synchronous service-admission gate (see createTaskService's `admission` option)
 // that binds the standalone SSHSIG verification and atomic single-use ledger to a NEW task
 // submission. The approval and its armored signature are read from the submitted payload's
-// optional `approval` and `signature` fields (never from task text). The returned function
-// throws LiveApprovalError on any refusal; the service maps those to contract codes.
+// optional `approval` and `signature` fields (never from task text). On success the gate
+// returns a trusted in-memory receipt with a `revalidate(now)` method that re-checks the
+// approval's expiry, metadata freshness and host-binary digest immediately before dispatch;
+// a failed revalidation throws, so the scheduler fails closed without spawning.
 export function createSignedApprovalAdmission({ allowedSigners, principal, krl = '',
-  namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, metadata,
-  ledger, sshKeygen = 'ssh-keygen' } = {}) {
+  namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, metadata, ledger,
+  hostBinaryDigest, remeasureHostBinaryDigest, sshKeygen = 'ssh-keygen' } = {}) {
   if (typeof allowedSigners !== 'string' || typeof principal !== 'string' ||
       typeof namespace !== 'string' || typeof krl !== 'string' ||
       typeof relayPolicyDigest !== 'string' || typeof gatewayPolicyDigest !== 'string' ||
@@ -329,6 +355,8 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     fail('invalid_argument', 'signed approval admission requires allowedSigners, principal, namespace, krl, policy digests and sshKeygen');
   if (!ledger || typeof ledger.reserve !== 'function')
     fail('invalid_argument', 'signed approval admission requires a reservation ledger');
+  if (typeof hostBinaryDigest !== 'string' || typeof remeasureHostBinaryDigest !== 'function')
+    fail('invalid_argument', 'signed approval admission requires a measured host binary digest and a re-measurement function');
   return (payload, { taskId, baseCommit, now = Date.now() } = {}) => {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload))
       fail('invalid_argument', 'submission payload is required for signed approval admission');
@@ -336,8 +364,19 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     const signature = payload.signature;
     if (approval === undefined || signature === undefined)
       fail('authorization_denied', 'a signed live approval is required for new tasks');
-    return admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
-      requestHash: liveRequestHash(payload), baseCommit, relayPolicyDigest, gatewayPolicyDigest, metadata,
-      taskId, ledger, now, sshKeygen });
+    const result = admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
+      requestHash: liveRequestHash(payload), baseCommit, request: payload, hostBinaryDigest,
+      relayPolicyDigest, gatewayPolicyDigest, metadata, taskId, ledger, now, sshKeygen });
+    // A trusted in-memory receipt: never persisted, never in task text. Its closure re-checks
+    // freshness and host identity without the (already-verified) signature.
+    return {
+      ...result,
+      revalidate(at = Date.now()) {
+        if (at >= result.expiresAt) fail('authorization_denied', 'approval expired before dispatch');
+        if (at - result.metadataObservedAt > METADATA_TTL_MS) fail('authorization_denied', 'metadata stale before dispatch');
+        if (result.hostBinaryDigest !== remeasureHostBinaryDigest())
+          fail('authorization_denied', 'host binary changed before dispatch');
+      },
+    };
   };
 }

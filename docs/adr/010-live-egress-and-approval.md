@@ -251,8 +251,9 @@ Not run / not established by this amendment (recorded `not_run`):
 - Public catalog GET and live inference: remain prohibited and `not_run`.
 
 Signed-approval service integration assessment (B30-05): the SSHSIG verification,
-policy/metadata binding, resolved-base-commit binding, admission ordering and the atomic
-no-replace single-use ledger are implemented and tested standalone in
+policy/metadata binding, resolved-base-commit binding, effective-request binding (readable
+objective, branch, attempt/limits) and measured host-binary binding, admission ordering and
+the atomic no-replace single-use ledger are implemented and tested standalone in
 `src/live-approval.mjs` / `test/live-approval.test.mjs` (with disposable non-hardware keys
 and a synthesized sk-signature blob). The standalone admission is now bound to service
 dispatch as an optional synchronous `createTaskService({ admission })` gate via
@@ -261,12 +262,28 @@ through). It runs for new tasks after idempotent replay resolution and repositor
 inspection but before task persistence, workspace or spawn; a missing/forged/expired/
 stale/mismatched/already-consumed approval is refused before persistence, an identical
 replay remains readable without re-admission, and one approval ID cannot admit a second
-task. The service-level wiring, ordering, error mapping and single-use are exercised in
-`test/live-approval-service.test.mjs` with a clearly-labelled mock verifier over the real
+task. A successful admission returns a trusted **in-memory receipt** (never `false` or
+`{admitted:false}`, never persisted, never in task text); the scheduler re-checks it
+synchronously **again immediately before spawn** — before any dispatch reservation,
+workspace or child execution — re-asserting approval expiry, metadata freshness and the
+measured host-binary digest, and records a durable `cancelled`/`executionStopped:true`
+refusal with an `admission-refused` progress entry (never spawn/replay) when it fails or is
+missing. The service-level wiring, ordering, error mapping, single-use and pre-spawn
+revalidation are exercised in `test/live-approval-service.test.mjs` and
+`test/live-approval-pre-spawn.test.mjs` with a clearly-labelled mock verifier over the real
 ledger, plus the real factory's negative refusal paths. The cryptographic positive path
 still requires a real FIDO2 hardware-key signature (presence + verification), which remains
 `not_run`; a non-hardware signature is always refused and no signature or hardware is
 invented to close this gap.
+
+Deployment prerequisites ([deployment-prerequisites.md](deployment-prerequisites.md)) are
+recorded as a plan only: no independent Ubuntu/Hyper-V environment or enrolled FIDO2
+hardware key has been provisioned. A one-shot read-only catalog GET (2026-11-15, HTTP 200,
+104,821 bytes, `redirect:error`, no retry) confirmed the fixed free model
+`deepseek-v4.1-flash-free` is zero-price and matches the fixed endpoint/package; this is
+dated evidence, not live activation. A non-invasive FIDO2 tooling inventory found OpenSSH
+9.5p2 `ssh-keygen` and `ssh-sk-helper` present on Windows; hardware-key presence is not
+established from helper existence and remains `not_run`.
 
 Pinned-host-through-relay fixture (established, not `not_run`): on the pinned OpenCode
 2.2.5 host (Windows x64), `integration/opencode-free-relay.mjs` routes the free route

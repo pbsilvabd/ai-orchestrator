@@ -2844,3 +2844,47 @@ live inference; active provider WebSocket-bypass experiment.
 Claim: this entry supports the signed-approval service admission wiring and its controlled
 self-tests. The hardware positive path, bare-metal/VM deployment, catalog and live inference
 remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 signed-approval pre-spawn revalidation + host/readable binding (B30-05) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Corrects the two P1 findings at `0f5bbd1` (review comment
+`6897307203`): (1) no re-validation immediately before spawn, and (2) the signed host
+identity and human-readable approval scope are not bound to the effective task/worker.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{live-approval,service,scheduler}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | SSHSIG plumbing + service admission + pre-spawn revalidation (positive mock, expiry/drift/missing-receipt negatives) + host-digest/readable-field binding | 28 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 364 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+| one-shot bounded catalog GET (`redirect:error`, 10s, 2 MiB, no retry) | Public zero-price metadata for the fixed free model (staged authorization) | HTTP 200, 104,821 bytes; `deepseek-v4.1-flash-free` zero-price, endpoint/package match | 0 |
+| read-only FIDO2 tooling inventory (`ssh-keygen` version + `ssh-sk-helper` presence) | Non-invasive local check | OpenSSH 9.5p2 `ssh-keygen` and `ssh-sk-helper` present | 0 |
+
+Result: (1) `createSignedApprovalAdmission` now returns a trusted in-memory receipt whose
+`revalidate(now)` closure re-checks approval expiry, metadata freshness and the measured host
+binary digest; `createTaskScheduler` calls a service-provided `revalidate(taskId, now)`
+synchronously **before** the dispatch reservation/workspace/spawn, and on failure records the
+queued task as `cancelled` (`executionStopped: true`, `admission-refused` progress, no
+attempt) and halts the queue — no spawn, no replay. (2) `verifyApprovalBinding` now also
+binds the signed readable `objective`/`repository.branch`/`maxAttempts`/`limits` to the
+effective validated request and the signed `hostBinaryDigest` to the measured trusted
+executable (`measureHostBinaryDigest`), before the ledger reserve. Tests cover positive
+mock spawn, expiry/drift/missing-receipt pre-spawn negatives, host-digest and readable-field
+mismatch negatives, with disposable temp executable/config and no external provider calls.
+The cryptographic positive path (real FIDO2 presence+verification) remains `not_run` — no
+hardware key was used and none is simulated.
+
+Evidence level: unit + local fixture (mock verifier over the real ledger, real
+`ssh-keygen -Y verify` refusal paths, a one-shot public catalog read recorded as dated
+evidence). Not a real hardware-key dry run, not a live provider run, not a bare-metal/VM
+deployment.
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run; bare-metal Ubuntu /
+two-VM Hyper-V deployment; the active provider WebSocket-bypass experiment; live inference.
+The catalog GET is a dated evidence snapshot, not perpetual authority and not live activation.
+
+Claim: this entry supports the pre-spawn revalidation and host/readable binding. The hardware
+positive path, bare-metal/VM deployment, WebSocket-bypass experiment and live inference
+remain `not_run` and the live route stays closed.

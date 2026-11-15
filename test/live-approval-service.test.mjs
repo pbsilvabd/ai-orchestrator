@@ -9,7 +9,7 @@ import { openTaskStore } from '../src/tasks.mjs';
 import { createTaskService, ServiceError } from '../src/service.mjs';
 import { FREE_MODEL, FREE_ENDPOINT } from '../src/free-provider.mjs';
 import { LIVE_NAMESPACE, canonical, canonicalApprovalBytes, openApprovalLedger,
-  locateSshKeygen, createSignedApprovalAdmission, liveRequestHash } from '../src/live-approval.mjs';
+  locateSshKeygen, createSignedApprovalAdmission, liveRequestHash, measureHostBinaryDigest } from '../src/live-approval.mjs';
 
 // The SSHSIG cryptographic positive path needs a real FIDO2 hardware key and is therefore
 // `not_run`. This suite exercises the service admission *mechanism* (ordering, replay
@@ -177,6 +177,11 @@ test('an async admission is rejected as an internal service error', t => {
 
 const RELAY = 'd'.repeat(64);
 const GATEWAY = 'e'.repeat(64);
+// A measured host-binary digest. The real factory compares the approval's hostBinaryDigest
+// to this measured value; for refusal-path tests any fixed digest is sufficient since the
+// signature gate (or structural validation) refuses before the host check is reached.
+const HOST = 'c'.repeat(64);
+const hostIdentity = () => ({ hostBinaryDigest: HOST, remeasureHostBinaryDigest: () => HOST });
 
 test('the real factory refuses a submission with no approval envelope before persistence', t => {
   const { dir, service } = makeService(t, {
@@ -185,6 +190,7 @@ test('the real factory refuses a submission with no approval envelope before per
         allowedSigners: 'principal namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        ...hostIdentity(),
       }),
     }),
   });
@@ -199,6 +205,7 @@ test('the real factory refuses an expired approval before persistence', t => {
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        ...hostIdentity(),
       }),
     }),
   });
@@ -215,6 +222,7 @@ test('the real factory refuses a paid approval before persistence', t => {
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        ...hostIdentity(),
       }),
     }),
   });
@@ -247,7 +255,7 @@ test('the real factory refuses a non-hardware signature before the ledger reserv
     store,
     config: { clientId: 'opencode-primary', authorization: { models: ['mock/a'], tools: ['read', 'edit'], writableRoots: [dir] }, limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 } },
     now: NOW,
-    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL, relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger, sshKeygen: SSH }),
+    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL, relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger, sshKeygen: SSH, ...hostIdentity() }),
   });
   t.after(() => service.close());
 
