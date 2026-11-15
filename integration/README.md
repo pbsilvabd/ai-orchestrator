@@ -458,17 +458,25 @@ host with `fixtureEndpoint` set to the relay. It runs six scenarios: a normal ru
 
 - Normal: the task succeeds; exactly the fixed model, `Bearer public`, and POST
   `/v1/chat/completions` reach the origin through relay→gateway (three provider requests
-  for the two tool-call turns plus the completion), with no WebSocket/Upgrade header and
-  no non-POST method.
+  for the two tool-call turns plus the completion).
 - Each redirect: the gateway refuses the 3xx (never following it), the host receives the
   terminal refusal, the task becomes `failed` with exactly one attempt and one origin
-  request, and the alternate origin receives **zero requests and zero body bytes** (the
-  B29 307 prompt-leak baseline is closed through the relay).
+  request, and the alternate origin receives **zero connections, zero raw socket bytes,
+  zero requests and zero body bytes** (the B29 307 prompt-leak baseline is closed through
+  the relay). The alternate-origin counters are incremented at raw connection, per
+  request entry, and per body `data` chunk (plus an abort/error flag), so an aborted or
+  partial body cannot be missed by the zero-egress assertion.
 
-This is loopback fixture evidence, not live-provider or network-containment evidence;
-the free endpoint, public catalog and paid providers are never contacted.
+`--self-test` runs a controlled negative: it opens a raw connection, sends a partial POST
+body and aborts it, then asserts every alternate-origin counter incremented (proving an
+incomplete/aborted body cannot pass the zero-egress assertion).
+
+This is loopback fixture evidence, not live-provider or network-containment evidence; the
+free endpoint, public catalog and paid providers are never contacted. The active
+worker-compartment WebSocket-bypass negative remains `not_run`: seeing no `Upgrade` header
+on normal POSTs does not prove an attempted direct WebSocket bypass.
 
 Observed on 2026-11-14 with OpenCode 2.2.5 (Windows x64), Node 24.22.1: all six
 scenarios passed (exit 0); normal succeeded with three origin requests and `Bearer
 public`; each of 301/302/303/307/308 failed the task with one attempt and zero
-alternate-origin requests/bytes.
+alternate-origin connections/bytes.

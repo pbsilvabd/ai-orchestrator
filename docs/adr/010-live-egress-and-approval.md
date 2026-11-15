@@ -214,10 +214,14 @@ Not run / not established by this amendment (recorded `not_run`):
 Pinned-host-through-relay fixture (established, not `not_run`): on the pinned OpenCode
 2.2.5 host (Windows x64), `integration/opencode-free-relay.mjs` routes the free route
 through the relay→gateway→fixture-origin loopback chain. The normal run succeeded with
-three `Bearer public` POST `/v1/chat/completions` origin requests and no WebSocket/upgrade
-or non-POST method; each of 301/302/303/307/308 made the task `failed` with exactly one
-attempt and one origin request, and the alternate origin received zero requests and zero
-body bytes. This closes the B29 307 prompt-leak baseline through the relay.
+three `Bearer public` POST `/v1/chat/completions` origin requests; each of
+301/302/303/307/308 made the task `failed` with exactly one attempt and one origin
+request, and the alternate origin received zero connections, zero raw socket bytes, zero
+requests and zero body bytes (counted at connection/entry and per data chunk, so an
+aborted partial body is not missed). This closes the B29 307 prompt-leak baseline through
+the relay. The active worker-compartment WebSocket-bypass negative remains `not_run`: the
+fixture origin seeing no `Upgrade` header on normal POSTs shows no spontaneous upgrade in
+that run, not an attempted direct WebSocket bypass.
 
 Until a platform provides verified firewall-filtered isolation, a real hardware-key
 signing dry run and the separately signed live approval, the live composition stays

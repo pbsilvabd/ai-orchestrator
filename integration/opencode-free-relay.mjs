@@ -10,6 +10,7 @@ import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { once } from 'node:events';
 import { createServer } from 'node:http';
+import { connect } from 'node:net';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -45,7 +46,6 @@ const relayLimits = { maxRequests: FREE_MAX_REQUESTS, maxRequestBytes: 1_048_576
   maxResponseBytes: 1_048_576, timeoutMs: 120_000 };
 
 let state;
-const redirectRecords = [];
 const frame = (input, delta, finish_reason = null) => `data: ${JSON.stringify({ id: 'b30-relay-fixture',
   object: 'chat.completion.chunk', created: 0, model: input.model, choices: [{ index: 0, delta, finish_reason }] })}\n\n`;
 
@@ -83,14 +83,30 @@ const server = createServer(async (req, res) => {
       frame(input, {}, 'stop') + 'data: [DONE]\n\n');
   }
 });
-// Alternate origin: the redirect Location target. Must receive zero requests/bytes.
-const redirectTarget = createServer(async (req, res) => {
-  let body = '';
-  for await (const chunk of req) body += chunk;
-  redirectRecords.push({ url: req.url, authorization: req.headers.authorization ?? null, bytes: body.length });
-  res.writeHead(200, { 'Content-Type': 'text/event-stream' });
-  res.end(frame({ model: FREE_MODEL_ID }, { role: 'assistant', content: 'redirect target reached' }) +
-    frame({ model: FREE_MODEL_ID }, {}, 'stop') + 'data: [DONE]\n\n');
+// Alternate origin: the redirect Location target. Must receive zero connections, zero
+// raw socket bytes, zero requests and zero body bytes. Counters are incremented
+// immediately (raw connection, raw socket bytes, request entry, and each body `data`
+// chunk), so an aborted/partial body or a pre-header connection attempt still increments
+// the counters instead of being missed by a `for await` that throws.
+const redirectEgress = { connections: 0, socketBytes: 0, requests: 0, bodyBytes: 0, aborted: 0 };
+const resetRedirectEgress = () => {
+  redirectEgress.connections = 0; redirectEgress.socketBytes = 0; redirectEgress.requests = 0;
+  redirectEgress.bodyBytes = 0; redirectEgress.aborted = 0;
+};
+const redirectTarget = createServer((req, res) => {
+  redirectEgress.requests += 1;
+  req.on('data', chunk => { redirectEgress.bodyBytes += chunk.length; });
+  req.on('end', () => {
+    res.writeHead(200, { 'Content-Type': 'text/event-stream' });
+    res.end(frame({ model: FREE_MODEL_ID }, { role: 'assistant', content: 'redirect target reached' }) +
+      frame({ model: FREE_MODEL_ID }, {}, 'stop') + 'data: [DONE]\n\n');
+  });
+  req.on('aborted', () => { redirectEgress.aborted += 1; });
+  req.on('error', () => { redirectEgress.aborted += 1; });
+});
+redirectTarget.on('connection', socket => {
+  redirectEgress.connections += 1;
+  socket.on('data', chunk => { redirectEgress.socketBytes += chunk.length; });
 });
 let redirectPort;
 let originPort;
@@ -114,7 +130,7 @@ async function runScenario({ name, mode, redirectStatus = 307, budgetMs = 120_00
   const home = join(scenarioRoot, 'home');
   mkdirSync(home, { recursive: true });
   state = { mode, redirectStatus, step: 0, records: [], anomalies: 0 };
-  redirectRecords.length = 0;
+  resetRedirectEgress();
   const baseCommit = git('rev-parse', 'HEAD');
   const request = { clientId: 'fixture-owner', idempotencyKey: `b30-${name}`,
     objective: 'B30_RELAY_FIXTURE: write "outside-free.txt" with "DENIED_FIXTURE" (must be denied), then write src/free-output.txt with "RELAY_FIXTURE".',
@@ -157,8 +173,8 @@ async function runScenario({ name, mode, redirectStatus = 307, budgetMs = 120_00
       authorizations: [...new Set(state.records.map(record => record.authorization))],
       relayRequests: relay.status().requests, relayLatchReason: relay.status().latchReason,
       gatewayRequests: gateway.status().requests, gatewayLatchReason: gateway.status().latchReason,
-      redirectTargetRequests: redirectRecords.length,
-      redirectTargetBodyBytes: redirectRecords.reduce((sum, record) => sum + record.bytes, 0),
+      redirectTargetConnections: redirectEgress.connections, redirectTargetSocketBytes: redirectEgress.socketBytes,
+      redirectTargetRequests: redirectEgress.requests, redirectTargetBodyBytes: redirectEgress.bodyBytes,
       deniedToolResult: toolResponses.some(content => /denied|not allowed|permission/i.test(content)) };
     if (mode === 'normal') {
       assert.equal(task.status, 'succeeded', JSON.stringify(observation));
@@ -170,12 +186,16 @@ async function runScenario({ name, mode, redirectStatus = 307, budgetMs = 120_00
       assert.equal(task.status, 'failed', `redirect must fail the task: ${JSON.stringify(observation)}`);
       assert.equal(observation.attempts, 1, `redirect must not replay: ${JSON.stringify(observation)}`);
       assert.equal(observation.originRequests, 1, `redirect must make exactly one origin request: ${JSON.stringify(observation)}`);
-      assert.equal(observation.redirectTargetRequests, 0, 'alternate origin received a request');
-      assert.equal(observation.redirectTargetBodyBytes, 0, 'alternate origin received body bytes');
     }
-    // Negative WebSocket/bypass: only POST chat-completions, no Upgrade header, only Bearer public.
-    assert.deepEqual(observation.originMethods, ['POST'], `non-POST/WebSocket method reached origin: ${JSON.stringify(observation)}`);
-    assert.deepEqual(observation.originUpgrades, [], `an Upgrade/WebSocket header reached the origin: ${JSON.stringify(observation)}`);
+    // Zero-egress alternate origin: no connection, raw bytes, request or body bytes.
+    assert.equal(observation.redirectTargetConnections, 0, 'alternate origin received a connection');
+    assert.equal(observation.redirectTargetSocketBytes, 0, 'alternate origin received raw socket bytes');
+    assert.equal(observation.redirectTargetRequests, 0, 'alternate origin received a request');
+    assert.equal(observation.redirectTargetBodyBytes, 0, 'alternate origin received body bytes');
+    // Negative HTTP observation only: the fixture origin saw only POST (no spontaneous
+    // Upgrade in this run). This is NOT the active worker-compartment WebSocket-bypass gate.
+    assert.deepEqual(observation.originMethods, ['POST'], `non-POST method reached origin: ${JSON.stringify(observation)}`);
+    assert.deepEqual(observation.originUpgrades, [], `an Upgrade header reached the origin: ${JSON.stringify(observation)}`);
     assert.ok(observation.authorizations.every(value => value === 'Bearer public'), JSON.stringify(observation));
     assert.equal(observation.anomalies, 0, JSON.stringify(observation));
     closed = await service.close();
@@ -186,6 +206,34 @@ async function runScenario({ name, mode, redirectStatus = 307, budgetMs = 120_00
     await gateway.stop();
   }
 }
+
+// Controlled negative: prove an aborted partial body still increments the alternate-origin
+// counters (so a real egress attempt cannot slip past the zero-egress assertion). Loopback only.
+async function runCounterSelfTest() {
+  redirectTarget.listen(0, '127.0.0.1');
+  await once(redirectTarget, 'listening');
+  const port = redirectTarget.address().port;
+  resetRedirectEgress();
+  await new Promise(resolve => {
+    const socket = connect(port, '127.0.0.1', () => {
+      socket.write('POST /v1/chat/completions HTTP/1.1\r\nHost: 127.0.0.1\r\n' +
+        'Content-Type: application/json\r\nContent-Length: 100\r\n\r\n{"model":"deepseek-v4.1-');
+      setTimeout(() => socket.destroy(), 60);
+    });
+    socket.on('close', resolve);
+    socket.on('error', resolve);
+  });
+  await new Promise(resolve => setTimeout(resolve, 120));
+  const egress = { ...redirectEgress };
+  assert.ok(egress.connections >= 1, 'aborted partial request must increment the connection counter');
+  assert.ok(egress.socketBytes > 0, 'aborted partial request must increment the raw socket byte counter');
+  assert.ok(egress.requests >= 1, 'aborted partial request must increment the request counter');
+  assert.ok(egress.bodyBytes > 0, 'aborted partial body must increment the body byte counter');
+  console.log(JSON.stringify({ selfTest: 'alternate-origin aborted-partial-body counter', egress }, null, 2));
+  await new Promise(resolveClose => { redirectTarget.close(resolveClose); redirectTarget.closeAllConnections(); });
+  process.exit(0);
+}
+if (process.argv[2] === '--self-test') { await runCounterSelfTest(); }
 
 let observations = [];
 try {

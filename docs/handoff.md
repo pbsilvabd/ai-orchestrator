@@ -24,15 +24,17 @@ closed and no merge is authorized.
 - `integration/opencode-free-relay.mjs` — pinned OpenCode 2.2.5 routed through the
   relay→gateway→fixture-origin loopback chain: normal run succeeds with three
   `Bearer public` origin requests; each of 301/302/303/307/308 fails the task with one
-  attempt and zero alternate-origin requests/bytes (the B29 307 prompt leak is closed
-  through the relay).
+  attempt and zero alternate-origin connections / raw socket bytes / requests / body bytes
+  (counted at connection/entry and per data chunk; the B29 307 prompt leak is closed
+  through the relay). `--self-test` proves an aborted partial body increments the
+  alternate-origin counters.
 
 `not_run` / still closed (ADR-009/010): nftables/iptables default-drop filtering
 (absent, install not authorized — containment is routing-based); bare-metal Ubuntu
-or two-VM Hyper-V deployment (WSL2 observation only); a real FIDO2 hardware-key signing
-dry run; public catalog GET; live inference and B20/#43. The live route stays closed
-until a platform provides verified firewall-filtered isolation and a separately signed
-live approval.
+or two-VM Hyper-V deployment (WSL2 observation only); the active worker-compartment
+WebSocket-bypass negative; a real FIDO2 hardware-key signing dry run; public catalog GET;
+live inference and B20/#43. The live route stays closed until a platform provides
+verified firewall-filtered isolation and a separately signed live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
 B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft

@@ -2504,3 +2504,40 @@ Claim: this entry supports the pinned-host-through-relay normal and redirect res
 based on the commands above. Firewall-filtered isolation, bare-metal/VM deployment,
 service signing integration, hardware signing, catalog and live inference remain
 `not_run` and the live route stays closed.
+
+## M3 preparation: B30 alternate-origin egress counter + WebSocket claim — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Pinned binary outside the
+repository: `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting it.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check integration/opencode-free-relay.mjs` | Syntax of the corrected harness | no output | 0 |
+| `node integration/opencode-free-relay.mjs --self-test` | Controlled negative: aborted partial body must increment alternate-origin counters | `{connections:1, socketBytes:132, requests:1, bodyBytes:24, aborted:2}` | 0 |
+| `node integration/opencode-free-relay.mjs <pinned binary>` | Pinned OpenCode 2.2.5 through relay→gateway→fixture-origin, normal + 301/302/303/307/308, with immediate egress counting | six scenarios passed: normal `succeeded` (3 `Bearer public` origin requests); each redirect `failed` with 1 attempt, 1 origin request, and zero alternate-origin connections / raw socket bytes / requests / body bytes | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the alternate-origin zero-egress assertion now counts raw connections, raw socket
+bytes, request entries and per-chunk body bytes immediately, so an aborted/partial body or
+a pre-header connection attempt cannot slip past the assertion. The `--self-test` negative
+proves the counter increments on an aborted partial request; the six pinned scenarios then
+pass with every alternate-origin counter at zero. The B30-03 WebSocket-bypass negative is
+corrected to `not_run` (no `Upgrade` header on normal POSTs is not an attempted direct
+WebSocket bypass).
+
+Evidence level: OpenCode integration (pinned host through the relay) plus a local-HTTP
+counter negative; not live-provider, network-containment, firewall or TLS evidence.
+
+Not rerun / not_run: focused and full Node suite/demo (no Node/test source changed in this
+correction; prior results remain valid for the unchanged modules); public catalog GET
+(maintainer-declined) and live inference (prohibited); nftables/iptables filtering;
+bare-metal Ubuntu / two-VM Hyper-V; active worker-compartment WebSocket-bypass negative;
+real service signing integration; a real FIDO2 `-sk` hardware-key signing dry run; full
+cross-namespace TLS gateway chain.
+
+Claim: this entry supports the immediate alternate-origin egress counting, the aborted-
+partial-body negative and the corrected six-scenario pinned-host result, based on the
+commands above. Firewall-filtered isolation, bare-metal/VM deployment, the active
+WebSocket-bypass negative, service signing integration, hardware signing, catalog and
+live inference remain `not_run` and the live route stays closed.

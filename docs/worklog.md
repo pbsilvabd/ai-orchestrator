@@ -2104,3 +2104,37 @@ Template:
 - Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
   open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, service signing
   integration, FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 alternate-origin egress counter (aborted/partial body) + WebSocket claim
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the reviewer finding that the alternate-origin zero-byte counter missed
+  aborted/partial requests, and correct the overclaimed B30-03 WebSocket bypass negative.
+- Steps:
+  1. Rewrote the alternate-origin handler in `integration/opencode-free-relay.mjs` to
+     count at raw connection, per request entry, and per body `data` chunk (plus an
+     abort/error flag), so an aborted/partial body or a pre-header connection attempt
+     increments the counters instead of being missed by a `for await` that throws.
+  2. Added `--self-test`: a controlled negative that opens a raw connection, sends a
+     partial POST body and aborts it, then asserts every counter incremented (proving an
+     incomplete/aborted body cannot pass the zero-egress assertion).
+  3. Reran the six pinned scenarios (normal + 301/302/303/307/308) with the pinned
+     OpenCode 2.2.5 binary (Windows x64): exit 0; normal succeeded with three `Bearer
+     public` origin requests; each redirect failed the task with one attempt and one
+     origin request, and zero alternate-origin connections / raw socket bytes / requests /
+     body bytes.
+  4. Corrected the B30-03 claim: the fixture origin seeing no `Upgrade` header on normal
+     POSTs is not the active worker-compartment WebSocket-bypass negative; that gate stays
+     `not_run`.
+- Files: `integration/opencode-free-relay.mjs`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `--self-test` exit 0 with `{connections:1, socketBytes:132, requests:1,
+  bodyBytes:24, aborted:2}`; six pinned scenarios exit 0 with all alternate-origin
+  counters zero. No Node/test code changed, so prior focused and full-suite results remain
+  valid. No catalog GET, live inference, package install, host/Windows network change or
+  FIDO2 hardware run.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, active
+  WebSocket-bypass negative, service signing integration, FIDO2 hardware dry run,
+  catalog, live).
