@@ -187,12 +187,19 @@ host changes):
   routing + nftables inventory and counters, then runs real socket attempts: the worker
   reaches only the relay, the relay reaches only the gateway, and the gateway reaches only
   the relay; worker/relay/gateway are each denied a direct Internet/TEST-NET destination.
-  Active negative egress probes from the worker — direct IPv4/IPv6 (`curl` to `192.0.2.1`
-  / `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), a WebSocket-like
-  `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port (`:18099`) —
-  are each denied: `rc=7` for unrouted connections, `rc=6` for the unresolved DNS name,
-  and `rc=28` (timeout) for the nft-dropped forbidden port; the nftables counters record
-  the accepted and dropped packets. No external address is contacted. Teardown
+  Worker-side probes run as the unprivileged `nobody` identity via `setpriv` (real/effective
+  UID/GID 65534, `--clear-groups`, `--no-new-privs`, `--bounding-set=-net_admin,-sys_admin`);
+  the recorded capability inventory is `CapEff: 0`, `CapPrm: 0`, `NoNewPrivs: 1`, and an
+  unprivileged `nft add`/`ip route add` mutation attempt returns "Operation not permitted"
+  (`nft` rc=1, `ip` rc=2), while the fixed worker→relay path remains reachable. Active
+  negative egress probes from the worker — direct IPv4/IPv6 (`curl` to `192.0.2.1` /
+  `2001:db8::1`), DNS resolution (an RFC 2606 `.invalid` hostname), a WebSocket-like
+  `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port (`:18099`, whose
+  listener is first verified bound via `ss -ltn`) — are each denied: `rc=7` for unrouted
+  connections, `rc=6` for the unresolved DNS name, and `rc=28` (timeout) for the nft-dropped
+  forbidden port, whose SYN is confirmed to increment the nft drop counter; the nftables
+  counters record the accepted and dropped packets. No external address is contacted.
+  Teardown
   removes only the namespaces this run created (refusing name collisions without
   touching pre-existing state), which also removes the per-namespace nftables rulesets; a
   failed `ip netns del` or an unreadable `ip netns list` is reported with the owned-name

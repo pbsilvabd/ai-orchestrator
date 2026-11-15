@@ -426,13 +426,19 @@ worker→relay:18081 and relay→gateway:18082 via `counter accept`; a final `co
 records the full `ip netns`/`ip addr`/`ip route`/nftables inventory and counters, then runs
 real socket attempts proving the worker reaches only the relay, the relay reaches only
 the gateway, and the gateway reaches only the relay, while each is denied a direct
-Internet/TEST-NET destination. It additionally runs active negative egress probes from
-the worker: direct IPv6 (`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an
-RFC 2606 `.invalid` hostname), a WebSocket-like `Upgrade` request to TEST-NET, and a
-routable-but-not-allowed relay port (`:18099`) — each denied with a recorded nonzero exit
-(`rc=7` for unrouted connections, `rc=6` for the unresolved DNS name, `rc=28` timeout for
-the nft-dropped port), with no external address contacted and the nftables counters
-recording accepted/dropped packets.
+Internet/TEST-NET destination. Worker-side probes drop to the unprivileged `nobody`
+identity via `setpriv` (`--reuid/--regid 65534`, `--clear-groups`, `--no-new-privs`,
+`--bounding-set=-net_admin,-sys_admin`), record the capability inventory (`CapEff: 0`,
+`CapPrm: 0`, `NoNewPrivs: 1`), and verify that an unprivileged `nft add`/`ip route add`
+mutation is refused ("Operation not permitted") while the fixed worker→relay path stays
+reachable. It additionally runs active negative egress probes from the worker: direct IPv6
+(`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an RFC 2606 `.invalid` hostname), a
+WebSocket-like `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port
+(`:18099`, whose listener is first verified bound via `ss -ltn`) — each denied with a
+recorded nonzero exit (`rc=7` for unrouted connections, `rc=6` for the unresolved DNS
+name, `rc=28` timeout for the nft-dropped port, whose SYN is confirmed to increment the
+nft drop counter), with no external address contacted and the nftables counters recording
+accepted/dropped packets.
 Teardown removes only the namespaces this run created (refusing name collisions without
 touching pre-existing state), which also removes the per-namespace nftables rulesets. A
 failed `ip netns del` or an unreadable `ip netns list` is reported with the owned-name

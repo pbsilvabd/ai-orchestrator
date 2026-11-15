@@ -2655,3 +2655,43 @@ counters and the active negative probes, based on the commands above. A bare-met
 deployment, the active provider WebSocket-bypass experiment, signed-approval service
 integration, hardware signing, catalog and live inference remain `not_run` and the live
 route stays closed.
+
+## M3 preparation: B30 unprivileged worker capability removal + forbidden-port proof — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P1/P2 findings at `a103ccf`.
+
+Preflight (read-only): `setpriv` (util-linux) present with `--no-new-privs`,
+`--bounding-set`, `--reuid/--regid`, `--clear-groups`; `runuser`/`su`/`capsh` present;
+`nobody` = uid/gid 65534.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... integration/b30-egress-namespaces.sh` (persistent log) | Full fixture: unprivileged worker probes + mutation refusal + forbidden-port proof | "containment verified"; worker probes ran as `nobody`; see inventory below | 0 |
+| `ip netns exec <worker> setpriv ... grep Cap* /proc/self/status` | Unprivileged worker capability inventory | `CapInh:0 CapPrm:0 CapEff:0 NoNewPrivs:1`, `CapBnd:000001ffffdfefff` (NET_ADMIN/SYS_ADMIN dropped) | 0 |
+| `ip netns exec <worker> setpriv ... nft add table inet b30evil` | Unprivileged nft mutation refusal | "Operation not permitted" | 1 |
+| `ip netns exec <worker> setpriv ... ip route add default via <relay>` | Unprivileged route mutation refusal | "RTNETLINK answers: Operation not permitted" | 2 |
+| `ss -ltn` (relay) + forbidden probe + drop-counter delta | Forbidden-listener bound + exact `rc=28` + counter increment | listener bound on `:18099`; probe `rc=28`; drop counter incremented | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: worker-side probes now run as the unprivileged `nobody` identity with `no_new_privs`
+and no NET_ADMIN/SYS_ADMIN (`CapEff:0`), and an unprivileged `nft`/`ip` mutation is refused,
+so the default-drop observation no longer assumes a network-admin worker. The forbidden-port
+proof now verifies the `:18099` listener is bound, requires the exact timeout `rc=28`, and
+confirms the nft drop counter incremented for that probe.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+The nftables package remains installed; namespaces/rules removed and verified absent.
+
+Claim: this entry supports the unprivileged worker capability removal, the mutation
+refusal and the verified forbidden-port nft drop, based on the commands above. A
+bare-metal/VM deployment, the active provider WebSocket-bypass experiment, signed-approval
+service integration, hardware signing, catalog and live inference remain `not_run` and the
+live route stays closed.

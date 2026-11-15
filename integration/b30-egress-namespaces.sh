@@ -47,6 +47,12 @@ OUT="${B30_OUT:-/tmp/b30-egress-out.txt}"
 RELAY_PORT=18081
 GATEWAY_PORT=18082
 FORBIDDEN_PORT=18099
+# Unprivileged worker identity: the worker compartment runs probes as `nobody` with
+# no_new_privs and no NET_ADMIN/SYS_ADMIN (ADR-010 requires removing network-admin
+# capabilities from the worker). Root is used only for trusted setup/teardown.
+WORKER_UID=65534
+WORKER_GID=65534
+UNPRIV="setpriv --reuid=$WORKER_UID --regid=$WORKER_GID --clear-groups --no-new-privs --bounding-set=-net_admin,-sys_admin"
 
 # Ownership tracking: only namespaces in this array are ever deleted. LEFTOVER_NS holds
 # the inventory of owned namespaces whose deletion failed or whose absence could not be
@@ -397,9 +403,10 @@ forbidden_pid=$!
 sleep 1
 
 probe_curl() {
-  local ns="$1" url="$2"
+  local ns="$1" url="$2" wrap="${3:-}"
   local msg rc
-  msg=$(ip netns exec "$ns" curl -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' "$url" 2>&1)
+  # shellcheck disable=SC2086
+  msg=$(ip netns exec "$ns" $wrap curl -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' "$url" 2>&1)
   rc=$?
   printf '%-10s curl      %-26s rc=%d result=%s\n' "$ns" "$url" "$rc" "$msg" | tee -a "$OUT"
   return "$rc"
@@ -407,9 +414,10 @@ probe_curl() {
 
 # Force IPv6 egress attempt.
 probe_curl6() {
-  local ns="$1" url="$2"
+  local ns="$1" url="$2" wrap="${3:-}"
   local msg rc
-  msg=$(ip netns exec "$ns" curl -6 -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' "$url" 2>&1)
+  # shellcheck disable=SC2086
+  msg=$(ip netns exec "$ns" $wrap curl -6 -sS --connect-timeout 2 -o /dev/null -w '%{http_code}' "$url" 2>&1)
   rc=$?
   printf '%-10s curl6     %-26s rc=%d result=%s\n' "$ns" "$url" "$rc" "$msg" | tee -a "$OUT"
   return "$rc"
@@ -418,9 +426,10 @@ probe_curl6() {
 # WebSocket-like upgrade attempt (HTTP GET with Upgrade headers). A real WebSocket
 # handshake cannot start unless this TCP connection succeeds.
 probe_upgrade() {
-  local ns="$1" url="$2"
+  local ns="$1" url="$2" wrap="${3:-}"
   local msg rc
-  msg=$(ip netns exec "$ns" curl -sS --http1.1 --connect-timeout 2 -o /dev/null -w '%{http_code}' \
+  # shellcheck disable=SC2086
+  msg=$(ip netns exec "$ns" $wrap curl -sS --http1.1 --connect-timeout 2 -o /dev/null -w '%{http_code}' \
     -H 'Connection: Upgrade' -H 'Upgrade: websocket' -H 'Sec-WebSocket-Version: 13' -H 'Sec-WebSocket-Key: SGVsbG8=' \
     "$url" 2>&1)
   rc=$?
@@ -428,20 +437,54 @@ probe_upgrade() {
   return "$rc"
 }
 
+# Worker-side probes drop to the unprivileged worker identity (nobody, no_new_privs,
+# no NET_ADMIN/SYS_ADMIN). Relay/gateway probes run as the trusted setup identity.
+worker_drop_counter() {
+  ip netns exec "$WORKER_NS" nft list chain inet b30fw output 2>/dev/null \
+    | awk '/counter packets [0-9]+ bytes [0-9]+ drop/{ for (i=1;i<=NF;i++) if ($i=="packets") { print $(i+1); exit } }'
+}
+
 echo "=== socket probes ===" | tee -a "$OUT"
-probe_curl "$WORKER_NS" "http://$INTERNET_V4/";           worker_inet_sock=$?
-probe_curl "$WORKER_NS" "http://$GATEWAY_IP:$GATEWAY_PORT/"; worker_gw_sock=$?
-probe_curl "$WORKER_NS" "http://$RELAY_IP:$RELAY_PORT/";  worker_relay_sock=$?
+# Worker-side probes run as the unprivileged worker identity (nobody, no_new_privs,
+# no NET_ADMIN/SYS_ADMIN). Relay/gateway probes stay trusted (service-owned).
+probe_curl "$WORKER_NS" "http://$INTERNET_V4/" "$UNPRIV";           worker_inet_sock=$?
+probe_curl "$WORKER_NS" "http://$GATEWAY_IP:$GATEWAY_PORT/" "$UNPRIV"; worker_gw_sock=$?
+probe_curl "$WORKER_NS" "http://$RELAY_IP:$RELAY_PORT/" "$UNPRIV";  worker_relay_sock=$?
 probe_curl "$RELAY_NS" "http://$INTERNET_V4/";            relay_inet_sock=$?
 probe_curl "$RELAY_NS" "http://$GATEWAY_IP:$GATEWAY_PORT/"; relay_gw_sock=$?
 probe_curl "$GATEWAY_NS" "http://$INTERNET_V4/";          gw_inet_sock=$?
 # Active negative probes: direct IPv6, DNS, and WebSocket/upgrade egress from the worker.
-probe_curl6 "$WORKER_NS" "http://[$INTERNET_V6]/";        worker_inet6_sock=$?
-probe_curl "$WORKER_NS" "http://$DNS_PROBE_HOST/";        worker_dns_sock=$?
-probe_upgrade "$WORKER_NS" "http://$INTERNET_V4/";        worker_ws_sock=$?
-# nft OUTPUT default-drop: the forbidden port is routable (same relay subnet) but not
-# allowed, so the SYN is dropped and the connection times out.
-probe_curl "$WORKER_NS" "http://$RELAY_IP:$FORBIDDEN_PORT/"; worker_forbidden_sock=$?
+probe_curl6 "$WORKER_NS" "http://[$INTERNET_V6]/" "$UNPRIV";        worker_inet6_sock=$?
+probe_curl "$WORKER_NS" "http://$DNS_PROBE_HOST/" "$UNPRIV";        worker_dns_sock=$?
+probe_upgrade "$WORKER_NS" "http://$INTERNET_V4/" "$UNPRIV";        worker_ws_sock=$?
+
+# Verify the forbidden listener is actually bound, then record the worker nft drop counter
+# before and after the forbidden-port probe, and require the nft-dropped timeout (rc=28).
+if ip netns exec "$RELAY_NS" ss -ltn 2>/dev/null | grep -q ":$FORBIDDEN_PORT "; then
+  forbidden_listener_ok=1
+else
+  forbidden_listener_ok=0
+fi
+forbidden_drop_before=$(worker_drop_counter)
+probe_curl "$WORKER_NS" "http://$RELAY_IP:$FORBIDDEN_PORT/" "$UNPRIV"; worker_forbidden_sock=$?
+forbidden_drop_after=$(worker_drop_counter)
+if [ -n "$forbidden_drop_before" ] && [ -n "$forbidden_drop_after" ] && [ "$forbidden_drop_after" -gt "$forbidden_drop_before" ]; then
+  forbidden_drop_delta=1
+else
+  forbidden_drop_delta=0
+fi
+
+# Unprivileged worker capability inventory and mutation refusal.
+{
+  echo "=== unprivileged worker capability inventory ==="
+  ip netns exec "$WORKER_NS" $UNPRIV sh -c 'grep -E "^(CapInh|CapPrm|CapEff|CapBnd|NoNewPrivs)" /proc/self/status' 2>&1
+  echo "=== unprivileged nft mutation attempt (expect refusal) ==="
+  ip netns exec "$WORKER_NS" $UNPRIV nft add table inet b30evil 2>&1
+  echo "nft_mutation_rc=$?"
+  echo "=== unprivileged route mutation attempt (expect refusal) ==="
+  ip netns exec "$WORKER_NS" $UNPRIV ip route add default via "$RELAY_IP" 2>&1
+  echo "route_mutation_rc=$?"
+} >> "$LOG" 2>&1
 
 # Record the per-namespace nft ruleset with counters after the probes.
 {
@@ -455,6 +498,7 @@ echo "=== verdict ===" | tee -a "$OUT"
 fail=0
 check_ok() { local label="$1" rc="$2"; if [ "$rc" = "0" ]; then echo "PASS $label" | tee -a "$OUT"; else echo "FAIL $label (expected success, got rc=$rc)" | tee -a "$OUT"; fail=1; fi; }
 check_denied() { local label="$1" rc="$2"; if [ "$rc" != "0" ]; then echo "PASS $label (denied)" | tee -a "$OUT"; else echo "FAIL $label (unexpectedly reachable)" | tee -a "$OUT"; fail=1; fi; }
+check_true() { local label="$1" v="$2"; if [ "$v" = "1" ]; then echo "PASS $label" | tee -a "$OUT"; else echo "FAIL $label" | tee -a "$OUT"; fail=1; fi; }
 check_denied "worker->internet route denied"  "$worker_inet_rc"
 check_denied "worker->gateway route denied"   "$worker_gw_rc"
 check_ok     "worker->relay route reachable"  "$worker_relay_rc"
@@ -471,7 +515,13 @@ check_denied "gateway->internet socket denied" "$gw_inet_sock"
 check_denied "worker->IPv6 egress denied"     "$worker_inet6_sock"
 check_denied "worker->DNS resolution denied"  "$worker_dns_sock"
 check_denied "worker->WebSocket upgrade denied" "$worker_ws_sock"
-check_denied "worker->forbidden relay port denied (nft OUTPUT)" "$worker_forbidden_sock"
+check_true   "forbidden listener bound on :$FORBIDDEN_PORT" "$forbidden_listener_ok"
+if [ "$worker_forbidden_sock" = "28" ]; then
+  echo "PASS worker->forbidden relay port timeout (rc=28, nft OUTPUT drop)" | tee -a "$OUT"
+else
+  echo "FAIL worker->forbidden relay port (expected rc=28, got rc=$worker_forbidden_sock)" | tee -a "$OUT"; fail=1
+fi
+check_true   "forbidden probe incremented the nft drop counter" "$forbidden_drop_delta"
 
 # 8. Explicit teardown + verification. A failed deletion or unreadable inventory is
 #    reported (not silent) and makes the run fail closed.

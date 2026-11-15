@@ -2224,3 +2224,30 @@ Template:
   open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
   WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
   run, catalog, live).
+
+## 2026-11-15 — B30 unprivileged worker capability removal + forbidden-port proof
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the supervisor P1/P2 findings at `a103ccf` (worker probes ran as root with
+  network-admin; forbidden-port test accepted any failure).
+- Steps:
+  1. Preflight: `setpriv`/`runuser`/`su`/`capsh` present; `nobody` = uid/gid 65534.
+  2. Worker-side probes now drop to `nobody` via `setpriv --reuid/--regid 65534
+     --clear-groups --no-new-privs --bounding-set=-net_admin,-sys_admin`; the capability
+     inventory records `CapEff:0 CapPrm:0 NoNewPrivs:1` and NET_ADMIN/SYS_ADMIN dropped
+     from the bounding set.
+  3. Added unprivileged mutation refusal: `nft add table` → "Operation not permitted"
+     (rc=1); `ip route add default` → "RTNETLINK answers: Operation not permitted" (rc=2).
+  4. Hardened the forbidden-port proof: verify the `:18099` listener is bound via `ss -ltn`,
+     require the exact `rc=28` timeout, and confirm the nft drop counter incremented for
+     that probe.
+  5. Ran the fixture: "containment verified" (exit 0) with all checks passing; host nft
+     ruleset empty and no residue after teardown.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).
