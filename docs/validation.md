@@ -3584,3 +3584,50 @@ provider WebSocket-bypass experiment, the non-loopback worker-facing listener de
 fresh catalog read and live inference. No paid call, credential or external host was contacted;
 the pinned binary is temporary and outside the repository. The draft stays draft and merge
 still requires explicit authorization.
+
+## Authorized live-boundary probes at a2c060f (2026-11-16, Windows 11 / Node 24.22.1)
+
+The maintainer authorized the remaining network-side gates in this session. These probes were
+run once, from one temporary script outside the repository, against the real fixed origin
+`opencode.ai` only. No prompt, model output or paid route was used, and no source, test or
+composition file was changed.
+
+- Real TLS chain: a `node:tls` handshake to `opencode.ai:443` with Node default
+  certificate/hostname verification and SNI `opencode.ai` returned `authorized: true`,
+  `authorizationError: null`, `TLSv1.3`, `TLS_AES_256_GCM_SHA384`, subject CN `opencode.ai`,
+  issuer `Google Trust Services`, SAN `DNS:opencode.ai, DNS:enterprise.opencode.ai`,
+  validity `2026-11-13T00:00:15Z` to `2027-02-11T00:53:06Z`, SHA-256 fingerprint
+  `E3:06:DC:19:28:EE:30:65:85:26:A9:04:24:23:9E:30:A8:A9:F8:07:74:26:5E:0A:35:20:8F:83:99:64:C6:8D`.
+  This is the resolver + system trust store + hostname validation path the live gateway uses.
+- Gateway in live mode: `createEgressGateway({ mode: 'live', listen: '127.0.0.1:18082' })` with the
+  fixed origin/path and policy digest
+  `e8b6ec5518c3c4ad108de4dcdbf841ef9a9a58282a1212b25f7bc28d0871e388` started successfully
+  (an ambient `NODE_TLS_REJECT_UNAUTHORIZED=0` was absent). It forwarded exactly one
+  `POST /inference/openai/v1/chat/completions` with `Bearer public` and an empty JSON body `{}`;
+  the provider answered `400` with
+  `{"error":{"message":"`model` must be a non-empty string","type":"invalid_request_error","param":"model","code":null}}`.
+  The request was rejected before any model generation: no model was named, no prompt was sent
+  and no completion or usage was produced. `bodyBytes` was 117; the gateway latched nothing
+  (`liveEvents` empty) because the upstream answered normally over the validated TLS chain.
+- Application-level WebSocket refusal: the same live gateway, sent a `GET` carrying
+  `Connection: Upgrade`, `Upgrade: websocket` and `Sec-WebSocket-*` headers, answered `405`
+  `method not allowed` and latched `method` before any upstream I/O. This is the gateway's own
+  code path refusing a WebSocket handshake; it does not exercise a provider-side WebSocket.
+- Dated catalog read (fresh, separately authorized): `fetchFreeMetadata()` at
+  `2026-11-16T04:34:16.916Z` returned exactly one `deepseek-v4.1-flash-free` entry with all
+  zero prices (`text.input.price 0`, `text.input.cache.read 0`, `text.output.price 0`). It is a
+  dated snapshot, not authority to run, and was not repeated.
+
+Evidence level: **deployed boundary observation against the real fixed origin plus one
+application-level refusal**. It closes the "real resolver/trust store/hostname" portion of the
+deployed TLS chain with a normal 400 response and no inference. Not run and unchanged: the
+gateway's deployed placement behind the relay link (no relay guest exists; `Get-VM` returned zero
+VMs while the `B30-Relay-Gateway` switch still carries `10.30.2.1`), expired/not-yet-valid/
+wrong-host certificates against the real origin (only disposable-CA fixtures cover these), the
+positive FIDO2 hardware-key signature (no FIDO2 device is present on this host), the active
+provider WebSocket-bypass experiment from the worker compartment, the non-loopback worker-facing
+listener decision (its own ADR amendment is still required), an independent Ubuntu host, and live
+inference. The live composition path remains closed and the PR stays draft.
+
+The earlier "no external host was contacted" sentence in the preceding entry describes that
+run only; the probes above contacted `opencode.ai` under this session's authorization.
