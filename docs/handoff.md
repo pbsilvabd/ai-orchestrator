@@ -91,7 +91,7 @@ only. The signed SSHSIG path remains `not_run`. The second bounded catalog GET w
 `2026-11-15T19:14:36Z` and validated `deepseek-v4.1-flash-free` as zero-price. It is dated and
 not repeated, and it authorizes no live inference (ADR-010, second 2026-11-15 amendment).
 
-## Next action (2026-11-15, after the Windows two-VM deployment run)
+## Next action (2026-11-16, after the host-side gateway deployment run)
 
 1. Keep PR #45 draft. Do not mark it ready and do not merge: the B30 gates below are not all
    satisfied, and the user's merge condition ("all gates pass") is therefore not met.
@@ -99,13 +99,16 @@ not repeated, and it authorizes no live inference (ADR-010, second 2026-11-15 am
    Internal switches, no Default/External switch, no NAT/ICS/share, no host forwarding, no
    worker default route or DNS, single worker NIC, and guest-written probe logs showing the
    worker's and the relay's off-link attempts denied while both keep their one permitted link
-   (`docs/validation.md`, both 2026-11-15 two-VM entries). A second media round covered the
+   (`docs/validation.md`, the 2026-11-15/16 two-VM entries). A second media round covered the
    remaining B30-03 probe row inside both compartments: a plaintext WebSocket upgrade to two
    off-link origins is `Network is unreachable` at connect, and the reachable peer on the
-   permitted link refuses `18099` and `8080`. Remaining, all `not_run`:
-   - the host-side L7 gateway and its deployed TLS chain; on this host the gateway also needs
-     an authorized inbound rule scoped to `10.30.2.2/32`, because the gateway vEthernet is
-     Public-classified and the default inbound policy drops the relay's connections;
+   permitted link refuses `18099` and `8080`. A host-side L7 gateway was then deployed on the
+   relay link in fixture mode for one authorized session: the approved request was forwarded
+   once to a controlled loopback origin, an unapproved path, absolute-URI request, `CONNECT`
+   and credential were refused before any upstream fetch, the policy digest was recorded and
+   the temporary inbound firewall rule was removed afterwards. Remaining, all `not_run`:
+   - the gateway's TLS chain to the real origin (resolver, trust store, certificate
+     validation); the fixture-mode deployment did not exercise it;
    - an application-level WebSocket rejection (the VM probes only show there is no transport);
    - the independent Ubuntu host checklist (items 1–3 and 8) if that path is chosen instead;
    - a real FIDO2 `-sk` signature dry run (item 6) and the active provider WebSocket-bypass
@@ -146,12 +149,19 @@ closed and no merge is authorized.
   through the relay). `--self-test` proves an aborted partial body increments the
   alternate-origin counters.
 
-`not_run` / still closed (ADR-009/010): bare-metal Ubuntu or two-VM Hyper-V deployment
-(the nftables/routing observation is WSL2 only; the gateway namespace has no external
-route); the active worker-compartment provider WebSocket-bypass experiment; signed-approval
-service admission integration; a real FIDO2 hardware-key signing dry run; public catalog
-GET; live inference and B20/#43. The live route stays closed until a platform provides
-verified firewall-filtered isolation in a bare-metal/VM deployment and a separately
+- `integration/b30-gateway-host.mjs` — deployment harness (not a test, not wired into
+  composition): instances `src/egress-gateway.mjs` in `fixture` mode on one fixed address,
+  serves one guest request per instance, and writes a JSONL event log plus one evidence JSON
+  (policy digest, per-round counters, metadata-only fixture-origin records). `--smoke` is a
+  loopback self-probe that needs no host firewall rule.
+
+`not_run` / still closed (ADR-009/010): bare-metal Ubuntu deployment and the deployed TLS chain
+to the real origin (the Windows two-VM network layer and the fixture-mode gateway boundary are
+evidenced in 2026-11-15/16; the nftables/routing observation remains WSL2-only and the gateway
+namespace has no external route); the active worker-compartment provider WebSocket-bypass
+experiment; signed-approval service admission integration; a real FIDO2 hardware-key signing dry
+run; public catalog GET; live inference and B20/#43. The live route stays closed until a platform
+provides verified firewall-filtered isolation in a bare-metal/VM deployment and a separately
 signed live approval.
 
 Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).

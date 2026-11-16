@@ -463,11 +463,36 @@ The WSL initial/host nftables ruleset is verified empty before and after; this i
 observation (nftables v1.0.9 installed in the distribution), not a bare-metal/VM
 deployment, and the gateway namespace has no external route (fixture terminal point).
 
+### B30 host-side gateway deployment harness (Windows relay link)
+
+`integration/b30-gateway-host.mjs` instances the reviewed gateway for a real deployment
+observation rather than a test: `fixture` mode, one fixed listen address/port, one
+loopback fixture origin, one JSONL event log and one evidence JSON. A gateway instance
+latches on its first refusal; guest retries can send multiple requests to one instance,
+so the harness restarts it for subsequent scenarios, waiting for the guest within an overall deadline
+instead of a fixed per-round budget (a fixed budget silently consumed rounds before the
+operator started the probe, which is recorded in `docs/validation.md`).
+
+```sh
+node integration/b30-gateway-host.mjs --smoke                     # loopback self-probe, no host firewall
+node integration/b30-gateway-host.mjs --rounds 6 --max-seconds 1800 \
+  --log b30-gateway-events.jsonl --evidence b30-gateway-evidence.json
+```
+
+The deployment run also needs one inbound rule for the single gateway port, scoped to the
+relay source address and the adapter; it is a host firewall change, was authorized for one
+session, and is removed afterwards (`docs/deployment-prerequisites.md` records the exact
+commands and the before/after rule counts). The harness contacts no external host: the
+origin is loopback, so it evidences the gateway boundary and the relay compartment's
+reachable surface, not the live TLS chain.
+
 Not covered / `not_run`: the live free route, public catalog GET, live inference, a
-bare-metal Ubuntu or two-VM Hyper-V deployment (the nftables/routing observation is WSL2
-only), and a real FIDO2 hardware-key signing dry run. A deployment without verifiable
-firewall-filtered isolation in a bare-metal/VM deployment and a separately signed live
-approval stays closed.
+bare-metal Ubuntu deployment, the deployed TLS chain to the real origin, and a real FIDO2
+hardware-key signing dry run. The Windows two-VM Hyper-V deployment is covered for the
+network layer and for the fixture-mode gateway boundary by the 2026-11-15/16 entries in
+`docs/validation.md`; the WSL2 nftables observation remains WSL2-only and does not extend to
+bare metal. A deployment without verifiable firewall-filtered isolation in a bare-metal/VM
+deployment and a separately signed live approval stays closed.
 
 ## B30 pinned OpenCode 2.2.5 through the relay (fixture)
 

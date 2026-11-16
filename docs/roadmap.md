@@ -107,11 +107,14 @@ refused beside an active owner, and release authority passes to the consuming se
 so the creator cannot release an active service's lock; startup authority is
 trusted composition (unsigned operator artifact plus a digest-bound gate, not an SSHSIG), while
 each task submission is signature-verified and missing/forged signatures are refused with zero
-task/workspace/worker effect. The Windows two-VM deployment is evidenced for the network layer and
-for the in-VM WebSocket-upgrade/unapproved-port negatives, while the host-side L7 gateway and its TLS
-chain, an application-level WebSocket rejection, the FIDO2 positive signature, the active bypass
-experiment, the independent Ubuntu host and any non-loopback listener decision remain open, so B30
-is not ready and not merged.
+task/workspace/worker effect. The Windows two-VM deployment is evidenced for the network layer,
+for the in-VM WebSocket-upgrade/unapproved-port negatives, and for a host-side L7 gateway on the
+relay link in fixture mode (approved request forwarded once to a controlled loopback origin;
+unapproved path, absolute-URI, `CONNECT` and credential refused before any upstream fetch, with a
+recorded policy digest and body-free logs). The gateway's TLS chain to the real origin, an
+application-level WebSocket rejection, the FIDO2 positive signature, the active bypass experiment,
+the independent Ubuntu host and any non-loopback listener decision remain open, so B30 is not ready
+and not merged.
 
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.
 M3 may start with one authorized model and fallback disabled. Two models are

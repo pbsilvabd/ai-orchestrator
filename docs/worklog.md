@@ -2732,3 +2732,51 @@ Template:
   (needs an authorized inbound rule scoped to the relay address), an application-level
   WebSocket rejection, the FIDO2 positive signature, the active WebSocket-bypass experiment,
   live inference and the signed approval. Merge still requires explicit authorization.
+
+## 2026-11-16 - M3: B30 host-side L7 gateway on the Windows relay link (B30-07)
+
+- Branch: `task/B30-free-relay`
+- Scope: one new deployment harness (`integration/b30-gateway-host.mjs`), one temporary
+  authorized inbound firewall rule (created, used and removed in the same session), and the
+  deployment evidence. No live inference, no paid call, no catalog read, no switch, NAT,
+  ICS or forwarding change, and no guest netplan change.
+- Steps:
+  1. Created the single scoped rule `B30-Relay-Gateway-Inbound` (Inbound/Allow/TCP,
+     `10.30.2.1:18082` from `10.30.2.2`, adapter `vEthernet (B30-Relay-Gateway)`, profile
+     `Public`, program `Any`), read the filters back, and confirmed the port was free.
+  2. Started the deployment harness: the reviewed `src/egress-gateway.mjs` in `fixture` mode
+     on `10.30.2.1:18082`, origin `http://127.0.0.1:18083`, path `/v1/chat/completions`,
+     limits `maxRequests 4` / `maxRequestBytes 1048576` / `maxResponseBytes 1048576` /
+     `timeoutMs 120000`, policy digest `9512dfe8d20d81fa7389538d0fab7c7a9c83fa2217576e5b7c99efe4700dc4e4`.
+     The loopback fixture origin keeps metadata only (method, path, `Bearer public`
+     equality, body byte count, canary presence), never a body.
+  3. The operator typed one line on the relay console
+     (`sudo mount -L B30GW2 /media/b30 && sudo bash /media/b30/probe4.sh`); the guest sent six
+     raw requests and wrote its own log to the attached FAT32 volume.
+  4. Collected the log on the host through WSL `--mount --vhd ... --partition 1`, then deleted
+     the VHDX, the staging directory and the empty `C:\B30-VMs\_media`.
+  5. Removed the firewall rule and verified the previous inbound surface: 712 -> 711 total
+     rules, zero `B30` rules, adapter unchanged. The harness still held `18082` at that point
+     (round 5 was waiting); after the run ended, no listener and no gateway process remained.
+- Files: `integration/b30-gateway-host.mjs`, `integration/README.md`, `docs/validation.md`,
+  `docs/worklog.md`, `docs/deployment-prerequisites.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/tasks/B30.md`, `docs/task-contract.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/backlog.md`.
+- Validation: guest log `B30-Relay-b30-gwprobe2-b30-relay.log` (1,480 B, SHA-256 `C0A60106...`)
+  with `GW_CONNECT=OK` and `200`, `404`, `404`, `405`, `401`, `401`; the approved response came
+  from the fixture origin with `prompt_bytes 127`; gateway instances recorded refused `path`
+  and `credential`, and `B30-CANARY-PROMPT-0f5a` and `Bearer` appear zero times in the gateway
+  event log. Harness evidence `b30-gateway-evidence.json` (4,032 B, SHA-256 `A9ED9EE2...`)
+  records 4 completed rounds, round 5 skipped at the deadline, `origin.requests=1`, and one
+  metadata-only origin record (`POST /v1/chat/completions`, public-authorization equality true,
+  127 bytes, canary-presence flag true); neither the event log nor evidence JSON contains the
+  canary string or authorization value. The first probe round (`BC32E1F2...`) is recorded as a harness timing failure, not
+  as evidence. Serial `node --test --test-concurrency=1` -> 416 tests, 411 pass / 0 fail / 5
+  platform-gated skips (exit 0); the default-concurrency run exits 1 on the known `B10-03` abort
+  timing flake on this loaded machine (the file passes 8/8 in isolation) and that is recorded, not
+  hidden. `integration/b30-gateway-host.mjs --smoke` on the committed revision ->
+  `smoke_approved status 200`; `git diff --check` clean.
+- Follow-up: keep PR #45 draft. Still `not_run`: the deployed TLS chain to the real origin,
+  an application-level WebSocket rejection, the FIDO2 positive signature, the active
+  WebSocket-bypass experiment, the non-loopback worker-facing listener decision and live
+  inference. Merge still requires explicit authorization.

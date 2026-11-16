@@ -2,9 +2,10 @@
 
 Status: partly executed for the Windows two-VM path only. On 2026-11-15 a Hyper-V
 `B30-Worker` / `B30-Relay` pair was provisioned under ADR-010's internal-only topology and
-probed from inside both guests; the deployment inventory is recorded below and the raw
-results are in [validation.md](validation.md). Everything after the network layer — the
-host-side L7 gateway, its TLS chain, a positive FIDO2 signature, the active WebSocket
+probed from inside both guests, and on 2026-11-16 a host-side L7 gateway was deployed on the
+relay link in fixture mode for one authorized session; the deployment inventory is recorded
+below and the raw results are in [validation.md](validation.md). Everything after that —
+the deployed TLS chain to the real origin, a positive FIDO2 signature, the active WebSocket
 bypass experiment and live inference — is still `not_run`. No independent Ubuntu host has
 been provisioned, and the isolated WSL2 netns/veth fixture remains an observation, **not**
 a substitute for a deployment. Nothing below changes any host network or installs packages.
@@ -45,19 +46,38 @@ adapter is classified `Public` (`Rede nao identificada`), the Public profile is 
 disabled. Kaspersky is also registered as a firewall product, so the exact filter is not
 attributed by this evidence.
 
-Consequences, all `not_run`:
+Consequences, and what has since been done (2026-11-16):
 
 1. A gateway listening on `10.30.2.1` needs an explicit inbound allow rule for its single port,
    scoped to `10.30.2.2/32`, in the profile that the adapter actually has. Without it the relay's
    connections are dropped by the default inbound policy, not by the gateway.
-2. The relay-to-gateway leg is therefore **not** yet demonstrated on Windows; only relay-to-worker
-   reachability and relay-to-off-link denial are.
+2. The relay-to-gateway leg is now demonstrated on Windows in fixture mode (see the 2026-11-16
+   entry in [validation.md](validation.md)); the deployed TLS chain is still `not_run`.
 3. Granting that inbound rule is a firewall change on the operator's machine and needs its own
    authorization. Preferring a dedicated `Private`-classified adapter with the narrowest rule, or
    an Ubuntu host where the gateway rule is part of the same reviewed nftables policy, avoids
    widening the Windows host's inbound surface.
 
+### The rule that was used, and its removal (2026-11-16)
 
+Created for one evidence session with explicit maintainer authorization, then removed in the same
+session:
+
+```powershell
+New-NetFirewallRule -DisplayName 'B30-Relay-Gateway-Inbound' `
+  -Direction Inbound -Action Allow -Protocol TCP `
+  -LocalAddress 10.30.2.1 -RemoteAddress 10.30.2.2 -LocalPort 18082 `
+  -InterfaceAlias 'vEthernet (B30-Relay-Gateway)' -Profile Public -Enabled True
+# ... gateway run and relay probes ...
+Remove-NetFirewallRule -DisplayName 'B30-Relay-Gateway-Inbound'
+```
+
+Read back after creation: `LocalAddress 10.30.2.1`, `RemoteAddress 10.30.2.2`, `Protocol TCP`,
+`LocalPort 18082`, `Program Any`, `Enabled True`; adapter `vEthernet (B30-Relay-Gateway)` `Up` with
+connection profile `Public`; port `18082` free before the run. Read back after removal: 712 -> 711
+total rules, zero `B30` rules, adapter unchanged; the gateway instance still held `18082` while
+round 5 waited, and no listener or gateway process remained once the run ended. No other firewall,
+switch, NAT, ICS or forwarding setting was touched.
 
 - That the operator is root/admin on the target host and authorized to create/destroy the
   VM switches or namespaces.
@@ -81,11 +101,12 @@ Consequences, all `not_run`:
 
 ## What stays `not_run` until these exist
 
-The host-side L7 gateway with its deployed TLS chain, a real FIDO2 hardware-key signing dry
-run (the cryptographic positive admission path), the active provider WebSocket-bypass
+The host-side L7 gateway's deployed TLS chain to the real origin, a real FIDO2 hardware-key signing
+dry run (the cryptographic positive admission path), the active provider WebSocket-bypass
 experiment, and live inference. The signed-admission code path is implemented and tested with
-mock/negative fixtures only. The Windows two-VM network layer is no longer in this list: it
-was provisioned and probed on 2026-11-15, with the gateway leg still open as described above.
+mock/negative fixtures only. The Windows two-VM network layer and the host-side gateway boundary in
+fixture mode are no longer in this list: they were provisioned and probed on 2026-11-15 and
+2026-11-16, and only the TLS leg and the real origin remain open as described above.
 
 ## Independent Ubuntu host: checklist and minimum permissions (plan only, 2026-11-15)
 
@@ -129,15 +150,18 @@ Deployment checklist (each item needs its own authorization and evidence):
    contacts the provider from the worker compartment. Not performed.
 8. Teardown of only objects this run created, with verified-empty host residue.
 
-Remaining gates status (2026-11-15): on Windows, item 1 in its Hyper-V form and item 2 in its
+Remaining gates status (2026-11-16): on Windows, item 1 in its Hyper-V form and item 2 in its
 IPv4/IPv6/DNS/alternate-origin/WebSocket/unapproved-port form have deployed evidence — two Internal
 switches, no Default/External switch, no NAT/ICS/share, no forwarding, no worker default route or
 DNS, and guest-written probe logs showing every off-link attempt denied while the relay stays
 reachable. Item 2's WebSocket-upgrade and unapproved-port attempts were run from inside both guests
 on 2026-11-15: an off-link upgrade has no transport at all and the reachable peer refuses the
-unapproved ports. Items 3–8 are `not_run`, including the relay-to-gateway leg (see the firewall
-requirement above), the deployed TLS chain, an application-level WebSocket rejection and the FIDO2
-dry run. The Ubuntu host checklist is untouched.
+unapproved ports. Separately, the host-side gateway boundary has a fixture-mode deployment
+observation on the relay link (2026-11-16): the approved request is forwarded once to a controlled
+loopback origin and an unapproved path, absolute-URI request, `CONNECT` and credential are refused
+before any upstream fetch. Items 3–8 are `not_run`, including the non-loopback worker-facing
+listener (which needs its own ADR amendment), the deployed TLS chain to the real origin, an
+application-level WebSocket rejection and the FIDO2 dry run. The Ubuntu host checklist is untouched.
 The public catalog GET for the fixed free model was performed once at `8e358a4` (dated
 snapshot, not repeated) and a second bounded GET is recorded in the 2026-11-15 validation
 entry. Neither authorizes live inference, and no live activation, ready or merge is authorized

@@ -701,6 +701,15 @@ keys and clearly-labelled mocks; a real FIDO2 hardware-key signing dry run, the
 cryptographic positive path and live inference have not been performed. (Dated note,
 2026-11-15: one bounded public catalog GET was performed at `8e358a4` under staged
 authorization, HTTP 200, a dated snapshot that is not repeated; it is not a live gate.)
+(Dated note, 2026-11-16: on Windows, the same placement is additionally observed in a two-VM
+Hyper-V deployment on 2026-11-15 — two Internal switches, no Default/External switch, no
+NAT/ICS/share or host forwarding, and guest-written logs showing the worker's and the relay's
+off-link attempts denied while each keeps its permitted link — and the host-side L7 gateway
+boundary is observed on the relay link in fixture mode on 2026-11-16 (approved request forwarded
+once to a controlled loopback origin; unapproved path, absolute-URI request, `CONNECT` and
+credential refused before any upstream fetch). This note adds evidence, not requirements: bare
+metal, the deployed TLS chain, an application-level WebSocket rejection and a signed live approval
+remain `not_run`.)
 These are separate `not_run` gates; the live route stays closed until a platform provides
 verified firewall-filtered isolation in a bare-metal/VM deployment and a separately signed
 live approval.

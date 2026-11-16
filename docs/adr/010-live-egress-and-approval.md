@@ -453,3 +453,36 @@ FIDO2 positive signature dry run (item 6); the active provider WebSocket-bypass 
 are Local HTTP evidence (loopback child processes, real lock files, a disposable CA and a
 labelled admission test double that carries digests only). They do not establish deployed
 behavior.
+
+## Amendment — 2026-11-16: host-side gateway deployment on the Windows relay link (B30-07)
+
+This amendment changes no trust boundary and no decision. It records that the layer-7 gateway
+specified in the Decision section above was deployed on the Windows relay link for one evidence
+session, in the already-documented `fixture` mode, and that the one host firewall exception it
+needs was used and then removed.
+
+- Deployment: `src/egress-gateway.mjs` instance through `integration/b30-gateway-host.mjs`,
+  mode `fixture`, listen `10.30.2.1:18082`, origin `http://127.0.0.1:18083`, path
+  `/v1/chat/completions`, limits `maxRequests 4` / `maxRequestBytes 1048576` /
+  `maxResponseBytes 1048576` / `timeoutMs 120000`, policy digest
+  `9512dfe8d20d81fa7389538d0fab7c7a9c83fa2217576e5b7c99efe4700dc4e4`.
+- Firewall exception: one Inbound/Allow/TCP rule for `10.30.2.1:18082` from `10.30.2.2` only,
+  bound to the `vEthernet (B30-Relay-Gateway)` adapter in the profile it actually has
+  (`Public`), program `Any`. Created and removed in the same session with explicit maintainer
+  authorization; the host returned to 711 total rules with zero `B30` rules. No switch, NAT,
+  ICS or forwarding setting was touched.
+- Observed from inside the relay VM: the approved request reached the gateway and was
+  forwarded once to the controlled loopback origin; an unapproved path, an absolute-URI
+  proxy-style request, a `CONNECT` tunnel and a missing or wrong credential were refused
+  before any upstream fetch; the gateway's logs carried no body, canary marker or
+  authorization value.
+- Still `not_run`, and therefore still blocking live: the deployed TLS chain to the real
+  origin (resolver, trust store, certificate validation), an application-level WebSocket
+  rejection, the FIDO2 positive signature, the active provider WebSocket-bypass experiment
+  and the non-loopback worker-facing listener decision. The relay *process* was not in this
+  path: the probes are raw sockets from the relay guest shell. Live composition stays closed,
+  and B30 stays not-ready and unmerged.
+
+The firewall rule is a deployment-environment exception, not part of the gateway's policy. A
+future run must recreate it with the same scope and remove it again, or prefer an Ubuntu host
+where the same restriction is part of the reviewed nftables policy.

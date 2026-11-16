@@ -3380,3 +3380,151 @@ off-link origin has no transport at all and the reachable peer on the permitted 
 the approved port, based on guest-written logs read back from the attached media. It does not support
 a deployed gateway policy, a deployed TLS chain, a positive FIDO2 signature, WebSocket-bypass
 exclusion at the application layer, live activation, ready-for-review or merge.
+
+## M3 preparation: B30 host-side L7 gateway on the Windows relay link (B30-07) – 2026-11-16
+
+Executed on Windows 11 Pro x64 with Hyper-V, the same two guests and Node.js v24.22.1 (fnm). The
+guest log is stamped `2026-11-16T03:13:02Z`. This entry records the first deployed host-side L7
+gateway on the `B30-Relay-Gateway` link and the relay VM's socket attempts against it.
+
+Changes made for this run, each authorized or reversible: one inbound firewall rule scoped to the
+relay source address and the gateway port (created, used and removed in this entry), and one
+temporary Node gateway process on the host. Nothing else on the host network, the switches, the
+guests' netplan or `SharedAccess` was changed.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `New-NetFirewallRule -DisplayName 'B30-Relay-Gateway-Inbound' -Direction Inbound -Action Allow -Protocol TCP -LocalAddress 10.30.2.1 -RemoteAddress 10.30.2.2 -LocalPort 18082 -InterfaceAlias 'vEthernet (B30-Relay-Gateway)' -Profile Public` | Open exactly one port for the relay source | rule created; 0 B30 rules before, 712 total rules after; filters read back as `LocalAddress 10.30.2.1`, `RemoteAddress 10.30.2.2`, `Protocol TCP`, `LocalPort 18082`, `Program Any`, `Enabled True`, adapter `Public`/`Up`, port not listening before the run | 0 |
+| `node integration/b30-gateway-host.mjs --rounds 6 --max-seconds 1800 --log ... --evidence ...` | Instance the reviewed gateway in fixture mode on the relay link | bound `10.30.2.1:18082`, fixture origin `127.0.0.1:18083`, policy digest `9512dfe8d20d81fa7389538d0fab7c7a9c83fa2217576e5b7c99efe4700dc4e4` | 0 |
+| `sudo mount -L B30GW2 /media/b30 && sudo bash /media/b30/probe4.sh` (operator-typed, relay console) | Six raw socket attempts from inside the relay compartment | `GW_CONNECT=OK`; `200`, `404`, `404`, `405`, `401`, `401`; log 1,480 B written by the guest | 0 |
+| Host detach + `wsl --mount --vhd ... --partition 1` + copy | Read the guest log without a guest shell | log copied intact, ends with `B30_GWPROBE_LOG_END`; media deleted | 0 |
+| `Remove-NetFirewallRule -DisplayName 'B30-Relay-Gateway-Inbound'` | Restore the previous inbound surface | 712 -> 711 total rules, 0 B30 rules remaining, adapter unchanged; the harness still held `10.30.2.1:18082` at that moment (round 5 was waiting for a request), and after the run ended there was no listener on `18082` and no gateway process | 0 |
+
+Gateway policy (the exact values that produce the digest above): mode `fixture`, listen
+`10.30.2.1:18082`, origin `http://127.0.0.1:18083`, path `/v1/chat/completions`, limits
+`maxRequests 4`, `maxRequestBytes 1048576`, `maxResponseBytes 1048576`, `timeoutMs 120000`. The
+controlled fixture origin is loopback and records metadata only — method, path, whether the
+authorization header was exactly `Bearer public`, body byte count and whether a canary marker was
+present — never a body.
+
+Guest log (`b30-gwprobe2-b30-relay.log`, 1,480 B, SHA-256
+`C0A60106CD285E2B765CA7C025B4FAF065B289F97103DCC47251F7FFDBB15695`), abridged here by removing the
+repeated `Date`/`Connection`/`content-length` header lines and surplus blank lines; the status line,
+the attempt counter, every body and the log terminators are verbatim:
+
+```
+B30_GWPROBE_START host=b30-relay kernel=6.8.0-139-generic utc=2026-11-16T03:13:02Z
+B30_ROLE=relay
+GW_CONNECT=OK
+
+### approved fixed request
+ATTEMPT=1 RC=0 STATUS=200
+HTTP/1.1 200 OK
+content-type: application/json
+Transfer-Encoding: chunked
+107
+{"id":"b30-gateway-fixture","object":"chat.completion","model":"deepseek-v4.1-flash-free","b30":"B30_GATEWAY_FIXTURE_OK","usage":{"prompt_bytes":127},"choices":[{"index":0,"message":{"role":"assistant","content":"B30_GATEWAY_FIXTURE_OK"},"finish_reason":"stop"}]}
+0
+
+### unapproved path
+ATTEMPT=1 RC=0 STATUS=404
+HTTP/1.1 404 Not Found
+not found
+
+### absolute-URI unapproved origin
+ATTEMPT=2 RC=0 STATUS=404
+HTTP/1.1 404 Not Found
+not found
+
+### CONNECT tunnel attempt
+ATTEMPT=1 RC=0 STATUS=405
+HTTP/1.1 405 Method Not Allowed
+
+### missing credential
+ATTEMPT=2 RC=0 STATUS=401
+HTTP/1.1 401 Unauthorized
+unauthorized
+
+### wrong credential
+ATTEMPT=2 RC=0 STATUS=401
+HTTP/1.1 401 Unauthorized
+unauthorized
+
+B30_GWPROBE_LOG_END
+```
+
+Gateway-side counters per instance (from the harness event log): round 1 `requests 3`, refused
+`[path]`, 263 response bytes; round 2 `requests 3`, refused `[path]`, 0 bytes; round 3 `requests 2`,
+refused `[credential]`, 0 bytes; round 4 `requests 1`, refused `[credential]`, 0 bytes; round 5
+received no request before the deadline and ended the run (`round_skipped`,
+`reason: no_request_before_deadline`). `bytesOut` counts only upstream response body bytes forwarded
+to the caller, so round 1's 263 is exactly the fixture body the guest printed as chunk `107` (hex)
+and the three refusing rounds forwarded nothing. The extra requests are the guest's own retries: a
+gateway instance latches on its first refusal and answers `503` afterwards, so three of the six
+scenarios needed a second attempt to reach a fresh instance. That is the designed fail-closed
+behavior, and it is visible in both logs.
+
+The harness evidence file (`b30-gateway-evidence.json`, 4,032 B, SHA-256
+`A9ED9EE26A4D98F22464B8C2E8639AB9AC2FE12FD2DB725FEC40B5919FCCD758`) records `mode: fixture`,
+listen `10.30.2.1:18082`, the same policy digest for all four instances, the four per-round counter
+sets above, and `origin.requests: 1` with a single metadata record: `POST /v1/chat/completions`,
+authorization equality with `Bearer public`, JSON content type, 127 body bytes and the canary present
+as a boolean flag. The file contains no body, no canary marker string and no authorization value; the
+process exited and nothing listened on `18082` afterwards.
+
+What this establishes: from inside the relay VM the approved request reaches the gateway and is
+forwarded to the controlled fixture origin exactly once (the fixture reported `prompt_bytes 127`,
+and no other response body exists); an unapproved path, an absolute-URI proxy-style request, a
+`CONNECT` tunnel, a missing credential and a wrong credential are each refused before any upstream
+fetch; and the gateway's own log carries no body, no canary marker and no authorization value
+(`B30-CANARY-PROMPT-0f5a` and `Bearer` appear zero times in the event log and the evidence JSON).
+
+**Deviation, recorded rather than hidden:** the first probe round (`B30GW`, log
+`b30-gwprobe-b30-relay.log`, 1,377 B, SHA-256 `BC32E1F2...`) is not evidence for the refusals. The
+harness then gave each round a fixed 180 s window while the operator console was driven by hand, so
+rounds 1–5 expired before the guest started and the whole probe landed on the last instance: the log
+shows `200`, then `404`, then four `Connection refused` retries. The harness now waits for the first
+request within the overall deadline and ends the run instead of shifting scenarios; the second round
+above is the corrected run. A related operator-side error is recorded for completeness: an early
+collector run detached the media before the guest had written its log, which the collector treated
+as `PARTIAL` and kept the VHDX; the media was re-verified and re-attached instead of rebuilt.
+
+Evidence level: **deployed host-side gateway boundary with a controlled loopback origin**, plus raw
+sockets from inside the relay VM. It is not integration evidence for the live TLS chain.
+
+Supported by this entry: B30-07's requirement that an unapproved origin, path or `CONNECT` is denied
+before any external request, that the fixed origin succeeds against a controlled gateway fixture,
+that the gateway policy and digest are independently recorded, and that its logs keep no body or
+authorization material — bounded to a loopback fixture origin and a plaintext relay-to-gateway leg.
+
+Not supported by this entry: the deployed TLS chain (no real origin, resolver, trust store or
+certificate validation was exercised), live inference, and the relay *process* forwarding through
+this gateway (the probes are raw sockets from the relay guest shell, not the relay service). The
+non-loopback worker-facing listener decision and the FIDO2 positive signature remain `not_run`.
+
+Harness revision note: the deployment run used the harness revision present when its process
+started. Subsequent local edits do not change behavior for the valid deployment arguments: the
+evidence JSON now uses distinct `originConfig` and `origin` keys (the run's JSON had the latter
+only, with per-round policy including the origin config); positive-integer argument checks reject
+zero/invalid rounds, deadline and ports; the smoke probe now reports the nested `ECONNREFUSED`
+code. The updated harness was exercised with `--smoke`, loopback-only and requiring no host firewall
+rule.
+Not rerun: the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository);
+`integration/b30-egress-namespaces.sh` (privileged WSL fixture, unchanged); the FIDO2 positive
+signature dry run; the active provider WebSocket-bypass experiment; live inference, paid calls and
+any catalog read (not authorized). The deployment harness itself is not part of `node --test` (it is
+deployment tooling under `integration/`, not a test file), so the suite result below does not
+exercise the deployment path.
+
+Suite at this head (documentation plus one deployment harness; `src/` and `test/` untouched):
+serial `node --test --test-concurrency=1` -> 416 tests, 411 pass, 0 fail, 5 platform-gated skips,
+exit 0 (195 s). The default-concurrency `node --test` run, which is what the Windows CI job uses,
+exits 1 on the known timing-sensitive `B10-03` abort assertion (`aborted.stdout` empty instead of
+`before`) on this loaded machine; the same file passes 8/8 in isolation, and the failure is
+recorded here rather than erased. `git diff --check` is clean.
+
+Claim: this entry supports that a host-side L7 gateway deployed on the ADR-010 relay link refuses an
+unapproved origin, path, `CONNECT` tunnel and credential while forwarding exactly the approved
+request to a controlled fixture origin, with a recorded policy digest and body-free logs, based on
+guest-written probe output and host firewall and gateway counters. It does not support a deployed
+TLS chain, live activation, ready-for-review or merge.
