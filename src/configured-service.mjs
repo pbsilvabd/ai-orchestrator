@@ -10,8 +10,9 @@ import { freeListenerPlan, startFreeListeners } from './free-listeners.mjs';
 // The second argument is trusted application code, never JSON/MCP input. Live
 // composition is closed: the pinned host follows model-request redirects and the guard
 // cannot see or block them (B29-05), so only an explicit loopback fixture composes.
-// `freeListeners` (B30-04) replaces the fixture endpoint with a supervised loopback
-// relay → gateway chain. Its startup authority is trusted composition only: an operator
+// `freeListeners` (B30-04) replaces the fixture endpoint with a supervised
+// relay -> gateway chain. The relay binds loopback by default and may be given an
+// explicit loopback/private worker-facing address by trusted composition. Its startup authority is trusted composition only: an operator
 // approval artifact (shape, expiry and zero budget checked; not a signature) plus a gate
 // whose exposed digests match the plan. It is NOT an SSHSIG-verified startup. The signed
 // gate verifies each submitted task (B30-05 partial).

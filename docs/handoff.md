@@ -1,5 +1,19 @@
 # Continuation point — 2026-11-15
 
+2026-11-16 update: draft PR #45 (B30) still carries the fixture-only relay/gateway/approval work
+and is not ready or merged. With maintainer authorization, the real TLS path to `opencode.ai`
+(Node default verification, TLS 1.3, Google Trust Services), one live-gateway empty JSON request
+(provider 400 with no generation), an application-level WebSocket refusal (405) and a fresh
+zero-price catalog read were recorded in `docs/validation.md`. The non-loopback worker-facing
+listener decision is now implemented in the trusted composition: `freeListeners` accepts an
+explicit private/loopback `relayHost` (default `127.0.0.1`), refuses wildcard/unspecified, public,
+IPv4-mapped and hostname forms, derives the worker base URL and binds the address into the relay
+policy digest; tests cover the policy and a real bind on `127.0.0.2`. Still `not_run`: positive
+FIDO2 hardware signature (no device present), provider WebSocket bypass from a worker compartment
+(no VMs), deployment on a real private NIC/Ubuntu host, and live inference. Next action: obtain
+the FIDO2 dry run and the deployment environment, then re-review; merge needs explicit
+authorization.
+
 2026-11-15 fifth correction (release-authority transfer; same draft PR #45). The independent
 re-review at `f6fdd1e` confirmed the forged-handoff fix but found that the original capability
 holder could still call `cap.releaseOwner()` after `createTaskService` had consumed it, removing

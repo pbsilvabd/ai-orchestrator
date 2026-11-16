@@ -100,7 +100,10 @@ zero-price. Neither is repeated, and a fresh read needs a separate narrow author
 2026-11-15 second correction (draft, not ready): the supervised relay and gateway are composed
 into the trusted service only through the fixture-only `freeListeners` option, with approved-run
 and digest gates, launch refusal, uncertain-stop retention, crash-to-blocked dispatch and
-close-time stop. Loopback only. A same-day correction acquires and reconciles task-home
+close-time stop. Loopback default; from 2026-11-16 the trusted composition also accepts an
+explicit `relayHost`, binds the relay to that exact loopback/private address, derives the worker
+base URL from it and binds the address into the relay policy digest (wildcard/unspecified, public,
+IPv4-mapped and hostname forms are refused). A same-day correction acquires and reconciles task-home
 ownership before any listener bind and holds it through a confirmed stop; the handoff is an
 opaque, single-use capability, so forged, copied, released, reused or wrong-home handoffs are
 refused beside an active owner, and release authority passes to the consuming service at handoff
@@ -111,10 +114,12 @@ task/workspace/worker effect. The Windows two-VM deployment is evidenced for the
 for the in-VM WebSocket-upgrade/unapproved-port negatives, and for a host-side L7 gateway on the
 relay link in fixture mode (approved request forwarded once to a controlled loopback origin;
 unapproved path, absolute-URI, `CONNECT` and credential refused before any upstream fetch, with a
-recorded policy digest and body-free logs). The gateway's TLS chain to the real origin, an
-application-level WebSocket rejection, the FIDO2 positive signature, the active bypass experiment,
-the independent Ubuntu host and any non-loopback listener decision remain open, so B30 is not ready
-and not merged.
+recorded policy digest and body-free logs). Authorized probes on 2026-11-16 validated the real
+resolver/trust store/hostname chain to `opencode.ai`, forwarded one empty JSON request through the
+live gateway (provider 400, no generation), refused a WebSocket upgrade at the gateway (405) and
+re-read the catalog once (still zero-price). The FIDO2 positive signature, the active bypass
+experiment, the independent Ubuntu host and deployment on a real private NIC remain open, so B30
+is not ready and not merged.
 
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.
 M3 may start with one authorized model and fallback disabled. Two models are

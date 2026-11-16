@@ -4,9 +4,11 @@ Status: partly executed for the Windows two-VM path only. On 2026-11-15 a Hyper-
 `B30-Worker` / `B30-Relay` pair was provisioned under ADR-010's internal-only topology and
 probed from inside both guests, and on 2026-11-16 a host-side L7 gateway was deployed on the
 relay link in fixture mode for one authorized session; the deployment inventory is recorded
-below and the raw results are in [validation.md](validation.md). Everything after that —
-the deployed TLS chain to the real origin, a positive FIDO2 signature, the active WebSocket
-bypass experiment and live inference — is still `not_run`. No independent Ubuntu host has
+below and the raw results are in [validation.md](validation.md). The real
+resolver/trust-store/hostname chain to the fixed origin was exercised on 2026-11-16 (one empty
+JSON request, provider 400, no generation), but a deployed relay→gateway TLS leg in the ADR-010
+topology, a positive FIDO2 signature, the active WebSocket-bypass experiment, binding the relay on
+a real private NIC and live inference remain `not_run`. No independent Ubuntu host has
 been provisioned, and the isolated WSL2 netns/veth fixture remains an observation, **not**
 a substitute for a deployment. Nothing below changes any host network or installs packages.
 
@@ -135,9 +137,12 @@ Deployment checklist (each item needs its own authorization and evidence):
    with recorded counters. Initial-namespace ruleset empty before and after.
 2. Real socket probes from inside the worker compartment: direct IPv4/IPv6, DNS, WebSocket
    upgrade and an unapproved port, each denied with real exits.
-3. The relay listens only on the worker-facing address. The current code and composition
-   accept loopback only; a non-loopback deployment listener is a decision that needs its
-   own ADR amendment before code changes.
+3. The relay listens only on the worker-facing address. The decision is recorded (ADR-010
+   amendment, 2026-11-16): the trusted composition accepts an explicit private/loopback
+   `relayHost` (default loopback), derives the worker base URL from it, refuses
+   wildcard/unspecified, public, IPv4-mapped and hostname forms, and binds the address into the
+   relay policy digest. Binding it on a real private NIC in the two-VM/namespace topology is
+   still `not_run`.
 4. Real TLS: the gateway reaches the fixed origin through the system trust store. Record the
    certificate chain, the hostname validated and the resolver used. Offline disposable-CA
    fixtures do not establish this.
@@ -159,10 +164,13 @@ on 2026-11-15: an off-link upgrade has no transport at all and the reachable pee
 unapproved ports. Separately, the host-side gateway boundary has a fixture-mode deployment
 observation on the relay link (2026-11-16): the approved request is forwarded once to a controlled
 loopback origin and an unapproved path, absolute-URI request, `CONNECT` and credential are refused
-before any upstream fetch. Items 3–8 are `not_run`, including the non-loopback worker-facing
-listener (which needs its own ADR amendment), the deployed TLS chain to the real origin, an
-application-level WebSocket rejection and the FIDO2 dry run. The Ubuntu host checklist is untouched.
-The public catalog GET for the fixed free model was performed once at `8e358a4` (dated
-snapshot, not repeated) and a second bounded GET is recorded in the 2026-11-15 validation
-entry. Neither authorizes live inference, and no live activation, ready or merge is authorized
+before any upstream fetch. Items 3–8 remain `not_run`: binding the relay on a real private NIC
+(the policy and implementation exist in the trusted composition; the deployment does not), the
+deployed relay→gateway TLS leg (the direct real-origin resolver/trust/hostname check ran on
+2026-11-16 with an empty JSON request and provider 400), the application-level provider
+WebSocket experiment (the gateway refuses a handshake with 405, but the active bypass experiment
+did not run), the FIDO2 dry run, live activation and the Ubuntu host checklist. The public catalog
+GET for the fixed free model was performed once at `8e358a4` (dated
+snapshot, not repeated); a third bounded read on 2026-11-16 revalidated the same model as
+zero-price. None authorizes live inference, and no live activation, ready or merge is authorized
 while these gates are open.

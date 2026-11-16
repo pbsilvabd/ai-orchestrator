@@ -1,16 +1,19 @@
+import { isIP } from 'node:net';
 import { gatewayPolicyDigest } from './egress-gateway.mjs';
 import { relayPolicyDigest } from './relay.mjs';
 import { createListenerSupervisor } from './listener-supervisor.mjs';
 import { FREE_MODEL } from './free-provider.mjs';
 
-// Trusted composition of the supervised fixture relay → gateway chain (B30-04). It is only
+// Trusted composition of the supervised relay -> gateway chain (B30-04). It is only
 // reachable from `createConfiguredTaskService` with an approved run and a signed-admission
 // gate whose relay/gateway digests match the configuration below. Startup itself is NOT
 // SSHSIG-verified: the operator approval artifact is unsigned JSON (shape/expiry/zero budget
 // only) and the gate digests are not a signature. The signed gate verifies each submitted
 // task instead. Ports are fixed and non-zero so both policy digests are known before any
-// child starts. Every listener binds 127.0.0.1 and the gateway is fixture-mode, so this path
-// cannot reach a live origin. Task text never supplies a host, port, origin or path.
+// child starts. The relay binds loopback by default; trusted composition may pass an
+// explicit loopback/private `relayHost` for the ADR-010 worker-facing interface. The gateway
+// is fixture-mode and loopback-only, so this path cannot reach a live origin. Task text never
+// supplies a host, port, origin or path.
 
 export const FREE_RELAY_PATH = '/v1/chat/completions';
 export const FREE_LISTENER_START_AUTHORITY =
@@ -27,12 +30,68 @@ function validPort(port) {
   return Number.isInteger(port) && port >= 1 && port <= 65535;
 }
 
+// Explicit relay binds must be concrete loopback/private addresses. Wildcard/unspecified,
+// public and hostname forms are refused: the composition never binds every interface or a
+// public address, and the address is part of the relay policy digest.
+function isAllZeroIpv6(host) {
+  const parts = host.split('::');
+  if (parts.length === 1) {
+    const groups = host.split(':');
+    return groups.length === 8 && groups.every(group => /^0+$/.test(group));
+  }
+  if (parts.length !== 2) return false;
+  const left = parts[0] ? parts[0].split(':') : [];
+  const right = parts[1] ? parts[1].split(':') : [];
+  if (left.length + right.length > 7) return false;
+  const groups = [...left, ...Array(8 - left.length - right.length).fill('0'), ...right];
+  return groups.every(group => /^0+$/.test(group));
+}
+
+function ipv6Groups(host) {
+  if (host.includes('.')) return null; // IPv4-mapped forms are refused, not silently accepted
+  const parts = host.split('::');
+  if (parts.length > 2) return null;
+  const left = parts[0] ? parts[0].split(':') : [];
+  const right = parts.length === 2 && parts[1] ? parts[1].split(':') : [];
+  const missing = 8 - left.length - right.length;
+  if (missing < 0 || (parts.length === 1 && left.length !== 8)) return null;
+  const groups = [...left, ...Array(parts.length === 2 ? missing : 0).fill('0'), ...right];
+  if (groups.length !== 8 || groups.some(group => !/^[0-9a-fA-F]{1,4}$/.test(group))) return null;
+  return groups.map(group => parseInt(group, 16));
+}
+
+function isPrivateOrLoopback(host) {
+  const family = isIP(host);
+  if (family === 4) {
+    const [a, b] = host.split('.').map(Number);
+    return a === 10 || a === 127 || (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) || (a === 169 && b === 254);
+  }
+  if (family === 6) {
+    const groups = ipv6Groups(host);
+    if (!groups) return false;
+    if (groups.slice(0, 7).every(group => group === 0) && groups[7] === 1) return true; // ::1
+    if ((groups[0] & 0xfe00) === 0xfc00) return true; // fc00::/7 unique local
+    if ((groups[0] & 0xffc0) === 0xfe80) return true; // fe80::/10 link local
+    return false;
+  }
+  return false;
+}
+
+function urlHost(host) {
+  return isIP(host) === 6 ? `[${host}]` : host;
+}
+
 // Pure: builds the child configurations and their policy digests without any effect.
 export function freeListenerPlan(listeners) {
   if (!listeners || typeof listeners !== 'object' || Array.isArray(listeners)) refuse('free listeners must be an object');
-  const { relayPort, gatewayPort, gatewayOrigin, limits } = listeners;
+  const { relayPort, gatewayPort, gatewayOrigin, limits, relayHost = LOOPBACK } = listeners;
   if (!validPort(relayPort) || !validPort(gatewayPort) || relayPort === gatewayPort) {
-    refuse('free listeners require distinct fixed loopback ports');
+    refuse('free listeners require distinct fixed ports');
+  }
+  if (typeof relayHost !== 'string' || !isIP(relayHost) || isAllZeroIpv6(relayHost) ||
+      !isPrivateOrLoopback(relayHost)) {
+    refuse('free listener relay host must be a concrete private or loopback IP address');
   }
   const originMatch = /^http:\/\/127\.0\.0\.1:(\d{1,5})$/.exec(gatewayOrigin ?? '');
   if (!originMatch || !validPort(Number(originMatch[1])) || Number(originMatch[1]) === gatewayPort ||
@@ -41,16 +100,17 @@ export function freeListenerPlan(listeners) {
   }
   const gatewayConfig = { mode: 'fixture', listen: { host: LOOPBACK, port: gatewayPort }, origin: gatewayOrigin,
     path: FREE_RELAY_PATH, limits };
-  const relayConfig = { listen: { host: LOOPBACK, port: relayPort },
+  const relayConfig = { listen: { host: relayHost, port: relayPort },
     upstream: { origin: `http://${LOOPBACK}:${gatewayPort}`, path: FREE_RELAY_PATH, method: 'POST' },
     model: FREE_MODEL, limits };
   return {
     relayConfig,
     gatewayConfig,
+    relayHost,
     relayPolicyDigest: relayPolicyDigest(relayConfig),
     gatewayPolicyDigest: gatewayPolicyDigest(gatewayConfig),
     startupAuthority: FREE_LISTENER_START_AUTHORITY,
-    workerBaseURL: `http://${LOOPBACK}:${relayPort}/v1`,
+    workerBaseURL: `http://${urlHost(relayHost)}:${relayPort}/v1`,
   };
 }
 

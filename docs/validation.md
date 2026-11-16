@@ -3631,3 +3631,37 @@ inference. The live composition path remains closed and the PR stays draft.
 
 The earlier "no external host was contacted" sentence in the preceding entry describes that
 run only; the probes above contacted `opencode.ai` under this session's authorization.
+
+## Explicit relay bind address in the trusted composition (2026-11-16)
+
+Implemented the maintainer-selected option for the last code-side deployment decision: the
+trusted composition now accepts an explicit worker-facing relay address instead of hardcoding
+loopback. Defaults and the closed live path are unchanged.
+
+- `src/free-listeners.mjs`: `freeListenerPlan` accepts `relayHost` (default `127.0.0.1`),
+  binds the relay to that exact address, derives `workerBaseURL` from it (IPv6 bracketed) and
+  refuses, before any child starts, anything that is not a concrete loopback/private IPv4
+  (`127/8`, `10/8`, `172.16/12`, `192.168/16`, `169.254/16`) or IPv6 (`::1`, `fc00::/7`,
+  `fe80::/10`). Wildcard/unspecified (`0.0.0.0`, `::` and compressed aliases), public
+  addresses, IPv4-mapped IPv6 and hostnames are refused with `invalid_argument`. The address is
+  part of `relayPolicyDigest`, so an admission gate built for one bind address cannot admit
+  another. The gateway stays fixture-mode loopback.
+- `test/free-listeners.test.mjs`: added a pure policy test (accepted/rejected addresses,
+  digest difference, IPv6 URL form) and a real composition test that binds the relay on
+  `127.0.0.2`, confirms `127.0.0.1` is not additionally exposed, and confirms close releases
+  the port. Private addresses such as `10.30.1.1` are policy-tested only; binding them needs a
+  real NIC.
+- Docs: ADR-010 dated amendment, task contract listener bullet, roadmap/handoff status,
+  deployment prerequisites item 3, B30 card and integration README updated; no live origin,
+  composition flag or gateway mode was opened.
+
+Validation: `node --test test/free-listeners.test.mjs test/free-listeners-authority.test.mjs`
+-> 19 pass / 0 fail / 0 skip (exit 0); serial `node --test --test-concurrency=1` -> 418 tests,
+413 pass / 0 fail / 5 platform-gated skips (exit 0, 186 s); `node examples/fallback-demo.mjs`
+-> 429 then 200 (exit 0); pinned `integration/opencode-free-relay.mjs` -> exit 0 with the same
+six scenarios; `git diff --check` clean.
+
+Not run and unchanged: binding the relay on a real private NIC in the ADR-010 topology, the
+deployed relay→gateway TLS leg (only the direct real-origin trust check above), positive FIDO2,
+the provider WebSocket-bypass experiment, an independent Ubuntu host and live inference. The
+live composition path remains closed; the PR stays draft.

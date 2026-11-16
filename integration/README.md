@@ -388,7 +388,12 @@ its own temporary-process/loopback fixture:
 - `src/relay.mjs` + `test/relay.test.mjs` — one fixed upstream, no arbitrary target,
   `Bearer public` only, terminal refusal of 301/302/303/307/308 without forwarding,
   independent request/byte/time bounds, rejection of all-zero IPv4/IPv6 bind addresses
-  (including compressed IPv6 aliases), fail-closed bind/upstream/teardown.
+  (including compressed IPv6 aliases), fail-closed bind/upstream/teardown. The trusted
+  `freeListeners` composition accepts an explicit loopback/private `relayHost` (default
+  `127.0.0.1`), refuses wildcard/unspecified, public, IPv4-mapped and hostname forms, and
+  covers the address in the relay policy digest; `test/free-listeners.test.mjs` also binds
+  the relay on loopback `127.0.0.2` to prove the explicit address is used and the default
+  address stays closed.
 - `src/egress-gateway.mjs` + `test/egress-gateway.test.mjs` — one fixed origin, fixed
   ingress `Bearer public` forwarded upstream (never inheriting arbitrary client
   headers), CONNECT and redirect refusal, unapproved-path refusal, an independent

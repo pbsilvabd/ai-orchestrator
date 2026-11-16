@@ -38,9 +38,9 @@ function occupy(port) {
   });
 }
 
-function portAccepts(port) {
+function portAccepts(port, host = '127.0.0.1') {
   return new Promise(resolve => {
-    const socket = connect(port, '127.0.0.1');
+    const socket = connect(port, host);
     socket.once('connect', () => { socket.destroy(); resolve(true); });
     socket.once('error', () => resolve(false));
   });
@@ -105,6 +105,52 @@ async function approvalAt(f) {
   await writeFile(file, JSON.stringify(approvalFor(f.request)));
   return file;
 }
+
+test('B30-04: the relay bind host is explicit, private or loopback, and covered by the policy digest', () => {
+  const base = { relayPort: 18081, gatewayPort: 18082,
+    gatewayOrigin: 'http://127.0.0.1:18083', limits: LIMITS };
+  const loopbackPlan = freeListenerPlan(base);
+  assert.equal(loopbackPlan.relayHost, '127.0.0.1');
+  assert.equal(loopbackPlan.relayConfig.listen.host, '127.0.0.1');
+  assert.equal(loopbackPlan.workerBaseURL, 'http://127.0.0.1:18081/v1');
+
+  const workerFacing = freeListenerPlan({ ...base, relayHost: '10.30.1.1' });
+  assert.equal(workerFacing.relayConfig.listen.host, '10.30.1.1');
+  assert.equal(workerFacing.workerBaseURL, 'http://10.30.1.1:18081/v1');
+  assert.notEqual(workerFacing.relayPolicyDigest, loopbackPlan.relayPolicyDigest,
+    'the bind address is part of the approved relay policy');
+
+  const ipv6 = freeListenerPlan({ ...base, relayHost: 'fd00::1' });
+  assert.equal(ipv6.workerBaseURL, 'http://[fd00::1]:18081/v1');
+
+  for (const relayHost of ['0.0.0.0', '::', '0:0:0:0:0:0:0::', '8.8.8.8', '1.1.1.1', '100.64.0.1',
+    'localhost', 'example.com', '', '10.30.1.999', '::ffff:10.30.1.1']) {
+    assert.throws(() => freeListenerPlan({ ...base, relayHost }), { code: 'invalid_argument' }, relayHost);
+  }
+  for (const relayHost of ['127.0.0.1', '127.0.0.2', '10.30.1.1', '172.16.0.1', '192.168.1.10',
+    '169.254.1.1', '::1', 'fd00::1', 'fe80::1']) {
+    assert.equal(freeListenerPlan({ ...base, relayHost }).relayConfig.listen.host, relayHost);
+  }
+});
+
+test('B30-04: an explicit relay bind address is honored and the previous loopback address stays closed', async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  listeners.relayHost = '127.0.0.2';
+  const plan = freeListenerPlan(listeners);
+  const approvalFile = await approvalAt(f);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f), approvalFile,
+    admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.equal(await portAccepts(listeners.relayPort, '127.0.0.2'), true,
+    'the relay binds the explicit address');
+  assert.equal(await portAccepts(listeners.relayPort, '127.0.0.1'), false,
+    'the default loopback address is not additionally exposed');
+  await service.close();
+  assert.equal(await portAccepts(listeners.relayPort, '127.0.0.2'), false);
+});
 
 test('B30-04: supervised listeners refuse to start without an approved run; no child, lock or metadata lookup', async t => {
   const f = fixture(t);

@@ -486,3 +486,25 @@ needs was used and then removed.
 The firewall rule is a deployment-environment exception, not part of the gateway's policy. A
 future run must recreate it with the same scope and remove it again, or prefer an Ubuntu host
 where the same restriction is part of the reviewed nftables policy.
+
+## Dated amendment 2026-11-16 - explicit private relay bind in the trusted composition
+
+Decision: the non-loopback worker-facing listener is no longer an open decision. The trusted
+composition (`src/free-listeners.mjs`) accepts an explicit `relayHost` supplied by trusted
+application code, binds the relay to that exact address, and derives the pinned host's worker
+base URL from it. The default remains `127.0.0.1`, so every existing fixture and the passive
+path are unchanged.
+
+- Accepted addresses are concrete IPv4 loopback/RFC 1918/link-local or IPv6 `::1`/`fc00::/7`/
+  `fe80::/10`. Wildcard/unspecified (`0.0.0.0`, `::` and compressed aliases), public addresses,
+  IPv4-mapped IPv6 forms and hostnames are refused with `invalid_argument` before any child
+  starts.
+- The address is part of `relayPolicyDigest`, so an admission gate built for a loopback relay is
+  refused for a private-address relay (and the reverse). Task text still cannot choose a port,
+  host, origin or model.
+- The gateway in this composition stays fixture-mode and loopback-only; this amendment does not
+  open the live origin or live composition. Deploying the relay on the worker-facing NIC still
+  requires the ADR-010 two-VM/namespace topology, OS/network containment evidence and a
+  separately signed approval.
+- Supersedes only the "non-loopback worker-facing listener decision" clause in the deployment
+  update above. Deployment of the listener on a real private NIC remains `not_run`.

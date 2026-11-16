@@ -636,9 +636,13 @@ above). Live composition remains closed.
   second correction; ownership/authority correction same day).
   `createConfiguredTaskService(…, { freeListeners })` first acquires and reconciles exclusive
   task-home ownership (`openTaskHome`), then starts a gateway
-  (fixture mode, loopback origin) and then a relay (loopback, one fixed upstream, model
+  (fixture mode, loopback origin) and then a relay (explicit private/loopback `relayHost`,
+  default `127.0.0.1`; one fixed upstream, model
   `opencode/deepseek-v4.1-flash-free`, path `/v1/chat/completions`) under the supervisor,
-  with fixed non-zero ports and the worker base URL derived from the relay port. The
+  with fixed non-zero ports and the worker base URL derived from the relay host and port. The
+  relay host must be concrete loopback/RFC 1918/link-local IPv4 or `::1`/`fc00::/7`/`fe80::/10`
+  IPv6; wildcard/unspecified, public, IPv4-mapped and hostname forms are refused before any
+  child starts, and the address is part of the relay policy digest the admission gate binds. The
   pre-acquired store is handed over only as the opaque, frozen, single-use capability returned
   by `openTaskHome`; a shaped or copied `{ store, releaseOwner }` object, a released or reused
   capability and a capability for another home are refused, so caller honesty is not an
@@ -678,7 +682,9 @@ above). Live composition remains closed.
   workspace or spawn; `createConfiguredTaskService` passes a supplied `admission` through
   unchanged.
 
-None of these opens live use. The relay/gateway admit only loopback fixtures in tests;
+None of these opens live use. The relay/gateway admit only loopback/private fixtures in tests
+(the explicit-bind test uses loopback `127.0.0.2`; private addresses are policy-tested without
+binding them);
 the pinned OpenCode 2.2.5 host is routed through the relay→gateway→fixture-origin
 loopback chain by `integration/opencode-free-relay.mjs` (normal run succeeded; each of
 301/302/303/307/308 made the task `failed` with one attempt and zero alternate-origin
