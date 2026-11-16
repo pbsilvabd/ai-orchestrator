@@ -130,12 +130,14 @@ Deployment checklist (each item needs its own authorization and evidence):
 8. Teardown of only objects this run created, with verified-empty host residue.
 
 Remaining gates status (2026-11-15): on Windows, item 1 in its Hyper-V form and item 2 in its
-IPv4/IPv6/DNS/alternate-origin form have deployed evidence — two Internal switches, no
-Default/External switch, no NAT/ICS/share, no forwarding, no worker default route or DNS, and
-guest-written probe logs showing every off-link attempt denied while the relay stays reachable.
-Item 2 is still open for a WebSocket upgrade and an unapproved port attempted from inside the
-VM. Items 3–8 are `not_run`, including the relay-to-gateway leg (see the firewall requirement
-above), the deployed TLS chain and the FIDO2 dry run. The Ubuntu host checklist is untouched.
+IPv4/IPv6/DNS/alternate-origin/WebSocket/unapproved-port form have deployed evidence — two Internal
+switches, no Default/External switch, no NAT/ICS/share, no forwarding, no worker default route or
+DNS, and guest-written probe logs showing every off-link attempt denied while the relay stays
+reachable. Item 2's WebSocket-upgrade and unapproved-port attempts were run from inside both guests
+on 2026-11-15: an off-link upgrade has no transport at all and the reachable peer refuses the
+unapproved ports. Items 3–8 are `not_run`, including the relay-to-gateway leg (see the firewall
+requirement above), the deployed TLS chain, an application-level WebSocket rejection and the FIDO2
+dry run. The Ubuntu host checklist is untouched.
 The public catalog GET for the fixed free model was performed once at `8e358a4` (dated
 snapshot, not repeated) and a second bounded GET is recorded in the 2026-11-15 validation
 entry. Neither authorizes live inference, and no live activation, ready or merge is authorized
