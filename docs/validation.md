@@ -3167,3 +3167,112 @@ Not rerun: `node --test` at default concurrency locally (the known parallel-load
 Claim: This entry supports that the capability creator can no longer release an active service's task-home lock, that only the consuming service's close releases after scheduler idle and `beforeRelease` cleanup, and that failed-construction and uncertain-cleanup behavior is preserved, based on `test/service-ownership-handoff.test.mjs`, the standalone reproduction and the focused set. It does not support any positive FIDO2 signature, deployed containment, the deployed TLS chain, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.
 
 Exact-head CI for `352c212` (workflow run `43768061960`) succeeded on both `windows-latest` and `ubuntu-latest`; the only non-success step annotations are the intentional `continue-on-error` pipeline-exit fixtures. The docs-only receipt commit that records this is verified by its own exact-head PR run.
+
+## M3 preparation: B30 two-VM Hyper-V deployment (worker compartment and relay egress) – 2026-11-15
+
+Executed on Windows 11 Pro x64 with Hyper-V and two Ubuntu Server 24.04.5 guests (`B30-Worker`,
+`B30-Relay`, kernel `6.8.0-139-generic`). Date: 2026-11-15; the guest logs are stamped
+`2026-11-16T01:41:29Z` (relay) and `2026-11-16T01:43:13Z` (worker).
+
+Method and limits of this run: the agent session was **not** elevated, so every Hyper-V and
+host-network command was executed by the host operator in an administrator PowerShell, while the
+agent read host state through its own tools. No guest was reachable over the network: guest
+commands travelled on FAT32 VHDX media hot-attached at SCSI 0/2 (`B30CFG`, netplan) and SCSI
+0/3 (`B30PROBE`, probes), and each guest wrote its own log back onto that volume, which the agent
+then read from the host. Nothing below was transcribed by hand from a console, and no guest
+shell, package installation or copy/paste was used.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `Get-VMSwitch`, `Get-NetNat`, `Get-Service SharedAccess` plus an ICS registry read | Host topology and no-NAT/no-ICS invariants | `B30-Worker-Relay` and `B30-Relay-Gateway`, both `Internal`, `NetAdapterInterfaceDescription` empty; the third switch `WSL (Hyper-V firewall)` is Internal, belongs to WSL and carries no B30 adapter; `Get-NetNat` empty; `SharedAccess` running with `ICS_Private`/`ICS_Public`/`ICS_Configuration` absent, zero `192.168.137.*` addresses and zero `SharedAccess` keys naming a B30 adapter | 0 |
+| `Get-VMNetworkAdapter -VMName 'B30-Worker','B30-Relay'` | Adapter-to-switch map | worker `worker-relay` `00:15:5D:64:5F:02` -> `B30-Worker-Relay` (its only adapter); relay `relay-worker` `00:15:5D:64:5F:03` -> `B30-Worker-Relay`; relay `relay-gateway` `00:15:5D:64:5F:04` -> `B30-Relay-Gateway` | 0 |
+| `Get-NetIPAddress`, `Get-NetIPInterface`, `Get-NetRoute` on the host | Host-side invariants after guest setup | `10.30.2.1/30` Manual on `vEthernet (B30-Relay-Gateway)` with `Forwarding=Disabled`; `vEthernet (B30-Worker-Relay)` `Disabled` with no IPv4 address; no route to `10.30.1.0/30` | 0 |
+| `sudo mount -L B30CFG /mnt && sudo bash /mnt/setup.sh` (operator-typed, one line per console) | Apply the recorded netplan | relay `eth0 10.30.1.1/30`, `eth1 10.30.2.2/30`; worker `eth0 10.30.1.2/30`; no default route, no DNS server, `net.ipv4.ip_forward=0`, `net.ipv6.conf.all.forwarding=0` | 0 |
+| `sudo mount -L B30PROBE /media/b30 && sudo bash /media/b30/probe.sh` (relay first, then worker) | Real socket attempts from inside each compartment | two logs of 3,162 B and 2,996 B written by the guests themselves; excerpts below | 0 |
+| Key removal inside `probe.sh` | Remove the temporary deployment key | `B30_SSH_KEY_REMOVED=/root/.ssh/authorized_keys` and `/home/b30/.ssh/authorized_keys` on both guests | 0 |
+
+Worker log (`b30-probe-b30-worker.log`, SHA-256
+`4C4F0C0548AA512B0D84E606640F28B369F77F13A2F6BBAD2BFDA50632DCB099`), verbatim probe lines:
+
+```
+### worker to relay icmp 10.30.1.1 (expect reachable)
+1 packets transmitted, 1 received, 0% packet loss, time 0ms   EXIT=0
+### tcp 10.30.1.1:22
+bash: connect: Connection refused                            EXIT=1
+### worker to host gateway icmp 10.30.2.1 (expect denied)
+ping: connect: Network is unreachable                        EXIT=2
+### tcp 10.30.2.1:443
+Network is unreachable                                       EXIT=1
+### worker to internet icmp 1.1.1.1, tcp 1.1.1.1:443, 93.184.216.34, dns, ipv6
+Network is unreachable (each EXIT=2 or EXIT=1)                denied
+```
+
+Relay log (`b30-probe-b30-relay.log`, SHA-256
+`53BBA405904A95E82CAF6F5E27C8D4B08FFE3AD5EC0DE6CAC6CFE33108A9712C`), verbatim probe lines:
+
+```
+### relay to worker icmp 10.30.1.2 (expect reachable)
+1 packets transmitted, 1 received, 0% packet loss, time 0ms   EXIT=0
+### relay to internet icmp 1.1.1.1
+ping: connect: Network is unreachable                        EXIT=2
+### tcp 1.1.1.1:443 and tcp 8.8.8.8:53
+Network is unreachable                                       EXIT=1
+### relay to alternate origin 93.184.216.34, dns, ipv4 route, ipv6 route
+Network is unreachable (each EXIT=2 or EXIT=1)                denied
+### forwarding                                             ip_forward = 0
+```
+
+The worker reaches the relay on the internal link and has no route to anything else: the host
+gateway, two Internet addresses, DNS resolution and IPv6 are all `Network is unreachable`, which
+is the routing result, not a filtered timeout. The relay reaches the worker and reaches nothing
+off-link. Neither guest has a default route or a DNS server, and both keep forwarding disabled.
+The `Connection refused` on relay port 22 is the useful positive control: the packet reached the
+relay's stack and got a reset, so the internal link works end to end while no service listens on
+it.
+
+**Deviation, recorded rather than explained away:** the relay's ICMP echo to the host gateway
+`10.30.2.1` received no reply (`1 packets transmitted, 0 received, 100% packet loss`) although
+the host pinged the relay successfully. Read-only host checks show `vEthernet
+(B30-Relay-Gateway)` in connection profile `Rede nao identificada` with `NetworkCategory
+Public`, the Public firewall profile enabled with `DefaultInboundAction NotConfigured` (block),
+the built-in `Solicitacao de Eco (ICMPv4-In)` rules present but not enabled, and no enabled
+inbound ICMPv4 allow rule other than destination-unreachable fragmentation. Kaspersky is
+registered as both an antivirus and a firewall product, so a third-party filter cannot be
+excluded from this evidence alone; separating the two would need an administrator WFP capture,
+which was **not** run, and nothing was changed on the firewall. The consequence for the design
+is recorded in [deployment-prerequisites.md](deployment-prerequisites.md): a host-side L7
+gateway on this adapter needs an explicit inbound allow rule scoped to the relay address,
+because the default inbound policy on a Public-profile adapter otherwise drops the relay's
+connections.
+
+Evidence level: **deployed two-VM OS-level containment observation**, with the caveats stated
+above. It is stronger than the WSL2 netns fixture for the worker compartment because that
+compartment is a real VM and the probes ran inside it; it does not become integration evidence
+for the relay/gateway TLS chain.
+
+Supported by this entry: B30-03's Windows two-VM topology, its no-Default-switch/no-NAT/no-ICS/
+no-forwarding conditions, its single worker NIC and route inventory, and real denied socket
+attempts from inside the worker compartment; and B30-07's relay-side direct-egress denial
+(IPv4, IPv6, DNS and two alternate origins, with real exits).
+
+Not supported by this entry: the host-side L7 gateway itself. No gateway policy or digest was
+deployed, no relay-to-gateway TLS connection was made, and there are no gateway ingress logs
+showing zero alternate-origin bytes. The WebSocket-upgrade negative was not repeated inside the
+VM; the pinned-host negative fixture recorded in the 2026-11-15 active-egress-negatives entry
+stands for that path.
+
+Not rerun: `integration/b30-egress-namespaces.sh` (privileged WSL fixture, unchanged);
+`node --test` and the focused sets (this change is documentation only; the last recorded result
+remains 415 of 416 with one pre-existing skip at `352c212`); `integration/opencode-free-relay.mjs`
+and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS
+chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates
+(`not_run`); the FIDO2 positive signature dry run (`not_run`); the active provider
+WebSocket-bypass experiment (`not_run`); live inference, paid calls and any catalog read (not
+authorized).
+
+Claim: this entry supports that a real Windows two-VM compartment with the ADR-010 internal-only
+topology denies the worker direct IPv4, IPv6, DNS and alternate-origin egress while the worker
+still reaches the relay, and that the relay has no egress of its own, based on guest-written logs
+collected from the attached media and on administrator-collected host inventory. It does not
+support a deployed gateway policy, a deployed TLS chain, a positive FIDO2 signature,
+WebSocket-bypass exclusion, live activation, ready-for-review or merge.

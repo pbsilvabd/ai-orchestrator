@@ -91,17 +91,25 @@ only. The signed SSHSIG path remains `not_run`. The second bounded catalog GET w
 `2026-11-15T19:14:36Z` and validated `deepseek-v4.1-flash-free` as zero-price. It is dated and
 not repeated, and it authorizes no live inference (ADR-010, second 2026-11-15 amendment).
 
-## Next action (2026-11-15, second correction)
+## Next action (2026-11-15, after the Windows two-VM deployment run)
 
 1. Keep PR #45 draft. Do not mark it ready and do not merge: the B30 gates below are not all
    satisfied, and the user's merge condition ("all gates pass") is therefore not met.
-2. Remaining gates, all `not_run` and none authorized here: an independent Ubuntu host with
-   the root-only namespace/nftables setup, real socket probes and teardown (checklist items
-   1–3 and 8 in `docs/deployment-prerequisites.md`); the deployed TLS chain with a real
-   resolver, trust store and origin, including expired and wrong-host cases (items 4–5); a
-   real FIDO2 `-sk` signature dry run (item 6); the active provider WebSocket-bypass
-   experiment (item 7); and a deployment decision for a non-loopback, worker-facing listener
-   (requires an ADR amendment before any code change).
+2. Deployment progress: the Windows two-VM network layer is now evidenced, not planned. Two
+   Internal switches, no Default/External switch, no NAT/ICS/share, no host forwarding, no
+   worker default route or DNS, single worker NIC, and guest-written probe logs showing the
+   worker's and the relay's off-link attempts denied while both keep their one permitted link
+   (`docs/validation.md`, 2026-11-15 two-VM entry). Remaining, all `not_run`:
+   - the host-side L7 gateway and its deployed TLS chain; on this host the gateway also needs
+     an authorized inbound rule scoped to `10.30.2.2/32`, because the gateway vEthernet is
+     Public-classified and the default inbound policy drops the relay's connections;
+   - a WebSocket-upgrade and unapproved-port attempt from inside the worker VM (the pinned-host
+     negative stands; the VM did not repeat it);
+   - the independent Ubuntu host checklist (items 1–3 and 8) if that path is chosen instead;
+   - a real FIDO2 `-sk` signature dry run (item 6) and the active provider WebSocket-bypass
+     experiment (item 7);
+   - a deployment decision for a non-loopback, worker-facing listener (requires an ADR
+     amendment before any code change).
 3. A further catalog read needs its own narrow authorization. No live inference is authorized.
 
 Earlier 2026-11-14 state (superseded for next action): B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged

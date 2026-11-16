@@ -1,9 +1,13 @@
 # B30 deployment prerequisites and setup plan (not executed)
 
-Status: plan only. No independent Ubuntu host/VM or two-VM Hyper-V environment has been
-provisioned yet ("Preciso preparar ambiente"), and FIDO2 hardware availability is not
-established. The isolated WSL2 netns/veth fixture is an observation, **not** a substitute
-for a bare-metal/VM deployment. Nothing below changes any host network or installs packages.
+Status: partly executed for the Windows two-VM path only. On 2026-11-15 a Hyper-V
+`B30-Worker` / `B30-Relay` pair was provisioned under ADR-010's internal-only topology and
+probed from inside both guests; the deployment inventory is recorded below and the raw
+results are in [validation.md](validation.md). Everything after the network layer — the
+host-side L7 gateway, its TLS chain, a positive FIDO2 signature, the active WebSocket
+bypass experiment and live inference — is still `not_run`. No independent Ubuntu host has
+been provisioned, and the isolated WSL2 netns/veth fixture remains an observation, **not**
+a substitute for a deployment. Nothing below changes any host network or installs packages.
 
 ## What must exist before any live-route work
 
@@ -21,7 +25,39 @@ for a bare-metal/VM deployment. Nothing below changes any host network or instal
 4. **Enrolled FIDO2-backed SSH signing key** (`-sk`) with user-presence + user-verification,
    a single-principal `allowed_signers` file, and a key-revocation list (never in the repo).
 
-## Fresh confirmation required before touching any host network
+## Windows two-VM environment: what exists (2026-11-15)
+
+| Item | Recorded state |
+| --- | --- |
+| Guests | `B30-Worker` and `B30-Relay`, Generation 2, Ubuntu Server 24.04.5, kernel `6.8.0-139-generic`; the install ISO was ejected and the SCSI system disk is first in boot order. |
+| Switches | `B30-Worker-Relay` (worker and relay worker-side NIC) and `B30-Relay-Gateway` (relay gateway-side NIC and the host), both `Internal`, neither bound to a physical adapter. WSL's own `WSL (Hyper-V firewall)` switch also exists and is not part of this topology. |
+| Addresses | relay `eth0 10.30.1.1/30`, `eth1 10.30.2.2/30`; worker `eth0 10.30.1.2/30`; host gateway `10.30.2.1/30`. No default route, no DNS server on either guest; `ip_forward=0` and IPv6 forwarding `0`. |
+| Host isolation | No WinNAT instance; `SharedAccess` running with no share configured, no `192.168.137.*` address and no share key naming a B30 adapter; host forwarding `Disabled` on the gateway adapter and the host's worker-side adapter `Disabled` with no address. |
+| NICs | Worker: one adapter `00:15:5D:64:5F:02`. Relay: `…5F03` toward the worker and `…5F04` toward the host. The adapter Hyper-V creates automatically for the host on the worker switch is disabled and unaddressed. |
+| Removal path | Both guests were reached only through FAT32 VHDX media (`B30CFG`, then `B30PROBE`), never over the network; the temporary deployment key was removed from `/root` and every human account on both guests, and the media disks are detached and deleted after collection. |
+
+### Host firewall requirement for the L7 gateway
+
+Deployed probes showed the relay reaching the worker but not receiving replies from
+`10.30.2.1`, and the read-only host inventory explains why: the `vEthernet (B30-Relay-Gateway)`
+adapter is classified `Public` (`Rede nao identificada`), the Public profile is enabled with
+`DefaultInboundAction NotConfigured` (block) and the built-in inbound ICMPv4 echo rules are
+disabled. Kaspersky is also registered as a firewall product, so the exact filter is not
+attributed by this evidence.
+
+Consequences, all `not_run`:
+
+1. A gateway listening on `10.30.2.1` needs an explicit inbound allow rule for its single port,
+   scoped to `10.30.2.2/32`, in the profile that the adapter actually has. Without it the relay's
+   connections are dropped by the default inbound policy, not by the gateway.
+2. The relay-to-gateway leg is therefore **not** yet demonstrated on Windows; only relay-to-worker
+   reachability and relay-to-off-link denial are.
+3. Granting that inbound rule is a firewall change on the operator's machine and needs its own
+   authorization. Preferring a dedicated `Private`-classified adapter with the narrowest rule, or
+   an Ubuntu host where the gateway rule is part of the same reviewed nftables policy, avoids
+   widening the Windows host's inbound surface.
+
+
 
 - That the operator is root/admin on the target host and authorized to create/destroy the
   VM switches or namespaces.
@@ -45,10 +81,11 @@ for a bare-metal/VM deployment. Nothing below changes any host network or instal
 
 ## What stays `not_run` until these exist
 
-Bare-metal/VM deployment, a real FIDO2 hardware-key signing dry run (the cryptographic
-positive admission path), the active provider WebSocket-bypass experiment, and live
-inference. The signed-admission code path is implemented and tested with mock/negative
-fixtures only.
+The host-side L7 gateway with its deployed TLS chain, a real FIDO2 hardware-key signing dry
+run (the cryptographic positive admission path), the active provider WebSocket-bypass
+experiment, and live inference. The signed-admission code path is implemented and tested with
+mock/negative fixtures only. The Windows two-VM network layer is no longer in this list: it
+was provisioned and probed on 2026-11-15, with the gateway leg still open as described above.
 
 ## Independent Ubuntu host: checklist and minimum permissions (plan only, 2026-11-15)
 
@@ -92,7 +129,14 @@ Deployment checklist (each item needs its own authorization and evidence):
    contacts the provider from the worker compartment. Not performed.
 8. Teardown of only objects this run created, with verified-empty host residue.
 
-Remaining gates status (2026-11-15): items 1–8 are `not_run`. The public catalog GET for the
-fixed free model was performed once at `8e358a4` (dated snapshot, not repeated) and a second
-bounded GET is recorded in the 2026-11-15 validation entry. Neither authorizes live
-inference, and no live activation, ready or merge is authorized while these gates are open.
+Remaining gates status (2026-11-15): on Windows, item 1 in its Hyper-V form and item 2 in its
+IPv4/IPv6/DNS/alternate-origin form have deployed evidence — two Internal switches, no
+Default/External switch, no NAT/ICS/share, no forwarding, no worker default route or DNS, and
+guest-written probe logs showing every off-link attempt denied while the relay stays reachable.
+Item 2 is still open for a WebSocket upgrade and an unapproved port attempted from inside the
+VM. Items 3–8 are `not_run`, including the relay-to-gateway leg (see the firewall requirement
+above), the deployed TLS chain and the FIDO2 dry run. The Ubuntu host checklist is untouched.
+The public catalog GET for the fixed free model was performed once at `8e358a4` (dated
+snapshot, not repeated) and a second bounded GET is recorded in the 2026-11-15 validation
+entry. Neither authorizes live inference, and no live activation, ready or merge is authorized
+while these gates are open.

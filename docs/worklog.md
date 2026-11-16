@@ -2654,3 +2654,45 @@ Template:
 - Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
   independent re-review of the new head is required. All B30 deployment gates remain
   `not_run`.
+
+## 2026-11-15 – M3: B30 two-VM Hyper-V deployment (worker compartment and relay egress)
+
+- Branch: `task/B30-free-relay`
+- Scope: deployment evidence and documentation only. No product code changed, no live
+  inference, no paid call, no firewall or host-network change, and no catalog read.
+- Steps:
+  1. Built the ADR-010 Windows topology with two Ubuntu Server 24.04.5 Generation 2 guests:
+     `B30-Worker-Relay` carrying the worker and the relay's worker-side NIC, and
+     `B30-Relay-Gateway` carrying the relay's gateway-side NIC and the host. Neither switch
+     is bound to a physical adapter; WSL's own `WSL (Hyper-V firewall)` switch was identified
+     and excluded from the topology rather than deleted.
+  2. Recorded the host inventory: `10.30.2.1/30` on the gateway vEthernet with forwarding
+     `Disabled`, the host's worker-side vEthernet `Disabled` and unaddressed, no route to
+     `10.30.1.0/30`, no WinNAT instance, and `SharedAccess` running with no share, no
+     `192.168.137.*` address and no share key naming a B30 adapter.
+  3. Applied the guest netplan from a FAT32 VHDX (`B30CFG`) instead of installing a remote
+     shell: relay `10.30.1.1/30` and `10.30.2.2/30`, worker `10.30.1.2/30`, no default route,
+     no DNS server, forwarding disabled on both.
+  4. Ran `probe.sh` from a second FAT32 VHDX (`B30PROBE`) inside each guest; each guest wrote
+     its own log to the volume, and the host read the logs from the attached disk. No console
+     transcription, no package installation, and no guest ever had network reachability to
+     the host or the Internet.
+  5. Interpreted the one deviation honestly instead of adjusting the expectation: the relay's
+     ICMP to the host gateway is dropped while the host reaches the relay. The gateway
+     vEthernet is `Public`/`Rede nao identificada`, the Public profile blocks inbound by
+     default and the built-in echo rules are disabled; Kaspersky is also a firewall product,
+     so the filter is not attributed. Recorded as a prerequisite for the L7 gateway rather
+     than as a topology defect, and no firewall change was made.
+- Files: `docs/validation.md`, `docs/worklog.md`, `docs/deployment-prerequisites.md`.
+- Validation: guest-written logs `B30-Worker-b30-probe-b30-worker.log` (2,996 B, SHA-256
+  `4C4F0C05...`) and `B30-Relay-b30-probe-b30-relay.log` (3,162 B, SHA-256 `53BBA405...`);
+  worker off-link attempts `Network is unreachable` for the host gateway, `1.1.1.1`,
+  `93.184.216.34`, DNS and IPv6 while `10.30.1.1` answers ICMP and resets TCP/22; relay
+  off-link attempts denied for `1.1.1.1:443`, `8.8.8.8:53`, `93.184.216.34:443`, DNS and IPv6
+  while `10.30.1.2` answers ICMP. Host checks as listed above, all exit 0 through the
+  operator's administrator session. `node --test` was not rerun because no code changed.
+- Follow-up: keep PR #45 draft. The remaining gates are the host-side L7 gateway and its TLS
+  chain (which now also needs an authorized inbound rule scoped to the relay address), the
+  WebSocket-upgrade and unapproved-port probes from inside the VM, the positive FIDO2
+  signature, live inference and the signed approval. Merge still requires explicit
+  authorization.
