@@ -99,12 +99,14 @@ not repeated, and it authorizes no live inference (ADR-010, second 2026-11-15 am
    Internal switches, no Default/External switch, no NAT/ICS/share, no host forwarding, no
    worker default route or DNS, single worker NIC, and guest-written probe logs showing the
    worker's and the relay's off-link attempts denied while both keep their one permitted link
-   (`docs/validation.md`, 2026-11-15 two-VM entry). Remaining, all `not_run`:
+   (`docs/validation.md`, both 2026-11-15 two-VM entries). A second media round covered the
+   remaining B30-03 probe row inside both compartments: a plaintext WebSocket upgrade to two
+   off-link origins is `Network is unreachable` at connect, and the reachable peer on the
+   permitted link refuses `18099` and `8080`. Remaining, all `not_run`:
    - the host-side L7 gateway and its deployed TLS chain; on this host the gateway also needs
      an authorized inbound rule scoped to `10.30.2.2/32`, because the gateway vEthernet is
      Public-classified and the default inbound policy drops the relay's connections;
-   - a WebSocket-upgrade and unapproved-port attempt from inside the worker VM (the pinned-host
-     negative stands; the VM did not repeat it);
+   - an application-level WebSocket rejection (the VM probes only show there is no transport);
    - the independent Ubuntu host checklist (items 1–3 and 8) if that path is chosen instead;
    - a real FIDO2 `-sk` signature dry run (item 6) and the active provider WebSocket-bypass
      experiment (item 7);

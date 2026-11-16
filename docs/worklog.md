@@ -2696,3 +2696,39 @@ Template:
   WebSocket-upgrade and unapproved-port probes from inside the VM, the positive FIDO2
   signature, live inference and the signed approval. Merge still requires explicit
   authorization.
+
+## 2026-11-15 – M3: B30 two-VM WebSocket-upgrade and unapproved-port probes
+
+- Branch: `task/B30-free-relay`
+- Scope: deployment evidence and documentation only. No product code changed, no live
+  inference, no paid call, no firewall or host-network change, and no catalog read.
+- Steps:
+  1. Built a second FAT32 probe volume (`B30WS`, `probe2.sh` SHA-256
+     `CF17EB9BF46F40C4A5F91CC95D41D54DB87C19C9383141AEAFFBC0366238D2AE`) and hot-attached it
+     at SCSI 0/3 on both running guests.
+  2. The operator typed one line per console, relay first and then worker
+     (`sudo mkdir -p /media/b30 && sudo mount -L B30WS /media/b30 && sudo bash /media/b30/probe2.sh`);
+     each guest wrote its own log back onto the same volume. No console transcription, no
+     package installation, no guest-to-host network path.
+  3. Hot-detached the volumes, read each one from the host through WSL
+     `--mount --vhd <path> --partition 1`, and copied `b30-wsprobe-*.log` into
+     `%TEMP%\opencode\b30-collected`; then deleted the two VHDX files, the staging directory
+     and the now-empty `C:\B30-VMs\_media`.
+  4. Recorded two operational deviations instead of hiding them: the new mount stacked over the
+     stale `B30PROBE` mount, so `probe2.sh` reported `B30_WSPROBE_UMOUNT=FAILED` on both guests
+     (an explicit `sudo umount /media/b30` on the worker returned cleanly), and hot-detaching the
+     earlier, already-removed disk produced `device offline error, dev sdc` plus
+     `Buffer I/O error on dev sdc1` on the worker console. Both logs still end with
+     `B30_WSPROBE_LOG_END` after two `sync` calls.
+- Files: `docs/validation.md`, `docs/worklog.md`, `docs/tasks/B30.md`, `docs/handoff.md`,
+  `docs/backlog.md`.
+- Validation: relay log 741 B SHA-256 `D4E51881...` and worker log 939 B SHA-256 `0F509C9E...`;
+  a plaintext WebSocket upgrade to `93.184.216.34:80` and `1.1.1.1:80` is
+  `Network is unreachable` on both guests (exit 11 at connect), while the reachable peer on the
+  permitted link answers `Connection refused` on `18099` and `8080` (`EXIT=1`), and the worker's
+  upgrade attempt to `10.30.1.1:18099` is refused as well. `node --test` was not rerun because
+  no code changed.
+- Follow-up: keep PR #45 draft. Still `not_run`: the host-side L7 gateway and deployed TLS chain
+  (needs an authorized inbound rule scoped to the relay address), an application-level
+  WebSocket rejection, the FIDO2 positive signature, the active WebSocket-bypass experiment,
+  live inference and the signed approval. Merge still requires explicit authorization.

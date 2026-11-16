@@ -3276,3 +3276,107 @@ still reaches the relay, and that the relay has no egress of its own, based on g
 collected from the attached media and on administrator-collected host inventory. It does not
 support a deployed gateway policy, a deployed TLS chain, a positive FIDO2 signature,
 WebSocket-bypass exclusion, live activation, ready-for-review or merge.
+
+## M3 preparation: B30 two-VM WebSocket-upgrade and unapproved-port probes – 2026-11-15
+
+Executed on the same two Hyper-V guests as the preceding entry (`B30-Worker`, `B30-Relay`, Ubuntu
+Server 24.04.5, kernel `6.8.0-139-generic`). Date: 2026-11-15; the guest logs are stamped
+`2026-11-16T02:18:46Z` (relay) and `2026-11-16T02:21:03Z` (worker). This entry closes the remaining
+B30-03 probe row (WebSocket upgrade and unapproved port from inside the compartment) and says nothing
+new about B30-07.
+
+Method: a second FAT32 VHDX round, labelled `B30WS`, carried one `probe2.sh`
+(SHA-256 `CF17EB9BF46F40C4A5F91CC95D41D54DB87C19C9383141AEAFFBC0366238D2AE`). It was hot-attached at
+SCSI 0/3 on both running guests, and each guest wrote its own log back onto the same volume. The
+operator typed one line per console
+(`sudo mkdir -p /media/b30 && sudo mount -L B30WS /media/b30 && sudo bash /media/b30/probe2.sh`),
+relay first and then worker; nothing was transcribed by hand. The volumes were hot-detached
+afterwards and read on the host through WSL `--mount --vhd <path> --partition 1`, copying
+`b30-wsprobe-*.log` into `%TEMP%\opencode\b30-collected`; the two VHDX files and the staging
+directory were then deleted and `C:\B30-VMs\_media` removed as empty.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `sudo mount -L B30WS /media/b30 && sudo bash /media/b30/probe2.sh` on the relay | Textual WebSocket upgrade to two off-link origins plus TCP to two unapproved ports on the worker link | relay log 741 B; both upgrades `Network is unreachable`; both unapproved ports `Connection refused` | 0 |
+| The same line on the worker | Textual WebSocket upgrade to two off-link origins plus TCP to two unapproved ports on the relay link | worker log 939 B; both upgrades `Network is unreachable`; both unapproved ports `Connection refused` | 0 |
+| Host detach + `wsl --mount --vhd ... --partition 1` + copy + uninstall | Read the guest-written logs without guest shell or console typing | both logs copied intact and end with `B30_WSPROBE_LOG_END`; media deleted afterwards | 0 |
+
+Relay log (`b30-wsprobe-b30-relay.log`, 741 B, SHA-256
+`D4E5188182C3C6036373F9BA54D22340D11E72639257B03F534C1E911587B8FB`), verbatim probe lines:
+
+```
+### websocket upgrade attempt: alternate origin, plaintext upgrade (93.184.216.34:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/93.184.216.34/80: Network is unreachable          EXIT=11
+### websocket upgrade attempt: internet, plaintext upgrade (1.1.1.1:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/1.1.1.1/80: Network is unreachable                EXIT=11
+### tcp 10.30.1.2:18099                                                  EXIT=1
+bash: connect: Connection refused
+### tcp 10.30.1.2:8080                                                   EXIT=1
+bash: connect: Connection refused
+```
+
+Worker log (`b30-wsprobe-b30-worker.log`, 939 B, SHA-256
+`0F509C9E9E9919298D35F4A2A0C1C64658307394C1A82DE6844E41C1D42C5500`), verbatim probe lines:
+
+```
+### websocket upgrade attempt: alternate origin, plaintext upgrade (93.184.216.34:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/93.184.216.34/80: Network is unreachable          EXIT=11
+### websocket upgrade attempt: internet, plaintext upgrade (1.1.1.1:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/1.1.1.1/80: Network is unreachable                EXIT=11
+### websocket upgrade attempt: relay on the permitted link, unapproved port (10.30.1.1:18099)
+bash: connect: Connection refused
+bash: line 1: /dev/tcp/10.30.1.1/18099: Connection refused               EXIT=11
+### tcp 10.30.1.1:18099                                                  EXIT=1
+bash: connect: Connection refused
+### tcp 10.30.1.1:8080                                                   EXIT=1
+bash: connect: Connection refused
+```
+
+Interpretation, kept to what the bytes show: inside the compartment a plaintext WebSocket upgrade
+cannot reach the TCP handshake for an off-link origin, because there is no route to it — the refusal
+is `ENETUNREACH` at connect time, on the worker and on the relay alike. The same request against a
+peer that *is* reachable on the permitted link reaches that peer's stack and is answered with a reset
+(`ECONNREFUSED`), so the permitted link stays usable while the tested unapproved ports carry no
+listener. The two probes therefore show the compartment cannot open a transport to an origin at all,
+and that the only reachable peer answers only on the approved port; they do not exercise an
+application-level WebSocket rejection, which remains the pinned-host negative fixture recorded in the
+2026-11-15 active-egress-negatives entry.
+
+Two operational deviations are recorded rather than smoothed over. First, the previous probe round
+left its volume mounted: `probe2.sh` reported `B30_WSPROBE_UMOUNT=FAILED` on both guests because the
+new mount stacked over the stale `B30PROBE` mount, and an explicit `sudo umount /media/b30` on the
+worker returned to the prompt without output. Second, hot-detaching the already-removed earlier disk
+produced `device offline error, dev sdc` and `Buffer I/O error on dev sdc1, logical block 1, lost
+async page write` on the worker console. Neither affected the evidence: both scripts end with
+`B30_WSPROBE_LOG_END` followed by two `sync` calls, and both collected logs contain that terminator
+and were read back byte-for-byte from the detached volume. The relay's own post-probe `umount` was
+never confirmed on its console before the volume was detached; its log is complete for the same
+reason.
+
+Evidence level: **deployed two-VM OS-level probe evidence**, the same level as the preceding entry.
+It is not integration evidence for the relay/gateway TLS chain.
+
+Supported by this entry: B30-03's in-VM WebSocket-upgrade and unapproved-port negatives on both
+sides of the deployment, on top of the routing, DNS, IPv6, alternate-origin and no-NAT/no-ICS
+conditions recorded above.
+
+Not supported by this entry: an application-level WebSocket rejection, the host-side L7 gateway and
+its policy digest, a deployed TLS chain, gateway ingress logs, the positive FIDO2 signature, the
+active provider WebSocket-bypass experiment and any live use.
+
+Not rerun: `integration/b30-egress-namespaces.sh` (privileged WSL fixture, unchanged); `node --test`
+and the focused sets (documentation-only change; the last recorded result remains 415 of 416 with one
+pre-existing skip at `352c212`); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5
+harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store
+and origin (`not_run`); expired and wrong-host certificates (`not_run`); the FIDO2 positive signature
+dry run (`not_run`); live inference, paid calls and any catalog read (not authorized).
+
+Claim: this entry supports that, in the deployed two-VM compartment, a WebSocket upgrade to an
+off-link origin has no transport at all and the reachable peer on the permitted link answers only on
+the approved port, based on guest-written logs read back from the attached media. It does not support
+a deployed gateway policy, a deployed TLS chain, a positive FIDO2 signature, WebSocket-bypass
+exclusion at the application layer, live activation, ready-for-review or merge.
