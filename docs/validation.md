@@ -3528,3 +3528,7 @@ unapproved origin, path, `CONNECT` tunnel and credential while forwarding exactl
 request to a controlled fixture origin, with a recorded policy digest and body-free logs, based on
 guest-written probe output and host firewall and gateway counters. It does not support a deployed
 TLS chain, live activation, ready-for-review or merge.
+
+## Exact-head CI receipt for the 2026-11-16 gateway deployment evidence
+
+At head d6e356269e5c57d4c606685caa047c51b4636c3b, CI run 43800413251 completed SUCCESS: Windows and Ubuntu jobs passed (Windows job 133079066746, Ubuntu job 133079066372). The workflow's exit-code 7/1 annotations are its intentional continue-on-error pipeline-exit fixtures, not test failures. This receipt validates the code/docs at that head under CI; it does not satisfy the remaining deployed TLS, application-level WebSocket, FIDO2, bypass, live-inference or independent-review gates. The evidence and smoke results remain as described in the preceding 2026-11-16 entry.

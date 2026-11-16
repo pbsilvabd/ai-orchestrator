@@ -2780,3 +2780,10 @@ Template:
   an application-level WebSocket rejection, the FIDO2 positive signature, the active
   WebSocket-bypass experiment, the non-loopback worker-facing listener decision and live
   inference. Merge still requires explicit authorization.
+## 2026-11-16 - M3: B30 deployment evidence CI receipt
+
+- Branch/head: task/B30-free-relay, d6e356269e5c57d4c606685caa047c51b4636c3b (base 11fcb422de47c2a9b79389de8470802d48ead730).
+- Steps: read exact-head CI run 43800413251 and verified both jobs; recorded that exit 7/1 annotations are intentional pipeline fixtures. No code or deployment environment changed.
+- Files: docs/validation.md, docs/worklog.md.
+- Validation: run 43800413251 SUCCESS; Windows job 133079066746 and Ubuntu job 133079066372. Prior serial suite and fallback demo remain as recorded in the preceding entry. git diff --check rerun before this receipt commit.
+- Follow-up: request independent re-review of the draft PR. Real-origin TLS, application-level WebSocket rejection, positive FIDO2 signature, provider bypass and live inference remain not_run; no ready or merge.
