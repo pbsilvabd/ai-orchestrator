@@ -3532,3 +3532,55 @@ TLS chain, live activation, ready-for-review or merge.
 ## Exact-head CI receipt for the 2026-11-16 gateway deployment evidence
 
 At head d6e356269e5c57d4c606685caa047c51b4636c3b, CI run 43800413251 completed SUCCESS: Windows and Ubuntu jobs passed (Windows job 133079066746, Ubuntu job 133079066372). The workflow's exit-code 7/1 annotations are its intentional continue-on-error pipeline-exit fixtures, not test failures. This receipt validates the code/docs at that head under CI; it does not satisfy the remaining deployed TLS, application-level WebSocket, FIDO2, bypass, live-inference or independent-review gates. The evidence and smoke results remain as described in the preceding 2026-11-16 entry.
+
+## Local revalidation at the publication head 5fe1e46 (2026-11-16, Windows 11 / Node 24.22.1)
+
+Repeated on the maintainer's Windows 11 host at `5fe1e46196cd7d9f8ca5fa20f843d5e49cf2e4d8`
+(base `11fcb422de47c2a9b79389de8470802d48ead730`) to confirm that the pinned-host and
+namespace evidence still reproduces at the publication head, not only at the earlier heads
+where it was first collected. No source, test or composition file was changed for this rerun;
+the only change is this record.
+
+- Pinned binary: downloaded `opencode-windows-x64.zip` from the official OpenCode v2.2.5
+  release into a temporary directory outside the repository. SHA-256
+  `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8`, equal to the digest
+  published in `integration/README.md`; `opencode.exe --version` printed `opencode v2.2.5`.
+- Serial suite: `node --test --test-concurrency=1` -> 416 tests, 411 pass, 0 fail, 0 cancelled,
+  5 platform-gated skips, exit 0 (193 s). This matches the count recorded at the preceding
+  heads; the earlier `B15-03b`/`B10-03` timing failures were not observed in this run and are
+  not treated as erased.
+- Demo and diff: `node examples/fallback-demo.mjs` -> `mock/preferred` 429 then `mock/local`
+  200, exit 0; `git diff --check` -> clean.
+- WSL2 containment fixture (privileged, maintainer-run): `wsl -d Ubuntu -u root -- bash
+  integration/b30-egress-namespaces.sh` -> `RESULT: containment verified`, exit 0, with all
+  verdict lines `PASS`: worker->internet/gateway route and socket denied, worker->relay
+  reachable, relay->internet denied and relay->gateway reachable, gateway->internet and
+  gateway->worker denied, worker IPv6 and DNS denied, worker WebSocket upgrade denied, the
+  forbidden listener on `:18099` timeout with the nft OUTPUT drop counter incremented, and the
+  unprivileged worker boundary `uid=65534 gid=65534 CapInh/CapPrm/CapEff=0000000000000000
+  CapBnd=000001ffffdfefff NoNewPrivs=1` with the unauthorized mutations refused. Teardown
+  reported no owned residue and the initial-namespace ruleset remained empty.
+- Pinned OpenCode 2.2.5 through the relay: `node integration/opencode-free-relay.mjs
+  <opencode.exe>` -> exit 0, all six scenarios `ok` (normal plus 301/302/303/307/308). The
+  normal run succeeded through relay->gateway with `Bearer public`; each redirect failed the
+  task with one attempt and one origin request, the gateway latched `redirect-refused`, and the
+  alternate origin recorded zero connections, zero raw socket bytes, zero requests and zero
+  body bytes.
+- Gateway deployment harness: `node integration/b30-gateway-host.mjs --smoke` ->
+  `smoke_approved status 200`, `smoke_after_stop error:ECONNREFUSED`, exit 0; no host firewall
+  rule was created.
+- B29 prerequisite MCP workflow: `node integration/mcp-free-workflow.mjs <opencode.exe>` ->
+  exit 0, `version 2.2.5`, `transportCalls 10`, statuses `queued`/`running`/`succeeded`,
+  duplicate submission reused the same ID with one attempt and one workspace, zero fixture
+  anomalies, the out-of-scope write denied, `testExitCode 0`, and the endpoint absent from
+  config, task and MCP arguments.
+
+Evidence level: **local fixture and pinned-host observations plus a privileged WSL2
+namespace observation**. They reproduce the earlier results at the publication head; they do
+not become deployment evidence. Not run and unchanged: the deployed TLS chain to the real
+origin with a real resolver/trust store (including expired and wrong-host certificates), an
+application-level WebSocket rejection, the positive FIDO2 hardware-key signature, the active
+provider WebSocket-bypass experiment, the non-loopback worker-facing listener decision, any
+fresh catalog read and live inference. No paid call, credential or external host was contacted;
+the pinned binary is temporary and outside the repository. The draft stays draft and merge
+still requires explicit authorization.

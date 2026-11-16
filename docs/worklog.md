@@ -2787,3 +2787,11 @@ Template:
 - Files: docs/validation.md, docs/worklog.md.
 - Validation: run 43800413251 SUCCESS; Windows job 133079066746 and Ubuntu job 133079066372. Prior serial suite and fallback demo remain as recorded in the preceding entry. git diff --check rerun before this receipt commit.
 - Follow-up: request independent re-review of the draft PR. Real-origin TLS, application-level WebSocket rejection, positive FIDO2 signature, provider bypass and live inference remain not_run; no ready or merge.
+
+## 2026-11-16 - M3: B30 local revalidation at the publication head
+
+- Branch/head: task/B30-free-relay, 5fe1e46196cd7d9f8ca5fa20f843d5e49cf2e4d8 (base 11fcb422de47c2a9b79389de8470802d48ead730); docs-only record on top of that head.
+- Steps: reran the serial suite, demo, diff check, the privileged WSL2 containment fixture, the pinned OpenCode 2.2.5 relay harness, the host-gateway smoke and the B29 free MCP workflow at the publication head; downloaded and hash-verified the pinned binary from the official release into a temporary directory outside the repository.
+- Files: docs/validation.md, docs/worklog.md.
+- Validation: serial `node --test --test-concurrency=1` -> 416 tests, 411 pass / 0 fail / 5 platform-gated skips (exit 0, 193 s); demo 429 then 200 (exit 0); `git diff --check` clean; WSL `containment verified` (exit 0, all verdicts PASS, no teardown residue); `integration/opencode-free-relay.mjs` exit 0 with six scenarios ok and zero alternate-origin bytes; `integration/b30-gateway-host.mjs --smoke` exit 0; `integration/mcp-free-workflow.mjs` exit 0. Binary SHA-256 `2f3bfd6b...` matched the published digest and reported `opencode v2.2.5`.
+- Follow-up: commit and push this docs-only record, verify the new remote head and its CI. The deployed TLS chain, application-level WebSocket rejection, positive FIDO2 signature, provider bypass, non-loopback listener decision, catalog read and live inference stay not_run; PR #45 stays draft and merge requires explicit authorization.
