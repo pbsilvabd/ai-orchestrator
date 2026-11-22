@@ -2216,3 +2216,63 @@ Claim: This entry supports the green exact-head CI receipt at `113e926` (run
 / `gh api` and `node --test test/task-maintenance.test.mjs` / `node
 examples/fallback-demo.mjs`. It does not support deterministic green
 default-concurrency runs, redirect containment, live use, B20/M3 or merge.
+
+## Planning: reconcile delivery state and unblock supervised use — 2026-11-22
+
+Executed on Windows x64, NT 10.0.26300.0, Node.js v24.22.1 (fnm installation
+prepended to child PATH), Git 2.55.0.windows.5. Date: 2026-11-22.
+
+Main/runtime baseline `11fcb422de47c2a9b79389de8470802d48ead730`; B30
+baseline `a4f3954514e2109a5f0112dcea0534d291a9fcf4`. The current branch
+changes documentation only; no source/test/integration file was changed
+after these runs. Each native exit was captured before formatting output.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test` | Existing main full suite, default concurrency | 305 total, 304 pass, 0 fail, 1 POSIX-only skip; 56.4 s | 0 |
+| `node examples/fallback-demo.mjs` | Existing fallback demo | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `node --test test/free-listeners.test.mjs test/gateway-tls.test.mjs test/live-approval.test.mjs test/service-ownership-handoff.test.mjs` | Focused B30 listener/private bind, real local TLS, signature refusal/ledger and ownership checks in the existing B30 worktree, with Git OpenSSL on PATH | 41 pass, 0 fail, 0 skip; 7.9 s | 0 |
+| `gh pr view 45 --json headRefOid,baseRefOid,mergeable,statusCheckRollup` | Observe B30 current head/checks, not approve it | Head `a4f3954`, base `11fcb42`, successful Windows/Ubuntu checks in run `43806088953` | 0 |
+| `git diff --check` | Documentation whitespace | no output | 0 |
+
+Result: the default-concurrency baseline passed once, and all 41 selected B30
+fixtures ran without skips. This does not repair or invalidate the earlier
+timing/maintenance failures recorded in this file and #45; #48 tracks those
+separately. Demo output was 429 then 200. The first exploratory `node --version`
+failed because Node was absent from the shell PATH; adding the existing fnm
+24.22.1 installation fixed the invocation environment without installation or
+repository changes. No failed test run is being hidden as a successful retry.
+
+A one-off external content checker verified changed Markdown relative paths,
+balanced fences, byte-for-byte append-only prefixes in worklog/validation and
+an empty runtime/test/integration diff against main. Its first pass checked
+10 documents/115 relative links, 0 broken; the final pre-publication pass checked
+12 documents/121 relative links, 0 broken, with unchanged runtime and preserved
+historical bytes. The checker is session tooling outside the repository, not a
+new shipped test or reproducible integration gate.
+
+GitHub maintenance was verified after execution: #6/#9 closed with reasons,
+#33/#34 draft, #43/#45 still draft at unchanged code heads; #30/#31 narrowed
+with old bodies retained; #46/#47/#48 created once. Published planning
+comments: #32 `7073987471`, #33 `7073990711`, #34 `7073990720`,
+#43 `7073990718`, #45 `7073990738`. After a session restart, existing remote
+state and saved test logs were read; none of those mutations or tests was
+blindly replayed.
+
+Evidence level: Unit — demonstrates policy decisions and input normalization;
+does not demonstrate host, network or production persistence. The B30 TLS
+subset additionally provides Local HTTP evidence: real headers/status and
+selection with controlled loopback fixtures, not real OpenCode sessions.
+GitHub status is an external receipt, not local deployment validation.
+
+Not rerun: pinned OpenCode smoke, B17/MCP/free-relay workflows and B19 pulse
+(external binary/integration outside this documentation task); privileged
+WSL/netns/Hyper-V/firewall runs (no environment changes authorized here);
+catalog or provider requests, hardware signing and B20/live inference (not
+authorized; existing dated receipts are not renewed). No complete B30
+diff/security review or independent reviewer approval is claimed.
+
+Claim: this entry supports the repository/queue reassessment and passing
+local baseline/focused fixtures only. It does not establish B30 acceptance,
+hardware-positive authorization, a deployed service chain, M2b sign-off,
+M3 completion, deterministic test reliability, live activation or merge.

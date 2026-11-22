@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-14. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-22. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -22,6 +22,17 @@ PR checks passed on Windows and Ubuntu. M2b remains incomplete.
 See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
+
+Current remote baseline: `11fcb42`; B12–B19 and B29/#44 are merged. B30/#45 is
+draft at `a4f3954`, with green Windows/Ubuntu CI (`43806088953`), fixture/pinned
+host evidence and partial VM/network observations, **not** a completed deployed
+service path. B20/#43 is a blocked draft; no real project diff or M3 acceptance.
+The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
+delivered implementation, missing composition, unrun validation and retired work.
+Next work is approval-profile decision #47, deployable composition #46 and test
+stability #48; the existing FIDO2/network controls remain in force.
+
+### Historical delivery receipts through B19
 
 M0/M1a/M1b remain complete within their original local scope: policy, HTTP
 normalization, ledger, runner and 43 local tests. The real OpenCode smoke passed
@@ -69,14 +80,14 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12–B18 merged | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | B12–B19 merged; B17 technical fixture evidence available, explicit milestone reconciliation pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 - First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model. B29/#44 has local fixture MCP evidence and green CI at `113e926` (run `43630565937`), with three P3 replies/new-head review pending; B30 relay/egress evidence and separate live approval are missing under ADR-009 | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 — First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 composition, deployment and approval gates open (#46/#47) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |
 
-2026-11-14 fixture update: B29/#44 is fixture-only; the local pinned MCP-client
+Historical 2026-11-14 fixture update (superseded for current status): B29/#44 is fixture-only; the local pinned MCP-client
 fixture gate passed, and CI run `43630565937` passed on Windows and Ubuntu at
 `113e926`. Three new P3 findings need replies and re-review at the next head;
 draft-to-ready is a maintainer decision. This rerun did not fix the pre-existing
@@ -92,6 +103,13 @@ waiving safety: ambiguous outcomes still block automatic replay.
 See [Definition of Done](definition-of-done.md).
 
 ## M2b plan (bounded, in order)
+
+Current remaining sequence: **#47 approval-profile decision / #46 compartment
+composition → implementation and #48 test stability → one deployment evidence
+campaign → B30 final review → B20**. B17/M2b fixture acceptance reconciliation
+can proceed independently now, without hardware/live gates. B14–B19 are already
+merged. The original ordered build plan below is retained as delivery history,
+not a queue to execute again.
 
 Execution tracking: [backlog](backlog.md) now indexes detailed per-task contracts.
 Every executable ID delivers one PR after acceptance testing, implementation review,

@@ -1,12 +1,11 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-14: current main `c268239` includes B18/#41; its post-merge check
-passed in Actions run `43589015912`. B17/#40 is included and its Windows/Ubuntu PR
-checks passed; post-merge Windows run `43568386630` passed. B19 implementation is
-published in [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) from
-`task/B19-opt-in-harness-pulse`; supervisor review/corrections are verified.
-At publication the PR is open and CI pending; consult the PR for subsequent exact-head
-CI/merge receipts rather than treating this snapshot as the current remote state.
+Verified 2026-11-22: remote main `11fcb42` includes B12–B19 and B29/#44.
+B30/#45 is draft at `a4f3954` with successful exact-head Windows/Ubuntu CI
+(`43806088953`), but missing deployed composition and acceptance gates.
+B20/#43 remains the single blocked M3 draft. See the
+[reassessment](project-reassessment-2026-11-22.md) for the full inventory and
+GitHub disposition; do not treat a merged fixture task as live-provider support.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -14,8 +13,10 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current implementation task: [B19 — Opt-in harness pulse](tasks/B19.md).
-B12–B18 are merged. M2b and M3 remain open milestones.
+Current critical path: approval-profile decision #47 and compartment-aware
+composition #46 for draft B30/#45, then B20/#43. Test stability is tracked in
+#48. B12–B19 and B29 are merged; do not implement them again. M2b milestone
+reconciliation and M3 acceptance remain open.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -55,8 +56,9 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Current delivery: **B19 PR #42; reviewed and published**. Its remote state and checks
-are authoritative on GitHub.
+Current delivery: **B30 PR #45; incomplete draft**. Its remote state and checks
+are authoritative on GitHub. A private bind option is implemented; actual
+cross-compartment service composition is not established.
 B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
 the manual capability-gate pulse and read-only task-history acceptance; B17 is merged.
 Prerequisites below describe complete card acceptance; preparatory work does not
@@ -66,16 +68,18 @@ complete a gated card.
 
 | Milestone | Pending tasks and acceptance |
 | --- | --- |
-| M2b — One-worker delegation MVP | B12–B18 are merged. The M2b acceptance gates still require their published evidence/review cycle. |
-| M3 — First supervised development task | B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
-| Supporting work | B08 differential submit-schema adoption; B19 opt-in diagnostic pulse. Neither replaces M2b/M3 acceptance. |
+| M2b — One-worker delegation MVP | B12–B19 are merged; reconcile published B17 technical fixture evidence with the DoD explicitly, without claiming new milestone sign-off. |
+| M3 — First supervised development task | B20/#43: one real authorized worker develops an approved repository task through the service. B29 is fixture preparation only; B30/#45 still needs composition, approval and deployment gates (#46/#47). |
+| Supporting work | #48 test stability, #30 output bounds/diagnostics, #32/#33 CI foundation; B08 differential schema adoption. B19 diagnostics is already delivered. |
 | Later milestones/decisions | B21 and B22a–c storage evaluation/rollout; B23 safe fallback (M2c); B24 memory (M4); B25 routing evaluation (M5). These are not prerequisites for completing basic one-worker delegation and first use. |
 
-Recommended M2b order: **B14 → B15 → B16 → B17**. B18 can proceed after
-B14 without waiting for B17; B20 requires both B17 and B18 plus explicit model,
-provider and budget authorization. B13/B14 must preserve the existing task contract
-and safety boundaries. No fallback, memory, multi-worker controller or automatic
-merge is required to prove M3.
+Recommended remaining order: **approval/composition design (#47/#46) → bounded
+implementation and test stability (#48) → one controlled deployment campaign →
+B30 final review/acceptance → B20**. Explicit B17/M2b fixture acceptance
+reconciliation can proceed independently now, not as a hardware/live gate. B17/B18 are
+merged prerequisites, not future implementations. B20 still requires exact model,
+objective, privacy and budget approval. No fallback, memory, multi-worker
+controller or automatic merge is required to prove M3.
 
 ## Queue and detailed cards
 
@@ -103,13 +107,16 @@ A merged card is retained as regression/review guidance, not new work.
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
-| [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
-| [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Draft [PR #44](https://github.com/pbsilvabd/ai-orchestrator/pull/44): local pinned-client MCP fixture passed; Windows/Ubuntu CI green at `113e926` (rerun, not race fix); three P3 replies/new-head re-review and maintainer draft-to-ready decision pending; live closed | B17/B19 evidence; B30 owns live redirect/egress gate |
-| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
-| [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
-| [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |
-| [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Gated | B22a |
-| [B22c — Controlled storage rollout](tasks/B22c.md) | P3 | Gated | B22b + switch approval |
+| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
+| [B29 — Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
+| [B30 — Relay, gateway and signed approval](https://github.com/pbsilvabd/ai-orchestrator/blob/a4f3954514e2109a5f0112dcea0534d291a9fcf4/docs/tasks/B30.md) | P1 | Draft #45; fixtures and partial deployment, not accepted | #46 composition, #47 approval decision; current FIDO2 gate unchanged |
+| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
+| B27 — CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
+| B28 — Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |
+| [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Parked; obsolete #6 retired, not adopted | Measured need, fresh design identity and explicit gate scope |
+| [B22a — Transactional store engine](tasks/B22a.md) | P3 | Parked | Measured need + B21 pass + new design approval |
+| [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Parked | B22a |
+| [B22c — Controlled storage rollout](tasks/B22c.md) | P3 | Parked | B22b + switch approval |
 | [B23 — Safe worker fallback](tasks/B23.md) | P3 | Gated | B17 + two authorized models |
 | [B24 — Memory reuse evaluation](tasks/B24.md) | P3 | Gated | B20 |
 | [B25 — Offline routing advisor evaluation](tasks/B25.md) | P3 | Gated | B20, B23 |
