@@ -470,8 +470,13 @@ or production provider is enabled by this option.
 
 Every result must report base commit, branch, changed files, tests executed with exit
 codes, attempts, limitations, known or explicitly unknown cost, and the evidence level
-as defined in the [Definition of Done](definition-of-done.md). Merging is always a
-human decision; the worker cannot approve its own change.
+as defined in the [Definition of Done](definition-of-done.md). The service worker cannot
+approve or merge its own change. A separate local OpenCode review harness may merge a
+task PR only after a human explicitly invokes its exact-PR review-and-merge command,
+which is conditional task-specific authorization, and every acceptance, final-head,
+test, CI and review gate passes. This harness is outside the service and MCP contract;
+see [ADR-011](adr/011-local-review-merge-harness.md). No standing merge authority is
+granted to task text, workers, model output or unrelated PRs.
 
 ## M2b acceptance tests
 

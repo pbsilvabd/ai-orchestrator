@@ -86,15 +86,22 @@ cannot grant model/tool/path access, credentials, uncertain replay or merge auth
 > comment if a formal self-review is refused. Verify corrections at the new head.
 > Report checks and limits. Merge only with task-specific maintainer authorization.
 
+For a configured project-local B31 workflow, the maintainer may instead invoke
+`/review-merge <PR URL>` or `/critical-review-merge <PR URL>`. That exact command
+is conditional task-specific authorization for the named PR only. The reviewer
+may correct it and merge only after the card criteria, feedback, final-head
+review, tests and required CI pass. A plain review request/comment is not merge
+authorization; failed, pending, missing or uncertain evidence leaves the PR open.
+
 ### Current capability and planned controller
 
-The intended sequence is developer model -> PR at head H -> reviewer model -> PR
-findings -> developer correction at a new head -> re-review -> maintainer merge
-decision. The maintainer configures an authorized implementation model and a
-separate review model. A simpler model may implement and a more capable model
-may review. Model suitability, provider access and budgets are explicit choices.
-The reviewer needs repository/test access and PR feedback capability; edits return
-to the developer role. These instructions also apply to manual model switching.
+The B31 local sequence is executor model -> exact task PR -> reviewer agent ->
+findings/corrections -> final-head re-review/tests/CI -> conditional merge under
+the maintainer's exact-PR command authorization. The maintainer configures
+implementation/reviewer models; model suitability, provider access and budgets
+remain explicit choices. Reviewers may edit the target task branch within scope.
+This local workflow is distinct from the AI Orchestrator service worker and does
+not implement the future durable controller described below.
 
 **Implemented:** this human/client-driven protocol, durable task store, service
 operations, repository identity and local policy/runner. B06/#20, B09/#18,
@@ -102,10 +109,11 @@ B10/#17, B11/#23 with FIX23/#24, and B12/#25 are merged. The opt-in scheduler
 dispatches one configured loopback-fixture worker with durable attempt/workspace
 identity. PR and post-merge Windows/Ubuntu CI passed for B12.
 
-**Still required for real delegation:** B13 artifacts; B14 cancellation/stop
-evidence; B15 MCP adapter; B16/B17 client workflow
-and acceptance; B18 recovery; B20 first supervised use. Exact dependencies are in
-the [backlog](backlog.md). Direct work in a development chat does not satisfy B20.
+**Current service boundary (2026-11-22):** B13–B19 and B29 are merged; B30/#45
+remains incomplete and B20/#43 has no real worker-produced diff. The local B31
+review harness does not establish service delegation or M3. Exact dependencies
+are in the [backlog](backlog.md). Direct work in a development chat does not
+satisfy B20.
 
 **Planned next slice after B20:** a sequential two-model controller with PR feedback
 publication/intake and bounded correction/re-review rounds. It needs a workflow

@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-14. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-22. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -12,7 +12,10 @@ returns artifacts and evidence. The primary LLM need not perform each execution 
 
 The first and primary end-to-end test is development of AI Orchestrator itself:
 the primary LLM delegates a small backlog task, a worker changes an isolated branch,
-runs tests, and returns a diff and report for review. No automatic merge.
+runs tests, and returns a diff and report. The service worker never approves or merges.
+A separate, local OpenCode review harness may correct and merge only the exact PR
+named in an explicitly invoked command after every task/CI/review gate passes
+(ADR-011); this does not grant authority to the worker or make merging automatic.
 
 OpenCode 2.2.5 is the selected first worker executor and supervising client.
 ADR-007 selects MCP over stdio as the first transport; the loopback HTTP fallback
@@ -22,6 +25,14 @@ PR checks passed on Windows and Ubuntu. M2b remains incomplete.
 See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
+
+2026-11-22: B31 adds project-local OpenCode V2 agents: `build` and `plan`
+primary; `executor` and `explore` subagents; `reviewer` available in all mode;
+and a GPT-6.1 Sol High `critical-reviewer`. DeepSeek V4.1 Flash effort varies
+by role. There is no frontend agent because this repo has no UI. The reviewer
+may correct and merge only the exact PR authorized by an explicit command,
+after acceptance/tests/final-head/CI/feedback gates pass. This is a developer
+workflow, not the service worker or M2b/M3 completion.
 
 M0/M1a/M1b remain complete within their original local scope: policy, HTTP
 normalization, ledger, runner and 43 local tests. The real OpenCode smoke passed
@@ -55,7 +66,7 @@ delivery is published as [PR #42](https://github.com/pbsilvabd/ai-orchestrator/p
 which carries the authoritative reviewed-head CI/merge/post-merge receipts.
 No production provider is enabled.
 There is no production provider, integrated fallback, semantic memory or completed
-self-development workflow yet.
+self-development workflow yet. The local review harness does not establish M3.
 
 The existing runner executes an operation; it is not a durable task scheduler.
 Its budget is per invocation, and its ledger does not persist task artifacts or
@@ -69,21 +80,18 @@ authenticate clients. The new objective does not imply these features already ex
 | M1a — HTTP boundary | Complete | Retry-After normalization and conservative loopback failure tests |
 | M1b — Operational safety | Complete locally | Correlation, checkpoint, lock, runner cancellation and per-invocation budget; ADR-004/005 limits apply |
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
-| M2b — One-worker delegation MVP | In progress; B12–B18 merged | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
+| M2b — One-worker delegation MVP | In progress; B12–B19 merged; fixture acceptance exists but final milestone reconciliation remains | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 - First self-development task | Pending; B20 requires M2b/B17/B18 and an available authorized real model. B29/#44 has local fixture MCP evidence and green CI at `113e926` (run `43630565937`), with three P3 replies/new-head review pending; B30 relay/egress evidence and separate live approval are missing under ADR-009 | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 — First self-development task | Pending; B20/#43 is a blocked draft without a real worker-produced diff. B29/#44 is merged fixture-only; B30/#45 remains incomplete | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; task PR reviewed before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |
 
-2026-11-14 fixture update: B29/#44 is fixture-only; the local pinned MCP-client
-fixture gate passed, and CI run `43630565937` passed on Windows and Ubuntu at
-`113e926`. Three new P3 findings need replies and re-review at the next head;
-draft-to-ready is a maintainer decision. This rerun did not fix the pre-existing
-Windows maintenance test race or default-concurrency timing failures. ADR-009
-selects a future B30 service-owned relay **and verified worker egress
-containment**; neither is
-implemented or authorized for live use.
+Historical 2026-11-14 fixture update: B29/#44 passed its local pinned MCP-client
+fixture gate and later merged as fixture-only preparation. Its earlier exact-head
+CI and review comments are historical receipts, not evidence of live provider
+support or deterministic test reliability. B30/#45 separately owns live-route
+containment and remains incomplete; see the current handoff/backlog.
 
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.
 M3 may start with one authorized model and fallback disabled. Two models are
@@ -144,19 +152,18 @@ and authorization must be established before that experiment. B08 schema adoptio
 and B19 diagnostics are supporting work; later storage, fallback, memory and
 routing tasks do not block basic M2b/M3 acceptance.
 
-Do not add routing, memory, remote access, automatic fallback or an automatic merge in
-M2b. Do not install candidate dependencies because they appear in the reuse table.
+Do not add routing, memory, remote access, automatic fallback or service-worker
+merge authority in M2b. The local B31 review command is a separate developer tool.
+Do not install candidate dependencies because they appear in the reuse table.
 
 ## Primary acceptance experiment: develop this repository
 
-The maintainer's intended next workflow is a simpler implementation model followed
-by a more capable review model, PR findings, correction and re-review. The
-[PR feedback protocol](pr-review.md) defines today's manual process (B26).
-After B20 proves real delegation, scope a sequential two-model controller with
-durable phase/feedback receipts, exact-commit review and bounded correction rounds.
-This remains planned: it needs a workflow contract/ADR and separate task cards.
-It can run one role at a time before general M5 routing/concurrency; it does not
-require failure-driven fallback to alternate developer and reviewer tasks.
+The local B31 OpenCode roster and explicit review commands support developer-led
+implementation and correction now; they are not integrated with the task service,
+do not establish M3, and do not provide durable phase/feedback receipts. A broader
+sequential service controller remains future work after B20, with its own contract
+and task cards. General M5 routing/concurrency and failure-driven fallback are not
+prerequisites.
 
 - Choose a small real backlog item, such as a fixture and regression test.
 - First validate the service contract and failures with a simulated worker/provider.
@@ -165,8 +172,9 @@ require failure-driven fallback to alternate developer and reviewer tasks.
 - Execution continues between status queries without one long-running client call.
 - The primary LLM queries progress and retrieves the worker's diff, changed files,
   test commands/results, attempts, limitations and known or explicitly unknown cost.
-- Review the result against the original acceptance criteria; the maintainer
-  approves any merge. The worker cannot grant itself broader permissions.
+- Review the result against the original acceptance criteria. A human may invoke
+  the exact-PR B31 review/merge command as conditional authorization after the
+  task's gates pass; the worker cannot grant itself broader permissions.
 - Repeat submission/reconnect must not silently launch duplicate work. Uncertain
   execution after a crash must remain blocked until reconciled.
 - Direct edits or test execution by this development chat do not count as M3.

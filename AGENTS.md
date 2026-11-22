@@ -24,19 +24,14 @@ Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
 authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
-Current state (2026-11-14): main `c268239` includes B12–B18. B17/#40 checks passed
-on Windows/Ubuntu; B18/#41 post-merge Windows checks passed. B19's manual opt-in
-harness pulse and read-only history track are implemented locally on
-`task/B19-opt-in-harness-pulse`, based on `c268239`, delivered as PR #42. Supervisor
-review and correction verification passed locally; the PR is the authoritative
-current-head CI/merge receipt.
-The implementation has local full-suite and pinned OpenCode 2.2.5 loopback fixture
-evidence, not an all-pass B06 gate, M2b/M3 service use or real-provider evidence.
-The current supervisor has B19-only merge authorization contingent on acceptance,
-reviewed-head CI and resolved feedback; this grants no future session or other task
-merge authority. B20 still needs M2b acceptance and an
-authorized real-model/provider/budget path. See the handoff/backlog; earlier
-task-specific authorizations do not carry forward.
+Verified 2026-11-22: main `11fcb42` includes B12–B19 and B29/#44 fixture-only
+preparation. B20/#43 and B30/#45 remain incomplete. B31 adds project-local
+OpenCode V2 agents for build, plan, executor, explore and review; there is no
+frontend in this repository. The exact-PR `/review-merge` commands provide
+conditional authorization only for the PR explicitly invoked and only after
+acceptance/final-head/CI/review gates pass. The service worker cannot merge.
+Actual OpenCode runtime integration is not yet evidenced. See B31, ADR-011 and
+the current handoff; earlier task-specific authorizations do not carry forward.
 
 ## Repository maintenance skills (Codex)
 

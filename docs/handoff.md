@@ -1,4 +1,33 @@
-# Continuation point — 2026-11-14
+# Continuation point — 2026-11-22
+
+Remote main is `11fcb422de47c2a9b79389de8470802d48ead730`. This branch works on
+B31, a project-local OpenCode V2 agent roster and task review harness; it does
+not change service execution. Roster: `build`, `plan`, `executor`, `explore`,
+`reviewer`, and `critical-reviewer`; no frontend agent is included because the
+repository has no UI. `/review-merge <PR URL>` and
+`/critical-review-merge <PR URL>` authorize only that exact PR conditionally;
+the reviewer may correct it and merge only after all acceptance and final-head
+gates pass. Review commands must refuse shared/dirty worktrees or concurrent
+executor edits. Shell, push and GitHub operations remain permission-controlled.
+No current PR is authorized for merge by this harness task.
+
+## Next action: finish and validate B31
+
+1. Complete the OpenCode agent roster/configuration and documentation; routine
+   executor work uses DeepSeek V4.1 Flash low; routine review uses high effort;
+   sensitive review uses GPT-6.1 Sol high.
+2. Validate full local tests/demo, config/frontmatter/model IDs and content.
+   The OpenCode CLI is not on this environment's PATH; do not claim actual
+   slash-command discovery or model invocation unless a runtime check is made.
+3. Publish B31 as a draft if required OpenCode integration evidence remains
+   `not_run`; do not let the new reviewer merge its own initial implementation.
+4. After publication, test the commands in a suitable isolated local task
+   worktree. Never let reviewer and executor edit the same active worktree.
+
+This harness is separate from the AI Orchestrator worker. Existing B20/B30,
+provider, FIDO2, network, M2b/M3 and service-authorization gates remain unchanged.
+
+## Historical continuation — 2026-11-14
 
 Remote `main` is `688da04bea29b300eb4cb1815bfbcb9fd0cd35ca` (B19 included). B12–B19 are
 merged. B20 remains draft PR #43 and unmerged. B29 is a draft preparation PR on

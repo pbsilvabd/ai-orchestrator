@@ -1858,3 +1858,46 @@ Template:
   `113e926`; the pushed head's CI is pending until observed), obtain re-review
   of the three P3 replies, then the maintainer's draft-to-ready decision for
   the fixture-only PR. No merge is authorized.
+
+## 2026-11-22 — B31: OpenCode agent roster and review harness
+
+- Branch: `task/B31-opencode-review-harness`
+- Scope: code, tests and docs; project-local OpenCode workflow only, no service
+  worker, provider or infrastructure behavior changed.
+- Steps:
+  1. Added project-local build, plan, executor, explore, reviewer and
+     critical-reviewer definitions with role-specific model/effort assignments,
+     conservative permissions, secret-file denials and destructive-command
+     denials; omitted frontend because this repository has no product UI.
+  2. Added exact-PR routine and critical review/merge commands and a shared
+     review skill covering task-card evidence, feedback, risk routing,
+     worktree isolation, final-head checks and no-merge-on-unknown gates.
+  3. Added B31's acceptance card and ADR-011, documented the boundary in the
+     task contract, Definition of Done, PR feedback protocol, requirements,
+     PR template, README, backlog, roadmap, handoff and AGENTS.
+  4. Added static configuration/content/link tests; the final seven focused tests
+     passed.
+  5. Ran the full suite once with a transient B10-03 subprocess timing failure
+     (the expected partial output was empty), then reran the suite successfully.
+     Actual OpenCode schema/discovery/review integration remained unavailable.
+  6. Completed two local diff-review passes; corrected command/test expectation
+     mismatches, a case-sensitive path in the link test, and a missing `plan`
+     subagent allowance, then reran focused and full validation.
+- Files: `.github/pull_request_template.md`, `.opencode/agents/build.md`,
+  `.opencode/agents/critical-reviewer.md`, `.opencode/agents/executor.md`,
+  `.opencode/agents/explore.md`, `.opencode/agents/plan.md`,
+  `.opencode/agents/reviewer.md`, `.opencode/commands/critical-review-merge.md`,
+  `.opencode/commands/review-merge.md`, `.opencode/skills/task-review/SKILL.md`,
+  `AGENTS.md`, `README.md`, `docs/adr/011-local-review-merge-harness.md`,
+  `docs/backlog.md`, `docs/definition-of-done.md`, `docs/handoff.md`,
+  `docs/pr-review.md`, `docs/requirements.md`, `docs/roadmap.md`,
+  `docs/task-contract.md`, `docs/tasks/B20.md`, `docs/tasks/B31.md`,
+  `docs/validation.md`, `docs/worklog.md`, `test/opencode-harness.test.mjs`
+- Validation: `node --test test/opencode-harness.test.mjs` → 7 passed;
+  `node --test` → 311 passed, 0 failed, 1 skipped on final run after one transient
+  B10-03 failure; `node examples/fallback-demo.mjs` → mock preferred 429 then
+  mock local 200; `git diff --check` → no output. OpenCode integration gates
+  were not rerun because no `opencode` executable is on PATH.
+- Follow-up: publish this as a draft PR with B31 runtime rows marked `not_run`;
+  validate the pinned OpenCode V2 schema and commands in an isolated fixture
+  worktree before changing the PR to ready.

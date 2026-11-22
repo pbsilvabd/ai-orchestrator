@@ -4,7 +4,11 @@
 
 Provide a pluggable worker service for a primary LLM that delegates and supervises.
 Workers execute scoped tasks and return status, artifacts and evidence. The primary
-end-to-end acceptance workload is development of this repository, with human review.
+end-to-end acceptance workload is development of this repository, with
+maintainer-directed review. The maintainer may review the diff directly or
+explicitly invoke the exact-PR B31 OpenCode reviewer command to perform the
+review and conditionally merge after all acceptance, test, CI and feedback gates
+pass. The worker cannot approve or merge its own change.
 OpenCode is the initial executor candidate, not a required supervising client.
 See [ADR-006](adr/006-worker-service.md).
 

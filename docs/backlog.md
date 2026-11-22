@@ -1,12 +1,9 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-14: current main `c268239` includes B18/#41; its post-merge check
-passed in Actions run `43589015912`. B17/#40 is included and its Windows/Ubuntu PR
-checks passed; post-merge Windows run `43568386630` passed. B19 implementation is
-published in [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) from
-`task/B19-opt-in-harness-pulse`; supervisor review/corrections are verified.
-At publication the PR is open and CI pending; consult the PR for subsequent exact-head
-CI/merge receipts rather than treating this snapshot as the current remote state.
+Verified 2026-11-22: baseline main `11fcb422de47c2a9b79389de8470802d48ead730`
+includes B12–B19 and B29/#44 fixture-only preparation. B20/#43 and B30/#45
+remain blocked drafts. B31 adds a local OpenCode reviewer workflow; it does not
+complete service delegation or grant the worker merge authority.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -14,8 +11,8 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current implementation task: [B19 — Opt-in harness pulse](tasks/B19.md).
-B12–B18 are merged. M2b and M3 remain open milestones.
+Current implementation task: [B31 — OpenCode task review harness](tasks/B31.md).
+M2b and M3 remain open milestones; B20 and B30 gates remain as summarized below.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -68,7 +65,7 @@ complete a gated card.
 | --- | --- |
 | M2b — One-worker delegation MVP | B12–B18 are merged. The M2b acceptance gates still require their published evidence/review cycle. |
 | M3 — First supervised development task | B20: one real authorized worker develops a small approved repository task through the service, returning a scoped diff and real test evidence for human review. B20 waits for B17/B18 and an available authorized real-model execution path. The current OpenCode adapter supports only a loopback fixture provider. |
-| Supporting work | B08 differential submit-schema adoption; B19 opt-in diagnostic pulse. Neither replaces M2b/M3 acceptance. |
+| Supporting work | B08 differential submit-schema adoption; B19 diagnostics merged; B31 local OpenCode review harness. None replaces M2b/M3 acceptance. |
 | Later milestones/decisions | B21 and B22a–c storage evaluation/rollout; B23 safe fallback (M2c); B24 memory (M4); B25 routing evaluation (M5). These are not prerequisites for completing basic one-worker delegation and first use. |
 
 Recommended M2b order: **B14 → B15 → B16 → B17**. B18 can proceed after
@@ -103,9 +100,10 @@ A merged card is retained as regression/review guidance, not new work.
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
-| [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | PR #42 published after verified supervisor corrections; open at publication, subsequent CI/merge receipts on PR | B06 and B17 delivered |
-| [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Draft [PR #44](https://github.com/pbsilvabd/ai-orchestrator/pull/44): local pinned-client MCP fixture passed; Windows/Ubuntu CI green at `113e926` (rerun, not race fix); three P3 replies/new-head re-review and maintainer draft-to-ready decision pending; live closed | B17/B19 evidence; B30 owns live redirect/egress gate |
-| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Pending; M3 acceptance task | B17/B18 and available authorized model/provider/budget pending |
+| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42; manual diagnostic/history only | B06 and B17 delivered |
+| [B29 — Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only; not live provider support | B17/B19 evidence; B30 owns egress gate |
+| [B30 — Relay, gateway and signed approval](https://github.com/pbsilvabd/ai-orchestrator/pull/45) | P1 | Draft #45; partial fixture/deployment evidence; not accepted | Compartment composition and approval profile decisions (#46/#47), deployment gates |
+| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker-produced diff | M2b acceptance and available authorized model/provider/budget |
 | [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Gated | B17; #6 gate scope |
 | [B22a — Transactional store engine](tasks/B22a.md) | P3 | Gated | B21 pass + design approval |
 | [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Gated | B22a |
@@ -113,6 +111,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B23 — Safe worker fallback](tasks/B23.md) | P3 | Gated | B17 + two authorized models |
 | [B24 — Memory reuse evaluation](tasks/B24.md) | P3 | Gated | B20 |
 | [B25 — Offline routing advisor evaluation](tasks/B25.md) | P3 | Gated | B20, B23 |
+| [B31 — OpenCode agent roster and review/merge harness](tasks/B31.md) | P2 | Draft PR required; OpenCode runtime validation not run | OpenCode V2 project-local agents; no service/provider changes |
 
 ## Review workflow task
 
@@ -120,17 +119,19 @@ A merged card is retained as regression/review guidance, not new work.
 | --- | --- | --- | --- |
 | [B26 — PR feedback protocol](tasks/B26.md) | P2 | Merged #21 | Existing execution protocol |
 
-B26 defines developer/reviewer instructions and records the automation gap. The
-future sequential two-model controller needs separate design/implementation cards
-after B20; it is not delivered by B26 or the B25 routing evaluation.
+B26 defines the repository PR feedback protocol. B31 adds a local OpenCode command
+workflow for invoking a lower-effort executor and reviewer with correction and
+conditional merge. It does not implement the service's future sequential two-model
+controller or replace B26/acceptance evidence.
 
 ## Shared safety and integration rules
 
 - Read AGENTS and ordered normative sources before editing. Preserve user changes;
   inspect current PR/branch heads and dependencies rather than trusting this snapshot.
-- No paid calls, provider activation, credentials, automatic merge, uncertain replay
-  or scope expansion is authorized by a card. Task-specific authorization controls
-  any real model/provider use.
+- No paid calls, provider activation, credentials, infrastructure changes, uncertain
+  replay or scope expansion is authorized by a card. Exact-PR review commands grant
+  conditional merge authorization only for the invoked PR; workers never merge.
+  Task-specific authorization controls any real model/provider use.
 - Use temporary homes, Git repositories/worktrees and controlled subprocesses/providers.
   Fixtures, real Node/Git processes, pinned OpenCode integration and use on this
   project are distinct evidence; never promote one into another.

@@ -71,7 +71,9 @@ head before approval; a final chat reply alone does not deliver PR findings.
 - [ ] One authorized worker/model is sufficient; M2b is complete and fallback stays disabled unless M2c is validated.
 - [ ] Authorized providers and runtime/version details are recorded without disclosing credentials.
 - [ ] Changes are isolated on a branch, with a recorded base and a task-scoped diff.
-- [ ] The workflow ran tests, results are verifiable and human review is complete.
+- [ ] The workflow ran tests and results are verifiable; the maintainer either
+      reviewed the diff directly or explicitly invoked the exact-PR B31 reviewer
+      command to review and conditionally merge it after all gates pass.
 - [ ] The report includes attempts, failures, files and known (or explicitly unknown) costs.
 - [ ] A recovery procedure exists and the agent did not elevate its permissions.
 

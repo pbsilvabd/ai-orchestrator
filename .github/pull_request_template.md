@@ -41,4 +41,5 @@ Use pass/fail/not_run; never omit a required row or treat not_run as passed.
       published on the PR and blocking findings have verified re-review.
 
 Leave incomplete work as draft and identify the unmet criteria. Merge is a separate
-maintainer decision, not part of the implementing agent's delivery.
+maintainer decision; it may be delegated to the B31 reviewer only through an
+explicit exact-PR command and only after all task criteria and final-head checks pass.

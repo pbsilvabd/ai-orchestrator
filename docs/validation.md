@@ -2216,3 +2216,37 @@ Claim: This entry supports the green exact-head CI receipt at `113e926` (run
 / `gh api` and `node --test test/task-maintenance.test.mjs` / `node
 examples/fallback-demo.mjs`. It does not support deterministic green
 default-concurrency runs, redirect containment, live use, B20/M3 or merge.
+
+## B31: OpenCode agent roster and review harness — 2026-11-22
+
+Executed on Windows 11 x64, Node.js v24.22.1 (fnm).
+Date: 2026-11-22.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/opencode-harness.test.mjs` | Verify agent roster, permission guardrails, review commands, shared review requirements and changed-document links | Final run: 7 passed, 0 failed, 0 skipped | 0 |
+| `node --test` (first run) | Full regression suite | B10-03 subprocess test failed because expected partial output was empty | 1 |
+| `node --test` (final run) | Full regression suite after transient subprocess timing failure and final config/test corrections | 312 tests, 311 passed, 0 failed, 1 skipped | 0 |
+| `node examples/fallback-demo.mjs` | Confirm existing fallback example remains operational | mock/preferred 429, then mock/local 200 | 0 |
+| `git diff --check` | Check whitespace errors in the task diff | no output | 0 |
+
+Result: the final focused static harness run passed all seven tests. An earlier
+full-suite run had a transient B10-03 subprocess timing failure (empty expected
+partial output); subsequent runs passed, with the final run reporting 311 passed
+and one platform-gated skip. The demo printed the expected 429 then 200
+responses, and the final diff check reported no whitespace errors.
+
+Evidence level: Unit — demonstrates policy decisions and input normalization; does
+not demonstrate the host, the network or production persistence. These commands
+cover repository regressions and static B31 configuration/content checks; they do
+not prove that OpenCode loads the configuration or executes the commands.
+
+Not rerun: `opencode --version` and OpenCode V2 config/command discovery (the
+`opencode` executable was not found on PATH); the B31 controlled OpenCode review
+flow (requires the OpenCode runtime); `node integration/opencode-smoke.mjs` (not
+affected by this local config change and the pinned binary is unavailable).
+
+Claim: This entry supports the unit/regression and static content claims for B31,
+based on the commands above. It does not support OpenCode integration or real
+project-use claims, which require an installed pinned runtime and a controlled
+review-flow experiment.

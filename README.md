@@ -54,7 +54,30 @@ the first MVP. A web client needs a compatible interface and network access;
 a local service is not automatically accessible from the web.
 
 Operational state and semantic memory remain separate. Neither task instructions
-nor worker results grant permissions. The first workflow has no automatic merge.
+nor worker results grant permissions. The service worker has no merge authority.
+
+## OpenCode development-agent roster
+
+Project-local OpenCode V2 agents live in `.opencode/agents/`:
+
+| Agent | Mode | Model / effort | Responsibility |
+| --- | --- | --- | --- |
+| `build` | primary | DeepSeek V4.1 Flash / high | Coordinate scoped repository implementation |
+| `plan` | primary | DeepSeek V4.1 Flash / max | Architecture and task planning |
+| `executor` | subagent | DeepSeek V4.1 Flash / low | Execute one bounded task card |
+| `explore` | subagent | DeepSeek V4.1 Flash / low | Read-only repository discovery |
+| `reviewer` | all | DeepSeek V4.1 Flash / high | Review, correct and conditionally merge routine task PRs |
+| `critical-reviewer` | subagent | GPT-6.1 Sol / high | Review, correct and conditionally merge sensitive task PRs |
+
+There is no `frontend` agent because this repository has no product UI. Select
+the `executor` agent for one bounded task card, and invoke
+`/review-merge <PR URL>` for routine review or
+`/critical-review-merge <PR URL>` for sensitive changes. The command invocation
+is conditional authorization for only that exact PR; the reviewer must verify
+all acceptance, final-head, test, CI and feedback gates before merging. OpenCode
+may ask permission for shell, push or GitHub merge operations. Agent files select
+model IDs but do not call them until invoked; model routes may incur cost, so
+provider/budget policy and user approvals still apply.
 
 ## Current status
 
