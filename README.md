@@ -44,8 +44,9 @@ flowchart TD
     classDef progress fill:#fff4ce,stroke:#9c6500,color:#111;
     classDef planned fill:#f3f4f6,stroke:#6b7280,stroke-dasharray:5 5,color:#111;
     class Host,Core current;
-    class Interface,Worker progress;
-    class Main,Service,Workspace,Evidence,Review,Repo,More,Memory,Routing planned;
+    class Interface,Service,Workspace,Evidence current;
+    class Worker progress;
+    class Main,Review,Repo,More,Memory,Routing planned;
 ```
 
 Tasks should continue between status queries. Continuous supervision depends on
@@ -60,9 +61,15 @@ nor worker results grant permissions. The first workflow has no automatic merge.
 
 Implemented: pure fallback policy, HTTP/Retry-After normalization, local checkpoint
 ledger, durable task store, serial service scheduler, artifacts, cancellation,
-four-operation MCP stdio adapter and pinned-client acceptance harness. **M2b and M3
-are not complete.** The OpenCode worker remains fixture-provider-only; no AI calls,
-keys, provider accounts or paid APIs are required for local tests.
+four-operation MCP stdio adapter, pinned-client acceptance harness, maintainer
+recovery and opt-in diagnostics. Verified 2026-11-22: main `11fcb42` includes
+B12–B19 and B29's anonymous-route **fixture preparation**. B30/#45 is a draft
+relay/gateway/approval implementation with partial deployment evidence; it is
+not live-provider support. B20/#43 has no real delegated project diff.
+**M2b sign-off and M3 remain open.** No AI calls, keys, provider accounts or paid
+APIs are required for local tests. See the
+[project reassessment](docs/project-reassessment-2026-11-22.md) for what to keep,
+finish and defer, including why physical FIDO2 is profile-specific.
 
 M2a is complete as a specification: the normative [task contract](docs/task-contract.md)
 and [ADR-007](docs/adr/007-task-contract.md) define the four task operations,
@@ -187,11 +194,14 @@ for status, dependencies and acceptance gates.
 
 ## Next steps
 
-1. Consult B19 [PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) for the
-   reviewed-head CI, merge and post-merge receipts; do not implement B19 again.
-2. Resolve remaining M2b gates and then, with explicit provider/model/budget approval,
-   run B20's supervised project task.
-3. Validate safe model fallback separately (M2c), then memory and bounded multi-worker routing.
+1. Resolve approval-profile [#47](https://github.com/pbsilvabd/ai-orchestrator/issues/47)
+   and compartment-aware composition [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46)
+   before another B30 deployment campaign. Current FIDO2/egress gates stay in force.
+2. Stabilize test readiness [#48](https://github.com/pbsilvabd/ai-orchestrator/issues/48),
+   collect actual end-to-end deployment evidence, and review the final B30 head.
+3. Reconcile M2b acceptance, obtain exact provider/model/objective/budget approval,
+   then continue B20/#43. Fallback, SQLite, memory and routing are not prerequisites
+   for first supervised use.
 
 `src/http-failure.mjs` accepts Retry-After as integer seconds or canonical
 IMF-fixdate. Invalid values, overflow and obsolete formats are conservatively

@@ -119,3 +119,27 @@ original slots `not_run`, and retains scratch. The gate preserves original phase
 cleanup phase/status independently even if both probe and cleanup fail. This
 diagnostic evidence does not establish M2b/M3 completion or production-provider
 behavior.
+
+### Amendment — 2026-11-22: delivery sequencing after fixture preparation
+
+This is a planning decision, not a change to runtime authority. B12–B19 and B29
+are merged; B30/#45 and B20/#43 remain incomplete. Prioritize one deployable
+single-worker path, explicit approval-profile design and reliable evidence before
+SQLite migration, semantic memory, expanded platforms, fallback or general routing.
+Use the existing B30/B20 PRs instead of replacing them with competing checkpoints.
+Reconcile B17/M2b fixture acceptance independently; that documentation decision
+need not wait for hardware, live-provider use or B30 deployment.
+
+One declared deployment path is sufficient for its own acceptance; it does not
+establish other platforms. A Linux test host may itself be virtual. The hardware
+FIDO2 requirement is specific to B30's selected approval design, not an intrinsic
+product requirement; evaluating a software-signature profile in #47 does not
+replace that design. Any replacement must deliberately update ADR, code, tests
+and normative contract before changing activation gates, with a separate threat
+model and positive cryptographic evidence. No UP/UV equivalence is inferred.
+
+See [the reassessment](../project-reassessment-2026-11-22.md) and issues
+[#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46),
+[#47](https://github.com/pbsilvabd/ai-orchestrator/issues/47) and
+[#48](https://github.com/pbsilvabd/ai-orchestrator/issues/48).
+No live run, key enrollment, network change or merge is authorized here.

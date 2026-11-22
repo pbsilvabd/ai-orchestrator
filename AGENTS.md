@@ -24,19 +24,18 @@ Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
 authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
-Current state (2026-11-14): main `c268239` includes B12–B18. B17/#40 checks passed
-on Windows/Ubuntu; B18/#41 post-merge Windows checks passed. B19's manual opt-in
-harness pulse and read-only history track are implemented locally on
-`task/B19-opt-in-harness-pulse`, based on `c268239`, delivered as PR #42. Supervisor
-review and correction verification passed locally; the PR is the authoritative
-current-head CI/merge receipt.
-The implementation has local full-suite and pinned OpenCode 2.2.5 loopback fixture
-evidence, not an all-pass B06 gate, M2b/M3 service use or real-provider evidence.
-The current supervisor has B19-only merge authorization contingent on acceptance,
-reviewed-head CI and resolved feedback; this grants no future session or other task
-merge authority. B20 still needs M2b acceptance and an
-authorized real-model/provider/budget path. See the handoff/backlog; earlier
-task-specific authorizations do not carry forward.
+Verified 2026-11-22: remote main `11fcb42` includes B12–B19 and B29/#44
+fixture-only preparation. B30/#45 is draft at `a4f3954`; B20/#43 remains a
+blocked draft and M3 has no real worker-produced project diff. M2b technical
+fixture evidence exists; milestone acceptance is not newly declared here.
+Next: settle the approval-profile decision (#47) and compartment-aware
+composition (#46), with test synchronization tracked in #48. Do not rebuild
+VMs before defining the actual service/worker/relay/gateway placement.
+The current FIDO2/egress gates remain authoritative until a reviewed replacement
+is implemented; no provider use, network changes or merge is authorized by the
+reassessment. See [the reassessment](docs/project-reassessment-2026-11-22.md)
+and current handoff/backlog. Earlier task-specific authorizations do not carry
+forward.
 
 ## Repository maintenance skills (Codex)
 

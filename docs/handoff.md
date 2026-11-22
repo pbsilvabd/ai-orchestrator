@@ -1,4 +1,46 @@
-# Continuation point — 2026-11-14
+# Continuation point — 2026-11-22
+
+Verified remote main `11fcb422de47c2a9b79389de8470802d48ead730` includes
+B12–B19 and B29/#44 fixture-only preparation. M2a remains complete; M2b technical
+fixture evidence exists but milestone sign-off is not newly declared. M3 remains
+incomplete: B20/#43 is draft with no real worker-produced project diff.
+B30/#45 is draft at `a4f3954514e2109a5f0112dcea0534d291a9fcf4`, exact-head
+Windows/Ubuntu CI successful in run `43806088953`; full deployment and positive
+FIDO2 approval are not established. See the
+[reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
+
+## Next action: decide approval profile and specify deployable composition
+
+1. Resolve [#47](https://github.com/pbsilvabd/ai-orchestrator/issues/47) against
+   B30's ADR-010 and `src/live-approval.mjs`: evaluate software SSH signing for
+   supervised local use versus the current hardware profile. Keep the current
+   FIDO2 UP/UV gate until a deliberate ADR/code/test/contract change is delivered.
+2. Specify and implement [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46):
+   actual service/worker/relay/gateway compartments, trusted launch channel,
+   workspace/artifact mapping, measured binary and lifecycle/ownership. Current
+   `freeListenerPlan` uses a local fixture-mode loopback gateway; a private bind
+   alone is not cross-compartment composition. Continue B30 in #45.
+3. Correct the readiness/maintenance races in
+   [#48](https://github.com/pbsilvabd/ai-orchestrator/issues/48), preserving all
+   failure assertions and original run results. Refresh CI foundation #32/#33;
+   #34 remains blocked, not merge-ready.
+4. Only after that plan is executable, obtain narrow infrastructure permission
+   for one deployment path, then run a single controlled end-to-end evidence
+   campaign, including active pinned-worker bypass, real TLS failures and
+   owned-only teardown. Historical VM observations are not current host inventory.
+5. Re-review B30's exact final head and every required row, reconcile B17/M2b
+   acceptance, then obtain a new exact run approval and continue B20/#43.
+
+No live provider, catalog refresh, key enrollment, VM/firewall change, automatic
+fallback or merge is authorized by this documentation. #6/#9 are obsolete proposal
+tracks, not prerequisites to resume; SQLite/memory/routing stay deferred.
+B17/M2b fixture acceptance reconciliation can proceed independently now; do not
+turn B30 deployment or FIDO2 into an unrelated fixture milestone prerequisite.
+
+## Historical checkpoints — superseded by the continuation above
+
+The following dated text preserves prior evidence/context, **not current task
+selection, remote status or authorization**. Follow the next-action section above.
 
 Remote `main` is `688da04bea29b300eb4cb1815bfbcb9fd0cd35ca` (B19 included). B12–B19 are
 merged. B20 remains draft PR #43 and unmerged. B29 is a draft preparation PR on
@@ -51,7 +93,7 @@ supervisor pulse is `docs/pulses/B19-supervisor-final.json`: 7 pass, 1 injected 
 fail, 0 not_run, one separate passing retry, denominator eight. No all-pass gate or
 real provider/project service use is claimed.
 
-## Next action: close B29 feedback and re-review the new fixture head
+## Historical next action (2026-11-14): B29 feedback
 
 2026-11-14 fixture correction: `integration/mcp-free-workflow.mjs` now ran with
 the pinned OpenCode 2.2.5 client through real MCP stdio and loopback-only
