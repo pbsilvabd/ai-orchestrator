@@ -24,14 +24,22 @@ Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
 authorization for that task. Genuine external blockers follow the protocol's
 draft/incomplete-work procedure; never claim missing evidence passed.
 
-Verified 2026-11-22: main `11fcb42` includes B12–B19 and B29/#44 fixture-only
-preparation. B20/#43 and B30/#45 remain incomplete. B31 adds project-local
-OpenCode V2 agents for build, plan, executor, explore and review; there is no
-frontend in this repository. The exact-PR `/review-merge` commands provide
-conditional authorization only for the PR explicitly invoked and only after
-acceptance/final-head/CI/review gates pass. The service worker cannot merge.
-Actual OpenCode runtime integration is not yet evidenced. See B31, ADR-011 and
-the current handoff; earlier task-specific authorizations do not carry forward.
+Verified 2026-11-22: remote main now includes PR #49 at `f61e5e1`; its reassessment
+observed prior main `11fcb42`, B12–B19 and B29/#44 fixture-only preparation.
+B30/#45 is draft at `a4f3954`; B20/#43 remains a blocked draft and M3 has no
+real worker-produced project diff. M2b technical fixture evidence exists;
+milestone acceptance is not newly declared here.
+Next: settle the approval-profile decision (#47) and compartment-aware
+composition (#46), with test synchronization tracked in #48. Do not rebuild
+VMs before defining the actual service/worker/relay/gateway placement.
+The current FIDO2/egress gates remain authoritative until a reviewed replacement
+is implemented; no provider use, network changes or merge is authorized by the
+reassessment. See [the reassessment](docs/project-reassessment-2026-11-22.md)
+and current handoff/backlog. Earlier task-specific authorizations do not carry
+forward.
+The separate B31 developer-harness work is draft PR #50; actual OpenCode runtime
+integration remains `not_run`. Its conditional local reviewer commands do not
+grant merge authority to the service worker.
 
 ## Repository maintenance skills (Codex)
 

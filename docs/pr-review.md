@@ -109,11 +109,14 @@ B10/#17, B11/#23 with FIX23/#24, and B12/#25 are merged. The opt-in scheduler
 dispatches one configured loopback-fixture worker with durable attempt/workspace
 identity. PR and post-merge Windows/Ubuntu CI passed for B12.
 
-**Current service boundary (2026-11-22):** B13–B19 and B29 are merged; B30/#45
-remains incomplete and B20/#43 has no real worker-produced diff. The local B31
-review harness does not establish service delegation or M3. Exact dependencies
-are in the [backlog](backlog.md). Direct work in a development chat does not
-satisfy B20.
+**Current boundary (2026-11-22):** B13–B19 and B29/#44 are merged; artifacts,
+cancellation, MCP/client workflow, acceptance harness and recovery are not new
+implementation tasks. B30/#45 remains draft with deployment/composition and
+approval gates; B20/#43 remains blocked with no real project worker diff.
+Exact dependencies are in the [backlog](backlog.md) and
+[reassessment](project-reassessment-2026-11-22.md). Direct work in a development
+chat does not satisfy B20. The local B31 review harness does not establish service
+delegation or M3. Earlier review verdicts remain bound to their SHAs.
 
 **Planned next slice after B20:** a sequential two-model controller with PR feedback
 publication/intake and bounded correction/re-review rounds. It needs a workflow

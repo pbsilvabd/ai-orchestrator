@@ -1859,6 +1859,54 @@ Template:
   of the three P3 replies, then the maintainer's draft-to-ready decision for
   the fixture-only PR. No merge is authorized.
 
+## 2026-11-22 — Planning: reconcile delivery state and unblock supervised use
+
+- Branch: `docs/project-reassessment-2026-11-22`
+- Scope: docs and authorized GitHub queue maintenance only; no runtime, tests,
+  integration harness, task contract or existing security gate changed.
+- Steps:
+  1. Fetched current refs and compared main `11fcb42`, B30/#45 `a4f3954`
+     and B20/#43 `1dd9614` with stale local continuity. Read B30's 67
+     conversation comments, submitted-review/inline channels, task/ADR,
+     composition/verifier/TLS tests and dated deployment receipts.
+  2. Distinguished implemented fixture mechanisms from missing compartment
+     composition, direct TLS/405 observations from full deployment, and
+     FIDO2's current mandatory profile from possible future local profiles.
+  3. Created #46 (composition/deployment campaign), #47 (approval-profile
+     decision) and #48 (test readiness/maintenance races); narrowed #30/#31
+     while preserving original issue bodies as historical details.
+  4. Closed obsolete #6/#9 with reasons and prior findings preserved.
+     Returned conflicting #33/#34 to draft, commented on #32–#34/#43,
+     and corrected #45's current summary without rewriting its history.
+  5. Updated README, roadmap/backlog, handoff, AGENTS and B20/B21 pickup
+     state. Added an ADR-006 planning amendment; no approval replacement,
+     acceptance waiver, runtime capability or merge authority was adopted.
+- Review pass 1: traced live-vs-fixture composition, signature requirements,
+  actual TLS failure coverage, stale remote descriptions and proposal
+  objections. Kept FIDO2/network invariants and existing B30/B20 PR identity.
+- Review pass 2: inspected the completed documentation diff and disposition
+  table against GitHub. Corrected ADR amendment ordering and clarified that
+  M2b fixture reconciliation does not depend on B30/hardware; distinguished
+  gateway-to-origin HTTPS from an accidentally required private-link TLS hop.
+- Files: `AGENTS.md`, `README.md`, `docs/adr/006-worker-service.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/pr-review.md`,
+  `docs/project-reassessment-2026-11-22.md`, `docs/roadmap.md`,
+  `docs/tasks/B20.md`, `docs/tasks/B21.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: main-code `node --test` -> 304 passed, 0 failed, 1 platform
+  skip, exit 0; demo -> 429 then 200, exit 0. B30 focused listener/TLS/
+  approval/ownership files -> 41 passed, 0 failed, 0 skipped, exit 0.
+  Documentation content/link, unchanged-runtime, append-only and whitespace
+  checks passed; details and limits are in the appended validation entry.
+  No pinned-host, VM/netns, provider, catalog or hardware gate was rerun.
+- Format: used the worklog/validation templates; the reassessment uses an
+  inventory/disposition report because this is cross-project triage, not a
+  new executable backlog card. Handoff adds a clearly superseded history
+  section while preserving all contract/API/run/workflow guidance.
+- Follow-up: publish this documentation PR, verify its remote head/CI and
+  settle #47/#46 before privileged deployment. Existing runtime gates remain
+  authoritative; no merge or live activation was performed.
+
 ## 2026-11-22 — B31: OpenCode agent roster and review harness
 
 - Branch: `task/B31-opencode-review-harness`
@@ -1898,6 +1946,5 @@ Template:
   B10-03 failure; `node examples/fallback-demo.mjs` → mock preferred 429 then
   mock local 200; `git diff --check` → no output. OpenCode integration gates
   were not rerun because no `opencode` executable is on PATH.
-- Follow-up: publish this as a draft PR with B31 runtime rows marked `not_run`;
-  validate the pinned OpenCode V2 schema and commands in an isolated fixture
-  worktree before changing the PR to ready.
+- Follow-up: PR #50 is a draft and needs an update to latest main, exact-head
+  independent review, and OpenCode runtime validation before any ready decision.
