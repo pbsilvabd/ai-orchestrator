@@ -1946,5 +1946,26 @@ Template:
   B10-03 failure; `node examples/fallback-demo.mjs` → mock preferred 429 then
   mock local 200; `git diff --check` → no output. OpenCode integration gates
   were not rerun because no `opencode` executable is on PATH.
-- Follow-up: PR #50 is a draft and needs an update to latest main, exact-head
-  independent review, and OpenCode runtime validation before any ready decision.
+- Follow-up: publish this as a draft PR with B31 runtime rows marked `not_run`;
+  validate the pinned OpenCode V2 schema and commands in an isolated fixture
+  worktree before changing the PR to ready.
+
+## 2026-11-22 — B31: synchronize draft PR with latest main
+
+- Branch: `task/B31-opencode-review-harness`
+- Scope: merge and status documentation; no service runtime or provider behavior changed.
+- Steps:
+  1. Observed PR #49 advance main to `f61e5e1` after B31 draft PR #50 was opened
+     from `11fcb42`; confirmed #50 was conflicting and no feedback had yet arrived.
+  2. Merged current `origin/main` into the B31 branch without force-push, resolved
+     document overlaps by preserving both B31 state and the newer reassessment.
+  3. Updated branch/current-main status and continuation instructions, then reran
+     the focused harness tests, full suite, fallback demo and staged diff check.
+- Files: `AGENTS.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/pr-review.md`,
+  `docs/roadmap.md`, `docs/tasks/B31.md`, `docs/validation.md`, `docs/worklog.md`
+- Validation: final merged-worktree `node --test test/opencode-harness.test.mjs`
+  → 7 passed; `node --test` → 311 passed, 0 failed, 1 skipped; fallback demo
+  → mock preferred 429 then mock local 200; `git diff --cached --check` → no output.
+  OpenCode integration remains `not_run`.
+- Follow-up: push the merge and documentation commits, verify PR #50's exact
+  remote head/base and checks, then obtain independent review of that head.

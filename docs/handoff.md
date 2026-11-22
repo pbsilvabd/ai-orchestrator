@@ -18,9 +18,9 @@ roster is `build`, `plan`, `executor`, `explore`, `reviewer`, and
 conditional only, and the service worker has no merge authority. Local tests
 passed, but the OpenCode executable is absent from PATH, so config/discovery and
 controlled reviewer-flow criteria remain `not_run`. PR #50 became conflicting
-when #49 advanced main; the new main is being merged into this branch and the
-updated exact head will be verified before review. Do not mark ready or merge until the B31 runtime
-criteria and all other gates pass.
+when #49 advanced main; merge commit `25990d2` now includes that main at
+`f61e5e1`. Push and verify the remote head before exact-head review. Do not mark
+ready or merge until B31 runtime criteria and all other gates pass.
 
 ## Next action: decide approval profile and specify deployable composition
 
