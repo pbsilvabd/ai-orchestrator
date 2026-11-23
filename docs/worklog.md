@@ -2880,3 +2880,5 @@ Template:
 - Repeated the 3 focused timing/cap regressions (3/3, exit 0) and serial suite after
   the final test assertion tightening: 428 total, 423 pass, 0 fail, 5 skips, exit 0
   (~203 s); demo and diff check rerun successfully.
+- Published code/docs commit `8f888c22e0d7dcfb296be19edf2784f076896999` on the same
+  draft PR branch. Follow-up docs-only receipt records publication and task-card status.

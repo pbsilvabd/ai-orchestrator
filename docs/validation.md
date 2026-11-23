@@ -3757,3 +3757,7 @@ acceptance or a ready/merge claim.
   one-request profile) passed 3/3, exit 0; serial full suite repeated after that test edit
   passed 428 total / 423 pass / 0 fail / 5 skips, exit 0 (~203 s). Demo and diff check
   were rerun after source changes and passed.
+- Published source/tests/contract/ADR and local validation receipt as commit
+  `8f888c22e0d7dcfb296be19edf2784f076896999` on the existing `task/B30-free-relay`
+  PR branch. The task card records this latest publication SHA. The following docs-only
+  publication receipt is separate and does not alter source/tests.
