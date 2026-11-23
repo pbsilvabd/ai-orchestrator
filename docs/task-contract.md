@@ -642,7 +642,12 @@ above). Live composition remains closed.
   with fixed non-zero ports and the worker base URL derived from the relay host and port. The
   relay host must be concrete loopback/RFC 1918/link-local IPv4 or `::1`/`fc00::/7`/`fe80::/10`
   IPv6; wildcard/unspecified, public, IPv4-mapped and hostname forms are refused before any
-  child starts, and the address is part of the relay policy digest the admission gate binds. The
+  child starts, and the address is part of the relay policy digest the admission gate binds.
+  Authorization/configuration uses the prefixed `openai/<model>` model ID (`FREE_MODEL`);
+  the HTTP request body uses the provider's bare wire-model ID (`FREE_MODEL_ID`). The relay
+  binds and validates that wire ID. The worker base URL derives only from this validated,
+  trusted `relayHost` and fixed port; this does not authorize task-selected endpoints or
+  broaden the one-model allowlist. The
   pre-acquired store is handed over only as the opaque, frozen, single-use capability returned
   by `openTaskHome`; a shaped or copied `{ store, releaseOwner }` object, a released or reused
   capability and a capability for another home are refused, so caller honesty is not an

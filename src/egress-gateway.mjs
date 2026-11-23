@@ -128,12 +128,14 @@ function canonical(value) {
   return JSON.stringify(value);
 }
 
-function readBody(req, maxBytes) {
+function readBody(req, maxBytes, signal) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let bytes = 0;
     let settled = false;
     const done = error => { if (!settled) { settled = true; error ? reject(error) : resolve(Buffer.concat(chunks)); } };
+    const abort = () => done(new EgressGatewayError('unavailable', 'request deadline exceeded'));
+    signal?.addEventListener('abort', abort, { once: true });
     req.on('data', chunk => {
       if (settled) return;
       bytes += chunk.length;
@@ -141,13 +143,13 @@ function readBody(req, maxBytes) {
         done(new EgressGatewayError('limit_exceeded', 'gateway request body exceeds bound'));
         // Reject the request without retaining its body, but drain the remaining
         // incoming bytes so the HTTP connection can close cleanly.
-        req.resume();
         return;
       }
       chunks.push(chunk);
     });
     req.on('end', () => done());
     req.on('error', error => done(new EgressGatewayError('unavailable', error.code ?? 'request-error')));
+    req.on('aborted', abort);
   });
 }
 
@@ -193,45 +195,64 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
   };
 
   const handle = async (req, res) => {
+    const deadline = Date.now() + limits.timeoutMs;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), limits.timeoutMs);
+    timer.unref?.();
+    const respondAndClear = (status, text) => {
+      clearTimeout(timer);
+      if ((status === 504 || status === 413) && !res.headersSent) {
+        res.writeHead(status, { 'content-type': 'text/plain', 'content-length': Buffer.byteLength(text), connection: 'close' });
+        res.once('finish', () => { if (!req.complete) req.socket.destroy(); });
+        res.end(text);
+      } else respond(res, status, text);
+    };
+    const expired = () => controller.signal.aborted || Date.now() >= deadline;
+    const terminal = () => latched || stopped || expired();
     requests += 1;
-    if (latched) return respond(res, 503, 'gateway latched');
+    if (latched || stopped) return respondAndClear(503, 'gateway latched');
     if (requests > limits.maxRequests) {
       latch('request-count');
-      return respond(res, 429, 'gateway request limit exceeded');
+      return respondAndClear(429, 'gateway request limit exceeded');
     }
     // A CONNECT request is a tunnel attempt; refuse before any upstream I/O.
     if (req.method === 'CONNECT') {
       latch('connect');
-      return respond(res, 405, 'tunnel refused');
+      return respondAndClear(405, 'tunnel refused');
     }
     if (req.method !== 'POST') {
       latch('method');
-      return respond(res, 405, 'method not allowed');
+      return respondAndClear(405, 'method not allowed');
     }
     if (req.url !== path && req.url.split('?')[0] !== path) {
       latch('path');
-      return respond(res, 404, 'not found');
+      return respondAndClear(404, 'not found');
     }
     if (req.headers.authorization !== 'Bearer public') {
       latch('credential');
-      return respond(res, 401, 'unauthorized');
+      return respondAndClear(401, 'unauthorized');
     }
     let body;
     try {
-      body = await readBody(req, limits.maxRequestBytes);
+      body = await readBody(req, limits.maxRequestBytes, controller.signal);
     } catch {
-      latch('body-bound');
-      return respond(res, 413, 'request body exceeds gateway bound');
+      const timedOut = expired();
+      latch(timedOut ? 'timeout' : 'body-bound');
+      return respondAndClear(timedOut ? 504 : 413, timedOut ? 'gateway deadline exceeded' : 'request body exceeds gateway bound');
     }
+    if (latched || stopped) return respondAndClear(503, 'gateway latched');
+    if (expired()) { latch('timeout'); return respondAndClear(504, 'gateway deadline exceeded'); }
 
     if (mode === 'live' && tlsBypassEnabled()) {
       latch('tls-policy');
-      return respond(res, 502, 'upstream unavailable');
+      return respondAndClear(502, 'upstream unavailable');
     }
 
     // Forward only the fixed method/path to the fixed origin with the fixed anonymous
     // credential. Never inherit arbitrary client headers. Redirects are refused.
     let upstreamResponse;
+    if (latched || stopped) return respondAndClear(503, 'gateway latched');
+    if (expired()) { latch('timeout'); return respondAndClear(504, 'gateway deadline exceeded'); }
     try {
       upstreamResponse = await fetch(`${origin}${path}`, {
         method: 'POST',
@@ -241,17 +262,19 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
         },
         body,
         redirect: 'manual',
-        signal: AbortSignal.timeout(limits.timeoutMs),
+        signal: controller.signal,
       });
     } catch (error) {
-      latch(classifyUpstreamFailure(error));
-      return respond(res, 502, 'upstream unavailable');
+      const timedOut = expired();
+      latch(timedOut ? 'timeout' : classifyUpstreamFailure(error));
+      return respondAndClear(timedOut ? 504 : 502, 'upstream unavailable');
     }
+    if (terminal()) { latch('timeout'); try { await upstreamResponse.body?.cancel(); } catch {} return respondAndClear(504, 'gateway deadline exceeded'); }
 
     if (REDIRECT_STATUS.has(upstreamResponse.status)) {
       try { await upstreamResponse.body?.cancel(); } catch { /* discard */ }
       latch('redirect-refused');
-      return respond(res, 502, 'upstream redirect refused');
+      return respondAndClear(502, 'upstream redirect refused');
     }
 
     try {
@@ -259,7 +282,7 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
       res.writeHead(upstreamResponse.status, {
         'content-type': upstreamResponse.headers.get('content-type') ?? 'application/json',
       });
-      if (!reader) { res.end(); return; }
+      if (!reader) { res.end(); clearTimeout(timer); return; }
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -272,8 +295,9 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
         }
         res.write(value);
       }
-      res.end();
+      res.end(); clearTimeout(timer);
     } catch {
+      clearTimeout(timer);
       latch('response-stream');
       try { res.destroy(); } catch { /* already failing */ }
     }

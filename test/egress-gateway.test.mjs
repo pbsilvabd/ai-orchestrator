@@ -238,9 +238,9 @@ test('B30-04: gateway upstream timeout latches with a terminal error and no seco
   t.after(() => gateway.stop());
 
   const response = await post(base);
-  assert.equal(response.status, 502);
+  assert.equal(response.status, 504);
   assert.equal(gateway.status().latched, true);
-  assert.equal(gateway.status().latchReason, 'upstream-unavailable');
+  assert.equal(gateway.status().latchReason, 'timeout');
   assert.equal(origin.requests.length, 1, 'timeout must not produce a second upstream request');
 });
 

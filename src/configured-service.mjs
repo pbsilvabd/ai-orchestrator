@@ -81,7 +81,7 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       snapshot = await metadata();
     }
     if (plan !== undefined) listeners = await startFreeListeners({ home, listeners: freeListeners, plan });
-    const provider = { kind: 'opencode-free-fixture', package: FREE_PACKAGE,
+    const provider = { kind: listeners === undefined ? 'opencode-free-fixture' : 'opencode-free-relay', package: FREE_PACKAGE,
       baseURL: listeners?.workerBaseURL ?? fixtureEndpoint };
     const worker = createOpenCodeWorker({ executable: settings.executable,
       runtimeRoot: join(home, 'runtime'), authorizedModel: FREE_MODEL,

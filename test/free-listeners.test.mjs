@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { fork } from 'node:child_process';
 import { connect, createServer } from 'node:net';
-import { createServer as createHttpServer } from 'node:http';
+import { createServer as createHttpServer, request as httpRequest } from 'node:http';
 import { access, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -170,16 +170,15 @@ test('B30-04: supervised relay accepts the pinned worker wire model and forwards
     });
   });
   await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => {
+    origin.closeAllConnections?.();
+    await new Promise(resolve => origin.close(resolve));
+  });
   const plan = freeListenerPlan(listeners);
   const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
     approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
   { metadata: async () => metadata(), freeListeners: listeners });
   f.services.push(service);
-  t.after(async () => {
-    origin.closeAllConnections?.();
-    await new Promise(resolve => origin.close(resolve));
-  });
-
   const response = await fetch(`http://127.0.0.1:${listeners.relayPort}/v1/chat/completions`, {
     method: 'POST',
     headers: { authorization: 'Bearer public', 'content-type': 'application/json' },
@@ -207,15 +206,15 @@ test('B30-04: supervised listeners bound oversized bodies, latch without upstrea
     res.end('{}');
   });
   await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => {
+    origin.closeAllConnections?.();
+    await new Promise(resolve => origin.close(resolve));
+  });
   const plan = freeListenerPlan(listeners);
   const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
     approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
   { metadata: async () => metadata(), freeListeners: listeners });
   f.services.push(service);
-  t.after(async () => {
-    origin.closeAllConnections?.();
-    await new Promise(resolve => origin.close(resolve));
-  });
   const payload = JSON.stringify({ model: FREE_MODEL_ID, padding: 'x'.repeat(LIMITS.maxRequestBytes) });
   const send = (port, body) => fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
     method: 'POST',
@@ -240,6 +239,121 @@ test('B30-04: supervised listeners bound oversized bodies, latch without upstrea
 
   assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
   assert.equal((await locks(f.home)).length, 2, 'both child ownership locks remain held while listeners run');
+});
+
+test('B30-04: body waiters cannot pass a terminal latch in either supervised listener', { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  const originRequests = [];
+  const origin = createHttpServer((req, res) => { originRequests.push(req.url); req.resume(); res.end('{}'); });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => { origin.closeAllConnections?.(); await new Promise(resolve => origin.close(resolve)); });
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  // Headers-only A is held open while B triggers the terminal method latch.
+  for (const port of [listeners.relayPort, listeners.gatewayPort]) {
+    const a = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
+      headers: { authorization: 'Bearer public', 'content-length': '2' } });
+    const aStatus = new Promise((resolve, reject) => {
+      a.on('response', res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+      a.on('error', reject);
+    });
+    a.flushHeaders();
+    await new Promise(resolve => setImmediate(resolve));
+    const b = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: 'POST', headers: { authorization: 'Bearer public' },
+      body: JSON.stringify({ model: FREE_MODEL_ID, padding: 'x'.repeat(LIMITS.maxRequestBytes) }),
+    });
+    assert.equal(b.status, 413);
+    a.end('{}');
+    assert.equal(await aStatus, 503);
+  }
+  // Aborted body collection is also terminal; it cannot leave a waiter that later
+  // starts forwarding when additional bytes arrive or a new connection is made.
+  for (const port of [listeners.relayPort, listeners.gatewayPort]) {
+    const aborted = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
+      headers: { authorization: 'Bearer public', 'content-length': '20' } });
+    aborted.on('error', () => {});
+    aborted.flushHeaders();
+    await new Promise(resolve => setImmediate(resolve));
+    aborted.destroy();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    const refused = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: 'POST', headers: { authorization: 'Bearer public' }, body: JSON.stringify({ model: FREE_MODEL_ID }),
+    });
+    assert.equal(refused.status, 503);
+  }
+  assert.deepEqual(originRequests, []);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.equal((await locks(f.home)).length, 2);
+});
+
+test('B30-04: ingress deadline bounds stalled bodies and closes clients without upstream work', { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  listeners.limits = { ...LIMITS, timeoutMs: 250 };
+  let originRequests = 0;
+  const origin = createHttpServer((req, res) => { originRequests++; req.resume(); res.end('{}'); });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => { origin.closeAllConnections?.(); await new Promise(resolve => origin.close(resolve)); });
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  for (const [index, port] of [listeners.relayPort, listeners.gatewayPort].entries()) {
+    let clientRequest;
+    const status = new Promise((resolve, reject) => {
+      const req = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
+        headers: { authorization: 'Bearer public', ...(index === 0
+          ? { 'content-length': '100' } : { 'transfer-encoding': 'chunked' }) } },
+      res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+      clientRequest = req;
+      req.on('error', reject);
+      req.flushHeaders(); // first request is stalled content-length; second is stalled chunked
+    });
+    assert.equal(await status, 504);
+    clientRequest.removeAllListeners('error');
+    clientRequest.on('error', () => {}); // late client-side socket errors are expected
+    assert.doesNotThrow(() => {
+      clientRequest.write('late-data');
+      clientRequest.end();
+      clientRequest.destroy(new Error('late-abort'));
+    });
+    const refused = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: 'POST', headers: { authorization: 'Bearer public' }, body: JSON.stringify({ model: FREE_MODEL_ID }),
+    });
+    assert.equal(refused.status, 503);
+  }
+  assert.equal(originRequests, 0);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.equal((await locks(f.home)).length, 2);
+});
+
+test('B30-04: fixture origin cleanup is registered before a refused composition', async t => {
+  const f = fixture(t);
+  const { listeners, spawned } = await listenerPorts(t);
+  const origin = createHttpServer((_req, res) => res.end('{}'));
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  let closed = false;
+  t.after(async () => {
+    origin.closeAllConnections?.();
+    await new Promise(resolve => origin.close(() => { closed = true; resolve(); }));
+    assert.equal(closed, true, 'refusal-path teardown closes the bound test origin');
+  });
+  const plan = freeListenerPlan(listeners);
+  const mismatch = () => ({ admitted: true, revalidate() {} });
+  Object.defineProperty(mismatch, 'relayPolicyDigest', { value: plan.relayPolicyDigest, enumerable: true });
+  Object.defineProperty(mismatch, 'gatewayPolicyDigest', { value: 'f'.repeat(64), enumerable: true });
+  await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: mismatch },
+  { metadata: async () => metadata(), freeListeners: listeners }));
+  assert.equal(spawned.length, 0);
+  assert.equal(closed, false, 'the teardown hook owns cleanup even after composition refusal');
+  // The registered teardown runs after this assertion and closes the already-bound origin.
 });
 
 test('B30-04: supervised listeners refuse to start without an approved run; no child, lock or metadata lookup', async t => {

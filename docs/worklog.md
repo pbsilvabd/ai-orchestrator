@@ -2828,3 +2828,26 @@ Template:
 - Files: src/free-listeners.mjs, test/free-listeners.test.mjs, docs/adr/010-live-egress-and-approval.md, docs/task-contract.md, docs/roadmap.md, docs/handoff.md, docs/deployment-prerequisites.md, docs/tasks/B30.md, docs/validation.md, docs/worklog.md, integration/README.md.
 - Validation: focused free-listener files 19/19 (exit 0); serial `node --test --test-concurrency=1` -> 418 tests, 413 pass / 0 fail / 5 platform-gated skips (exit 0, 186 s); demo 429 then 200 (exit 0); pinned `integration/opencode-free-relay.mjs` exit 0 with six scenarios; `git diff --check` clean. The real bind test uses loopback `127.0.0.2`; private `10.30.1.1` is policy-tested only.
 - Follow-up: commit and push, verify the head and CI. Binding on a real private NIC, the deployed relay->gateway TLS leg, positive FIDO2 (no device), provider WebSocket bypass, an Ubuntu host and live inference remain not_run; PR #45 stays draft.
+
+## 2026-11-22 - B30 critical review correction follow-up
+
+- Branch/head baseline: `task/B30-free-relay`, `11685d57c6e15a7804a95c05c1a3666c70b56de7`; PR #45.
+- Steps: addressed terminal-latch races, ingress-started body/upstream deadline handling and request socket cleanup; tightened worker preparation URL profile; added two-connection supervised regression and worker preparation URL test; moved fixture origin cleanup registration before composition; documented wire-model ID distinction. Corrections are not yet independently reviewed.
+- Files: `src/relay.mjs`, `src/egress-gateway.mjs`, `src/opencode.mjs`, `src/configured-service.mjs`, `test/free-listeners.test.mjs`, `test/free-provider.test.mjs`, `test/relay.test.mjs`, `test/egress-gateway.test.mjs`, `docs/task-contract.md`, `docs/tasks/B30.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: default `node --test` (Node 24.22.1) => 422 total, 416 pass, 1 fail, 5 skip, native exit 1; B10-03 partial-output timing flake. Serial full suite in progress at logging time. Focused tests worker-preparation 13/13 exit 0; relay/gateway/listener prior run 57/58 exit 1 before final label adjustment. Demo exit 0; `git diff --check` exit 0 before final socket-cleanup adjustment; both require final rerun.
+- Limits: pending serial result, final focused/full/demo/diff reruns, complete review-conversation re-read, final diff review, publication, PR draft/head verification and independent review. No deployment, live provider, catalog, paid, FIDO2, VM/WSL/firewall or external network gate was run.
+## 2026-11-22 - B30 validation result correction
+
+- Update to the earlier same-date entry: serial full `node --test --test-concurrency=1`
+  completed 422 total / 417 pass / 0 fail / 5 platform skips, native exit 0 (197.5 s).
+  Default full `node --test` remains 422 / 416 / 1 / 5, exit 1 for B10-03 partial-output
+  timing flake; serial run passes that test.
+- Post-adjustment focused B30 suite 71/71 exit 0; fallback demo exit 0 (429 then 200);
+  final diff check exit 0. No independent review, CI, deployment or live gate is claimed.
+## Final post-correction B30 validation receipt — 2026-11-22
+
+- Serial full suite after all test/code changes: 423 total, 418 pass, 0 fail, 5
+  platform-gated skips, native exit 0 (197.96 s). Default full suite: 423 total,
+  417 pass, 1 fail, 5 skips, native exit 1 due B10-03 partial-output timing flake.
+- Focused B30 suite 73/73 exit 0; listener composition file 16/16 exit 0. Demo 429 -> 200,
+  exit 0; diff check exit 0. Corrections remain unpublished, without current-head CI.

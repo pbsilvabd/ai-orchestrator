@@ -191,9 +191,9 @@ test('B30-04: upstream timeout latches with a terminal error and no second reque
   t.after(() => relay.stop());
 
   const response = await post(base);
-  assert.equal(response.status, 502);
+  assert.equal(response.status, 504);
   assert.equal(relay.status().latched, true);
-  assert.equal(relay.status().latchReason, 'upstream-unavailable');
+  assert.equal(relay.status().latchReason, 'timeout');
   assert.equal(origin.requests.length, 1, 'timeout must not produce a second upstream request');
 });
 

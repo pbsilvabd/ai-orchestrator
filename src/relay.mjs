@@ -115,12 +115,14 @@ function canonical(value) {
 
 // Read a request body up to maxBytes. Returns the Buffer, or throws a RelayError when
 // the body exceeds the bound. Never buffers more than maxBytes + 1 to detect overflow.
-function readBody(req, maxBytes) {
+function readBody(req, maxBytes, signal) {
   return new Promise((resolve, reject) => {
     const chunks = [];
     let bytes = 0;
     let settled = false;
     const done = error => { if (!settled) { settled = true; error ? reject(error) : resolve(Buffer.concat(chunks)); } };
+    const abort = () => done(new RelayError('unavailable', 'request deadline exceeded'));
+    signal?.addEventListener('abort', abort, { once: true });
     req.on('data', chunk => {
       if (settled) return;
       bytes += chunk.length;
@@ -128,13 +130,15 @@ function readBody(req, maxBytes) {
         done(new RelayError('limit_exceeded', 'request body exceeds relay bound'));
         // Reject the request without retaining its body, but drain the remaining
         // incoming bytes so the HTTP connection can close cleanly.
-        req.resume();
+        // Stop retaining/draining hostile input. The caller sends its bounded refusal
+        // before the connection is destroyed by the deadline cleanup.
         return;
       }
       chunks.push(chunk);
     });
     req.on('end', () => done());
     req.on('error', error => done(new RelayError('unavailable', error.code ?? 'request-error')));
+    req.on('aborted', abort);
   });
 }
 
@@ -165,39 +169,56 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
   let boundAddress = null;
 
   const handle = async (req, res) => {
+    const deadline = Date.now() + limits.timeoutMs;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), limits.timeoutMs);
+    timer.unref?.();
+    const respondAndClear = (status, text) => {
+      clearTimeout(timer);
+      if ((status === 504 || status === 413) && !res.headersSent) {
+        res.writeHead(status, { 'content-type': 'text/plain', 'content-length': Buffer.byteLength(text), connection: 'close' });
+        res.once('finish', () => { if (!req.complete) req.socket.destroy(); });
+        res.end(text);
+      } else respond(res, status, text);
+    };
+    const expired = () => controller.signal.aborted || Date.now() >= deadline;
+    const terminal = () => latched || stopped || expired();
     requests += 1;
-    if (latched) return respond(res, 503, 'relay latched');
+    if (latched || stopped) return respondAndClear(503, 'relay latched');
     if (requests > limits.maxRequests) {
       latched = true;
       latchReason = 'request-count';
-      return respond(res, 429, 'relay request limit exceeded');
+      return respondAndClear(429, 'relay request limit exceeded');
     }
     if (req.method !== upstream.method) {
       latched = true;
       latchReason = 'method';
-      return respond(res, 405, 'method not allowed');
+      return respondAndClear(405, 'method not allowed');
     }
     // The relay ingress accepts only the fixed model endpoint path, never an
     // arbitrary target or proxy form.
     if (req.url !== upstream.path && req.url.split('?')[0] !== upstream.path) {
       latched = true;
       latchReason = 'path';
-      return respond(res, 404, 'not found');
+      return respondAndClear(404, 'not found');
     }
     if (req.headers.authorization !== 'Bearer public') {
       latched = true;
       latchReason = 'credential';
-      return respond(res, 401, 'unauthorized');
+      return respondAndClear(401, 'unauthorized');
     }
 
     let body;
     try {
-      body = await readBody(req, limits.maxRequestBytes);
+      body = await readBody(req, limits.maxRequestBytes, controller.signal);
     } catch {
+      const timedOut = expired();
       latched = true;
-      latchReason = 'body-bound';
-      return respond(res, 413, 'request body exceeds relay bound');
+      latchReason = timedOut ? 'timeout' : 'body-bound';
+      return respondAndClear(timedOut ? 504 : 413, timedOut ? 'relay deadline exceeded' : 'request body exceeds relay bound');
     }
+    if (latched || stopped) return respondAndClear(503, 'relay latched');
+    if (expired()) { latched = true; latchReason = 'timeout'; return respondAndClear(504, 'relay deadline exceeded'); }
     bytesIn += body.length;
     let parsed;
     try {
@@ -205,17 +226,19 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
     } catch {
       latched = true;
       latchReason = 'body-parse';
-      return respond(res, 400, 'invalid request body');
+      return respondAndClear(400, 'invalid request body');
     }
     if (parsed?.model !== model) {
       latched = true;
       latchReason = 'model';
-      return respond(res, 403, 'model not permitted');
+      return respondAndClear(403, 'model not permitted');
     }
 
     // Forward only the fixed method/path to the fixed upstream. Never follow a
     // redirect: any 3xx is a terminal refusal and no bytes are sent to its target.
     let upstreamResponse;
+    if (latched || stopped) return respondAndClear(503, 'relay latched');
+    if (expired()) { latched = true; latchReason = 'timeout'; return respondAndClear(504, 'relay deadline exceeded'); }
     try {
       upstreamResponse = await fetch(`${upstream.origin}${upstream.path}`, {
         method: upstream.method,
@@ -225,20 +248,22 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
         },
         body,
         redirect: 'manual',
-        signal: AbortSignal.timeout(limits.timeoutMs),
+        signal: controller.signal,
       });
     } catch {
+      const timedOut = expired();
       latched = true;
-      latchReason = 'upstream-unavailable';
-      return respond(res, 502, 'upstream unavailable');
+      latchReason = timedOut ? 'timeout' : 'upstream-unavailable';
+      return respondAndClear(timedOut ? 504 : 502, 'upstream unavailable');
     }
+    if (terminal()) { latched = true; latchReason = 'timeout'; try { await upstreamResponse.body?.cancel(); } catch {} return respondAndClear(504, 'relay deadline exceeded'); }
 
     if (REDIRECT_STATUS.has(upstreamResponse.status)) {
       // Fail closed: consume/discard the upstream body without following the Location.
       try { await upstreamResponse.body?.cancel(); } catch { /* discard */ }
       latched = true;
       latchReason = 'redirect-refused';
-      return respond(res, 502, 'upstream redirect refused');
+      return respondAndClear(502, 'upstream redirect refused');
     }
 
     try {
@@ -246,7 +271,7 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
       res.writeHead(upstreamResponse.status, {
         'content-type': upstreamResponse.headers.get('content-type') ?? 'application/json',
       });
-      if (!reader) { res.end(); return; }
+      if (!reader) { res.end(); clearTimeout(timer); return; }
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
@@ -260,8 +285,9 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
         }
         res.write(value);
       }
-      res.end();
+      res.end(); clearTimeout(timer);
     } catch {
+      clearTimeout(timer);
       latched = true;
       latchReason = 'response-stream';
       try { res.destroy(); } catch { /* already failing */ }

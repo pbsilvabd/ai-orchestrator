@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { FREE_MODEL, FREE_ENDPOINT, FREE_MODEL_ID, METADATA_TTL_MS,
+import { FREE_MODEL, FREE_ENDPOINT, FREE_MODEL_ID, FREE_PACKAGE, METADATA_TTL_MS,
   freeRequestHash, validateFreeMetadata, validateFreeSubmission } from '../src/free-provider.mjs';
 import { buildOpenCodeInvocation, createOpenCodeWorker } from '../src/opencode.mjs';
 import { createTaskService } from '../src/service.mjs';
@@ -144,6 +144,19 @@ test('B29-02: approval expiry after admission retains the dispatch and halts the
   assert.equal(existsSync(join(f.home, 'locks', 'service-owner.lock')), true);
   // This disposable fixture verified prepare threw before returning an invocation;
   // no worker child was ever spawned. Only this isolated test home is removed.
+});
+
+test('B30: worker preparation accepts only trusted private relay URL forms', t => {
+  const f = fixture(t);
+  for (const baseURL of ['http://127.0.0.2:18081/v1', 'http://[fd00::1]:18081/v1']) {
+    assert.doesNotThrow(() => buildOpenCodeInvocation({ ...f.options,
+      provider: { kind: 'opencode-free-relay', package: FREE_PACKAGE, baseURL } }));
+  }
+  for (const baseURL of ['http://127.0.0.2:18081/v2', 'http://example.com:18081/v1',
+    'http://127.0.0.2.evil.invalid:18081/v1']) {
+    assert.throws(() => buildOpenCodeInvocation({ ...f.options,
+      provider: { kind: 'opencode-free-relay', package: FREE_PACKAGE, baseURL } }), denied);
+  }
 });
 
 test('B29-03: free launch is anonymous, isolated, guarded and inert without its plugin', t => {

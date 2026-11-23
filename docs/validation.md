@@ -3691,3 +3691,30 @@ Not run and unchanged: binding the relay on a real private NIC in the ADR-010 to
 deployed relay→gateway TLS leg (only the direct real-origin trust check above), positive FIDO2,
 the provider WebSocket-bypass experiment, an independent Ubuntu host and live inference. The
 live composition path remains closed; the PR stays draft.
+
+## 2026-11-22 - B30 critical review correction follow-up
+
+- Branch/head at pickup: `task/B30-free-relay`, published baseline `11685d57c6e15a7804a95c05c1a3666c70b56de7`; PR #45 remains draft and conflicting.
+- Corrections: relay/gateway ingress timers now begin at request arrival, cover body collection and upstream fetch, abort stalled requests, refuse body completion after a latch, and close incomplete request sockets after bounded 413/504 responses. Worker preparation now accepts only the dedicated relay-provider profile with a syntactically constrained private/loopback URL; the one prefixed authorization model remains fixed. Added supervised two-connection latch regression, worker URL validation, and early fixture-origin cleanup registration. Clarified wire-model versus authorization model IDs.
+- Focused validation: relay/gateway/supervised listener suite had 57/58 pass, then the one timeout-label expectation was corrected; worker-preparation focused suite 13/13 pass. A full default suite completed 422 tests: 416 pass, 1 fail (unrelated B10 subprocess timing/partial-output flake), 5 platform-gated skips, native exit 1. Serial full suite is running; do not claim its result until its actual native exit is captured. Demo 429 -> 200, native exit 0; `git diff --check`, native exit 0 (before the last socket-close adjustment; rerun required).
+- Not run: pinned OpenCode relay harness, external/deployment gates, provider/catalog requests, live inference, real FIDO2, network probes, VMs/WSL namespace/firewall, CI. Live composition remains closed. Follow-up corrections are incomplete pending final reruns, independent critical re-review and remote/PR verification.
+## 2026-11-22 - B30 follow-up validation receipt
+
+The serial full-suite process launched during implementation completed: 422 tests, 417
+passed, 0 failed, 5 platform-gated skipped; Node native exit 0 (197.5 s). This receipt
+supersedes the earlier “serial suite is running” statement in the same day's appended
+notes, but does not convert the default-concurrency result: default `node --test` ran 422
+tests, 416 passed, 1 failed, 5 skipped, native exit 1 due the B10-03 partial-output
+timing flake. The affected B10 file passes in the serial suite. Post-adjustment focused
+B30 suite: 71/71, exit 0. Final `git diff --check`: exit 0. Fallback demo: 429 -> 200,
+exit 0. Changes remain unpublished; no CI or PR-head result is claimed.
+## Final post-correction B30 validation receipt — 2026-11-22
+
+After adding the stalled-body and refusal-path cleanup regressions, the serial full suite
+completed 423 tests: 418 passed, 0 failed, 5 platform-gated skips; native exit 0
+(197.96 s). Final default full suite: 423 tests, 417 passed, 1 failed, 5 skips, native
+exit 1; the sole failure is B10-03's existing loaded-machine partial-output timing flake.
+Focused B30 suite passed 73/73, exit 0; the final `test/free-listeners.test.mjs` rerun
+passed 16/16, exit 0, including late data/end/error and abort after the body deadline.
+exit 0. Final demo exit 0 and final `git diff --check` exit 0. No CI/head verification
+has been run on these unpublished corrections.
