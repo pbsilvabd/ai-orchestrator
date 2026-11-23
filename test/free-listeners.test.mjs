@@ -99,6 +99,7 @@ function admissionDouble(plan) {
   const gate = () => ({ admitted: true, revalidate() {} });
   Object.defineProperty(gate, 'relayPolicyDigest', { value: plan.relayPolicyDigest, enumerable: true });
   Object.defineProperty(gate, 'gatewayPolicyDigest', { value: plan.gatewayPolicyDigest, enumerable: true });
+  Object.defineProperty(gate, 'maxRequests', { value: plan.maxRequests, enumerable: true });
   return gate;
 }
 
@@ -124,6 +125,10 @@ test('B30-04: the relay bind host is explicit, private or loopback, and covered 
 
   const ipv6 = freeListenerPlan({ ...base, relayHost: 'fd00::1' });
   assert.equal(ipv6.workerBaseURL, 'http://[fd00::1]:18081/v1');
+  const oneRequest = freeListenerPlan({ ...base, limits: { ...LIMITS, maxRequests: 1 } });
+  assert.equal(oneRequest.maxRequests, 1);
+  assert.equal(oneRequest.relayConfig.limits.maxRequests, 1);
+  assert.equal(oneRequest.gatewayConfig.limits.maxRequests, 1);
 
   for (const relayHost of ['0.0.0.0', '::', '0:0:0:0:0:0:0::', '8.8.8.8', '1.1.1.1', '100.64.0.1',
     'localhost', 'example.com', '', '10.30.1.999', '::ffff:10.30.1.1']) {
@@ -192,6 +197,36 @@ test('B30-04: supervised relay accepts the pinned worker wire model and forwards
   ]);
   assert.equal(JSON.parse(originRequests[0].body.toString()).model, FREE_MODEL_ID);
   assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+});
+
+test('B30-05: one-request signed ceiling composes all three caps and blocks request two', { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  listeners.limits = { ...LIMITS, maxRequests: 1 };
+  const originRequests = [];
+  const origin = createHttpServer((req, res) => {
+    originRequests.push(req.url);
+    req.resume();
+    res.end('{}');
+  });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => { origin.closeAllConnections?.(); await new Promise(resolve => origin.close(resolve)); });
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  assert.equal(plan.maxRequests, 1);
+  assert.equal(plan.relayConfig.limits.maxRequests, 1);
+  assert.equal(plan.gatewayConfig.limits.maxRequests, 1);
+  const request = () => fetch(`http://127.0.0.1:${listeners.relayPort}/v1/chat/completions`, {
+    method: 'POST', headers: { authorization: 'Bearer public' }, body: JSON.stringify({ model: FREE_MODEL_ID }),
+  });
+  assert.equal((await request()).status, 200);
+  assert.equal((await request()).status, 429);
+  assert.deepEqual(originRequests, ['/v1/chat/completions']);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.equal((await locks(f.home)).length, 2);
 });
 
 test('B30-04: supervised listeners bound oversized bodies, latch without upstream I/O, and remain owned and alive',
@@ -278,7 +313,8 @@ test('B30-04: body waiters cannot pass a terminal latch in either supervised lis
       headers: { authorization: 'Bearer public', 'content-length': '20' } });
     aborted.on('error', () => {});
     aborted.flushHeaders();
-    await new Promise(resolve => setImmediate(resolve));
+    aborted.write('{"');
+    await new Promise(resolve => setTimeout(resolve, 50));
     aborted.destroy();
     await new Promise(resolve => setTimeout(resolve, 10));
     const refused = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
@@ -331,6 +367,111 @@ test('B30-04: ingress deadline bounds stalled bodies and closes clients without 
   assert.equal(originRequests, 0);
   assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
   assert.equal((await locks(f.home)).length, 2);
+});
+
+test('B30-04: early refusals close incomplete content-length and chunked requests within the policy deadline', { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  listeners.limits = { ...LIMITS, timeoutMs: 75 };
+  let originRequests = 0;
+  const origin = createHttpServer((req, res) => { originRequests++; req.resume(); res.end('{}'); });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => { origin.closeAllConnections?.(); await new Promise(resolve => origin.close(resolve)); });
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  const lockBytes = await Promise.all((await readdir(join(f.home, 'listeners'))).filter(x => x.endsWith('.lock.json'))
+    .map(x => readFile(join(f.home, 'listeners', x))));
+  const stalled = (port, authorization, bodyMode) => new Promise((resolve, reject) => {
+      let responseStatus = null;
+      const startedAt = Date.now();
+      const req = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
+        headers: { authorization, ...(bodyMode === 'content-length' ? { 'content-length': '100' } : { 'transfer-encoding': 'chunked' }) } },
+      res => {
+        responseStatus = res.statusCode;
+        res.resume();
+        res.on('end', () => {
+          const socket = req.socket;
+          if (socket.destroyed) resolve({ status: responseStatus, closed: true, durationMs: Date.now() - startedAt });
+          else socket.once('close', () => resolve({ status: responseStatus, closed: true, durationMs: Date.now() - startedAt }));
+        });
+      });
+      req.on('error', error => error.code === 'ECONNRESET'
+        ? resolve({ status: responseStatus, closed: true, durationMs: Date.now() - startedAt }) : reject(error));
+      req.flushHeaders();
+      const timer = setTimeout(() => req.destroy(), 250);
+      timer.unref?.();
+      req.once('close', () => clearTimeout(timer));
+    });
+  for (const [port, invalidMode, latchedMode] of [
+    [listeners.relayPort, 'content-length', 'chunked'],
+    [listeners.gatewayPort, 'chunked', 'content-length'],
+  ]) {
+    const invalid = await stalled(port, 'Bearer invalid', invalidMode);
+    assert.ok(invalid.status === 401 || invalid.status === null, `invalid-credential bounded response: ${invalid.status}`);
+    assert.ok(invalid.durationMs <= 100, `invalid-credential connection closed in ${invalid.durationMs}ms`);
+    const latched = await stalled(port, 'Bearer public', latchedMode);
+    assert.ok(latched.status === 503 || latched.status === null, `already-latched bounded response: ${latched.status}`);
+    assert.ok(latched.durationMs <= 100, `latched connection closed in ${latched.durationMs}ms`);
+  }
+  assert.equal(originRequests, 0);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.deepEqual(await Promise.all((await readdir(join(f.home, 'listeners'))).filter(x => x.endsWith('.lock.json'))
+    .map(x => readFile(join(f.home, 'listeners', x)))), lockBytes);
+});
+
+test('B30-04: abort in a fresh listener latches during another admitted pending request', { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  let originRequests = 0;
+  const origin = createHttpServer((req, res) => { originRequests++; req.resume(); res.end('{}'); });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => { origin.closeAllConnections?.(); await new Promise(resolve => origin.close(resolve)); });
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  const lockBytes = await Promise.all((await readdir(join(f.home, 'listeners'))).filter(x => x.endsWith('.lock.json'))
+    .map(x => readFile(join(f.home, 'listeners', x))));
+  for (const port of [listeners.relayPort, listeners.gatewayPort]) {
+    let first;
+    const firstResponse = new Promise((resolve, reject) => {
+      first = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
+        headers: { authorization: 'Bearer public', 'content-length': '100' } },
+      res => { res.resume(); res.on('end', () => resolve(res.statusCode)); });
+      first.on('error', reject);
+      first.flushHeaders();
+    });
+    await new Promise(resolve => setImmediate(resolve));
+    const aborted = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
+      headers: { authorization: 'Bearer public', 'content-length': '20' } });
+    aborted.on('error', () => {});
+    const connected = new Promise(resolve => aborted.once('socket', socket => {
+      if (socket.connecting) socket.once('connect', resolve);
+      else resolve();
+    }));
+    aborted.flushHeaders();
+    await connected;
+    aborted.write('{"');
+    await new Promise(resolve => setTimeout(resolve, 50));
+    aborted.destroy();
+    const valid = Buffer.from(JSON.stringify({ model: FREE_MODEL_ID }));
+    first.end(Buffer.concat([valid, Buffer.alloc(100 - valid.length, 0x20)]));
+    assert.equal(await firstResponse, 503);
+    const later = await fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+      method: 'POST', headers: { authorization: 'Bearer public' },
+      body: JSON.stringify({ model: FREE_MODEL_ID }),
+    });
+    assert.equal(later.status, 503, 'the aborted body left the fresh listener terminally latched');
+    assert.equal(originRequests, 0, `listener ${port} must not have forwarded A`);
+  }
+  assert.equal(originRequests, 0);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.deepEqual(await Promise.all((await readdir(join(f.home, 'listeners'))).filter(x => x.endsWith('.lock.json'))
+    .map(x => readFile(join(f.home, 'listeners', x)))), lockBytes);
 });
 
 test('B30-04: fixture origin cleanup is registered before a refused composition', async t => {

@@ -197,13 +197,26 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
   const handle = async (req, res) => {
     const deadline = Date.now() + limits.timeoutMs;
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), limits.timeoutMs);
+    const timer = setTimeout(() => {
+      controller.abort();
+      setTimeout(() => {
+        if (!req.complete && !res.writableFinished && !req.socket.destroyed) req.socket.destroy();
+      }, 10).unref?.();
+    }, limits.timeoutMs);
     timer.unref?.();
+    req.once('close', () => { if (req.complete && res.writableFinished) clearTimeout(timer); });
+    const cleanupTimer = () => {
+      if (!req.complete) {
+        res.once('finish', () => {
+          if (!req.complete && !req.socket.destroyed) req.socket.destroy();
+          clearTimeout(timer);
+        });
+      } else clearTimeout(timer);
+    };
     const respondAndClear = (status, text) => {
-      clearTimeout(timer);
-      if ((status === 504 || status === 413) && !res.headersSent) {
+      cleanupTimer();
+      if (!req.complete && !res.headersSent) {
         res.writeHead(status, { 'content-type': 'text/plain', 'content-length': Buffer.byteLength(text), connection: 'close' });
-        res.once('finish', () => { if (!req.complete) req.socket.destroy(); });
         res.end(text);
       } else respond(res, status, text);
     };

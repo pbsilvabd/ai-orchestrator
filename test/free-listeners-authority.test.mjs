@@ -167,6 +167,7 @@ function realGate({ plan, dir, pubKey }) {
     principal: PRINCIPAL,
     relayPolicyDigest: plan.relayPolicyDigest,
     gatewayPolicyDigest: plan.gatewayPolicyDigest,
+    maxRequests: plan.maxRequests,
     metadata: metadata(),
     ledger: openApprovalLedger({ home: join(dir, 'ledger') }),
     hostExecutable: process.execPath,
@@ -187,6 +188,7 @@ function gateDouble(plan) {
   const gate = () => ({ admitted: true, revalidate() {} });
   Object.defineProperty(gate, 'relayPolicyDigest', { value: plan.relayPolicyDigest, enumerable: true });
   Object.defineProperty(gate, 'gatewayPolicyDigest', { value: plan.gatewayPolicyDigest, enumerable: true });
+  Object.defineProperty(gate, 'maxRequests', { value: plan.maxRequests, enumerable: true });
   return gate;
 }
 
@@ -215,6 +217,26 @@ test('B30-04: a competing task-home owner refuses before any listener child, por
   assert.deepEqual(await listenerLocks(f.home), []);
   assert.equal(existsSync(join(f.home, 'locks', 'service-owner.lock')), true,
     'the competing owner keeps its lock; the refused attempt never removes it');
+});
+
+test('B30-05: request-cap mismatch refuses before ownership, metadata or listeners', async t => {
+  const f = fixture(t);
+  const { listeners, spawned, relayPort, gatewayPort } = await listenersAt(t);
+  const plan = freeListenerPlan(listeners);
+  const gate = () => ({ admitted: true, revalidate() {} });
+  Object.assign(gate, { relayPolicyDigest: plan.relayPolicyDigest,
+    gatewayPolicyDigest: plan.gatewayPolicyDigest, maxRequests: 1 });
+  let metadataCalls = 0;
+  await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: gate },
+  { metadata: async () => { metadataCalls++; return metadata(); }, freeListeners: listeners }),
+  /admission gate bound to the relay and gateway policy digests/);
+  assert.equal(spawned.length, 0);
+  assert.equal(metadataCalls, 0);
+  assert.equal(await portAccepts(relayPort), false);
+  assert.equal(await portAccepts(gatewayPort), false);
+  assert.equal(existsSync(join(f.home, 'locks', 'service-owner.lock')), false);
+  assert.deepEqual(await listenerLocks(f.home), []);
 });
 
 test('B30-04: a corrupt task store refuses before any listener child, port or lock exists', async t => {

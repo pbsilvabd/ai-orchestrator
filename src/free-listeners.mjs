@@ -86,6 +86,8 @@ function urlHost(host) {
 export function freeListenerPlan(listeners) {
   if (!listeners || typeof listeners !== 'object' || Array.isArray(listeners)) refuse('free listeners must be an object');
   const { relayPort, gatewayPort, gatewayOrigin, limits, relayHost = LOOPBACK } = listeners;
+  if (!limits || !Number.isInteger(limits.maxRequests) || limits.maxRequests < 1 || limits.maxRequests > 12)
+    refuse('free listener request cap must be between 1 and 12');
   if (!validPort(relayPort) || !validPort(gatewayPort) || relayPort === gatewayPort) {
     refuse('free listeners require distinct fixed ports');
   }
@@ -107,6 +109,7 @@ export function freeListenerPlan(listeners) {
     relayConfig,
     gatewayConfig,
     relayHost,
+    maxRequests: limits.maxRequests,
     relayPolicyDigest: relayPolicyDigest(relayConfig),
     gatewayPolicyDigest: gatewayPolicyDigest(gatewayConfig),
     startupAuthority: FREE_LISTENER_START_AUTHORITY,

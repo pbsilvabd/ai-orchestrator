@@ -317,6 +317,17 @@ Until a platform provides verified firewall-filtered isolation, a real hardware-
 signing dry run and the separately signed live approval, the live composition stays
 closed.
 
+## Amendment — 2026-11-22: signed effective request ceiling
+
+The signed `approval.limits.maxRequests` ceiling binds the effective trusted cap used
+by the relay, gateway and worker guard. It is not a `TaskRequest.limits` field. The
+fixture composition requires all three effective caps to be equal, defaults to 12,
+and allows a trusted lower configured profile. The signed admission gate must expose
+and bind that exact configured cap; composition refuses mismatches before ownership
+or listener startup, and the worker guard receives the same cap. An approval ceiling
+below the effective cap is rejected before task persistence/reservation. This changes
+no provider, destination, credential, network or live-activation policy.
+
 ## Amendment — 2026-11-15: listener supervision and offline gateway TLS fixtures (B30-04/07)
 
 Decision (listener ownership). The relay and egress gateway may run as a child process

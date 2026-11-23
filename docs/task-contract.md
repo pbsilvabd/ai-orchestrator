@@ -147,6 +147,12 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   remains passive and unchanged. The cryptographic positive path still requires a real
   FIDO2 hardware-key signature, which is `not_run`; the gate is never weakened to accept a
   non-hardware signature.
+- `approval.limits.maxRequests` is the signed ceiling for the independently configured
+  relay, gateway and worker-guard request caps; it is not a `TaskRequest.limits` field.
+  The trusted composition requires the signed gate to bind the exact effective cap.
+  Relay, gateway and worker guard use the same cap (default 12, never greater than 12);
+  trusted configuration may lower all three together. A signed ceiling below the
+  effective cap is refused before persistence, listener start or worker dispatch.
 - A successful admission MUST return an object with `admitted: true` and a callable
   `revalidate` bound to that task; `false`, `true`, `undefined`, `null`, or an object
   lacking the verifier are refused before persistence. The returned receipt is a **trusted
@@ -643,8 +649,9 @@ above). Live composition remains closed.
   relay host must be concrete loopback/RFC 1918/link-local IPv4 or `::1`/`fc00::/7`/`fe80::/10`
   IPv6; wildcard/unspecified, public, IPv4-mapped and hostname forms are refused before any
   child starts, and the address is part of the relay policy digest the admission gate binds.
-  Authorization/configuration uses the prefixed `openai/<model>` model ID (`FREE_MODEL`);
-  the HTTP request body uses the provider's bare wire-model ID (`FREE_MODEL_ID`). The relay
+  Authorization and OpenCode configuration use `FREE_MODEL`, the prefixed identifier
+  `opencode/deepseek-v4.1-flash-free`. The HTTP request body's `model` field uses
+  `FREE_MODEL_ID`, the bare wire identifier `deepseek-v4.1-flash-free`. The relay
   binds and validates that wire ID. The worker base URL derives only from this validated,
   trusted `relayHost` and fixed port; this does not authorize task-selected endpoints or
   broaden the one-model allowlist. The

@@ -195,39 +195,49 @@ test('B30-05: approval binding refuses policy drift, stale or paid metadata', ()
   assert.doesNotThrow(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request, hostBinaryDigest,
     relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
-    metadata: { ...metadata } }));
+    maxRequests: 12, metadata: { ...metadata } }));
+  const oneRequestApproval = approval({ ...a, limits: { ...a.limits, maxRequests: 1 } });
+  assert.doesNotThrow(() => verifyApprovalBinding({ approval: oneRequestApproval,
+    requestHash: oneRequestApproval.requestHash, baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: oneRequestApproval.relayPolicyDigest,
+    gatewayPolicyDigest: oneRequestApproval.gatewayPolicyDigest, maxRequests: 1, metadata: { ...metadata } }));
+  assert.throws(() => verifyApprovalBinding({ approval: oneRequestApproval,
+    requestHash: oneRequestApproval.requestHash, baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: oneRequestApproval.relayPolicyDigest,
+    gatewayPolicyDigest: oneRequestApproval.gatewayPolicyDigest, maxRequests: 12, metadata: { ...metadata } }),
+  /below the effective listener policy/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: '0'.repeat(64),
-    baseCommit, request, hostBinaryDigest,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /bind the submitted/);
+     baseCommit, request, hostBinaryDigest,
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /bind the submitted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request, hostBinaryDigest,
-    relayPolicyDigest: '0'.repeat(64), gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /relay policy drifted/);
+    relayPolicyDigest: '0'.repeat(64), gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /relay policy drifted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request, hostBinaryDigest,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: '0'.repeat(64), metadata }), /gateway policy drifted/);
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: '0'.repeat(64), maxRequests: 12, metadata }), /gateway policy drifted/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit: 'c'.repeat(40), request, hostBinaryDigest,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /base commit/);
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /base commit/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request: { ...request, objective: 'Different objective' }, hostBinaryDigest,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /objective/);
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /objective/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request: { ...request, repository: { branch: 'task/other' } }, hostBinaryDigest,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /branch/);
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /branch/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request: { ...request, limits: { ...request.limits, maxAttempts: 2 } }, hostBinaryDigest,
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /attempt limit/);
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /attempt limit/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request, hostBinaryDigest: '0'.repeat(64),
-    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, metadata }), /host binary/);
+    relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest, maxRequests: 12, metadata }), /host binary/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request, hostBinaryDigest,
     relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
-    metadata: { ...metadata, observedAt: Date.now() - 6 * 60 * 1000 } }), /stale/);
+    maxRequests: 12, metadata: { ...metadata, observedAt: Date.now() - 6 * 60 * 1000 } }), /stale/);
   assert.throws(() => verifyApprovalBinding({ approval: a, requestHash: a.requestHash,
     baseCommit, request, hostBinaryDigest,
     relayPolicyDigest: a.relayPolicyDigest, gatewayPolicyDigest: a.gatewayPolicyDigest,
-    metadata: { ...metadata, cost: { text: { input: { price: 1 }, output: { price: 0 } } } } }), /zero-price/);
+    maxRequests: 12, metadata: { ...metadata, cost: { text: { input: { price: 1 }, output: { price: 0 } } } } }), /zero-price/);
 });
 
 test('B30-05: one approval ID cannot admit two tasks; identical replay is readable', t => {

@@ -2860,3 +2860,23 @@ Template:
   and reports `DIRTY`; current-head CI rollup is empty.
 - Validation receipt and findings replies are recorded separately. Independent
   re-review remains pending; no ready, merge, deployment or live-gate claim.
+# 2026-11-22 — B30 latest critical-review corrections (in progress)
+
+- Branch `task/B30-free-relay`, starting head `f59d10373a18c43c70208a84b55a1707f168d6c6`.
+  Preserved the two uncommitted request-cleanup edits from the prior partial session.
+- Corrected early terminal cleanup in relay/gateway; bound the signed approval request
+  ceiling to the effective trusted cap; passed the same <=12 cap through relay/gateway
+  plan and worker guard. Added signed binding, one-request composition/request-2,
+  before-ownership mismatch, stalled early-response and fresh abort-interleaving tests.
+  Corrected normative model-ID language and amended ADR-010.
+- Focused B30/worker set: 102 pass / 0 fail, exit 0. Serial complete suite: 428 total,
+  423 pass / 0 fail / 5 skips, exit 0. Demo 429 -> 200, exit 0; diff check exit 0.
+  Detailed commands and limitations are appended in `docs/validation.md`.
+- Earlier development failures (two focused failures, then test fix; one upstream
+  timeout regression caused by clearing timer on request end) remain documented in
+  validation; all current focused and serial reruns passed.
+- No network/provider/catalog/key/certificate/VM/firewall/FIDO2/live operation.
+  Current changes not yet published; no current-head CI or independent re-review.
+- Repeated the 3 focused timing/cap regressions (3/3, exit 0) and serial suite after
+  the final test assertion tightening: 428 total, 423 pass, 0 fail, 5 skips, exit 0
+  (~203 s); demo and diff check rerun successfully.

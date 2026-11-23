@@ -185,7 +185,7 @@ export function verifyLiveApproval({
 // relay/gateway policy and fresh zero-price metadata. Reject any mismatch before the ledger
 // is reserved.
 export function verifyApprovalBinding({ approval, requestHash, baseCommit, request, hostBinaryDigest,
-  relayPolicyDigest, gatewayPolicyDigest, metadata, now = Date.now() } = {}) {
+  relayPolicyDigest, gatewayPolicyDigest, maxRequests, metadata, now = Date.now() } = {}) {
   validateLiveApproval(approval, now);
   if (approval.requestHash !== requestHash) fail('authorization_denied', 'approval does not bind the submitted request');
   if (typeof baseCommit !== 'string' || approval.repository.baseRef !== baseCommit)
@@ -200,6 +200,9 @@ export function verifyApprovalBinding({ approval, requestHash, baseCommit, reque
   if (approval.limits.budgetMs !== request.limits?.budgetMs ||
       approval.limits.maxOutputBytes !== request.limits?.maxOutputBytes)
     fail('authorization_denied', 'approval limits do not match the request');
+  if (!Number.isInteger(maxRequests) || maxRequests < 1 || maxRequests > 12 ||
+      approval.limits.maxRequests < maxRequests)
+    fail('authorization_denied', 'approval request ceiling is below the effective listener policy');
   // The signed host identity must match the measured trusted executable bytes.
   if (typeof hostBinaryDigest !== 'string' || approval.hostBinaryDigest !== hostBinaryDigest)
     fail('authorization_denied', 'approval host binary digest does not match the measured executable');
@@ -328,11 +331,11 @@ export function canonicalExecutablePath(path) {
 // presence/verification; the binding and ledger are never reached for a refused signature.
 export function admitLiveApproval({ approval, signature, allowedSigners, principal, krl = '',
   namespace = LIVE_NAMESPACE, requestHash, baseCommit, request, hostBinaryDigest,
-  relayPolicyDigest, gatewayPolicyDigest, metadata,
+  relayPolicyDigest, gatewayPolicyDigest, maxRequests = 12, metadata,
   taskId, ledger, now = Date.now(), sshKeygen = 'ssh-keygen' } = {}) {
   verifyLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace, now, sshKeygen });
   const binding = verifyApprovalBinding({ approval, requestHash, baseCommit, request, hostBinaryDigest,
-    relayPolicyDigest, gatewayPolicyDigest, metadata, now });
+    relayPolicyDigest, gatewayPolicyDigest, maxRequests, metadata, now });
   if (!ledger || typeof ledger.reserve !== 'function') fail('invalid_argument', 'approval ledger is required');
   const reservation = ledger.reserve({ approvalId: approval.approvalId, taskId, now });
   return { ...reservation, expiresAt: binding.expiresAt, metadataObservedAt: metadata.observedAt,
@@ -355,7 +358,7 @@ export function liveRequestHash(payload) {
 // admission and again at pre-spawn revalidation, so a stale/foreign digest cannot pass. On
 // success the gate returns a trusted in-memory receipt with a `revalidate(now)` method.
 export function createSignedApprovalAdmission({ allowedSigners, principal, krl = '',
-  namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, metadata, ledger,
+  namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, maxRequests = 12, metadata, ledger,
   hostExecutable, sshKeygen = 'ssh-keygen' } = {}) {
   if (typeof allowedSigners !== 'string' || typeof principal !== 'string' ||
       typeof namespace !== 'string' || typeof krl !== 'string' ||
@@ -380,7 +383,7 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     const hostBinaryDigest = measure();
     const result = admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
       requestHash: liveRequestHash(payload), baseCommit, request: payload, hostBinaryDigest,
-      relayPolicyDigest, gatewayPolicyDigest, metadata, taskId, ledger, now, sshKeygen });
+      relayPolicyDigest, gatewayPolicyDigest, maxRequests, metadata, taskId, ledger, now, sshKeygen });
     // A trusted in-memory receipt: never persisted, never in task text. Its closure re-checks
     // freshness and host identity (re-measuring the same executable) without the signature.
     return {
@@ -400,5 +403,6 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
   // supervised listener configuration that differs from the approved policy.
   Object.defineProperty(gate, 'relayPolicyDigest', { value: relayPolicyDigest, enumerable: true });
   Object.defineProperty(gate, 'gatewayPolicyDigest', { value: gatewayPolicyDigest, enumerable: true });
+  Object.defineProperty(gate, 'maxRequests', { value: maxRequests, enumerable: true });
   return gate;
 }

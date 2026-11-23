@@ -171,9 +171,13 @@ test('B29-03: free launch is anonymous, isolated, guarded and inert without its 
   assert.equal(invocation.config.compaction.auto, false);
   assert.equal(invocation.config.warming, false);
   assert.match(invocation.guardSource, /free worker request refused/);
+  assert.ok(invocation.guardSource.includes('"maxRequests":12'));
   assert.ok(invocation.guardSource.includes(FREE_ENDPOINT));
   assert.equal(invocation.env.OPENCODE_API_KEY, undefined);
   assert.equal(invocation.env.OPENCODE_DISABLE_MODELS_FETCH, '1');
+  const oneRequest = buildOpenCodeInvocation({ ...f.options, freeMaxRequests: 1 });
+  assert.ok(oneRequest.guardSource.includes('"maxRequests":1'));
+  assert.throws(() => buildOpenCodeInvocation({ ...f.options, freeMaxRequests: 13 }), /invalid configured free request cap/);
   const worker = createOpenCodeWorker({ ...f.options, runtimeRoot: join(f.root, 'worker-runtime') });
   const prepared = worker.prepare(f);
   assert.equal(readFileSync(prepared.env.OPENCODE_MODELS_PATH, 'utf8'), '{}');

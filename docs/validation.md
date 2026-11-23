@@ -3726,3 +3726,34 @@ Published on the same branch and draft PR #45 as commit
 The exact remote ref matched this SHA; PR #45 still targets `main`, remains draft and
 reports `DIRTY`. No current-head CI result was available. This is not independent
 acceptance or a ready/merge claim.
+# B30 latest critical-review corrections — 2026-11-22 (local validation)
+
+- Correction work began from the verified clean local/remote head
+  `f59d10373a18c43c70208a84b55a1707f168d6c6`; the initial two-file request-cleanup
+  edits were preserved. Work remains on `task/B30-free-relay`.
+- Focused command
+  `fnm exec --using=24.22.1 node --test test/free-provider.test.mjs test/live-approval.test.mjs test/free-listeners.test.mjs test/free-listeners-authority.test.mjs test/relay.test.mjs test/egress-gateway.test.mjs test/opencode.test.mjs`
+  passed 102/102 after corrections (exit 0). It covers bounded incomplete-body refusals,
+  fresh-listener abort interleaving, one-request cap composition/request-2 denial,
+  signed-ceiling binding, guard cap generation and refusal before listener ownership.
+- Serial full suite
+  `fnm exec --using=24.22.1 node --test --test-concurrency=1`: 428 total, 423 pass,
+  0 fail, 5 skips, exit 0, ~199 seconds. Four TLS fixtures skipped because `openssl`
+  is absent from PATH; one Windows platform-gated subprocess case skipped. The suite
+  itself ran existing disposable-key tests; no key/certificate command was manually
+  invoked.
+- `fnm exec --using=24.22.1 node examples/fallback-demo.mjs`: mock 429 then 200,
+  exit 0. `git diff --check`: exit 0 (CRLF normalization warning on ADR-010 only).
+- An earlier focused run during development failed (2 tests: abort ordering and
+  incomplete addition of effective cap parameter); an earlier broader run also
+  timed out existing upstream-timeout cases when a request-end handler cleared the
+  timer too early. These failures led to fixes and are retained here, not represented
+  as passing evidence. Current focused and serial reruns above passed.
+- Not rerun: pinned OpenCode-through-supervised composition, WSL/VM/network placement,
+  deployed TLS, live/provider/catalog, FIDO2 positive signature, platform egress,
+  current-head CI, default-concurrency full suite. PR remains draft/conflicting and
+  issues #46/#47/#48 remain external blockers.
+- Final post-review tightening rerun: focused three-case set (early refusal, fresh abort,
+  one-request profile) passed 3/3, exit 0; serial full suite repeated after that test edit
+  passed 428 total / 423 pass / 0 fail / 5 skips, exit 0 (~203 s). Demo and diff check
+  were rerun after source changes and passed.

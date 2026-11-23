@@ -61,7 +61,8 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
   if (plan !== undefined) {
     if (approval === undefined) throw new Error('supervised free listeners require an approved run before any start');
     if (typeof admission !== 'function' || admission.relayPolicyDigest !== plan.relayPolicyDigest ||
-        admission.gatewayPolicyDigest !== plan.gatewayPolicyDigest) {
+        admission.gatewayPolicyDigest !== plan.gatewayPolicyDigest ||
+        admission.maxRequests !== plan.maxRequests) {
       throw new Error('supervised free listeners require an admission gate bound to the relay and gateway policy digests');
     }
   }
@@ -87,6 +88,7 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       runtimeRoot: join(home, 'runtime'), authorizedModel: FREE_MODEL,
       allowedTools: config.authorization.tools, writablePaths: settings.writablePaths,
       provider, freeApproval: approval, freeMetadata: snapshot, hostEnvironment,
+      freeMaxRequests: plan?.maxRequests,
       maxBudgetMs: config.limits.budgetMs, maxOutputBytes: config.limits.maxOutputBytes,
       testCommands: [{ executable: process.execPath, args: ['--test'], label: 'node --test', env: {} }],
     });
