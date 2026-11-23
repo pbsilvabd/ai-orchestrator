@@ -2901,3 +2901,17 @@ Template:
   blockers; independent critical re-review of this head is pending.
 - Published code commit `4bf5e19f6e13f0ca63ac2c4d78c787ba849cba47`; the docs-only
   publication receipt follows on the same branch.
+
+## 2026-11-23 - B30 author self-review (not independent)
+
+- Reviewed the complete `main..HEAD` diff at `28f10a2` plus local probes; this is not
+  the independent critical re-review, which remains pending.
+- Confirmed both blocking findings from comment #7089619255 are corrected. Found and
+  fixed one diagnostic defect by probe: an in-flight request latched by another request
+  answered 504 and rewrote `latchReason` to `timeout`; it now answers 503 and retains
+  the original reason. No replay or forwarded bytes were involved.
+- Commit `bf07293f0718ea25b7a93c54f20b66bda7f95c82` with deterministic regressions in
+  both listener test files. Revalidated: listener tests 39/39; serial suite 433 total,
+  428 pass, 0 fail, 5 skips. No network/provider/VM/key/FIDO2/live operation.
+- PR remains draft/conflicting; current-head CI is empty; issues #46/#47/#48 remain
+  blockers.

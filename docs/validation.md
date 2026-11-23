@@ -3793,3 +3793,27 @@ acceptance or a ready/merge claim.
   deployment/network/VM gates, deployed TLS, live/provider/catalog calls, a FIDO2
   positive signature, and a signed one-request run through a real signature. PR #45
   remains draft and conflicting; issues #46/#47/#48 remain external blockers.
+
+## B30 author self-review follow-up — 2026-11-23 (local validation)
+
+- This is an **author self-review**, not the independent critical re-review, which
+  remains pending. It reviewed the complete `main..HEAD` diff at
+  `28f10a29dc7a70abd9f747393c3c9166162bfa7d` plus local probes of both listeners.
+- Confirmed the two blocking findings from comment #7089619255 are corrected, and
+  found one diagnostic defect by probe: when another request latched the listener
+  while a valid request was awaiting its upstream response, the in-flight request
+  answered `504 deadline exceeded` and overwrote `latchReason` with `timeout`, even
+  though no deadline expired and the real latch was e.g. `method`. No upstream
+  replay or forwarded bytes were involved; the refusal itself was correct.
+- Correction commit `bf07293f0718ea25b7a93c54f20b66bda7f95c82`: both listeners now
+  answer `503 <listener> latched` and retain the original latch reason when another
+  request caused the latch; only a genuinely expired deadline answers 504. Added
+  deterministic regressions in `test/relay.test.mjs` and `test/egress-gateway.test.mjs`
+  (in-flight POST, concurrent wrong-method latch, one origin request, retained reason).
+- Revalidation after the fix: `node --test test/relay.test.mjs test/egress-gateway.test.mjs`
+  39 pass / 0 fail, exit 0; serial full suite 433 total, 428 pass, 0 fail, 5 skips,
+  exit 0 (~200 s). Skips unchanged (four TLS fixtures without `openssl`, one
+  platform-gated subprocess case).
+- Probes ran locally with Node 24.22.1 against loopback fixture origins only; no
+  provider, catalog, external network, VM, firewall, key, certificate or FIDO2
+  operation was performed.
