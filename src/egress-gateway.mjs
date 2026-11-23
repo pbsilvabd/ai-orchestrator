@@ -74,10 +74,15 @@ function validateOrigin(origin, mode) {
   if (typeof origin !== 'string' || /\s/.test(origin) || !/^https?:\/\/[^/]+$/.test(origin)) {
     fail('invalid_argument', 'gateway origin must be a fixed absolute URL');
   }
-  const url = new URL(origin);
+  let url;
+  try { url = new URL(origin); }
+  catch { fail('invalid_argument', 'gateway origin must be a fixed absolute URL'); }
   if (mode === 'live') {
     if (url.protocol !== 'https:') fail('invalid_argument', 'live gateway origin must be https');
-    if (url.hostname === 'localhost' || isIP(url.hostname)) fail('invalid_argument', 'live gateway origin must be a real hostname');
+    // WHATWG URL keeps IPv6 literals bracketed in `hostname`, so `isIP` alone classifies
+    // `[::1]` as a hostname. Strip the brackets before the non-IP requirement is applied.
+    const hostname = url.hostname.replace(/^\[|\]$/g, '');
+    if (hostname === 'localhost' || isIP(hostname)) fail('invalid_argument', 'live gateway origin must be a real hostname');
   } else if (mode === 'fixture') {
     if (url.protocol !== 'http:' || url.hostname !== '127.0.0.1') fail('invalid_argument', 'fixture gateway origin must be loopback http');
   } else {

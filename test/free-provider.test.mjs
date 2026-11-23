@@ -340,3 +340,43 @@ test('B30-05: a signed admission measuring the configured worker executable comp
   f.services.push(service);
   assert.equal(service.schedulerStatus().activeTaskId, null);
 });
+
+test('B30-05: fixture composition binds the prepared guard to the signed request ceiling', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  const approvalFile = join(f.home, 'approval.json');
+  writeFileSync(approvalFile, JSON.stringify(approvalFor(f.request)));
+  // Labelled test double: admits locally and exposes the signed one-request ceiling. The
+  // real factory's cap property is covered by the composition test above.
+  const gate = () => ({ admitted: true, revalidate() {} });
+  Object.defineProperty(gate, 'maxRequests', { value: 1, enumerable: true });
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig,
+    approvalFile, admission: gate }, { metadata: async () => metadata(), fixtureEndpoint });
+  f.services.push(service);
+  const accepted = service.submitTask(f.request);
+  await service.whenIdle();
+  const attempt = service.store.readTask(accepted.taskId).attempts.at(-1);
+  // The worker placeholder exits before any request; preparation still writes the guard.
+  const guardSource = readFileSync(join(f.home, 'runtime', accepted.taskId, attempt.attemptId,
+    'guard', 'index.js'), 'utf8');
+  assert.ok(guardSource.includes('"maxRequests":1'), 'guard enforces the signed ceiling');
+  assert.ok(!guardSource.includes('"maxRequests":12'), 'guard never widens to the default cap');
+});
+
+test('B30-05: a gate without a usable signed cap refuses before ownership or effects', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  for (const maxRequests of [undefined, 0, 13, '1']) {
+    const gate = () => ({ admitted: true, revalidate() {} });
+    if (maxRequests !== undefined)
+      Object.defineProperty(gate, 'maxRequests', { value: maxRequests, enumerable: true });
+    await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig, admission: gate },
+      { metadata: async () => metadata(), fixtureEndpoint }), /effective free request cap/);
+  }
+  assert.equal(existsSync(join(f.home, 'locks', 'service-owner.lock')), false);
+  assert.equal(existsSync(join(f.home, 'workspaces')), false);
+});

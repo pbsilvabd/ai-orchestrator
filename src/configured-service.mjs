@@ -2,7 +2,7 @@ import { isAbsolute, join } from 'node:path';
 import { readFileSync } from 'node:fs';
 import { createTaskService, openTaskHome } from './service.mjs';
 import { createOpenCodeWorker } from './opencode.mjs';
-import { FREE_MODEL, FREE_PACKAGE, validateFreeApproval } from './free-provider.mjs';
+import { FREE_MODEL, FREE_PACKAGE, FREE_MAX_REQUESTS, validateFreeApproval } from './free-provider.mjs';
 import { canonicalExecutablePath } from './live-approval.mjs';
 import { freeListenerPlan, startFreeListeners } from './free-listeners.mjs';
 
@@ -66,6 +66,17 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       throw new Error('supervised free listeners require an admission gate bound to the relay and gateway policy digests');
     }
   }
+  // The worker guard's request cap must never exceed the signed approval ceiling. The
+  // supervised path already requires the plan and gate to agree; the fixture path has no
+  // listener plan, so the gate's own ceiling bounds the guard instead of the default
+  // maximum. A gate that does not expose a usable cap is refused before any effects.
+  if (admission !== undefined &&
+      (!Number.isInteger(admission.maxRequests) || admission.maxRequests < 1 ||
+       admission.maxRequests > FREE_MAX_REQUESTS)) {
+    throw new Error('signed admission gate must expose the effective free request cap');
+  }
+  const freeMaxRequests = plan?.maxRequests ?? admission?.maxRequests ?? FREE_MAX_REQUESTS;
+
   // Supervised listeners require task-home ownership first (no double acquisition): the owner
   // lock is taken and the store reconciled before any child may bind, and it is held until the
   // listeners have stopped. A competing owner or a corrupt store therefore has zero listener
@@ -88,7 +99,7 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       runtimeRoot: join(home, 'runtime'), authorizedModel: FREE_MODEL,
       allowedTools: config.authorization.tools, writablePaths: settings.writablePaths,
       provider, freeApproval: approval, freeMetadata: snapshot, hostEnvironment,
-      freeMaxRequests: plan?.maxRequests,
+      freeMaxRequests,
       maxBudgetMs: config.limits.budgetMs, maxOutputBytes: config.limits.maxOutputBytes,
       testCommands: [{ executable: process.execPath, args: ['--test'], label: 'node --test', env: {} }],
     });

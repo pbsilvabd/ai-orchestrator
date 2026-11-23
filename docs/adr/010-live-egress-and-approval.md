@@ -325,7 +325,10 @@ fixture composition requires all three effective caps to be equal, defaults to 1
 and allows a trusted lower configured profile. The signed admission gate must expose
 and bind that exact configured cap; composition refuses mismatches before ownership
 or listener startup, and the worker guard receives the same cap. An approval ceiling
-below the effective cap is rejected before task persistence/reservation. This changes
+below the effective cap is rejected before task persistence/reservation. The
+listener-free `fixtureEndpoint` composition has no relay/gateway cap, so the signed
+gate's own ceiling bounds the worker guard, and a gate that does not expose an
+integer cap in 1..12 is refused before ownership or preparation. This changes
 no provider, destination, credential, network or live-activation policy.
 
 ## Amendment — 2026-11-15: listener supervision and offline gateway TLS fixtures (B30-04/07)

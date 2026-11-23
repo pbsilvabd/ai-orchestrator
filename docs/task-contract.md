@@ -153,6 +153,9 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   Relay, gateway and worker guard use the same cap (default 12, never greater than 12);
   trusted configuration may lower all three together. A signed ceiling below the
   effective cap is refused before persistence, listener start or worker dispatch.
+  Without supervised listeners the fixture path has no relay/gateway cap, so the signed
+  gate's ceiling is the effective worker-guard cap; a gate that does not expose an
+  integer cap in 1..12 is refused before ownership, persistence or preparation.
 - A successful admission MUST return an object with `admitted: true` and a callable
   `revalidate` bound to that task; `false`, `true`, `undefined`, `null`, or an object
   lacking the verifier are refused before persistence. The returned receipt is a **trusted

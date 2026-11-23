@@ -288,3 +288,14 @@ test('gateway rejects a live origin that is not https and non-loopback hostname'
   assert.throws(() => createEgressGateway(gatewayConfig('http://127.0.0.1:1', { mode: 'live' })), /live gateway origin must be https/);
   assert.throws(() => createEgressGateway(gatewayConfig('https://127.0.0.1', { mode: 'live' })), /real hostname/);
 });
+
+test('B30-07: live gateway refuses IPv4/IPv6 literal origins before startup', () => {
+  for (const origin of ['https://127.0.0.1', 'https://127.0.0.1.', 'https://localhost',
+    'https://[::1]', 'https://[0:0:0:0:0:0:0:1]', 'https://[2001:db8::1]',
+    'https://[::ffff:127.0.0.1]']) {
+    assert.throws(() => createEgressGateway(gatewayConfig(origin, { mode: 'live' })), /real hostname/,
+      `live gateway accepted ${origin}`);
+  }
+  // A real DNS hostname still composes; no resolver or socket is touched here.
+  assert.doesNotThrow(() => createEgressGateway(gatewayConfig('https://api.example.invalid', { mode: 'live' })));
+});
