@@ -3761,3 +3761,35 @@ acceptance or a ready/merge claim.
   `8f888c22e0d7dcfb296be19edf2784f076896999` on the existing `task/B30-free-relay`
   PR branch. The task card records this latest publication SHA. The following docs-only
   publication receipt is separate and does not alter source/tests.
+
+## B30 follow-up critical-review corrections — 2026-11-23 (local validation)
+
+- Correction work began from the verified clean local/remote head
+  `14013bbe82d28a4ffa9651c8a721ec015fa64891` on `task/B30-free-relay`.
+- Source/tests/contract/ADR correction commit
+  `4bf5e19f6e13f0ca63ac2c4d78c787ba849cba47` addresses the two blocking findings in
+  https://github.com/pbsilvabd/ai-orchestrator/pull/45#issuecomment-7089619255 .
+  The listener-free `fixtureEndpoint` composition now passes the signed gate ceiling to
+  the worker guard and refuses a gate without an integer cap in 1..12 before ownership;
+  live gateway origin validation strips IPv6 brackets before IP classification.
+- Focused command
+  `fnm exec --using=24.22.1 node --test test/egress-gateway.test.mjs test/free-provider.test.mjs`:
+  36 total, 36 pass, 0 fail, 0 skips, exit 0. Includes the prepared-guard cap assertion
+  and the IPv4/IPv6 literal-origin negatives.
+- Focused B30 set (the same twelve files as the previous entry): 138 total, 134 pass,
+  0 fail, 4 skips, exit 0, ~15 s. The four skips are TLS fixtures that require
+  `openssl`, which is absent from PATH; no key or certificate tool was invoked.
+- Serial full suite `fnm exec --using=24.22.1 node --test --test-concurrency=1`:
+  431 total, 426 pass, 0 fail, 5 skips, exit 0, ~200 s. Skips: four TLS fixtures
+  without `openssl` plus one Windows platform-gated subprocess case.
+- Default-concurrency full suite `fnm exec --using=24.22.1 node --test`:
+  431 total, 425 pass, 1 fail, 5 skips, exit 1, ~68 s. The only failure was the known
+  B10-03 partial-output timing assertion (`'' !== 'before'` at
+  `test/subprocess.test.mjs:78`), reproduced in two default-concurrency runs today and
+  absent from the serial run. It is recorded as a flake, not passing evidence.
+- `fnm exec --using=24.22.1 node examples/fallback-demo.mjs`: mock 429 then 200,
+  exit 0. `git diff --check`: exit 0.
+- Not run: current-head CI, pinned OpenCode through the supervised composition,
+  deployment/network/VM gates, deployed TLS, live/provider/catalog calls, a FIDO2
+  positive signature, and a signed one-request run through a real signature. PR #45
+  remains draft and conflicting; issues #46/#47/#48 remain external blockers.

@@ -2882,3 +2882,22 @@ Template:
   (~203 s); demo and diff check rerun successfully.
 - Published code/docs commit `8f888c22e0d7dcfb296be19edf2784f076896999` on the same
   draft PR branch. Follow-up docs-only receipt records publication and task-card status.
+
+## 2026-11-23 - B30 follow-up critical-review corrections
+
+- Branch `task/B30-free-relay`, starting head `14013bbe82d28a4ffa9651c8a721ec015fa64891`.
+  Addressed the two blocking P2 findings in PR comment #7089619255 without widening
+  scope: the fixture (`fixtureEndpoint`) composition now bounds the worker guard by the
+  signed gate's `maxRequests` (refusing a gate without an integer cap in 1..12 before
+  ownership), and the live gateway strips IPv6 brackets before rejecting IP literals.
+  Added a prepared-guard assertion, a pre-ownership refusal test and IPv4/IPv6 origin
+  negatives; updated the normative contract and ADR-010 amendment.
+- Validation: focused 36/36; focused B30 set 134 pass / 0 fail / 4 environment skips;
+  serial full suite 431 total / 426 pass / 0 fail / 5 skips; default-concurrency suite
+  425 pass / 1 fail (known B10-03 timing flake, reproduced twice); demo 429 -> 200;
+  `git diff --check` clean. Details and limits in `docs/validation.md`.
+- No network/provider/catalog/VM/firewall/key/FIDO2/live operation, no rebase, no ready
+  transition and no merge. Current-head CI is still empty and issues #46/#47/#48 remain
+  blockers; independent critical re-review of this head is pending.
+- Published code commit `4bf5e19f6e13f0ca63ac2c4d78c787ba849cba47`; the docs-only
+  publication receipt follows on the same branch.
