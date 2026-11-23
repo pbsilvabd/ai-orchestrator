@@ -287,7 +287,14 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
       latch(timedOut ? 'timeout' : classifyUpstreamFailure(error));
       return respondAndClear(timedOut ? 504 : 502, 'upstream unavailable');
     }
-    if (terminal()) { latch('timeout'); try { await upstreamResponse.body?.cancel(); } catch {} return respondAndClear(504, 'gateway deadline exceeded'); }
+    if (terminal()) {
+      // Distinguish this request's own deadline from a latch caused by another request:
+      // the latter is a terminal refusal, not a timeout, and must not rewrite the reason.
+      const timedOut = expired();
+      if (!latched) latch(timedOut ? 'timeout' : (stopped ? 'stopped' : 'latched'));
+      try { await upstreamResponse.body?.cancel(); } catch {}
+      return respondAndClear(timedOut ? 504 : 503, timedOut ? 'gateway deadline exceeded' : 'gateway latched');
+    }
 
     if (REDIRECT_STATUS.has(upstreamResponse.status)) {
       try { await upstreamResponse.body?.cancel(); } catch { /* discard */ }

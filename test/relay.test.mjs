@@ -215,6 +215,29 @@ test('B30-04: upstream partial-body drop latches and never replays', async t => 
   assert.equal(origin.requests.length, 1, 'partial-body drop must not replay the request');
 });
 
+test('B30-04: a concurrent latch refuses an in-flight request without rewriting the reason', async t => {
+  const origin = await startServer((req, res) => {
+    setTimeout(() => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    }, 250);
+  });
+  t.after(() => origin.stop());
+  const { relay, base } = await startRelay(origin.origin);
+  t.after(() => relay.stop());
+
+  const pending = post(base);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  const wrongMethod = await fetch(base, { method: 'GET', headers: { authorization: 'Bearer public' } });
+  assert.equal(wrongMethod.status, 405);
+  await wrongMethod.text();
+  const response = await pending;
+  assert.equal(response.status, 503, 'a latch by another request is not a deadline');
+  assert.match(await response.text(), /relay latched/);
+  assert.equal(relay.status().latchReason, 'method', 'the original latch reason is retained');
+  assert.equal(origin.requests.length, 1, 'no second upstream request is made');
+});
+
 test('relay policy digest binds the exact configuration', () => {
   const config = relayConfig('http://127.0.0.1:1234');
   assert.match(relayPolicyDigest(config), /^[a-f0-9]{64}$/);

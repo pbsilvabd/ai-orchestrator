@@ -262,6 +262,31 @@ test('B30-04: gateway upstream partial-body drop latches and never replays', asy
   assert.equal(origin.requests.length, 1, 'partial-body drop must not replay the request');
 });
 
+test('B30-04: a concurrent latch refuses an in-flight request without rewriting the reason', async t => {
+  const origin = await startServer((req, res) => {
+    setTimeout(() => {
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ ok: true }));
+    }, 250);
+  });
+  t.after(() => origin.stop());
+  const { gateway, base } = await startGateway(origin.origin);
+  t.after(() => gateway.stop());
+
+  const pending = post(base);
+  await new Promise(resolve => setTimeout(resolve, 50));
+  const wrongMethod = await fetch(base, { method: 'GET', headers: AUTH });
+  assert.equal(wrongMethod.status, 405);
+  await wrongMethod.text();
+  const response = await pending;
+  assert.equal(response.status, 503, 'a latch by another request is not a deadline');
+  assert.match(await response.text(), /gateway latched/);
+  const status = gateway.status();
+  assert.equal(status.latchReason, 'method', 'the original latch reason is retained');
+  assert.deepEqual(status.refused, ['method'], 'no extra timeout refusal is recorded');
+  assert.equal(origin.requests.length, 1, 'no second upstream request is made');
+});
+
 test('gateway rejects unspecified/wildcard bind addresses including compressed all-zero IPv6', () => {
   const unspecified = [
     '0.0.0.0', '::', '::0', '0:0:0:0:0:0:0:0',

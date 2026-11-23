@@ -269,7 +269,14 @@ export function createRelay({ listen, upstream, model, limits } = {}) {
       latchReason = timedOut ? 'timeout' : 'upstream-unavailable';
       return respondAndClear(timedOut ? 504 : 502, 'upstream unavailable');
     }
-    if (terminal()) { latched = true; latchReason = 'timeout'; try { await upstreamResponse.body?.cancel(); } catch {} return respondAndClear(504, 'relay deadline exceeded'); }
+    if (terminal()) {
+      // Distinguish this request's own deadline from a latch caused by another request:
+      // the latter is a terminal refusal, not a timeout, and must not overwrite the reason.
+      const timedOut = expired();
+      if (!latched) { latched = true; latchReason = timedOut ? 'timeout' : (stopped ? 'stopped' : 'latched'); }
+      try { await upstreamResponse.body?.cancel(); } catch {}
+      return respondAndClear(timedOut ? 504 : 503, timedOut ? 'relay deadline exceeded' : 'relay latched');
+    }
 
     if (REDIRECT_STATUS.has(upstreamResponse.status)) {
       // Fail closed: consume/discard the upstream body without following the Location.
