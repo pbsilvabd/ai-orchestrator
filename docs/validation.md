@@ -3718,3 +3718,11 @@ Focused B30 suite passed 73/73, exit 0; the final `test/free-listeners.test.mjs`
 passed 16/16, exit 0, including late data/end/error and abort after the body deadline.
 exit 0. Final demo exit 0 and final `git diff --check` exit 0. No CI/head verification
 has been run on these unpublished corrections.
+
+## Critical-review correction publication receipt — 2026-11-22
+
+Published on the same branch and draft PR #45 as commit
+`049383e038da24ffbcad480a826ac37675a59af5` (parent `11685d57c6e15a7804a95c05c1a3666c70b56de7`).
+The exact remote ref matched this SHA; PR #45 still targets `main`, remains draft and
+reports `DIRTY`. No current-head CI result was available. This is not independent
+acceptance or a ready/merge claim.

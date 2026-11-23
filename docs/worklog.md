@@ -2851,3 +2851,12 @@ Template:
   417 pass, 1 fail, 5 skips, native exit 1 due B10-03 partial-output timing flake.
 - Focused B30 suite 73/73 exit 0; listener composition file 16/16 exit 0. Demo 429 -> 200,
   exit 0; diff check exit 0. Corrections remain unpublished, without current-head CI.
+
+## 2026-11-22 - B30 critical-review correction publication
+
+- Commit `049383e038da24ffbcad480a826ac37675a59af5` was pushed to the existing
+  `task/B30-free-relay` branch (parent `11685d57c6e15a7804a95c05c1a3666c70b56de7`).
+  `git ls-remote` verified the exact SHA. PR #45 remains open, draft, targets `main`,
+  and reports `DIRTY`; current-head CI rollup is empty.
+- Validation receipt and findings replies are recorded separately. Independent
+  re-review remains pending; no ready, merge, deployment or live-gate claim.
