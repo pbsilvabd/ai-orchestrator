@@ -1,5 +1,31 @@
 # Reproducible validation
 
+## B30 review corrections — 2026-11-22 (local, not published)
+
+Worktree: `task/B30-free-relay`, based on PR #45 head
+`a4f3954514e2109a5f0112dcea0534d291a9fcf4`. Node.js v24.22.1 was invoked with
+`fnm exec --using=24.22.1`; plain `node` is not on this PowerShell session's `PATH`.
+
+- `fnm exec --using=24.22.1 node --test test/free-listeners.test.mjs test/free-listeners-authority.test.mjs test/relay.test.mjs test/egress-gateway.test.mjs`
+  -> 57 pass / 0 fail / 0 skip, exit 0. Includes successful fixed-model forwarding through
+  the trusted supervised composition and relay/gateway oversized-body 413, latch, zero
+  upstream I/O, surviving listener and retained ownership assertions using real local child
+  processes and loopback HTTP fixtures.
+- First full parallel `fnm exec --using=24.22.1 node --test`
+  -> 420 tests, 414 pass / 1 fail / 5 skip, exit 1. The failure was the existing
+  timing-sensitive `B10-03` partial-output assertion (`'' !== 'before'`); no B30 test failed.
+- Serial rerun `fnm exec --using=24.22.1 node --test --test-concurrency=1`
+  -> 420 tests, 415 pass / 0 fail / 5 skip, exit 0. Four TLS-fixture tests skip because
+  `openssl` is not on PATH; one other test is platform-gated.
+- `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` -> preferred mock 429, local
+  mock 200, exit 0. `git diff --check` -> clean.
+
+These are local fixture/process checks, not a pinned OpenCode-host-through-supervised-
+composition run or deployed evidence. No provider/catalog call, external network probe, VM,
+firewall, hardware key or live inference was used. Outstanding deployment/approval gates remain
+unchanged and `not_run`; previously recorded evidence is unchanged. Changes and evidence are
+uncommitted; remote state has not changed.
+
 Executed on 2026-11-02 on Windows, Node.js v24.22.1:
 
 ```sh

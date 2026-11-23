@@ -3,12 +3,14 @@ import assert from 'node:assert/strict';
 import { once } from 'node:events';
 import { fork } from 'node:child_process';
 import { connect, createServer } from 'node:net';
+import { createServer as createHttpServer } from 'node:http';
 import { access, readdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createConfiguredTaskService } from '../src/configured-service.mjs';
 import { freeListenerPlan } from '../src/free-listeners.mjs';
 import { reconcileListenerLock } from '../src/listener-supervisor.mjs';
+import { FREE_MODEL_ID } from '../src/free-provider.mjs';
 import { approvalFor, fixture, metadata } from './fixtures/free-worker.mjs';
 
 // Offline wiring tests (B30-04). They use real child processes, real loopback ports and
@@ -150,6 +152,94 @@ test('B30-04: an explicit relay bind address is honored and the previous loopbac
     'the default loopback address is not additionally exposed');
   await service.close();
   assert.equal(await portAccepts(listeners.relayPort, '127.0.0.2'), false);
+});
+
+test('B30-04: supervised relay accepts the pinned worker wire model and forwards only to its fixed gateway',
+  { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  const originRequests = [];
+  const origin = createHttpServer((req, res) => {
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks);
+      originRequests.push({ url: req.url, authorization: req.headers.authorization, body });
+      res.writeHead(200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ model: JSON.parse(body.toString()).model }));
+    });
+  });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  t.after(async () => {
+    origin.closeAllConnections?.();
+    await new Promise(resolve => origin.close(resolve));
+  });
+
+  const response = await fetch(`http://127.0.0.1:${listeners.relayPort}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer public', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: FREE_MODEL_ID }),
+    signal: AbortSignal.timeout(5_000),
+  });
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { model: FREE_MODEL_ID });
+  assert.deepEqual(originRequests.map(({ url, authorization }) => ({ url, authorization })), [
+    { url: '/v1/chat/completions', authorization: 'Bearer public' },
+  ]);
+  assert.equal(JSON.parse(originRequests[0].body.toString()).model, FREE_MODEL_ID);
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+});
+
+test('B30-04: supervised listeners bound oversized bodies, latch without upstream I/O, and remain owned and alive',
+  { timeout: 15_000 }, async t => {
+  const f = fixture(t);
+  const { listeners } = await listenerPorts(t);
+  const originRequests = [];
+  const origin = createHttpServer((req, res) => {
+    originRequests.push(req.url);
+    req.resume();
+    res.writeHead(200);
+    res.end('{}');
+  });
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+  t.after(async () => {
+    origin.closeAllConnections?.();
+    await new Promise(resolve => origin.close(resolve));
+  });
+  const payload = JSON.stringify({ model: FREE_MODEL_ID, padding: 'x'.repeat(LIMITS.maxRequestBytes) });
+  const send = (port, body) => fetch(`http://127.0.0.1:${port}/v1/chat/completions`, {
+    method: 'POST',
+    headers: { authorization: 'Bearer public', 'content-type': 'application/json' },
+    body,
+    signal: AbortSignal.timeout(5_000),
+  });
+
+  const relayOverflow = await send(listeners.relayPort, payload);
+  assert.equal(relayOverflow.status, 413);
+  assert.equal(await relayOverflow.text(), 'request body exceeds relay bound');
+  assert.equal(originRequests.length, 0);
+  const relayLatched = await send(listeners.relayPort, '{}');
+  assert.equal(relayLatched.status, 503);
+
+  const gatewayOverflow = await send(listeners.gatewayPort, payload);
+  assert.equal(gatewayOverflow.status, 413);
+  assert.equal(await gatewayOverflow.text(), 'request body exceeds gateway bound');
+  assert.equal(originRequests.length, 0);
+  const gatewayLatched = await send(listeners.gatewayPort, '{}');
+  assert.equal(gatewayLatched.status, 503);
+
+  assert.deepEqual(service.freeListenerStates(), { relay: 'running', gateway: 'running' });
+  assert.equal((await locks(f.home)).length, 2, 'both child ownership locks remain held while listeners run');
 });
 
 test('B30-04: supervised listeners refuse to start without an approved run; no child, lock or metadata lookup', async t => {

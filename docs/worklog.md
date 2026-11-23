@@ -11,6 +11,23 @@ Rules:
 - Every change appends its own entry in the same branch/PR.
 - Update [handoff](handoff.md) when the next action changes.
 
+## 2026-11-22 - M3: B30 PR #45 P2 review corrections (local)
+
+- Branch/base: `task/B30-free-relay`, PR head `a4f3954514e2109a5f0112dcea0534d291a9fcf4`.
+- Steps: corrected the supervised relay's fixed model to the worker wire ID; fixed asynchronous
+  oversized-body rejection in relay and gateway and added supervised local-child regressions for
+  normal forwarding and 413/latch/no-upstream/listener-survival/ownership behavior.
+- Files: `src/free-listeners.mjs`, `src/relay.mjs`, `src/egress-gateway.mjs`,
+  `test/free-listeners.test.mjs`, `docs/tasks/B30.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused B30 set 57/57 pass; serial full suite 415 pass / 0 fail / 5 skips,
+  exit 0; the initial parallel full suite had one known timing-sensitive B10-03 failure
+  (414 pass / 1 fail / 5 skip); demo 429 -> 200; diff check clean. See `docs/validation.md`.
+- Follow-up: perform both implementation self-review passes, rerun any changed checks, then
+  commit/push the same PR branch and verify its exact remote SHA before independent critical
+  re-review. No commit/push yet. Pinned-host-through-supervised-composition and all outstanding
+  B30 deployment/approval gates remain `not_run`; PR #45 remains draft and no merge is
+  authorized.
+
 Template:
 
 ```md

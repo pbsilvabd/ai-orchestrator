@@ -2,7 +2,7 @@ import { isIP } from 'node:net';
 import { gatewayPolicyDigest } from './egress-gateway.mjs';
 import { relayPolicyDigest } from './relay.mjs';
 import { createListenerSupervisor } from './listener-supervisor.mjs';
-import { FREE_MODEL } from './free-provider.mjs';
+import { FREE_MODEL_ID } from './free-provider.mjs';
 
 // Trusted composition of the supervised relay -> gateway chain (B30-04). It is only
 // reachable from `createConfiguredTaskService` with an approved run and a signed-admission
@@ -102,7 +102,7 @@ export function freeListenerPlan(listeners) {
     path: FREE_RELAY_PATH, limits };
   const relayConfig = { listen: { host: relayHost, port: relayPort },
     upstream: { origin: `http://${LOOPBACK}:${gatewayPort}`, path: FREE_RELAY_PATH, method: 'POST' },
-    model: FREE_MODEL, limits };
+    model: FREE_MODEL_ID, limits };
   return {
     relayConfig,
     gatewayConfig,

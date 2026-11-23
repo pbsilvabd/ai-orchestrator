@@ -137,7 +137,13 @@ function readBody(req, maxBytes) {
     req.on('data', chunk => {
       if (settled) return;
       bytes += chunk.length;
-      if (bytes > maxBytes) { settled = true; reject(fail('limit_exceeded', 'gateway request body exceeds bound')); req.pause(); return; }
+      if (bytes > maxBytes) {
+        done(new EgressGatewayError('limit_exceeded', 'gateway request body exceeds bound'));
+        // Reject the request without retaining its body, but drain the remaining
+        // incoming bytes so the HTTP connection can close cleanly.
+        req.resume();
+        return;
+      }
       chunks.push(chunk);
     });
     req.on('end', () => done());
