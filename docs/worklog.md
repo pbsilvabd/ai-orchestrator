@@ -3017,3 +3017,11 @@ Template:
   implementation is unchanged.
 - Validation: targeted regression 5/5 isolated passes; listener file 20/20; demo and diff
   check clean. No live/provider/VM/key/FIDO2 operation; PR #45 stays draft.
+
+## 2026-11-24 - B30 independent review closed
+
+- Fourth-round independent review (comment 7122405149) closed all findings at `7660b39`
+  with no new blocking issues; reviewer evidence recorded in `docs/validation.md`.
+- Recorded the closure in `docs/handoff.md`, `docs/roadmap.md` and the B30 card, explicitly
+  as review closure rather than acceptance. Merge/ready/live remain unauthorized and
+  #46/#47/#48 remain open.

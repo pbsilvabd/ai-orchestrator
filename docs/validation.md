@@ -3967,3 +3967,22 @@ M3 completion, deterministic test reliability, live activation or merge.
 - Not run: exact-head CI for the corrected head (pending), a fourth-round independent
   re-review, deployed TLS/VM/firewall, provider/catalog, FIDO2 and live activation. PR #45
   stays draft.
+
+## B30 independent review closure - 2026-11-24 (reviewer evidence)
+
+- The fourth-round independent critical review (PR comment 7122405149) closed every prior
+  finding at `7660b39874eecd48c408c1500d30da96c8423d2c` with no new blocking findings:
+  approval lifetime bounds, fresh-abort latch ordering, restored merge history and
+  first-cause latch reporting.
+- Reviewer evidence at that head: the status regression passed 8/8 isolated runs and the
+  listener file 20/20; controlled probes passed with a fast relay reply and with a silent
+  relay; restoring the late handler reproduced the expected unhandled-rejection failure;
+  cleanup checks confirmed both child exits, closed ports and removal of listener and owner
+  locks. 41 relay/gateway tests and 3 pure approval tests passed. Exact-head CI run
+  `45328472433` passed on Windows and Ubuntu, and a 29-module filtered serial suite, the
+  fallback demo and whitespace checks passed.
+- Reviewer exclusions: key- and certificate-generating fixtures, pinned OpenCode,
+  deployment, provider/catalog and hardware checks. The unfiltered serial result remains
+  author evidence.
+- Review closure is not acceptance. Merge, ready and live activation remain unauthorized;
+  #46/#47/#48 remain open and the deployment/provider/FIDO2 gates remain `not_run`.

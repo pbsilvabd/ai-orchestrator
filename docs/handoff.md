@@ -8,9 +8,12 @@ incomplete: B20/#43 is draft with no real worker-produced project diff.
 B30/#45 is draft; pre-merge head `9a83ac9b95a3d00738080b64286544fde28fdb25` was
 merged with `main` `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` as
 `2f8d7aea4f75b53e391d32873bbecd38e4736d39` to clear the stale-base conflict. The
-independent critical review at that merge head requested changes (abort-test
-determinism, approval lifetime bounds, merge-history restoration); the fixture-only
-implementation is not accepted and the corrected re-review is pending. Full deployment and positive FIDO2 approval are not
+independent critical review requested changes at that merge head (abort-test
+determinism, approval lifetime bounds, merge-history restoration); four rounds of
+correction and re-review closed every finding with no new blocking issues, and the
+reviewed head `7660b39874eecd48c408c1500d30da96c8423d2c` passed exact-head CI on
+Windows and Ubuntu. The fixture-only implementation is still not accepted: merge,
+ready and live remain unauthorized while #46/#47/#48 stay open. Full deployment and positive FIDO2 approval are not
 established. See the
 [reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
 
