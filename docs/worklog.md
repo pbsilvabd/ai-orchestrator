@@ -2883,6 +2883,55 @@ Template:
 - Published code/docs commit `8f888c22e0d7dcfb296be19edf2784f076896999` on the same
   draft PR branch. Follow-up docs-only receipt records publication and task-card status.
 
+
+## 2026-11-22 — Planning: reconcile delivery state and unblock supervised use
+
+- Branch: `docs/project-reassessment-2026-11-22`
+- Scope: docs and authorized GitHub queue maintenance only; no runtime, tests,
+  integration harness, task contract or existing security gate changed.
+- Steps:
+  1. Fetched current refs and compared main `11fcb42`, B30/#45 `a4f3954`
+     and B20/#43 `1dd9614` with stale local continuity. Read B30's 67
+     conversation comments, submitted-review/inline channels, task/ADR,
+     composition/verifier/TLS tests and dated deployment receipts.
+  2. Distinguished implemented fixture mechanisms from missing compartment
+     composition, direct TLS/405 observations from full deployment, and
+     FIDO2's current mandatory profile from possible future local profiles.
+  3. Created #46 (composition/deployment campaign), #47 (approval-profile
+     decision) and #48 (test readiness/maintenance races); narrowed #30/#31
+     while preserving original issue bodies as historical details.
+  4. Closed obsolete #6/#9 with reasons and prior findings preserved.
+     Returned conflicting #33/#34 to draft, commented on #32–#34/#43,
+     and corrected #45's current summary without rewriting its history.
+  5. Updated README, roadmap/backlog, handoff, AGENTS and B20/B21 pickup
+     state. Added an ADR-006 planning amendment; no approval replacement,
+     acceptance waiver, runtime capability or merge authority was adopted.
+- Review pass 1: traced live-vs-fixture composition, signature requirements,
+  actual TLS failure coverage, stale remote descriptions and proposal
+  objections. Kept FIDO2/network invariants and existing B30/B20 PR identity.
+- Review pass 2: inspected the completed documentation diff and disposition
+  table against GitHub. Corrected ADR amendment ordering and clarified that
+  M2b fixture reconciliation does not depend on B30/hardware; distinguished
+  gateway-to-origin HTTPS from an accidentally required private-link TLS hop.
+- Files: `AGENTS.md`, `README.md`, `docs/adr/006-worker-service.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/pr-review.md`,
+  `docs/project-reassessment-2026-11-22.md`, `docs/roadmap.md`,
+  `docs/tasks/B20.md`, `docs/tasks/B21.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: main-code `node --test` -> 304 passed, 0 failed, 1 platform
+  skip, exit 0; demo -> 429 then 200, exit 0. B30 focused listener/TLS/
+  approval/ownership files -> 41 passed, 0 failed, 0 skipped, exit 0.
+  Documentation content/link, unchanged-runtime, append-only and whitespace
+  checks passed; details and limits are in the appended validation entry.
+  No pinned-host, VM/netns, provider, catalog or hardware gate was rerun.
+- Format: used the worklog/validation templates; the reassessment uses an
+  inventory/disposition report because this is cross-project triage, not a
+  new executable backlog card. Handoff adds a clearly superseded history
+  section while preserving all contract/API/run/workflow guidance.
+- Follow-up: publish this documentation PR, verify its remote head/CI and
+  settle #47/#46 before privileged deployment. Existing runtime gates remain
+  authoritative; no merge or live activation was performed.
+
 ## 2026-11-23 - B30 follow-up critical-review corrections
 
 - Branch `task/B30-free-relay`, starting head `14013bbe82d28a4ffa9651c8a721ec015fa64891`.
@@ -2915,3 +2964,19 @@ Template:
   428 pass, 0 fail, 5 skips. No network/provider/VM/key/FIDO2/live operation.
 - PR remains draft/conflicting; current-head CI is empty; issues #46/#47/#48 remain
   blockers.
+
+## 2026-11-24 - B30 merge with main (documentation conflict resolution)
+
+- Branch `task/B30-free-relay`, head `9a83ac9b95a3d00738080b64286544fde28fdb25`;
+  merged `origin/main` `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` to clear the stale
+  base. Only five documentation files conflicted (`backlog`, `handoff`, `roadmap`,
+  `validation`, `worklog`); code and tests merged automatically.
+- Resolution kept the append-only history on both sides: the main-side 2026-11-22
+  planning entry was inserted chronologically in `validation.md` and `worklog.md`;
+  `backlog.md`/`roadmap.md`/`handoff.md` take the reassessment framing (#46-#48,
+  B20/#43 blocked, B29 fixture-only) with B30's current draft head and pending
+  independent re-review noted. The 2026-11-16 next-action heading in `handoff.md`
+  is marked historical under the reassessment continuation.
+- No code, test, contract, ADR or gate changed; no network/provider/VM/key/FIDO2/live
+  operation and no ready transition. Validation commands and results are recorded in
+  `docs/validation.md`.
