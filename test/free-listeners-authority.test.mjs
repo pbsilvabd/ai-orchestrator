@@ -12,7 +12,8 @@ import { createConfiguredTaskService } from '../src/configured-service.mjs';
 import { FREE_LISTENER_START_AUTHORITY, freeListenerPlan } from '../src/free-listeners.mjs';
 import { createTaskService } from '../src/service.mjs';
 import { createSignedApprovalAdmission, canonical, canonicalApprovalBytes, liveRequestHash,
-  locateSshKeygen, measureHostBinaryDigest, openApprovalLedger } from '../src/live-approval.mjs';
+  locateSshKeygen, measureHostBinaryDigest, openApprovalLedger, LIVE_APPROVAL_SCHEMA_VERSION,
+  FIDO2_SSH_PROFILE } from '../src/live-approval.mjs';
 import { FREE_ENDPOINT, FREE_MODEL } from '../src/free-provider.mjs';
 import { approvalFor, fixture, metadata } from './fixtures/free-worker.mjs';
 
@@ -139,7 +140,8 @@ function liveApprovalFor(f, plan) {
   const snapshot = metadata();
   const now = Date.now();
   return {
-    schemaVersion: 1,
+    schemaVersion: LIVE_APPROVAL_SCHEMA_VERSION,
+    signatureProfile: FIDO2_SSH_PROFILE,
     approvalId: 'fixture-live-approval',
     principal: PRINCIPAL,
     requestHash: liveRequestHash(f.request),
@@ -172,6 +174,7 @@ function realGate({ plan, dir, pubKey }) {
     ledger: openApprovalLedger({ home: join(dir, 'ledger') }),
     hostExecutable: process.execPath,
     sshKeygen: SSH,
+    approvalProfile: FIDO2_SSH_PROFILE,
   });
 }
 

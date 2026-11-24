@@ -21,10 +21,11 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current critical path: approval-profile decision #47 and compartment-aware
-composition #46 for draft B30/#45, then B20/#43. Test stability is tracked in
-#48. B12–B19 and B29 are merged; do not implement them again. M2b milestone
-reconciliation and M3 acceptance remain open.
+Current critical path: implement the maintainer-selected software SSH approval profile
+in B31/#47 on top of draft B30/#45; in parallel specify compartment-aware composition
+#46 and resolve test stability #48. B20/#43 remains blocked afterward. B12–B19 and B29
+are merged; do not implement them again. M2b milestone reconciliation and M3 acceptance
+remain open.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -117,7 +118,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
 | [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
 | [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
-| [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45; fixture-only, merged with main to clear the conflict; independent review requested changes and corrections are in progress; not accepted | #46 composition, #47 approval decision, #48 test races; current FIDO2 gate unchanged |
+| [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45; fixture-only; all independent review findings closed at `7660b39`; docs-only head `67acd78` confirmed; still not accepted | Stacked B31 profile work, #46 composition, #48 test races and deployment gates |
+| [B31 - Explicit software SSH approval profile](tasks/B31.md) | P1 | Local implementation/validation complete on `task/B31-software-approval`, stacked on B30 head `67acd78`; pass-2 diff review and PR publication pending | Maintainer selected software Ed25519 profile in #47; #46 still must establish signer/worker isolation before any live use |
 | [B20 - First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
 | B27 - CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
 | B28 - Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |

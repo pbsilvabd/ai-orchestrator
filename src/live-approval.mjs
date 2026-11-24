@@ -8,16 +8,15 @@ import { FREE_MODEL, FREE_ENDPOINT } from './free-provider.mjs';
 import { canonicalPayload } from './tasks.mjs';
 
 // Offline signed live approval (B30/ADR-010). The maintainer signs the exact bytes of a
-// strict canonical UTF-8 approval JSON with OpenSSH SSHSIG under a fixed namespace, using
-// a FIDO2-backed SSH key that records user-presence and user-verification. Verification
-// delegates the cryptographic check to `ssh-keygen -Y verify` against a single-principal
-// `allowed_signers` file and a key-revocation list, then independently enforces the
-// canonical field set, expiry, metadata freshness, policy digests, and the presence/
-// verification flags parsed from the SSHSIG blob.
+// strict canonical UTF-8 approval JSON with OpenSSH SSHSIG under a fixed namespace.
+// Trusted configuration selects an explicit signed profile: software Ed25519 SSHSIG makes
+// no hardware-presence claim; the stronger FIDO2 profile additionally requires UP and UV
+// flags. Verification delegates the cryptographic check to `ssh-keygen -Y verify` against
+// a single-principal `allowed_signers` file and KRL, then enforces profile, schema, expiry,
+// metadata freshness and policy bindings.
 //
 // This module verifies and reserves approvals; it does not create a maintainer key or
-// perform live inference. A non-hardware (non-`-sk`) signature, or one missing the
-// presence/verification flags, is always refused for live approval.
+// perform live inference. A profile mismatch is always refused (never auto-downgraded).
 
 export class LiveApprovalError extends Error {
   constructor(code, message) {
@@ -32,12 +31,15 @@ function fail(code, message) {
 }
 
 export const LIVE_NAMESPACE = 'ai-orchestrator-live@pbsilvabd';
-export const LIVE_APPROVAL_SCHEMA_VERSION = 1;
+export const LIVE_APPROVAL_SCHEMA_VERSION = 2;
+export const SOFTWARE_SSH_PROFILE = 'software-ssh-ed25519-v1';
+export const FIDO2_SSH_PROFILE = 'fido2-sk-v1';
+export const LIVE_APPROVAL_PROFILES = Object.freeze([SOFTWARE_SSH_PROFILE, FIDO2_SSH_PROFILE]);
 const MAX_ISSUE_WINDOW_MS = 15 * 60 * 1000;
 const METADATA_TTL_MS = 5 * 60 * 1000;
 const IDENTIFIER = /^[A-Za-z0-9._:-]{1,128}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
-const APPROVAL_FIELDS = ['schemaVersion', 'approvalId', 'principal', 'requestHash', 'objective',
+const APPROVAL_FIELDS = ['schemaVersion', 'signatureProfile', 'approvalId', 'principal', 'requestHash', 'objective',
   'model', 'endpoint', 'repository', 'privacyAcknowledged', 'paidBudgetUSD', 'maxAttempts',
   'limits', 'issuedAt', 'expiresAt', 'hostBinaryDigest', 'relayPolicyDigest',
   'gatewayPolicyDigest', 'metadataDigest'];
@@ -71,6 +73,8 @@ export function validateLiveApproval(approval, now = Date.now()) {
     fail('invalid_argument', 'approval has unknown or missing fields');
   const a = approval;
   if (a.schemaVersion !== LIVE_APPROVAL_SCHEMA_VERSION) fail('invalid_argument', 'unsupported approval schema');
+  if (!LIVE_APPROVAL_PROFILES.includes(a.signatureProfile))
+    fail('invalid_argument', 'unsupported approval signature profile');
   if (typeof a.approvalId !== 'string' || !IDENTIFIER.test(a.approvalId)) fail('invalid_argument', 'invalid approvalId');
   if (typeof a.principal !== 'string' || !IDENTIFIER.test(a.principal)) fail('invalid_argument', 'invalid principal');
   if (typeof a.requestHash !== 'string' || !DIGEST.test(a.requestHash)) fail('invalid_argument', 'invalid requestHash');
@@ -128,9 +132,8 @@ export function parseSshSig(armored) {
   return { version, publicKey, namespace, reserved, hashAlgorithm, signature };
 }
 
-// For a FIDO2/security-key signature, extract the presence/verification flags from the
-// inner signature blob. Returns null when the signature is not from a `-sk` key (which
-// has no presence/verification evidence and must be refused for live approval).
+// For a FIDO2/security-key signature, extract presence/verification flags from its inner
+// signature blob. Software signatures return null; that means no UP/UV evidence, not failure.
 export function securityKeyFlags(signature) {
   const reader = sshReader(signature);
   const sigType = reader.readString().toString('utf8');
@@ -143,11 +146,40 @@ export function securityKeyFlags(signature) {
   };
 }
 
+function sshAlgorithm(keyBlob) {
+  try { return sshReader(keyBlob).readString().toString('utf8'); }
+  catch { fail('invalid_argument', 'malformed SSH public key in signature'); }
+}
+
+function signatureAlgorithm(signatureBlob) {
+  try { return sshReader(signatureBlob).readString().toString('utf8'); }
+  catch { fail('invalid_argument', 'malformed SSH signature blob'); }
+}
+
+function assertSignatureProfile(parsed, profile) {
+  const keyAlgorithm = sshAlgorithm(parsed.publicKey);
+  const sigAlgorithm = signatureAlgorithm(parsed.signature);
+  if (profile === SOFTWARE_SSH_PROFILE) {
+    if (keyAlgorithm !== 'ssh-ed25519' || sigAlgorithm !== 'ssh-ed25519')
+      fail('authorization_denied', 'software approval profile requires an Ed25519 SSH signature');
+    return null;
+  }
+  if (profile === FIDO2_SSH_PROFILE) {
+    if (!keyAlgorithm.startsWith('sk-') || !sigAlgorithm.startsWith('sk-'))
+      fail('authorization_denied', 'FIDO2 approval profile requires an SSH security-key signature');
+    const flags = securityKeyFlags(parsed.signature);
+    if (!flags?.userPresence || !flags?.userVerification)
+      fail('authorization_denied', 'FIDO2 approval requires user presence and verification');
+    return flags;
+  }
+  fail('invalid_argument', 'unsupported trusted approval signature profile');
+}
+
 // Verify an SSHSIG over the exact approval bytes. The cryptographic verification is
-// delegated to `ssh-keygen -Y verify`; the flags check is performed independently.
+// delegated to `ssh-keygen -Y verify`; the selected profile is enforced independently.
 export function verifyLiveApproval({
   approval, signature, allowedSigners, principal, krl = '', namespace = LIVE_NAMESPACE,
-  now = Date.now(), sshKeygen = 'ssh-keygen',
+  approvalProfile, now = Date.now(), sshKeygen = 'ssh-keygen',
 } = {}) {
   if (typeof approval !== 'object' || approval === null) fail('invalid_argument', 'approval is required');
   validateLiveApproval(approval, now);
@@ -155,14 +187,15 @@ export function verifyLiveApproval({
       typeof principal !== 'string' || typeof namespace !== 'string' || typeof krl !== 'string')
     fail('invalid_argument', 'signature, allowedSigners, principal, namespace and krl are required');
   if (principal !== approval.principal) fail('authorization_denied', 'approval principal does not match the signer');
+  if (!LIVE_APPROVAL_PROFILES.includes(approvalProfile))
+    fail('invalid_argument', 'unsupported trusted approval signature profile');
+  if (approval.signatureProfile !== approvalProfile)
+    fail('authorization_denied', 'approval signature profile does not match trusted configuration');
 
   const canonicalBytes = canonicalApprovalBytes(approval);
   const parsed = parseSshSig(signature);
   if (parsed.namespace !== namespace) fail('authorization_denied', 'signature namespace does not match');
-  const flags = securityKeyFlags(parsed.signature);
-  if (!flags || !flags.userPresence || !flags.userVerification) {
-    fail('authorization_denied', 'signature does not prove FIDO2 user presence and verification');
-  }
+  const flags = assertSignatureProfile(parsed, approvalProfile);
 
   // The detached signature is a file; the signed message goes to stdin.
   const sigFile = join(tmpdir(), `b30-approval-${randomUUID()}.sig`);
@@ -180,6 +213,7 @@ export function verifyLiveApproval({
   return {
     verified: true,
     principal,
+    signatureProfile: approvalProfile,
     namespace,
     flags,
     approvalDigest: approvalDigest(approval),
@@ -190,9 +224,11 @@ export function verifyLiveApproval({
 // (readable objective, branch, attempt/limits), the measured trusted host binary, the
 // relay/gateway policy and fresh zero-price metadata. Reject any mismatch before the ledger
 // is reserved.
-export function verifyApprovalBinding({ approval, requestHash, baseCommit, request, hostBinaryDigest,
+export function verifyApprovalBinding({ approval, approvalProfile, requestHash, baseCommit, request, hostBinaryDigest,
   relayPolicyDigest, gatewayPolicyDigest, maxRequests, metadata, now = Date.now() } = {}) {
   validateLiveApproval(approval, now);
+  if (approvalProfile !== undefined && approval.signatureProfile !== approvalProfile)
+    fail('authorization_denied', 'approval signature profile does not match trusted configuration');
   if (approval.requestHash !== requestHash) fail('authorization_denied', 'approval does not bind the submitted request');
   if (typeof baseCommit !== 'string' || approval.repository.baseRef !== baseCommit)
     fail('authorization_denied', 'approval does not bind the resolved base commit');
@@ -331,16 +367,19 @@ export function canonicalExecutablePath(path) {
   catch { return resolve(path); }
 }
 
-// End-to-end admission order: verify the offline signature, bind the effective request, the
-// measured host binary, the resolved base commit, the policy and metadata, then reserve the
-// approval ID. A live success path requires a real hardware-key signature with
-// presence/verification; the binding and ledger are never reached for a refused signature.
+// End-to-end admission order: verify the offline signature under the explicitly trusted
+// profile, bind the effective request, measured host binary, resolved base commit, policy
+// and metadata, then reserve the approval ID. A software-profile signature proves key use,
+// not hardware presence/verification. The binding and ledger are never reached for a
+// refused signature.
 export function admitLiveApproval({ approval, signature, allowedSigners, principal, krl = '',
   namespace = LIVE_NAMESPACE, requestHash, baseCommit, request, hostBinaryDigest,
   relayPolicyDigest, gatewayPolicyDigest, maxRequests = 12, metadata,
+  approvalProfile,
   taskId, ledger, now = Date.now(), sshKeygen = 'ssh-keygen' } = {}) {
-  verifyLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace, now, sshKeygen });
-  const binding = verifyApprovalBinding({ approval, requestHash, baseCommit, request, hostBinaryDigest,
+  verifyLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
+    approvalProfile, now, sshKeygen });
+  const binding = verifyApprovalBinding({ approval, approvalProfile, requestHash, baseCommit, request, hostBinaryDigest,
     relayPolicyDigest, gatewayPolicyDigest, maxRequests, metadata, now });
   if (!ledger || typeof ledger.reserve !== 'function') fail('invalid_argument', 'approval ledger is required');
   const reservation = ledger.reserve({ approvalId: approval.approvalId, taskId, now });
@@ -365,12 +404,14 @@ export function liveRequestHash(payload) {
 // success the gate returns a trusted in-memory receipt with a `revalidate(now)` method.
 export function createSignedApprovalAdmission({ allowedSigners, principal, krl = '',
   namespace = LIVE_NAMESPACE, relayPolicyDigest, gatewayPolicyDigest, maxRequests = 12, metadata, ledger,
-  hostExecutable, sshKeygen = 'ssh-keygen' } = {}) {
+  hostExecutable, sshKeygen = 'ssh-keygen', approvalProfile } = {}) {
   if (typeof allowedSigners !== 'string' || typeof principal !== 'string' ||
       typeof namespace !== 'string' || typeof krl !== 'string' ||
       typeof relayPolicyDigest !== 'string' || typeof gatewayPolicyDigest !== 'string' ||
       typeof sshKeygen !== 'string')
     fail('invalid_argument', 'signed approval admission requires allowedSigners, principal, namespace, krl, policy digests and sshKeygen');
+  if (!LIVE_APPROVAL_PROFILES.includes(approvalProfile))
+    fail('invalid_argument', 'signed approval admission requires an explicit supported approvalProfile');
   if (!ledger || typeof ledger.reserve !== 'function')
     fail('invalid_argument', 'signed approval admission requires a reservation ledger');
   if (typeof hostExecutable !== 'string' || !isAbsolute(hostExecutable))
@@ -387,7 +428,7 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
     if (approval === undefined || signature === undefined)
       fail('authorization_denied', 'a signed live approval is required for new tasks');
     const hostBinaryDigest = measure();
-    const result = admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace,
+    const result = admitLiveApproval({ approval, signature, allowedSigners, principal, krl, namespace, approvalProfile,
       requestHash: liveRequestHash(payload), baseCommit, request: payload, hostBinaryDigest,
       relayPolicyDigest, gatewayPolicyDigest, maxRequests, metadata, taskId, ledger, now, sshKeygen });
     // A trusted in-memory receipt: never persisted, never in task text. Its closure re-checks
@@ -410,5 +451,6 @@ export function createSignedApprovalAdmission({ allowedSigners, principal, krl =
   Object.defineProperty(gate, 'relayPolicyDigest', { value: relayPolicyDigest, enumerable: true });
   Object.defineProperty(gate, 'gatewayPolicyDigest', { value: gatewayPolicyDigest, enumerable: true });
   Object.defineProperty(gate, 'maxRequests', { value: maxRequests, enumerable: true });
+  Object.defineProperty(gate, 'approvalProfile', { value: approvalProfile, enumerable: true });
   return gate;
 }

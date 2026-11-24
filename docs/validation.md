@@ -3986,3 +3986,42 @@ M3 completion, deterministic test reliability, live activation or merge.
   author evidence.
 - Review closure is not acceptance. Merge, ready and live activation remain unauthorized;
   #46/#47/#48 remain open and the deployment/provider/FIDO2 gates remain `not_run`.
+
+## B31 software SSH approval profile - 2026-11-24 (local validation)
+
+- Decision: the maintainer selected the explicit software-signature profile recommended
+  in #47. Implemented B31 on `task/B31-software-approval`, stacked on B30 draft head
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`; no B31 PR is published yet.
+- Code/contract: approval schema v2 signs `signatureProfile`; trusted admission creation
+  must explicitly select `software-ssh-ed25519-v1` or `fido2-sk-v1`. Missing/unknown
+  profile, schema v1, or signed/trusted mismatch refuses; there is no fallback. Software
+  profile accepts only ordinary Ed25519 SSHSIG and makes no UP/UV claim. FIDO2 selection
+  still requires security-key signatures with both flags.
+- Positive software test uses disposable Ed25519 keys in temporary directories and real
+  OpenSSH `ssh-keygen -Y sign` and `-Y verify`, including real factory/service admission
+  and durable single-use reservation. Negative tests cover wrong profile/algorithm, wrong
+  signer, namespace mismatch, changed signed bytes, KRL revocation, invalid timestamps,
+  and FIDO2 missing-UP/missing-UV refusal. A correctly signed but expired software
+  approval is refused before the single-use reservation callback runs.
+- Focused command:
+  `fnm exec --using=24.22.1 node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners-authority.test.mjs test/free-provider.test.mjs`
+  -> 61 pass / 0 fail / 0 skip, exit 0.
+- Full command: `fnm exec --using=24.22.1 node --test --test-concurrency=1`
+  -> 443 total, 438 pass / 0 fail / 5 skip, exit 0. Skips are the existing TLS/platform
+  gates; no evidence level is inferred from them.
+- Default-concurrency command `fnm exec --using=24.22.1 node --test` exited 1 on
+  `B10-03: deadline and abort settle once with partial output and clean up`:
+  expected captured stdout `before`, observed empty string. The same named case failed
+  when run alone. This is the known subprocess timing/readiness issue tracked in #48;
+  B31 does not modify `src/subprocess.mjs` or `test/subprocess.test.mjs`. The serial suite
+  is the full-suite pass; the default-concurrency failure is not hidden or counted as pass.
+- Demo: `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` -> preferred 429,
+  local 200, exit 0. `git diff --check` -> exit 0.
+- Evidence level: local cryptographic fixture and service admission, not operator-key
+  provisioning, worker/signing-key isolation, deployment, pinned-host or live-provider
+  evidence. The disposable private key is outside the task/service home, is not passed to
+  the verifier/service, and its bytes are asserted absent from the persisted task. No
+  FIDO2 device, maintainer key, provider, catalog, network, VM or firewall operation.
+- Remaining gates: #46 must demonstrate the signer authority stays outside worker reach;
+  actual operator-key provisioning and signed live approval remain `not_run`. B30 stays
+  fixture-only. No ready, merge or live activation.

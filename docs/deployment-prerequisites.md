@@ -7,7 +7,7 @@ relay link in fixture mode for one authorized session; the deployment inventory 
 below and the raw results are in [validation.md](validation.md). The real
 resolver/trust-store/hostname chain to the fixed origin was exercised on 2026-11-16 (one empty
 JSON request, provider 400, no generation), but a deployed relay→gateway TLS leg in the ADR-010
-topology, a positive FIDO2 signature, the active WebSocket-bypass experiment, binding the relay on
+topology, a task-bound operator signature, the active WebSocket-bypass experiment, binding the relay on
 a real private NIC and live inference remain `not_run`. No independent Ubuntu host has
 been provisioned, and the isolated WSL2 netns/veth fixture remains an observation, **not**
 a substitute for a deployment. Nothing below changes any host network or installs packages.
@@ -25,8 +25,13 @@ a substitute for a deployment. Nothing below changes any host network or install
    approval's `hostBinaryDigest` (re-measured at admission and again before spawn).
 3. **Host-side L7 egress gateway** with one fixed origin, certificate/hostname validation,
    no CONNECT/redirect, body-free logs, and a recorded policy digest.
-4. **Enrolled FIDO2-backed SSH signing key** (`-sk`) with user-presence + user-verification,
-   a single-principal `allowed_signers` file, and a key-revocation list (never in the repo).
+4. **Explicit trusted approval profile** per the current [ADR-010](adr/010-live-egress-and-approval.md)
+   amendment: either a supervised software Ed25519 SSH key with a single-principal
+   `allowed_signers` file/KRL and signing authority demonstrably outside worker reach, or the
+   stronger FIDO2 `-sk` profile with both user-presence and user-verification. Profile selection
+   must match the signed approval; no downgrade. The software signer/worker boundary is still
+   `not_run` pending #46. A genuine hardware signing dry run is required only if deployment
+   selects FIDO2. Never place private keys in the repository.
 
 ## Windows two-VM environment: what exists (2026-11-15)
 

@@ -3025,3 +3025,24 @@ Template:
 - Recorded the closure in `docs/handoff.md`, `docs/roadmap.md` and the B30 card, explicitly
   as review closure rather than acceptance. Merge/ready/live remain unauthorized and
   #46/#47/#48 remain open.
+
+## 2026-11-24 - B31 software SSH approval profile
+
+- Implemented the maintainer-selected #47 direction on `task/B31-software-approval`,
+  stacked on B30 draft head `67acd78`. Added schema-v2 signed profile selection, mandatory
+  trusted profile configuration, software Ed25519 and retained FIDO2 verification paths,
+  and tests for real disposable-key SSHSIG verification, profile mismatch/no downgrade,
+  signer/namespace/byte tampering/KRL, flags and real service admission.
+- Updated `src/live-approval.mjs`, approval/service/listener tests, ADR-010, normative task
+  contract, B30/B31 cards, deployment prerequisites, backlog, roadmap, handoff, validation
+  and worklog.
+  B31 acceptance is a local cryptographic fixture only; it does not prove operator
+  authentication or worker/signing-key isolation. #46 and live/deployment gates remain open.
+- Kept the disposable signing key in a separate temporary directory from the task/service
+  fixture during real-factory tests, so the key is not within the service home or writable
+  task root; the positive service test also asserts the private-key bytes are absent from
+  persisted task state. Focused tests passed again after these corrections.
+- Validation: focused approval/admission set 61/61; serial full suite 443 total, 438 pass,
+  0 fail, 5 skips; default-concurrency `node --test` and the isolated B10-03 case failed
+  on the known partial-output timing race (#48); demo 429 -> 200; `git diff --check` clean.
+  Full command/evidence limits recorded in `docs/validation.md`.

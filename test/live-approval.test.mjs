@@ -6,9 +6,11 @@ import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { FREE_MODEL, FREE_ENDPOINT } from '../src/free-provider.mjs';
-import { LIVE_NAMESPACE, canonical, canonicalApprovalBytes, validateLiveApproval, verifyLiveApproval,
+import { LIVE_NAMESPACE, LIVE_APPROVAL_SCHEMA_VERSION, SOFTWARE_SSH_PROFILE, FIDO2_SSH_PROFILE,
+  canonical, canonicalApprovalBytes, validateLiveApproval, verifyLiveApproval,
   verifyApprovalBinding, parseSshSig, securityKeyFlags, openApprovalLedger,
-  locateSshKeygen, approvalDigest, admitLiveApproval, measureHostBinaryDigest } from '../src/live-approval.mjs';
+  locateSshKeygen, approvalDigest, admitLiveApproval, measureHostBinaryDigest,
+  createSignedApprovalAdmission } from '../src/live-approval.mjs';
 
 const SSH = locateSshKeygen();
 const PRINCIPAL = 'maintainer';
@@ -16,7 +18,8 @@ const digestOf = value => createHash('sha256').update(canonical(value)).digest('
 
 function approval(overrides = {}) {
   const base = {
-    schemaVersion: 1,
+    schemaVersion: LIVE_APPROVAL_SCHEMA_VERSION,
+    signatureProfile: FIDO2_SSH_PROFILE,
     approvalId: 'approval-0001',
     principal: PRINCIPAL,
     requestHash: 'a'.repeat(64),
@@ -57,6 +60,7 @@ function writeAllowedSigners(dir, principal, pubKey) {
 
 function sign(dir, keyPath, namespace, dataPath) {
   const sigPath = `${dataPath}.sig`;
+  rmSync(sigPath, { force: true });
   ssh(['-Y', 'sign', '-f', keyPath, '-n', namespace, dataPath]);
   return readFileSync(sigPath, 'utf8');
 }
@@ -74,9 +78,24 @@ function makeSkSignature(flags) {
 }
 
 function sshString(s) {
-  const b = Buffer.from(s);
+  const b = Buffer.isBuffer(s) ? s : Buffer.from(s);
   const l = Buffer.alloc(4); l.writeUInt32BE(b.length);
   return Buffer.concat([l, b]);
+}
+
+function armoredSshSig({ innerSignature, keyAlgorithm = 'sk-ssh-ed25519@openssh.com',
+  namespace = LIVE_NAMESPACE } = {}) {
+  const keyBlob = Buffer.concat([sshString(keyAlgorithm), sshString('sk-key')]);
+  const outer = Buffer.concat([
+    Buffer.from('SSHSIG'),
+    (() => { const v = Buffer.alloc(4); v.writeUInt32BE(1); return v; })(),
+    sshString(keyBlob),
+    sshString(namespace),
+    sshString(''),
+    sshString('sha512'),
+    sshString(innerSignature),
+  ]).toString('base64');
+  return `-----BEGIN SSH SIGNATURE-----\n${outer}\n-----END SSH SIGNATURE-----\n`;
 }
 
 const hasSsh = SSH !== null;
@@ -139,17 +158,94 @@ test('securityKeyFlags: null for non-sk keys, exact flags for sk signatures', ()
   assert.deepEqual(neither, { userPresence: false, userVerification: false });
 });
 
-test('B30-05: a non-hardware (non-sk) signature is refused for live approval', { skip: !hasSsh }, t => {
+test('B31-01: software Ed25519 SSHSIG positively verifies under the explicit software profile', { skip: !hasSsh }, t => {
   const dir = mkdtempSync(join(tmpdir(), 'b30-ssh-'));
   t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
   const { keyPath, pubKey } = generateKey(dir);
   const allowed = writeAllowedSigners(dir, PRINCIPAL, pubKey);
   const dataPath = join(dir, 'approval.json');
-  writeFileSync(dataPath, canonicalApprovalBytes(approval()));
+  const softwareApproval = approval({ signatureProfile: SOFTWARE_SSH_PROFILE });
+  writeFileSync(dataPath, canonicalApprovalBytes(softwareApproval));
   const armored = sign(dir, keyPath, LIVE_NAMESPACE, dataPath);
-  // The ed25519 signature cryptographically verifies, but proves no presence/verification.
+  const result = verifyLiveApproval({ approval: softwareApproval, signature: armored,
+    allowedSigners: allowed, principal: PRINCIPAL, krl: '', approvalProfile: SOFTWARE_SSH_PROFILE,
+    sshKeygen: SSH });
+  assert.equal(result.verified, true);
+  assert.equal(result.signatureProfile, SOFTWARE_SSH_PROFILE);
+  assert.equal(result.flags, null, 'software SSHSIG does not claim hardware presence or verification');
+});
+
+test('B31-01: approval profile must match trusted configuration; no implicit downgrade', { skip: !hasSsh }, t => {
+  const dir = mkdtempSync(join(tmpdir(), 'b30-ssh-'));
+  t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  const { keyPath, pubKey } = generateKey(dir);
+  const allowed = writeAllowedSigners(dir, PRINCIPAL, pubKey);
+  const dataPath = join(dir, 'approval.json');
+  const softwareApproval = approval({ signatureProfile: SOFTWARE_SSH_PROFILE });
+  writeFileSync(dataPath, canonicalApprovalBytes(softwareApproval));
+  const armored = sign(dir, keyPath, LIVE_NAMESPACE, dataPath);
+  assert.throws(() => verifyLiveApproval({ approval: softwareApproval, signature: armored,
+    allowedSigners: allowed, principal: PRINCIPAL, approvalProfile: FIDO2_SSH_PROFILE, sshKeygen: SSH }),
+  /profile does not match trusted configuration/);
   assert.throws(() => verifyLiveApproval({ approval: approval(), signature: armored,
-    allowedSigners: allowed, principal: PRINCIPAL, krl: '', sshKeygen: SSH }), /presence and verification/);
+    allowedSigners: allowed, principal: PRINCIPAL, approvalProfile: SOFTWARE_SSH_PROFILE, sshKeygen: SSH }),
+  /profile does not match trusted configuration/);
+});
+
+test('B31-01: signed-admission factory requires explicit trusted profile selection', () => {
+  const base = { allowedSigners: 'maintainer namespaces="x" ssh-ed25519 AAA',
+    principal: PRINCIPAL, relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
+    metadata: {}, ledger: { reserve() {} }, hostExecutable: join(tmpdir(), 'host-exe') };
+  assert.throws(() => createSignedApprovalAdmission(base), /explicit supported approvalProfile/);
+  assert.throws(() => createSignedApprovalAdmission({ ...base, approvalProfile: 'auto' }),
+    /explicit supported approvalProfile/);
+});
+
+test('B31-02: software-profile verification rejects wrong signer, namespace, changed bytes and KRL revocation',
+  { skip: !hasSsh }, t => {
+    const dir = mkdtempSync(join(tmpdir(), 'b31-ssh-'));
+    t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+    const { keyPath, pubKey } = generateKey(dir);
+    const other = generateKey(dir, 'otherkey');
+    const allowed = writeAllowedSigners(dir, PRINCIPAL, pubKey);
+    const approvalPath = join(dir, 'approval.json');
+    const softwareApproval = approval({ signatureProfile: SOFTWARE_SSH_PROFILE });
+    writeFileSync(approvalPath, canonicalApprovalBytes(softwareApproval));
+    const signature = sign(dir, keyPath, LIVE_NAMESPACE, approvalPath);
+    const options = { approval: softwareApproval, signature, allowedSigners: allowed,
+      principal: PRINCIPAL, approvalProfile: SOFTWARE_SSH_PROFILE, sshKeygen: SSH };
+    const wrongAllowed = join(dir, 'wrong_allowed_signers');
+    writeFileSync(wrongAllowed, `${PRINCIPAL} namespaces="${LIVE_NAMESPACE}" ${other.pubKey}\n`, 'utf8');
+    assert.throws(() => verifyLiveApproval({ ...options,
+      allowedSigners: wrongAllowed }), /verification failed/);
+    const wrongNamespaceSignature = sign(dir, keyPath, 'wrong-namespace', approvalPath);
+    assert.equal(parseSshSig(wrongNamespaceSignature).namespace, 'wrong-namespace');
+    assert.throws(() => verifyLiveApproval({ ...options, signature: wrongNamespaceSignature }),
+      /namespace does not match/);
+    assert.throws(() => verifyLiveApproval({ ...options,
+      approval: { ...softwareApproval, objective: `${softwareApproval.objective} changed` } }),
+    /verification failed/);
+    const krl = join(dir, 'revoked.krl');
+    ssh(['-k', '-f', krl, `${keyPath}.pub`]);
+    assert.throws(() => verifyLiveApproval({ ...options, krl }), /verification failed/);
+  });
+
+test('B31-03: expired software approval refuses before its reservation ledger', { skip: !hasSsh }, t => {
+  const dir = mkdtempSync(join(tmpdir(), 'b31-expired-'));
+  t.after(() => rmSync(dir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  const { keyPath, pubKey } = generateKey(dir);
+  const allowed = writeAllowedSigners(dir, PRINCIPAL, pubKey);
+  const expiredApproval = approval({ signatureProfile: SOFTWARE_SSH_PROFILE,
+    issuedAt: Date.now() - 120_000, expiresAt: Date.now() - 60_000 });
+  const dataPath = join(dir, 'expired-approval.json');
+  writeFileSync(dataPath, canonicalApprovalBytes(expiredApproval));
+  const signature = sign(dir, keyPath, LIVE_NAMESPACE, dataPath);
+  let reserved = false;
+  const ledger = { reserve() { reserved = true; } };
+  assert.throws(() => admitLiveApproval({ approval: expiredApproval, signature,
+    allowedSigners: allowed, principal: PRINCIPAL, approvalProfile: SOFTWARE_SSH_PROFILE,
+    taskId: 'task-expired', ledger }), /approval is expired/);
+  assert.equal(reserved, false, 'expired signed approval must not reach the reservation ledger');
 });
 
 test('B30-05: a signature that carries sk flags still requires real ssh-keygen verification', { skip: !hasSsh }, t => {
@@ -160,23 +256,30 @@ test('B30-05: a signature that carries sk flags still requires real ssh-keygen v
   // A forged SSHSIG armor whose inner signature looks like an sk signature with
   // presence+verification flags: the flag gate passes, then cryptographic
   // verification must refuse it (it is not a real maintainer signature).
-  const fake = Buffer.concat([
-    Buffer.from('SSHSIG'),
-    (() => { const v = Buffer.alloc(4); v.writeUInt32BE(1); return v; })(),
-    sshString('ssh-ed25519'),
-    sshString(LIVE_NAMESPACE),
-    sshString(''),
-    sshString('sha512'),
-    sshString(makeSkSignature(0x05)),
-  ]).toString('base64');
-  const armored = `-----BEGIN SSH SIGNATURE-----\n${fake}\n-----END SSH SIGNATURE-----\n`;
-  assert.throws(() => verifyLiveApproval({ approval: approval(), signature: armored,
-    allowedSigners: allowed, principal: PRINCIPAL, krl: '', sshKeygen: SSH }), /verification failed/);
+  const approvalArtifact = approval();
+  const verify = innerSignature => verifyLiveApproval({ approval: approvalArtifact,
+    signature: armoredSshSig({ innerSignature }), allowedSigners: allowed, principal: PRINCIPAL,
+    approvalProfile: FIDO2_SSH_PROFILE, krl: '', sshKeygen: SSH });
+  assert.throws(() => verify(makeSkSignature(0x01)), /requires user presence and verification/);
+  assert.throws(() => verify(makeSkSignature(0x04)), /requires user presence and verification/);
+  assert.throws(() => verify(makeSkSignature(0x00)), /requires user presence and verification/);
+  assert.throws(() => verify(makeSkSignature(0x05)), /verification failed/);
+});
+
+test('B31-04: software profile refuses security-key signatures instead of upgrading its claim', () => {
+  const softwareApproval = approval({ signatureProfile: SOFTWARE_SSH_PROFILE });
+  assert.throws(() => verifyLiveApproval({ approval: softwareApproval,
+    signature: armoredSshSig({ innerSignature: makeSkSignature(0x05) }),
+    allowedSigners: 'unused', principal: PRINCIPAL, approvalProfile: SOFTWARE_SSH_PROFILE }),
+  /requires an Ed25519 SSH signature/);
 });
 
 test('B30-05: canonical approval rejects unknown fields, expiry, paid budget, multiple attempts', () => {
   assert.doesNotThrow(() => validateLiveApproval(approval()));
   assert.throws(() => validateLiveApproval({ ...approval(), extra: 1 }), /unknown or missing/);
+  assert.throws(() => validateLiveApproval({ ...approval(), signatureProfile: undefined }), /unsupported approval signature profile/);
+  assert.throws(() => validateLiveApproval({ ...approval(), signatureProfile: 'auto' }), /unsupported approval signature profile/);
+  assert.throws(() => validateLiveApproval({ ...approval(), schemaVersion: 1 }), /unsupported approval schema/);
   assert.throws(() => validateLiveApproval(approval({ expiresAt: Date.now() - 1 })), /expired/);
   assert.throws(() => validateLiveApproval(approval({ expiresAt: Date.now() + 20 * 60 * 1000, issuedAt: Date.now() })), /15 minutes/);
   assert.throws(() => validateLiveApproval(approval({ paidBudgetUSD: 1 })), /zero-paid/);
@@ -359,8 +462,9 @@ test('B30-05: admission verifies the signature before binding or reserving the I
   // The non-sk signature is refused at the signature gate; the ledger is never reached.
   assert.throws(() => admitLiveApproval({ approval: approval(), signature: armored,
     allowedSigners: allowed, principal: PRINCIPAL, requestHash: 'a'.repeat(64),
+    approvalProfile: FIDO2_SSH_PROFILE,
     baseCommit: 'b'.repeat(40), relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
     metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
-    taskId: 'task-1', ledger, sshKeygen: SSH }), /presence and verification/);
+    taskId: 'task-1', ledger, sshKeygen: SSH }), /security-key signature/);
   assert.equal(ledger.lookup('approval-0001'), undefined);
 });

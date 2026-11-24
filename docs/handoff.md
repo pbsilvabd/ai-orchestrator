@@ -13,16 +13,23 @@ determinism, approval lifetime bounds, merge-history restoration); four rounds o
 correction and re-review closed every finding with no new blocking issues, and the
 reviewed head `7660b39874eecd48c408c1500d30da96c8423d2c` passed exact-head CI on
 Windows and Ubuntu. The fixture-only implementation is still not accepted: merge,
-ready and live remain unauthorized while #46/#47/#48 stay open. Full deployment and positive FIDO2 approval are not
+ready and live remain unauthorized while #46/#47/#48 stay open. The maintainer selected
+the software SSH-signature profile recommended in #47; B31's local implementation of the
+separately versioned profile is ready for publication/review on a stacked branch. Until
+that change is reviewed, B30's current verifier remains FIDO2-only. Full deployment and
+signer/worker isolation are not
 established. See the
 [reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
 
-## Next action: decide approval profile and specify deployable composition
+## Next action: publish/review B31, then specify deployable composition
 
-1. Resolve [#47](https://github.com/pbsilvabd/ai-orchestrator/issues/47) against
-   B30's ADR-010 and `src/live-approval.mjs`: evaluate software SSH signing for
-   supervised local use versus the current hardware profile. Keep the current
-   FIDO2 UP/UV gate until a deliberate ADR/code/test/contract change is delivered.
+1. Complete B31 publication from `task/B31-software-approval`, stacked on B30's
+   `67acd78d` draft head. Local implementation and validation are recorded in the B31
+   card; review the complete diff, push one PR targeting `task/B30-free-relay`, verify
+   its remote SHA/CI, and obtain the independent critical review. Correct and re-review
+   at each new head until there are no blocking findings. Do not merge. The selected
+   software profile makes no hardware-presence claim; FIDO2 remains an explicit optional
+   profile. Live use remains closed.
 2. Specify and implement [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46):
    actual service/worker/relay/gateway compartments, trusted launch channel,
    workspace/artifact mapping, measured binary and lifecycle/ownership. Current

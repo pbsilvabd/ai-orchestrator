@@ -8,14 +8,15 @@ import { join } from 'node:path';
 import { openTaskStore } from '../src/tasks.mjs';
 import { createTaskService, ServiceError } from '../src/service.mjs';
 import { FREE_MODEL, FREE_ENDPOINT } from '../src/free-provider.mjs';
-import { LIVE_NAMESPACE, canonical, canonicalApprovalBytes, openApprovalLedger,
+import { LIVE_NAMESPACE, LIVE_APPROVAL_SCHEMA_VERSION, FIDO2_SSH_PROFILE, SOFTWARE_SSH_PROFILE,
+  canonical, canonicalApprovalBytes, openApprovalLedger,
   locateSshKeygen, createSignedApprovalAdmission, liveRequestHash, measureHostBinaryDigest } from '../src/live-approval.mjs';
 
-// The SSHSIG cryptographic positive path needs a real FIDO2 hardware key and is therefore
-// `not_run`. This suite exercises the service admission *mechanism* (ordering, replay
-// preservation, before-persistence refusal, error mapping) with a clearly-labelled mock,
-// and the real factory's negative (refusal) paths with disposable test-only keys or
-// structurally-invalid approvals. No hardware signing is simulated or claimed.
+// The software SSHSIG positive path uses disposable temporary keys and real OpenSSH
+// verification. FIDO2 hardware signing remains `not_run`; synthesized signatures are used
+// only to test parser/refusal behavior, never claimed as hardware evidence. This suite also
+// covers admission ordering, replay, before-persistence refusal, error mapping and factory
+// binding.
 
 const SSH = locateSshKeygen();
 const hasSsh = SSH !== null;
@@ -86,9 +87,12 @@ const expected = code => error => error instanceof ServiceError && error.code ==
 // A structurally valid approval whose binding digests are computed from the passed
 // request payload, metadata, policy digests and resolved commit, so only the signature
 // gate (or a deliberately-invalid override) can refuse it.
-function boundApproval(payload, { relayPolicyDigest, gatewayPolicyDigest, metadata, baseCommit, approvalId = 'approval-0001' } = {}) {
+function boundApproval(payload, { relayPolicyDigest, gatewayPolicyDigest, metadata, baseCommit,
+  approvalId = 'approval-0001', signatureProfile = FIDO2_SSH_PROFILE,
+  hostBinaryDigest = 'c'.repeat(64) } = {}) {
   return {
-    schemaVersion: 1,
+    schemaVersion: LIVE_APPROVAL_SCHEMA_VERSION,
+    signatureProfile,
     approvalId,
     principal: PRINCIPAL,
     requestHash: liveRequestHash(payload),
@@ -102,7 +106,7 @@ function boundApproval(payload, { relayPolicyDigest, gatewayPolicyDigest, metada
     limits: { budgetMs: payload.limits.budgetMs, maxOutputBytes: payload.limits.maxOutputBytes, maxRequests: 12 },
     issuedAt: NOW - 60_000,
     expiresAt: NOW + 60_000,
-    hostBinaryDigest: 'c'.repeat(64),
+    hostBinaryDigest,
     relayPolicyDigest,
     gatewayPolicyDigest,
     metadataDigest: digestOf(metadata),
@@ -204,6 +208,7 @@ test('the real factory refuses a submission with no approval envelope before per
         allowedSigners: 'principal namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        approvalProfile: FIDO2_SSH_PROFILE,
         ...hostIdentity(d),
       }),
     }),
@@ -219,6 +224,7 @@ test('the real factory measures the host executable itself and refuses an unread
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        approvalProfile: FIDO2_SSH_PROFILE,
         hostExecutable: join(d, 'does-not-exist'),
       }),
     }),
@@ -238,6 +244,7 @@ test('the real factory refuses an expired approval before persistence', t => {
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        approvalProfile: FIDO2_SSH_PROFILE,
         ...hostIdentity(d),
       }),
     }),
@@ -255,6 +262,7 @@ test('the real factory refuses a paid approval before persistence', t => {
         allowedSigners: 'p namespaces="x" ssh-ed25519 AAA', principal: PRINCIPAL,
         relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata: freshMetadata(),
         ledger: openApprovalLedger({ home: join(d, 'ledger') }),
+        approvalProfile: FIDO2_SSH_PROFILE,
         ...hostIdentity(d),
       }),
     }),
@@ -265,10 +273,12 @@ test('the real factory refuses a paid approval before persistence', t => {
   assert.equal(taskFiles(dir).length, 0);
 });
 
-test('the real factory refuses a non-hardware signature before the ledger reserves', { skip: !hasSsh }, t => {
+test('the real factory admits a disposable software SSH signature only when that profile is trusted', { skip: !hasSsh }, t => {
   const dir = fixture(t);
   initGitRepo(dir);
-  const keyPath = join(dir, 'testkey');
+  const keyDir = mkdtempSync(join(tmpdir(), 'b31-operator-key-'));
+  t.after(() => rmSync(keyDir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  const keyPath = join(keyDir, 'testkey');
   execFileSync(SSH, ['-q', '-t', 'ed25519', '-N', '', '-f', keyPath, '-C', ''], { windowsHide: true });
   const pubKey = readFileSync(`${keyPath}.pub`, 'utf8').trim();
   const allowedSigners = join(dir, 'allowed_signers');
@@ -276,7 +286,10 @@ test('the real factory refuses a non-hardware signature before the ledger reserv
 
   const payload = validRequest(dir);
   const metadata = freshMetadata();
-  const approval = boundApproval(payload, { relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, baseCommit: resolveCommit(dir) });
+  const hostExecutable = makeHostExecutable(dir);
+  const approval = boundApproval(payload, { relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY,
+    metadata, baseCommit: resolveCommit(dir), signatureProfile: SOFTWARE_SSH_PROFILE,
+    hostBinaryDigest: measureHostBinaryDigest(hostExecutable) });
   const dataPath = join(dir, 'approval.json');
   writeFileSync(dataPath, canonicalApprovalBytes(approval));
   execFileSync(SSH, ['-Y', 'sign', '-f', keyPath, '-n', LIVE_NAMESPACE, dataPath], { windowsHide: true });
@@ -288,14 +301,60 @@ test('the real factory refuses a non-hardware signature before the ledger reserv
     store,
     config: { clientId: 'opencode-primary', authorization: { models: ['mock/a'], tools: ['read', 'edit'], writableRoots: [dir] }, limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 } },
     now: NOW,
-    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL, relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger, sshKeygen: SSH, ...hostIdentity(dir) }),
+    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL,
+      relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger,
+      sshKeygen: SSH, approvalProfile: SOFTWARE_SSH_PROFILE, hostExecutable }),
   });
   t.after(() => service.close());
 
-  // A cryptographically-valid ed25519 signature still lacks FIDO2 presence/verification.
+  const result = service.submitTask({ ...payload, approval, signature });
+  assert.equal(result.idempotentReplay, false);
+  assert.equal(taskFiles(dir).length, 1, 'verified software-profile approval admits one task');
+  assert.equal(ledger.lookup('approval-0001').taskId, result.taskId, 'real signature reaches the single-use ledger');
+  const persistedTask = readFileSync(join(dir, 'tasks', taskFiles(dir)[0]), 'utf8');
+  assert.equal(persistedTask.includes(readFileSync(keyPath, 'utf8')), false,
+    'private test key bytes are absent from the persisted task');
+
+  const replay = service.submitTask({ ...payload, approval, signature });
+  assert.equal(replay.idempotentReplay, true, 'service replay remains idempotent');
+  assert.equal(replay.taskId, result.taskId);
+  assert.equal(taskFiles(dir).length, 1);
+});
+
+test('the trusted FIDO2 profile refuses a valid software signature before reservation', { skip: !hasSsh }, t => {
+  const dir = fixture(t);
+  initGitRepo(dir);
+  const keyDir = mkdtempSync(join(tmpdir(), 'b31-operator-key-'));
+  t.after(() => rmSync(keyDir, { recursive: true, maxRetries: 10, retryDelay: 100 }));
+  const keyPath = join(keyDir, 'testkey');
+  execFileSync(SSH, ['-q', '-t', 'ed25519', '-N', '', '-f', keyPath, '-C', ''], { windowsHide: true });
+  const pubKey = readFileSync(`${keyPath}.pub`, 'utf8').trim();
+  const allowedSigners = join(dir, 'allowed_signers');
+  writeFileSync(allowedSigners, `${PRINCIPAL} namespaces="${LIVE_NAMESPACE}" ${pubKey}\n`, 'utf8');
+
+  const payload = validRequest(dir);
+  const metadata = freshMetadata();
+  const approval = boundApproval(payload, { relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY,
+    metadata, baseCommit: resolveCommit(dir), signatureProfile: SOFTWARE_SSH_PROFILE });
+  const dataPath = join(dir, 'approval.json');
+  writeFileSync(dataPath, canonicalApprovalBytes(approval));
+  execFileSync(SSH, ['-Y', 'sign', '-f', keyPath, '-n', LIVE_NAMESPACE, dataPath], { windowsHide: true });
+  const signature = readFileSync(`${dataPath}.sig`, 'utf8');
+  const ledger = openApprovalLedger({ home: join(dir, 'ledger') });
+  const store = openTaskStore({ home: dir });
+  const service = createTaskService({
+    store,
+    config: { clientId: 'opencode-primary', authorization: { models: ['mock/a'], tools: ['read', 'edit'], writableRoots: [dir] }, limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 } },
+    now: NOW,
+    admission: createSignedApprovalAdmission({ allowedSigners, principal: PRINCIPAL,
+      relayPolicyDigest: RELAY, gatewayPolicyDigest: GATEWAY, metadata, ledger,
+      sshKeygen: SSH, approvalProfile: FIDO2_SSH_PROFILE, ...hostIdentity(dir) }),
+  });
+  t.after(() => service.close());
+
   assert.throws(() => service.submitTask({ ...payload, approval, signature }), expected('authorization_denied'));
-  assert.equal(taskFiles(dir).length, 0, 'no task persisted');
-  assert.equal(ledger.lookup('approval-0001'), undefined, 'refused signature never reserves the ID');
+  assert.equal(taskFiles(dir).length, 0, 'profile mismatch refuses before persistence');
+  assert.equal(ledger.lookup('approval-0001'), undefined, 'profile mismatch never reserves the ID');
 });
 
 // --- Single-use across the service via the real ledger (mock verifier, no hardware) ---

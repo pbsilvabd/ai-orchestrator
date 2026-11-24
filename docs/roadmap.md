@@ -33,8 +33,11 @@ exact-head CI, which is review closure only, not acceptance. B20/#43 is a blocke
 draft; no real project diff or M3 acceptance.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
 delivered implementation, missing composition, unrun validation and retired work.
-Next work is approval-profile decision #47, deployable composition #46 and test
-stability #48; the existing FIDO2/network controls remain in force.
+The maintainer selected the software Ed25519 SSHSIG profile recommended in #47;
+stacked task B31 has a local implementation of the explicit, versioned software
+profile while retaining FIDO2 as an optional stronger profile. The B30 base verifier
+remains FIDO2-only; B31 publication and independent review are pending. Next work
+includes #46 deployable composition and #48 test stability; live use remains closed.
 
 ### Historical delivery receipts through B19
 
@@ -86,7 +89,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
 | M2b — One-worker delegation MVP | B12–B19 merged; B17 technical fixture evidence available, explicit milestone reconciliation pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 - First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 fixture implementation on `task/B30-free-relay` (relay, egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth containment observation), while composition, deployment and approval gates remain open (#46/#47); nftables filtering in a real deployment, a real FIDO2 hardware-key signing dry run and live activation remain `not_run` under ADR-009/010; bounded catalog GETs were performed at `8e358a4` and at `2026-11-15T19:14:36Z` (dated snapshots, not repeated) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 - First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 fixture implementation and stacked B31 software-signature profile work; deployment/composition #46 and test stability #48 remain open; the selected software SSHSIG positive path is tested only with disposable local keys, not a provisioned operator key; real deployment, signer/worker isolation and live activation remain `not_run` under ADR-009/010; FIDO2 dry run remains `not_run` and is required only if that optional profile is selected; bounded catalog GETs at `8e358a4` and `2026-11-15T19:14:36Z` are dated snapshots, not repeated | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |
@@ -147,9 +150,9 @@ See [Definition of Done](definition-of-done.md).
 
 ## M2b plan (bounded, in order)
 
-Current remaining sequence: **#47 approval-profile decision / #46 compartment
-composition → implementation and #48 test stability → one deployment evidence
-campaign → B30 final review → B20**. B17/M2b fixture acceptance reconciliation
+Current remaining sequence: **B31 publication/review, #46 compartment composition
+and #48 test stability → one deployment evidence campaign → B30 final review →
+B20**. B17/M2b fixture acceptance reconciliation
 can proceed independently now, without hardware/live gates. B14–B19 are already
 merged. The original ordered build plan below is retained as delivery history,
 not a queue to execute again.

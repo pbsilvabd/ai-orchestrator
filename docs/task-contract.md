@@ -127,26 +127,34 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   [ADR-010](adr/010-live-egress-and-approval.md)) that runs for **new** tasks only, after
   idempotent replay resolution and repository inspection but before task persistence,
   workspace or spawn. The gate verifies and binds a signed live approval (SSHSIG under the
-  fixed namespace with FIDO2 presence/verification, unexpired, zero-paid, single-attempt,
-  bound to the canonical request hash, the resolved base commit, the **effective readable
-  request** — objective, repository branch, attempt and budget/output limits — the **measured
-  trusted host-binary digest** (the factory derives it by SHA-256 of the configured
-  `hostExecutable` path, never a caller-supplied digest), and the relay/gateway policy
-  digests plus fresh zero-price metadata) and reserves its approval ID durably for at most
-  one task through an atomic no-replace ledger. The gate exposes its canonical measured
-  executable, and `createConfiguredTaskService` enforces that it equals the canonical
-  `settings.executable` the configured worker actually starts (a mismatch is refused before
-  any service/task/child exists). The approval and its armored signature are
-  supplied as optional `submit_task` fields `approval` and `signature`; both are excluded
-  from the canonical payload/idempotency hash and are never persisted on the task record,
-  and neither is a task-text authority. Any missing, forged, expired, stale, mismatched or
-  already-consumed approval is refused before persistence with `authorization_denied`;
-  `invalid_argument`/`unavailable` map from malformed or unusable approval material. An
-  identical replay still returns the original record without re-running admission, and one
-  approval ID cannot admit a second task. Without a configured `admission`, the service
-  remains passive and unchanged. The cryptographic positive path still requires a real
-  FIDO2 hardware-key signature, which is `not_run`; the gate is never weakened to accept a
-  non-hardware signature.
+  fixed namespace with a required, trusted, explicit signature profile bound in the signed
+  schema; unexpired, zero-paid, single-attempt, and bound to the canonical request hash,
+  the resolved base commit, the **effective readable request** — objective, repository
+  branch, attempt and budget/output limits — the **measured trusted host-binary digest**
+  (the factory derives it by SHA-256 of the configured `hostExecutable` path, never a
+  caller-supplied digest), and the relay/gateway policy digests plus fresh zero-price
+  metadata) and reserves its approval ID durably for at most one task through an atomic
+  no-replace ledger. The gate exposes its canonical measured executable, and
+  `createConfiguredTaskService` enforces that it equals the canonical `settings.executable`
+  the configured worker actually starts (a mismatch is refused before any service/task/child
+  exists). The approval and its armored signature are supplied as optional `submit_task`
+  fields `approval` and `signature`; both are excluded from the canonical payload/idempotency
+  hash and are never persisted on the task record, and neither is a task-text authority. Any
+  missing, forged, expired, stale, mismatched or already-consumed approval is refused before
+  persistence with `authorization_denied`; `invalid_argument`/`unavailable` map from
+  malformed or unusable approval material. An identical replay still returns the original
+  record without re-running admission, and one approval ID cannot admit a second task.
+  Without a configured `admission`, the service remains passive and unchanged. Approval
+  schema v2 supports two profiles: `software-ssh-ed25519-v1` and `fido2-sk-v1`. Trusted
+  admission construction must explicitly select one profile, which must exactly match the
+  signed approval; omission, unknown profile, schema v1 and mismatch refuse with no
+  automatic downgrade. The software profile proves only possession/use of the allowlisted
+  software signing key and makes no FIDO2 user-presence or user-verification claim. It
+  accepts only ordinary Ed25519 SSHSIG; the FIDO2 profile accepts only security-key SSHSIG
+  with both UP and UV flags. Trusted composition must keep signing authority outside worker
+  reach; that deployment boundary remains `not_run` under #46 and live composition stays
+  closed. Positive software cryptographic tests use real `ssh-keygen -Y sign/verify` with
+  disposable temporary keys; they are not maintainer-identity or deployment evidence.
 - `approval.limits.maxRequests` is the signed ceiling for the independently configured
   relay, gateway and worker-guard request caps; it is not a `TaskRequest.limits` field.
   The trusted composition requires the signed gate to bind the exact effective cap.
@@ -670,7 +678,7 @@ above). Live composition remains closed.
   expiry and zero-paid budget only) and the admission gate contributes relay/gateway policy
   digests, not an SSHSIG. The service reports that authority
   (`service.freeListenerAuthority`) and never labels startup as signature-verified. The same
-  gate verifies each submitted task's signed approval; a missing, malformed, non-FIDO2 or
+  gate verifies each submitted task's signed approval; a missing, malformed, wrong-profile or
   forged signature is refused before persistence with zero task/workspace/worker effect while
   already-started listeners keep running. A launch failure stops what already started; an
   unconfirmable stop during that cleanup keeps the task-home owner and the unconfirmed
@@ -683,20 +691,21 @@ above). Live composition remains closed.
   before. Task text cannot choose ports, addresses, provider or model (unknown keys are
   refused by `submit_task`).
 - **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
-  strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
-  SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and
-  user-verification flags, already valid and unexpired (`issuedAt <= now < expiresAt`)
-  with a positive lifetime of at most 15 minutes, zero-paid, single-attempt,
-  and bound to the canonical request hash, the resolved base commit, the relay and
-  gateway policy digests and fresh (at most five minutes) zero-price metadata. A
-  non-hardware signature is refused. One approval ID durably admits at most one task
-  through an atomic no-replace claim (write-then-hard-link; on collision the ledger
-  re-reads and returns only an exact replay, never overwriting an existing reservation);
-  an identical read replays, a different task is refused. `createSignedApprovalAdmission`
-  exposes this as a synchronous `createTaskService({ admission })` gate that runs after
-  idempotent replay resolution and repository inspection but before persistence,
-  workspace or spawn; `createConfiguredTaskService` passes a supplied `admission` through
-  unchanged.
+  strict canonical schema-v2 approval whose exact bytes carry a valid `ssh-keygen -Y verify`
+  SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with a trusted explicit signature
+  profile exactly matching the signed profile, already valid and unexpired
+  (`issuedAt <= now < expiresAt`) with a positive lifetime of at most 15 minutes, zero-paid,
+  single-attempt, and bound to the canonical request hash, the resolved base commit, the
+  relay and gateway policy digests and fresh (at most five minutes) zero-price metadata.
+  The software Ed25519 profile makes no FIDO2 presence/verification claim; the separately
+  selected FIDO2 profile requires both flags. Missing/unknown/mismatched profiles are
+  refused without downgrade. One approval ID durably admits at most one task through an
+  atomic no-replace claim (write-then-hard-link; on collision the ledger re-reads and
+  returns only an exact replay, never overwriting an existing reservation); an identical
+  read replays, a different task is refused. `createSignedApprovalAdmission` exposes this
+  as a synchronous `createTaskService({ admission })` gate that runs after idempotent replay
+  resolution and repository inspection but before persistence, workspace or spawn;
+  `createConfiguredTaskService` passes a supplied `admission` through unchanged.
 
 None of these opens live use. The relay/gateway admit only loopback/private fixtures in tests
 (the explicit-bind test uses loopback `127.0.0.2`; private addresses are policy-tested without
@@ -717,10 +726,13 @@ packet/byte counters, while the WSL initial/host nftables ruleset stays empty. R
 failure/lifecycle fixtures (`test/relay.test.mjs`) cover port-conflict refusal,
 upstream-failure/timeout latch, partial-body drop without replay, and terminal stop that
 releases the port. The signed-approval service admission integration (ordering, replay
-preservation, before-persistence refusal, error mapping, single-use ledger and the real
-factory's negative refusal paths) is implemented and tested with disposable non-hardware
-keys and clearly-labelled mocks; a real FIDO2 hardware-key signing dry run, the
-cryptographic positive path and live inference have not been performed. (Dated note,
+preservation, before-persistence refusal, error mapping, single-use ledger and real-factory
+paths) is tested with labelled fixtures. B31's software-profile positive path uses real
+`ssh-keygen -Y sign/verify` with disposable temporary Ed25519 keys, including real-factory
+admission; this is local cryptographic evidence, not a provisioned operator key or proof of
+worker isolation. A real FIDO2 hardware-key signing dry run (only required if that profile
+is selected), operator-signed live approval, deployment isolation and live inference remain
+`not_run`. (Dated note,
 2026-11-15: one bounded public catalog GET was performed at `8e358a4` under staged
 authorization, HTTP 200, a dated snapshot that is not repeated; it is not a live gate.)
 (Dated note, 2026-11-16: on Windows, the same placement is additionally observed in a two-VM
