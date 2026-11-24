@@ -3046,3 +3046,16 @@ Template:
   0 fail, 5 skips; default-concurrency `node --test` and the isolated B10-03 case failed
   on the known partial-output timing race (#48); demo 429 -> 200; `git diff --check` clean.
   Full command/evidence limits recorded in `docs/validation.md`.
+
+## 2026-11-24 - B31 draft PR and independent review
+
+- Published B31 as draft PR #51, base `task/B30-free-relay` at `67acd78`, head
+  `cc6f97c63b30920c0c162d2fb1eb4d183a7c6a27`; verified remote branch, PR target and SHA.
+- Exact-head Actions run `45338119441` passed on Windows and Ubuntu. The independent
+  critical review comment #7123776545 found no actionable/blocking B31 finding at that
+  head and reported additional real-key and service/ledger experiments. No code correction
+  was requested; the review is bound to `cc6f97c`.
+- Kept PR draft because default-concurrency `node --test` reproducibly fails B10-03 (#48),
+  notwithstanding serial suite and exact-head CI passes. Review explicitly did not clear
+  this failure or authorize ready/merge/live. Current continuation and evidence are in
+  `docs/handoff.md`, `docs/tasks/B31.md` and `docs/validation.md`.

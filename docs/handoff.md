@@ -21,15 +21,17 @@ signer/worker isolation are not
 established. See the
 [reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
 
-## Next action: publish/review B31, then specify deployable composition
+## Next action: resolve B31's default-suite blocker and continue review
 
-1. Complete B31 publication from `task/B31-software-approval`, stacked on B30's
-   `67acd78d` draft head. Local implementation and validation are recorded in the B31
-   card; review the complete diff, push one PR targeting `task/B30-free-relay`, verify
-   its remote SHA/CI, and obtain the independent critical review. Correct and re-review
-   at each new head until there are no blocking findings. Do not merge. The selected
-   software profile makes no hardware-presence claim; FIDO2 remains an explicit optional
-   profile. Live use remains closed.
+1. B31 is published as draft [PR #51](https://github.com/pbsilvabd/ai-orchestrator/pull/51),
+   stacked on B30 head `67acd78d`. At head `cc6f97c`, exact-head Windows/Ubuntu CI passed
+   and the independent critical reviewer reported no B31 blocker
+   ([review comment](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123776545)).
+   However, local default-concurrency `node --test` still fails B10-03 (empty stdout vs
+   `before`), reproducibly also in isolation; #48 tracks this. Keep B31 draft until this
+   suite-stability gate is addressed and revalidate/re-review any new head. Do not merge.
+   Software profile makes no hardware-presence claim; FIDO2 remains optional. Live use
+   remains closed.
 2. Specify and implement [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46):
    actual service/worker/relay/gateway compartments, trusted launch channel,
    workspace/artifact mapping, measured binary and lifecycle/ownership. Current

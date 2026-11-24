@@ -33,11 +33,12 @@ exact-head CI, which is review closure only, not acceptance. B20/#43 is a blocke
 draft; no real project diff or M3 acceptance.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
 delivered implementation, missing composition, unrun validation and retired work.
-The maintainer selected the software Ed25519 SSHSIG profile recommended in #47;
-stacked task B31 has a local implementation of the explicit, versioned software
-profile while retaining FIDO2 as an optional stronger profile. The B30 base verifier
-remains FIDO2-only; B31 publication and independent review are pending. Next work
-includes #46 deployable composition and #48 test stability; live use remains closed.
+The maintainer selected the software Ed25519 SSHSIG profile recommended in #47.
+B31 is published as draft PR #51, stacked on B30, with explicit versioned software and
+optional FIDO2 profiles. Exact-head Windows/Ubuntu CI passed, and an independent
+critical review reported no B31 blocker at `cc6f97c`; the local default-concurrency
+B10-03 failure remains unresolved in #48, so B31 stays draft. #46 deployable composition
+and #48 test stability remain open; live use remains closed.
 
 ### Historical delivery receipts through B19
 

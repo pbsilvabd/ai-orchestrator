@@ -4025,3 +4025,33 @@ M3 completion, deterministic test reliability, live activation or merge.
 - Remaining gates: #46 must demonstrate the signer authority stays outside worker reach;
   actual operator-key provisioning and signed live approval remain `not_run`. B30 stays
   fixture-only. No ready, merge or live activation.
+
+## B31 PR #51 publication and independent review - 2026-11-24
+
+- Published the B31 stacked branch as
+  [draft PR #51](https://github.com/pbsilvabd/ai-orchestrator/pull/51), targeting
+  `task/B30-free-relay`. Base:
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`; reviewed head:
+  `cc6f97c63b30920c0c162d2fb1eb4d183a7c6a27`. Remote branch and PR base/head were
+  verified at these exact SHAs.
+- Exact-head Actions run `45338119441`: Windows and Ubuntu checks both report success.
+  The reviewer checked run/job metadata; raw CI log retrieval returned zero lines, so
+  raw output and exact CI test counts were not independently inspected.
+- Independent critical review comment
+  [#7123776545](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123776545)
+  reviewed the full diff and acceptance rows at the exact head. Verdict: no new actionable
+  B31 finding and no blocking B31 finding for this cycle. It independently reproduced
+  default `node --test` at 443 total: 437 pass, 1 fail, 5 skip, exit 1; B10-03 expects
+  `before` but captures empty stdout. This remains tracked in #48 and is not repaired or
+  waived by serial success/green CI.
+- Additional reviewer-run temporary local experiments passed: real-key KRL verification,
+  negative service side-effect checks, exact replay with envelope absent, distinct
+  re-signed request reusing one approval ID, and private-key/store non-disclosure scans.
+  These do not replace the recorded committed suite or supply deployment evidence.
+- The reviewer confirmed no PR conversation/review/inline findings existed before its
+  comment; no correction was requested. PR remains draft/incomplete because the known
+  default-concurrency suite failure remains unresolved. This review does not certify
+  deterministic tests or authorize ready, merge, B30 acceptance or live use.
+- Limitations unchanged: #46 signer/worker isolation, deployment and live inference remain
+  `not_run`; FIDO2 positive hardware evidence is required only if that optional profile is
+  selected. No hardware, provider/catalog, network, VM or firewall operation.
