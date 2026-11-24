@@ -485,6 +485,36 @@ test('B30-04: abort in a fresh listener latches during another admitted pending 
     .map(x => readFile(join(f.home, 'listeners', x)))), lockBytes);
 });
 
+test('B30-04: a listener status query cannot leak an unhandled rejection', { timeout: 20_000 }, async t => {
+  const f = fixture(t);
+  const { listeners, spawned } = await listenerPorts(t);
+  const origin = createHttpServer((_req, res) => res.end('{}'));
+  await new Promise(resolve => origin.listen(new URL(listeners.gatewayOrigin).port, '127.0.0.1', resolve));
+  t.after(async () => { origin.closeAllConnections?.(); await new Promise(resolve => origin.close(resolve)); });
+  const plan = freeListenerPlan(listeners);
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig(f),
+    approvalFile: await approvalAt(f), admission: admissionDouble(plan) },
+  { metadata: async () => metadata(), freeListeners: listeners });
+  f.services.push(service);
+
+  const unhandled = [];
+  const onUnhandled = reason => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  t.after(() => process.off('unhandledRejection', onUnhandled));
+
+  // Gateway exits first: its status() now throws synchronously. The relay is still running
+  // when the combined query starts and exits before it can answer, which is the ordering
+  // that previously left the relay's pending query unhandled.
+  await killAndWait(spawned[0]);
+  await until(() => service.freeListenerStates().gateway === 'exited');
+  const pending = service.freeListenerStatus();
+  assert.equal(typeof pending?.then, 'function', 'the status query must return a promise');
+  await killAndWait(spawned[1]);
+  await assert.rejects(pending);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(unhandled, [], 'no unhandled rejection escaped the status query');
+});
+
 test('B30-04: fixture origin cleanup is registered before a refused composition', async t => {
   const f = fixture(t);
   const { listeners, spawned } = await listenerPorts(t);

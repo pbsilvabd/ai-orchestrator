@@ -3931,3 +3931,22 @@ M3 completion, deterministic test reliability, live activation or merge.
   `node examples/fallback-demo.mjs` 429 -> 200, exit 0; `git diff --check` clean.
 - Not run: corrected-head CI (pending), corrected-head independent re-review, deployed
   TLS/VM/firewall, provider/catalog, FIDO2 and live activation. PR #45 stays draft.
+
+## B30-04 status-query follow-up - 2026-11-24 (local validation)
+
+- The corrected-head re-review (PR comment 7121966650) closed the three prior findings but
+  found one new blocking P2: `freeListenerStatus()` combined both status queries with
+  `Promise.all`, so when one listener had already exited (synchronous throw) the other
+  still-pending query could later reject unhandled and terminate the service.
+- Fixed in `src/free-listeners.mjs`: the diagnostics query now awaits the relay and gateway
+  statuses sequentially, so at most one query is in flight and every rejection returns to
+  the caller.
+- Regression in `test/free-listeners.test.mjs`: the gateway child is killed and observed
+  exited, the combined query is started while the relay still runs, then the relay is
+  killed before answering; the test asserts the call returns a promise that rejects and
+  that no `unhandledRejection` is emitted.
+- Validation: `test/free-listeners.test.mjs` 20 pass / 0 fail; the two targeted
+  regressions 2 pass; serial full suite 437 total, 432 pass, 0 fail, 5 skips, exit 0.
+  Two earlier serial attempts failed only B15-03b (known #48 readiness race; it passed in
+  isolation and in the final run). Demo 429 -> 200, exit 0; `git diff --check` clean.
+- No live/provider/VM/key/FIDO2 operation; PR #45 stays draft and no merge/ready transition.

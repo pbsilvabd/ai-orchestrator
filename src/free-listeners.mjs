@@ -152,8 +152,16 @@ export async function startFreeListeners({ home, listeners, plan }) {
     healthy: () => relay.state() === 'running' && gateway.state() === 'running',
     states: () => ({ relay: relay.state(), gateway: gateway.state() }),
     // Diagnostics only: both listener statuses, used by tests to observe a terminal latch
-    // instead of guessing with a fixed sleep. Never used for task decisions.
-    status: () => Promise.all([relay.status(), gateway.status()]),
+    // instead of guessing with a fixed sleep. Never used for task decisions. Queried
+    // sequentially: a status() call throws synchronously once its listener has exited, so
+    // combining them with Promise.all could leave the other, still-pending query without a
+    // handler. Sequential awaits keep at most one query in flight and always return the
+    // rejection to the caller.
+    status: async () => {
+      const relayStatus = await relay.status();
+      const gatewayStatus = await gateway.status();
+      return [relayStatus, gatewayStatus];
+    },
     stop: stopAll,
   };
 }

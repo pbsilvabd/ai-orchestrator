@@ -2997,3 +2997,13 @@ Template:
 - Validation: focused 55/55 and 48/48; fresh-abort 1/1; serial suite 436 total, 431 pass,
   0 fail, 5 skips; demo 429 -> 200; diff check clean. No live/provider/VM/key/FIDO2 run;
   PR #45 stays draft.
+
+## 2026-11-24 - B30 status-query unhandled-rejection correction
+
+- Corrected-head re-review (comment 7121966650) closed the prior findings but found that
+  `freeListenerStatus()` could leave an unhandled rejection when one listener had exited and
+  the other pending query later failed. Fixed by awaiting both status queries sequentially.
+- Added a regression that kills the gateway, starts the combined query while the relay runs,
+  kills the relay, and asserts a returned rejecting promise with no `unhandledRejection`.
+- Validation: listener file 20/20; serial suite 437 total, 432 pass, 0 fail, 5 skips (two
+  earlier attempts failed only the known B15-03b #48 race). Demo and diff check clean.
