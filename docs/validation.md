@@ -3950,3 +3950,20 @@ M3 completion, deterministic test reliability, live activation or merge.
   Two earlier serial attempts failed only B15-03b (known #48 readiness race; it passed in
   isolation and in the final run). Demo 429 -> 200, exit 0; `git diff --check` clean.
 - No live/provider/VM/key/FIDO2 operation; PR #45 stays draft and no merge/ready transition.
+
+## B30-04 status-regression handler-ordering correction - 2026-11-24 (local validation)
+
+- The third-round re-review (PR comment 7122271270) confirmed the runtime fix and the three
+  earlier findings but found one new blocking P2 in the new regression itself: it awaited the
+  relay `SIGKILL` before attaching the rejection handler, so when the relay answered the
+  status query first the expected gateway rejection was reported as unhandled. The reviewer
+  reported 5/5 isolated failures and 3/3 passes for a variant that attached the handler
+  immediately. This is a test-race, not a runtime regression: the sequential `status()`
+  implementation is unchanged.
+- Fixed in `test/free-listeners.test.mjs`: `assert.rejects(pending)` is now created
+  immediately after the combined query starts, before the relay kill, and awaited afterwards.
+- Validation: the targeted regression passed 5/5 isolated runs, `test/free-listeners.test.mjs`
+  passed 20 pass / 0 fail, demo 429 -> 200, exit 0, and `git diff --check` is clean.
+- Not run: exact-head CI for the corrected head (pending), a fourth-round independent
+  re-review, deployed TLS/VM/firewall, provider/catalog, FIDO2 and live activation. PR #45
+  stays draft.

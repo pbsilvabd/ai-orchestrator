@@ -508,9 +508,13 @@ test('B30-04: a listener status query cannot leak an unhandled rejection', { tim
   await killAndWait(spawned[0]);
   await until(() => service.freeListenerStates().gateway === 'exited');
   const pending = service.freeListenerStatus();
+  // Attach the rejection handler before any further kill: the gateway is already exited, so
+  // the call can reject as soon as the relay answers. Waiting to attach until after the relay
+  // kill would make this test's own promise an unhandled rejection on a fast relay reply.
+  const rejection = assert.rejects(pending);
   assert.equal(typeof pending?.then, 'function', 'the status query must return a promise');
   await killAndWait(spawned[1]);
-  await assert.rejects(pending);
+  await rejection;
   await new Promise(resolve => setImmediate(resolve));
   assert.deepEqual(unhandled, [], 'no unhandled rejection escaped the status query');
 });

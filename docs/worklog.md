@@ -3007,3 +3007,13 @@ Template:
   kills the relay, and asserts a returned rejecting promise with no `unhandledRejection`.
 - Validation: listener file 20/20; serial suite 437 total, 432 pass, 0 fail, 5 skips (two
   earlier attempts failed only the known B15-03b #48 race). Demo and diff check clean.
+
+## 2026-11-24 - B30 status-regression handler ordering
+
+- Third-round re-review (comment 7122271270) closed the runtime finding but found the new
+  regression attached its rejection handler only after the relay kill, so a fast relay reply
+  turned the expected gateway rejection into an unhandled one. Fixed by creating
+  `assert.rejects(pending)` immediately after the query starts; the sequential `status()`
+  implementation is unchanged.
+- Validation: targeted regression 5/5 isolated passes; listener file 20/20; demo and diff
+  check clean. No live/provider/VM/key/FIDO2 operation; PR #45 stays draft.
