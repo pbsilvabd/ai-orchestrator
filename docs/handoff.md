@@ -24,9 +24,9 @@ established. See the
 ## Next action: resolve B31's default-suite blocker and continue review
 
 1. B31 is published as draft [PR #51](https://github.com/pbsilvabd/ai-orchestrator/pull/51),
-   stacked on B30 head `67acd78d`. At head `cc6f97c`, exact-head Windows/Ubuntu CI passed
+   stacked on B30 head `67acd78d`. At head `e09be12`, exact-head Windows/Ubuntu CI passed
    and the independent critical reviewer reported no B31 blocker
-   ([review comment](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123776545)).
+   ([re-review comment](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123906558)).
    However, local default-concurrency `node --test` still fails B10-03 (empty stdout vs
    `before`), reproducibly also in isolation; #48 tracks this. Keep B31 draft until this
    suite-stability gate is addressed and revalidate/re-review any new head. Do not merge.

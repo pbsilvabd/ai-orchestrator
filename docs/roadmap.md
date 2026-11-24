@@ -36,7 +36,7 @@ delivered implementation, missing composition, unrun validation and retired work
 The maintainer selected the software Ed25519 SSHSIG profile recommended in #47.
 B31 is published as draft PR #51, stacked on B30, with explicit versioned software and
 optional FIDO2 profiles. Exact-head Windows/Ubuntu CI passed, and an independent
-critical review reported no B31 blocker at `cc6f97c`; the local default-concurrency
+critical re-review reported no B31 blocker at `e09be12`; the local default-concurrency
 B10-03 failure remains unresolved in #48, so B31 stays draft. #46 deployable composition
 and #48 test stability remain open; live use remains closed.
 

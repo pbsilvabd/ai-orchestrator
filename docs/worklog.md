@@ -3059,3 +3059,12 @@ Template:
   notwithstanding serial suite and exact-head CI passes. Review explicitly did not clear
   this failure or authorize ready/merge/live. Current continuation and evidence are in
   `docs/handoff.md`, `docs/tasks/B31.md` and `docs/validation.md`.
+
+## 2026-11-24 - B31 documentation re-review receipt
+
+- Recorded the exact-head Actions success and independent re-review of B31 documentation
+  head `e09be12` (comment #7123906558). Reviewer reported no new actionable/blocking
+  B31 finding, reran the focused 61-test set successfully and confirmed Windows/Ubuntu
+  run `45339782157` passed. Full suite/demo were not rerun for this docs-only delta.
+- #48's default-concurrency failure remains explicitly unresolved; PR #51 stays draft.
+  #46 signer/worker isolation and live/deployment gates remain `not_run`.
