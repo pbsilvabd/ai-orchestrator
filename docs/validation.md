@@ -3896,3 +3896,38 @@ M3 completion, deterministic test reliability, live activation or merge.
   re-review, pinned OpenCode through the supervised composition, deployment/VM/network
   gates, real TLS, provider/live calls and FIDO2. PR #45 stays draft; #46/#47/#48
   remain blockers.
+
+## B30 independent critical review corrections - 2026-11-24 (local validation)
+
+- The independent critical review (GPT-6.2 Sol, PR comment 7121684260) requested changes
+  at `2f8d7aea4f75b53e391d32873bbecd38e4736d39`; exact-head CI run `45323052642` failed on
+  Ubuntu at the fresh-abort regression (Windows passed).
+- **B30-05 approval lifetime:** `validateLiveApproval` now requires
+  `issuedAt <= now < expiresAt` and `0 < expiresAt - issuedAt <= 15 minutes`, so future
+  issuance, inverted and zero-length intervals are refused before signature verification
+  or reservation. Added clock-controlled cases for future, inverted, equal, exact boundary
+  and expiry-at-now. Contract and ADR-010 amended.
+- **B30-04 fresh abort:** the regression no longer sleeps. It observes the listener's
+  terminal latch through the new diagnostics-only `service.freeListenerStatus()` (IPC
+  status query) before completing the pending request, and preserves the zero-origin and
+  ownership assertions.
+- **First-cause latch reporting:** both listeners now keep the first latch reason
+  (`latched` stays first-write-wins; the gateway still audits every refusal in `refused`).
+  The concurrent-latch regressions wait for the origin request and the 405 instead of
+  fixed sleeps, and new regressions prove an upstream failure after a latch cannot
+  overwrite the original reason.
+- **Merge history:** restored the dropped dated continuity text under historical
+  headings in `docs/backlog.md` and `docs/handoff.md`, and labelled the `a4f3954` green CI
+  historical in backlog/roadmap.
+- Pinned host loopback evidence (author run at the reviewed head, recorded for this
+  entry): `integration/opencode-free-relay.mjs` with OpenCode 2.2.5 exited 0; normal
+  scenario succeeded with three origin requests, and 301/302/303/307/308 each failed
+  terminally with one attempt, one origin request and zero alternate-origin anomalies.
+  Fixture/loopback composition only, not deployment or live evidence.
+- Validation after the corrections: `node --test test/live-approval.test.mjs
+  test/relay.test.mjs test/egress-gateway.test.mjs` 55 pass / 0 fail; focused
+  free-provider/supervisor/ownership/live-approval set 48 pass / 0 fail; fresh-abort
+  regression 1 pass; serial full suite 436 total, 431 pass, 0 fail, 5 skips, exit 0;
+  `node examples/fallback-demo.mjs` 429 -> 200, exit 0; `git diff --check` clean.
+- Not run: corrected-head CI (pending), corrected-head independent re-review, deployed
+  TLS/VM/firewall, provider/catalog, FIDO2 and live activation. PR #45 stays draft.

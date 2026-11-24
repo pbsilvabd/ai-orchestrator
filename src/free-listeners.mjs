@@ -151,6 +151,9 @@ export async function startFreeListeners({ home, listeners, plan }) {
     gatewayPort: listeners.gatewayPort,
     healthy: () => relay.state() === 'running' && gateway.state() === 'running',
     states: () => ({ relay: relay.state(), gateway: gateway.state() }),
+    // Diagnostics only: both listener statuses, used by tests to observe a terminal latch
+    // instead of guessing with a fixed sleep. Never used for task decisions.
+    status: () => Promise.all([relay.status(), gateway.status()]),
     stop: stopAll,
   };
 }

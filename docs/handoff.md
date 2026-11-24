@@ -5,10 +5,12 @@ B12-B19, B29/#44 fixture-only preparation and the 2026-11-22 reassessment
 (#46-#48). M2a remains complete; M2b technical
 fixture evidence exists but milestone sign-off is not newly declared. M3 remains
 incomplete: B20/#43 is draft with no real worker-produced project diff.
-B30/#45 is draft at `9a83ac9b95a3d00738080b64286544fde28fdb25`, merged with `main`
-to clear the stale-base conflict; the fixture-only implementation has an author
-self-review receipt, but exact-head CI is empty and the independent critical
-re-review is pending. Full deployment and positive FIDO2 approval are not
+B30/#45 is draft; pre-merge head `9a83ac9b95a3d00738080b64286544fde28fdb25` was
+merged with `main` `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` as
+`2f8d7aea4f75b53e391d32873bbecd38e4736d39` to clear the stale-base conflict. The
+independent critical review at that merge head requested changes (abort-test
+determinism, approval lifetime bounds, merge-history restoration); the fixture-only
+implementation is not accepted and the corrected re-review is pending. Full deployment and positive FIDO2 approval are not
 established. See the
 [reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
 
@@ -44,6 +46,33 @@ turn B30 deployment or FIDO2 into an unrelated fixture milestone prerequisite.
 
 The following dated text preserves prior evidence/context, **not current task
 selection, remote status or authorization**. Follow the next-action section above.
+
+Remote `main` is `688da04bea29b300eb4cb1815bfbcb9fd0cd35ca` (B19 included). B12–B19 are
+merged. B20 remains draft PR #43 and unmerged. B29 is a draft preparation PR on
+`task/B29-opencode-free-provider` (see below); it does not claim live availability or M3.
+B17/#40 Windows/Ubuntu PR checks passed, and B18/#41 post-merge Windows run
+`43589015912` passed. M2b/M3 remain incomplete; the worker provider is fixture-only,
+not production model-quality/provider evidence. ADR-007 still selects MCP stdio
+revision `2026-07-28`.
+
+## Current implementation status: B29 fixture preparation, blocked for live use
+
+B29 (`task/B29-opencode-free-provider`, base `688da04`) prepares one anonymous free route,
+`opencode/deepseek-v4.1-flash-free`, with zero-price metadata validation, expiring
+payload-bound operator approval, a service-owned guard plugin and the B11 launch
+builder. The pinned OpenCode 2.2.5 host loads the guard through `plugins`, sends only the
+fixed model with `Bearer public`, and makes one request after 401/402/429 or a dropped
+connection. At the earlier B29 preparation checkpoint, the full suite had 299
+passes, 0 failures and 1 platform skip; that is not a result for the current PR
+head. Later default-concurrency runs exposed the B10-03 timing failure, and
+the Windows CI at `762c133` failed in the maintenance recovery test.
+
+Blocker: on the pinned host a 307 from the model endpoint is followed and the prompt body
+reaches the alternate origin. The guard cannot prevent or detect it. Live composition is
+therefore refused by `createConfiguredTaskService`, and
+[ADR-009](adr/009-free-anonymous-worker.md) is accepted only for fixture
+preparation; live activation remains prohibited. The integration harness
+`integration/opencode-free.mjs` exits 1 on this scenario by design. B20 remains unexecuted.
 
 2026-11-16 update: draft PR #45 (B30) still carries the fixture-only relay/gateway/approval work
 and is not ready or merged. With maintainer authorization, the real TLS path to `opencode.ai`

@@ -685,7 +685,8 @@ above). Live composition remains closed.
 - **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
   strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
   SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and
-  user-verification flags, unexpired (at most 15 minutes), zero-paid, single-attempt,
+  user-verification flags, already valid and unexpired (`issuedAt <= now < expiresAt`)
+  with a positive lifetime of at most 15 minutes, zero-paid, single-attempt,
   and bound to the canonical request hash, the resolved base commit, the relay and
   gateway policy digests and fresh (at most five minutes) zero-price metadata. A
   non-hardware signature is refused. One approval ID durably admits at most one task

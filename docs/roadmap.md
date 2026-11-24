@@ -23,10 +23,12 @@ See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
 
-Current remote baseline: `11fcb42`; B12–B19 and B29/#44 are merged. B30/#45 is
-draft at `a4f3954`, with green Windows/Ubuntu CI (`43806088953`), fixture/pinned
+Current remote baseline: `f61e5e1`; B12–B19, B29/#44 and the 2026-11-22
+reassessment are merged. B30/#45 is draft, merged with main, with fixture/pinned
 host evidence and partial VM/network observations, **not** a completed deployed
-service path. B20/#43 is a blocked draft; no real project diff or M3 acceptance.
+service path; the earlier `a4f3954` green Windows/Ubuntu CI (`43806088953`) is
+historical and not current-head acceptance. B20/#43 is a blocked draft; no real
+project diff or M3 acceptance.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
 delivered implementation, missing composition, unrun validation and retired work.
 Next work is approval-profile decision #47, deployable composition #46 and test

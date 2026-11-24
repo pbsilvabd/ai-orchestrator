@@ -1,11 +1,19 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-22: remote main `11fcb42` includes B12–B19 and B29/#44.
-B30/#45 is draft at `a4f3954` with successful exact-head Windows/Ubuntu CI
-(`43806088953`), but missing deployed composition and acceptance gates.
-B20/#43 remains the single blocked M3 draft. See the
+Verified 2026-11-24: remote main `f61e5e1` includes B12–B19, B29/#44 and the
+2026-11-22 reassessment. B30/#45 is draft and merged with main; the fixture-only
+implementation is not accepted. B20/#43 remains the single blocked M3 draft. See the
 [reassessment](project-reassessment-2026-11-22.md) for the full inventory and
 GitHub disposition; do not treat a merged fixture task as live-provider support.
+
+Historical checkpoints (superseded, not current remote state): on 2026-11-22 main
+`11fcb42` included B12–B19 and B29/#44, and B30/#45 was draft at `a4f3954` with
+successful exact-head Windows/Ubuntu CI `43806088953` — that green run is historical,
+not current-head acceptance. On 2026-11-14 main `c268239` included B18/#41 and its
+post-merge run `43589015912` passed; B17/#40's Windows/Ubuntu PR checks passed and
+post-merge Windows run `43568386630` passed; B19 implementation was published in
+[PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) from
+`task/B19-opt-in-harness-pulse`.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -109,7 +117,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
 | [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
 | [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
-| [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45 at `9a83ac9`; fixture-only, merged with main to clear the conflict, author self-review published; not accepted | #46 composition, #47 approval decision, #48 test races; current FIDO2 gate unchanged |
+| [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45; fixture-only, merged with main to clear the conflict; independent review requested changes and corrections are in progress; not accepted | #46 composition, #47 approval decision, #48 test races; current FIDO2 gate unchanged |
 | [B20 - First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
 | B27 - CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
 | B28 - Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |

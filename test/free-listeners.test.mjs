@@ -436,6 +436,18 @@ test('B30-04: abort in a fresh listener latches during another admitted pending 
   f.services.push(service);
   const lockBytes = await Promise.all((await readdir(join(f.home, 'listeners'))).filter(x => x.endsWith('.lock.json'))
     .map(x => readFile(join(f.home, 'listeners', x))));
+  // Observe the listener's terminal latch instead of guessing with a fixed sleep: the abort
+  // must be processed before A's body is completed, otherwise the test proves nothing about
+  // forwarding after a latch.
+  const waitForLatch = async port => {
+    const deadline = Date.now() + 5_000;
+    for (;;) {
+      const status = (await service.freeListenerStatus()).find(item => item?.address?.port === port);
+      if (status?.latched) return status;
+      if (Date.now() >= deadline) throw new Error(`listener ${port} did not latch after the aborted request`);
+      await new Promise(resolve => setTimeout(resolve, 10));
+    }
+  };
   for (const port of [listeners.relayPort, listeners.gatewayPort]) {
     let first;
     const firstResponse = new Promise((resolve, reject) => {
@@ -445,7 +457,6 @@ test('B30-04: abort in a fresh listener latches during another admitted pending 
       first.on('error', reject);
       first.flushHeaders();
     });
-    await new Promise(resolve => setImmediate(resolve));
     const aborted = httpRequest({ host: '127.0.0.1', port, path: '/v1/chat/completions', method: 'POST',
       headers: { authorization: 'Bearer public', 'content-length': '20' } });
     aborted.on('error', () => {});
@@ -456,8 +467,8 @@ test('B30-04: abort in a fresh listener latches during another admitted pending 
     aborted.flushHeaders();
     await connected;
     aborted.write('{"');
-    await new Promise(resolve => setTimeout(resolve, 50));
     aborted.destroy();
+    await waitForLatch(port);
     const valid = Buffer.from(JSON.stringify({ model: FREE_MODEL_ID }));
     first.end(Buffer.concat([valid, Buffer.alloc(100 - valid.length, 0x20)]));
     assert.equal(await firstResponse, 503);

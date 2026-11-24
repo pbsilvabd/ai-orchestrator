@@ -2980,3 +2980,20 @@ Template:
 - No code, test, contract, ADR or gate changed; no network/provider/VM/key/FIDO2/live
   operation and no ready transition. Validation commands and results are recorded in
   `docs/validation.md`.
+
+## 2026-11-24 - B30 independent review corrections
+
+- The independent critical review requested changes at `2f8d7ae` (comment 7121684260);
+  exact-head CI `45323052642` failed on Ubuntu at the fresh-abort regression.
+- B30-05: `validateLiveApproval` now enforces `issuedAt <= now < expiresAt` and a positive
+  lifetime of at most 15 minutes, with future/inverted/equal/boundary tests; contract and
+  ADR-010 amended.
+- B30-04: the fresh-abort regression waits for the listener's real latch through the
+  diagnostics-only `freeListenerStatus()` instead of a fixed sleep. Latch reporting is
+  first-write-wins in both listeners; the concurrent-latch regressions are ordered by
+  origin arrival and the 405, and new regressions cover an upstream failure after a latch.
+- Merge history: restored the dropped dated backlog/handoff continuity under historical
+  headings and labelled the `a4f3954` green CI historical in backlog/roadmap.
+- Validation: focused 55/55 and 48/48; fresh-abort 1/1; serial suite 436 total, 431 pass,
+  0 fail, 5 skips; demo 429 -> 200; diff check clean. No live/provider/VM/key/FIDO2 run;
+  PR #45 stays draft.

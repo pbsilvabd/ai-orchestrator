@@ -216,26 +216,58 @@ test('B30-04: upstream partial-body drop latches and never replays', async t => 
 });
 
 test('B30-04: a concurrent latch refuses an in-flight request without rewriting the reason', async t => {
+  // Deterministic ordering: A reaches the origin, B latches, then the origin is released.
+  // No fixed sleep is needed to place the latch between A's fetch and its response.
+  let releaseOrigin;
+  let arrivedResolve;
+  const arrived = new Promise(resolve => { arrivedResolve = resolve; });
   const origin = await startServer((req, res) => {
-    setTimeout(() => {
+    arrivedResolve();
+    releaseOrigin = () => {
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify({ ok: true }));
-    }, 250);
+    };
   });
   t.after(() => origin.stop());
   const { relay, base } = await startRelay(origin.origin);
   t.after(() => relay.stop());
 
   const pending = post(base);
-  await new Promise(resolve => setTimeout(resolve, 50));
+  await arrived;
   const wrongMethod = await fetch(base, { method: 'GET', headers: { authorization: 'Bearer public' } });
   assert.equal(wrongMethod.status, 405);
   await wrongMethod.text();
+  assert.equal(relay.status().latchReason, 'method', 'B latched before the origin response');
+  releaseOrigin();
   const response = await pending;
   assert.equal(response.status, 503, 'a latch by another request is not a deadline');
   assert.match(await response.text(), /relay latched/);
   assert.equal(relay.status().latchReason, 'method', 'the original latch reason is retained');
   assert.equal(origin.requests.length, 1, 'no second upstream request is made');
+});
+
+test('B30-04: an upstream failure after a latch does not rewrite the latch reason', async t => {
+  let destroyOrigin;
+  let arrivedResolve;
+  const arrived = new Promise(resolve => { arrivedResolve = resolve; });
+  const origin = await startServer((req, res) => {
+    arrivedResolve();
+    destroyOrigin = () => req.socket.destroy();
+  });
+  t.after(() => origin.stop());
+  const { relay, base } = await startRelay(origin.origin);
+  t.after(() => relay.stop());
+
+  const pending = post(base);
+  await arrived;
+  const wrongMethod = await fetch(base, { method: 'GET', headers: { authorization: 'Bearer public' } });
+  assert.equal(wrongMethod.status, 405);
+  await wrongMethod.text();
+  destroyOrigin();
+  const response = await pending;
+  await response.text().catch(() => {});
+  assert.equal(relay.status().latchReason, 'method', 'the upstream failure must not overwrite the first cause');
+  assert.equal(origin.requests.length, 1);
 });
 
 test('relay policy digest binds the exact configuration', () => {

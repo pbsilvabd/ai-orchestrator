@@ -185,6 +185,25 @@ test('B30-05: canonical approval rejects unknown fields, expiry, paid budget, mu
   assert.throws(() => validateLiveApproval(approval({ endpoint: 'https://evil.invalid/v1' })), /fixed endpoint/);
 });
 
+test('B30-05: approval lifetime requires issuedAt <= now < expiresAt within 15 minutes', () => {
+  const NOW = 1_700_000_000_000;
+  const base = approval({ issuedAt: NOW - 60_000, expiresAt: NOW + 60_000 });
+  const at = overrides => validateLiveApproval({ ...base, ...overrides }, NOW);
+  assert.doesNotThrow(() => at({}));
+  // Future issuance: a malformed but signed artifact cannot be valid before it was issued.
+  assert.throws(() => at({ issuedAt: NOW + 60_000, expiresAt: NOW + 120_000 }), /not yet valid/);
+  // Inverted interval whose expiry is still far in the future.
+  assert.throws(() => at({ issuedAt: NOW + 60_000, expiresAt: NOW + 30_000 }), /expiry must follow issuance/);
+  // Zero-length interval.
+  assert.throws(() => at({ issuedAt: NOW, expiresAt: NOW }), /expiry must follow issuance/);
+  // Exact 15-minute boundary is accepted; one millisecond over is refused.
+  assert.doesNotThrow(() => at({ issuedAt: NOW, expiresAt: NOW + 15 * 60 * 1000 }));
+  assert.throws(() => at({ issuedAt: NOW, expiresAt: NOW + 15 * 60 * 1000 + 1 }), /15 minutes/);
+  // Issuance exactly at `now` is valid; expiry exactly at `now` is expired.
+  assert.doesNotThrow(() => at({ issuedAt: NOW, expiresAt: NOW + 1 }));
+  assert.throws(() => at({ issuedAt: NOW - 1, expiresAt: NOW }), /expired/);
+});
+
 test('B30-05: approval binding refuses policy drift, stale or paid metadata', () => {
   const metadata = { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } };
   const a = approval({ metadataDigest: digestOf(metadata) });

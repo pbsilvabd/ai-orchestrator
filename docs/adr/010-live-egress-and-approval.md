@@ -522,3 +522,20 @@ path are unchanged.
   separately signed approval.
 - Supersedes only the "non-loopback worker-facing listener decision" clause in the deployment
   update above. Deployment of the listener on a real private NIC remains `not_run`.
+
+## Dated amendment 2026-11-24 - approval lifetime is an interval, not only a duration
+
+Decision: `validateLiveApproval` enforces the full short-lived window, not only a duration
+bound. An approval is admissible only when `issuedAt <= now < expiresAt` and
+`0 < expiresAt - issuedAt <= 15 minutes`. Future issuance, an inverted interval and a
+zero-length interval are refused before any signature verification, metadata lookup or
+reservation.
+
+- This closes a gap where a genuinely signed but malformed artifact could have future
+  `issuedAt` or inverted timestamps with an expiry far in the future and still pass the
+  previous "expiry minus issuance" check.
+- The canonical field set, SSHSIG/FIDO2 verification, policy/metadata binding and the
+  single-use ledger are unchanged; the FIDO2 profile remains authoritative until #47
+  delivers a reviewed replacement.
+- Tests cover future, inverted, equal, exact 15-minute boundary and expiry-at-now cases with
+  an explicit clock. No live/provider/hardware operation is implied.

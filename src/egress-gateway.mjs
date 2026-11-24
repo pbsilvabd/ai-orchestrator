@@ -193,8 +193,10 @@ export function createEgressGateway({ mode, listen, origin, path, limits, log = 
   let boundAddress = null;
 
   const latch = reason => {
+    // First-write-wins for the reported cause: a later error path must not rewrite the
+    // reason that actually latched the listener. Every refusal is still audited.
+    if (!latched) latchReason = reason;
     latched = true;
-    latchReason = reason;
     refused.push(reason);
     log(sanitizedEvent('refused', reason));
   };

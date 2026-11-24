@@ -90,7 +90,13 @@ export function validateLiveApproval(approval, now = Date.now()) {
       !Number.isInteger(a.limits.maxRequests) || a.limits.maxRequests < 1 || a.limits.maxRequests > 12)
     fail('authorization_denied', 'approval limits are invalid');
   if (!isTimestamp(a.issuedAt) || !isTimestamp(a.expiresAt)) fail('invalid_argument', 'approval timestamps are invalid');
+  // The authorization window must be a positive interval of at most 15 minutes, and the
+  // artifact must already be valid but not yet expired: issuedAt <= now < expiresAt.
+  // Checking only expiry minus issuance would accept future issuance or an inverted interval
+  // whose expiry is still far in the future.
+  if (a.expiresAt <= a.issuedAt) fail('invalid_argument', 'approval expiry must follow issuance');
   if (a.expiresAt - a.issuedAt > MAX_ISSUE_WINDOW_MS) fail('invalid_argument', 'approval issue window exceeds 15 minutes');
+  if (a.issuedAt > now) fail('authorization_denied', 'approval is not yet valid');
   if (a.expiresAt <= now) fail('authorization_denied', 'approval is expired');
   for (const field of ['hostBinaryDigest', 'relayPolicyDigest', 'gatewayPolicyDigest', 'metadataDigest'])
     if (typeof a[field] !== 'string' || !DIGEST.test(a[field])) fail('invalid_argument', `invalid ${field}`);

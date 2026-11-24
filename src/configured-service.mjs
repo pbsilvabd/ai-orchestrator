@@ -123,6 +123,8 @@ export async function createConfiguredTaskService({ home, config, approvalFile,
       throw error;
     }));
     service.freeListenerStates = listeners.states;
+    // Diagnostics only: tests observe the terminal latch instead of a fixed sleep.
+    service.freeListenerStatus = listeners.status;
     // Report the actual startup authority instead of implying the listeners were started by a
     // verified task signature. A gate that exposes no canonical host executable is a test
     // double or a generic gate and is labelled as such; that never becomes task authority.
