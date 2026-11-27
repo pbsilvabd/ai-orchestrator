@@ -1,6 +1,6 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-24: remote main `f61e5e1` includes B12–B19, B29/#44 and the
+Verified 2026-11-27: remote main `f61e5e1` includes B12–B19, B29/#44 and the
 2026-11-22 reassessment. B30/#45 is draft and merged with main; the fixture-only
 implementation is not accepted. B20/#43 remains the single blocked M3 draft. See the
 [reassessment](project-reassessment-2026-11-22.md) for the full inventory and
@@ -119,7 +119,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
 | [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
 | [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45; fixture-only; all independent review findings closed at `7660b39`; docs-only head `67acd78` confirmed; still not accepted | Stacked B31 profile work, #46 composition, #48 test races and deployment gates |
-| [B31 - Explicit software SSH approval profile](tasks/B31.md) | P1 | Draft PR #51 at `e09be12`; Windows/Ubuntu CI passed; independent re-review found no B31 blocker at that SHA. Draft remains incomplete because default-concurrency B10-03 failure in #48 is unresolved | #48 test stability; #46 must establish signer/worker isolation before any live use |
+| [B31 - Explicit software SSH approval profile](tasks/B31.md) | P1 | Draft PR #51; resumed from reviewed/green `5a0a34f` on 2026-11-27, added real-key service regressions. Fresh default suite reproduces B10-03; [#48 correction coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517) remains unresolved, not waived by green CI | Separate bounded #48 correction/propagation and current-head validation/review; #46 must establish signer/worker isolation before any live use |
 | [B20 - First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
 | B27 - CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
 | B28 - Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |

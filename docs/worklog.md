@@ -3068,3 +3068,47 @@ Template:
   run `45339782157` passed. Full suite/demo were not rerun for this docs-only delta.
 - #48's default-concurrency failure remains explicitly unresolved; PR #51 stays draft.
   #46 signer/worker isolation and live/deployment gates remain `not_run`.
+
+## 2026-11-27 — M3 preparation: B31 real-key service regressions and race coordination
+
+- Branch: `task/B31-software-approval`
+- Scope: tests and docs; no runtime, authority, lifecycle or deployment change.
+- Steps:
+  1. Resumed the existing clean worktree at remote `5a0a34f`, base `67acd78`;
+     read all PR feedback and verified starting-head CI and review receipts.
+  2. Reproduced the unchanged default-suite B10-03 failure, characterized the
+     fixed-abort/readiness assumption with a disposable local-process diagnostic,
+     and published [#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517).
+     Requested a separate bounded correction card/PR and repeated Windows/Ubuntu
+     evidence for the whole issue; did not waive or implement it inside B31.
+  3. Promoted reviewer-run real-key service experiments to permanent tests:
+     nine negative side-effect cases, actual KRL verification, envelope-free
+     replay, a re-signed second task reaching the real single-use ledger, and
+     software-key refusal with a matching FIDO2 signed profile.
+  4. Reviewed the implementation paths and complete stacked diff. Strengthened
+     private-key non-disclosure checks against JSON escaping and reran focused
+     tests. Proved the second-task regression fails when the existing-claim
+     refusal is removed in an owned scratch copy; removed only that copy.
+     Preliminary independent static review then found a dummy executable digest
+     could mask a FIDO2-enforcement regression in the new test. Bound the measured
+     executable and proved a FIDO2-enforcement bypass makes that test fail too.
+  5. Updated continuation/evidence docs, keeping #51 draft/incomplete and #46
+     signer/worker isolation `not_run`. No merge decision or live use requested.
+- Files: `test/live-approval-service.test.mjs`, `docs/tasks/B31.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused five-file command → 71 pass, 0 fail, 0 skip, exit 0,
+  before and after the scan correction; default suite → 443/437/1/5 at the
+  starting head and 453/447/1/5 before independent review, both exit 1 for B10-03;
+  demo → 429 then 200, exit 0; mutation → expected assertion failure, exit 1.
+  Pre-review serial suite → 453 total, 448 pass, 0 fail, 5 skip, exit 0;
+  syntax/stacked whitespace checks → exit 0; six-file relative-link check →
+  74 links, zero broken, exit 0. Interrupted/quoting attempts and limits are in
+  `docs/validation.md`; no failure is replaced by a serial or diagnostic pass.
+  Focused/full suites are being rerun after the FIDO2 test correction.
+  Corrected focused set → 71/71, exit 0; full default/serial/demo revalidation,
+  published-head independent verdict and CI remain pending at this checkpoint.
+  Pinned-host, deployment, live and hardware gates were not rerun.
+- Follow-up: authorize the bounded #48 correction and propagate its reviewed
+  fix into the stack, then repeat exact-head gates/independent review of #51.
+  Green CI alone does not clear that blocker.

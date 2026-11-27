@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-22. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-27. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -35,10 +35,14 @@ The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
 delivered implementation, missing composition, unrun validation and retired work.
 The maintainer selected the software Ed25519 SSHSIG profile recommended in #47.
 B31 is published as draft PR #51, stacked on B30, with explicit versioned software and
-optional FIDO2 profiles. Exact-head Windows/Ubuntu CI passed, and an independent
-critical re-review reported no B31 blocker at `e09be12`; the local default-concurrency
-B10-03 failure remains unresolved in #48, so B31 stays draft. #46 deployable composition
-and #48 test stability remain open; live use remains closed.
+optional FIDO2 profiles. On 2026-11-27 resumption, head `5a0a34f` had green
+Windows/Ubuntu CI and a SHA-specific independent review with no B31 finding, but a fresh
+default-concurrency run failed B10-03 again. The continuation adds permanent real-key
+service regressions; it does not repair the cross-task races. The
+[#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517)
+requests a separately authorized correction and repeated Windows/Ubuntu evidence.
+B31 stays draft/incomplete. #46 deployable composition and signer/worker isolation
+remain open; live use remains closed.
 
 ### Historical delivery receipts through B19
 

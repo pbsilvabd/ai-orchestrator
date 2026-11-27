@@ -1,4 +1,4 @@
-# Continuation point - 2026-11-22
+# Continuation point - 2026-11-27
 
 Verified remote main `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` includes
 B12-B19, B29/#44 fixture-only preparation and the 2026-11-22 reassessment
@@ -14,22 +14,29 @@ correction and re-review closed every finding with no new blocking issues, and t
 reviewed head `7660b39874eecd48c408c1500d30da96c8423d2c` passed exact-head CI on
 Windows and Ubuntu. The fixture-only implementation is still not accepted: merge,
 ready and live remain unauthorized while #46/#47/#48 stay open. The maintainer selected
-the software SSH-signature profile recommended in #47; B31's local implementation of the
-separately versioned profile is ready for publication/review on a stacked branch. Until
-that change is reviewed, B30's current verifier remains FIDO2-only. Full deployment and
+the software SSH-signature profile recommended in #47; B31's separately versioned profile
+is on stacked draft PR #51 with no reported B31 blocker at its starting reviewed head.
+It is not complete/ready while #48 remains unresolved; the unchanged B30 parent verifier
+is still FIDO2-only. Full deployment and
 signer/worker isolation are not
 established. See the
 [reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
 
-## Next action: resolve B31's default-suite blocker and continue review
+## Next action: authorize the bounded #48 correction, then revalidate B31
 
 1. B31 is published as draft [PR #51](https://github.com/pbsilvabd/ai-orchestrator/pull/51),
-   stacked on B30 head `67acd78d`. At head `e09be12`, exact-head Windows/Ubuntu CI passed
-   and the independent critical reviewer reported no B31 blocker
-   ([re-review comment](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123906558)).
-   However, local default-concurrency `node --test` still fails B10-03 (empty stdout vs
-   `before`), reproducibly also in isolation; #48 tracks this. Keep B31 draft until this
-   suite-stability gate is addressed and revalidate/re-review any new head. Do not merge.
+   stacked on B30 head `67acd78d`. On resumption (2026-11-27), remote head `5a0a34f`
+   still had green Windows/Ubuntu CI `45340527222` and a SHA-specific
+   [independent review](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7124024334)
+   with no B31 finding. A fresh default-concurrency suite nevertheless failed B10-03
+   (443 total, 437 pass, 1 fail, 5 skips). These receipts apply to that starting head,
+   not later commits. New committed real-key service regressions cover negative side
+   effects, envelope-free replay and a distinct re-signed request reusing one approval ID.
+   [#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517)
+   requests a separately authorized correction card/PR for the B10/B12/B15/B18 races,
+   repeated default-concurrency Windows/Ubuntu samples, and propagation into this stack.
+   No such correction or gate waiver is claimed by B31. Keep #51 draft/incomplete until
+   this gate is addressed and revalidate/re-review the resulting exact head. Do not merge.
    Software profile makes no hardware-presence claim; FIDO2 remains optional. Live use
    remains closed.
 2. Specify and implement [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46):
