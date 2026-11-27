@@ -3112,3 +3112,36 @@ Template:
 - Follow-up: authorize the bounded #48 correction and propagate its reviewed
   fix into the stack, then repeat exact-head gates/independent review of #51.
   Green CI alone does not clear that blocker.
+
+## 2026-11-27 — M3 preparation: B31 corrected-head revalidation
+
+- Branch: `task/B31-software-approval`
+- Scope: documentation receipts only; no source or test behavior changed.
+- Steps:
+  1. Published and verified `999a0e19f0a98294b93806e92aab2dc060579d30`,
+     stacked on `67acd78d`, with the measured-host FIDO2 test correction.
+  2. Completed the corrected-code default/serial/demo runs, retaining the default
+     B10-03 failure instead of replacing it with serial or CI success.
+  3. Updated the PR body using its template and answered all prior critical
+     comments in reply #7209824863. Exact-head CI #45939963343 passed Windows
+     and Ubuntu; this does not repair the unresolved #48 gate.
+  4. Recorded independent review #7209875814 at `999a0e1`: preliminary P2
+     verified fixed, no uncorrected in-scope B31 finding, completion still
+     blocked by #48. Fixed its optional inherited P3 deployment link in
+     ADR-010 and refreshed the status documents without claiming acceptance.
+- Files: `docs/validation.md`, `docs/worklog.md`, `docs/tasks/B31.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/adr/010-live-egress-and-approval.md`.
+- Validation: corrected focused set → 71/71, exit 0 (previous entry);
+  `node --test` → 453 total, 447 pass, 1 fail, 5 skip, exit 1;
+  `node --test --test-concurrency=1` → 453/448/0/5, exit 0;
+  demo → 429 then 200, exit 0; syntax/diff/source-correlation → exit 0.
+  Reviewer independently passed 71 focused tests/demo/diff and verified the
+  FIDO2-bypass mutation fails as expected. Its broader link check found the
+  inherited P3; after fixing it, author link check → 10 files / 93 links /
+  zero broken, exit 0. Whitespace/source-correlation checks → exit 0.
+  Re-reviewed the docs-only delta and removed the owned mutation copy.
+  Pinned-host, deployment, provider/catalog/live and hardware gates were not rerun.
+- Follow-up: keep #51 draft; obtain separate bounded #48 correction authority
+  and propagate its reviewed fix, then repeat exact-head gates/review. #46
+  signer/worker isolation remains `not_run` and live stays closed.

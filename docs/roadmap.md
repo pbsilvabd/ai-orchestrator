@@ -43,6 +43,11 @@ service regressions; it does not repair the cross-task races. The
 requests a separately authorized correction and repeated Windows/Ubuntu evidence.
 B31 stays draft/incomplete. #46 deployable composition and signer/worker isolation
 remain open; live use remains closed.
+Continuation test head `999a0e1` has green exact-head Windows/Ubuntu CI and
+[independent review](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7209875814)
+with no uncorrected B31 finding; the reviewer-identified FIDO2 test-evidence weakness
+was fixed and mutation-tested. Corrected default suite still fails B10-03
+(453 total, 447 pass, 1 fail, 5 skip); serial/focused success is not a gate waiver.
 
 ### Historical delivery receipts through B19
 

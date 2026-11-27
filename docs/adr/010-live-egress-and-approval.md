@@ -292,7 +292,7 @@ symlink/junction/alias identity); a signed admission measuring A while the worke
 refused before any service/task/child exists. Negative (`A != B`) and positive (`A == B`)
 composition fixtures live in `test/free-provider.test.mjs`.
 
-Deployment prerequisites ([deployment-prerequisites.md](deployment-prerequisites.md)) are
+Deployment prerequisites ([deployment-prerequisites.md](../deployment-prerequisites.md)) are
 recorded as a plan only: no independent Ubuntu/Hyper-V environment or enrolled FIDO2
 hardware key has been provisioned. A one-shot read-only catalog GET (2026-11-15, HTTP 200,
 104,821 bytes, `redirect:error`, no retry) confirmed the fixed free model

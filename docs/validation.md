@@ -4197,3 +4197,79 @@ all B10/B12/B15/B18 cases, predeclared repeated default-concurrency samples on W
 and Ubuntu, and a propagation plan into B30/B31. That work is not silently folded
 into this signature-profile PR. Keep #51 draft; no merge decision request while
 this gate is unresolved. #46 still blocks any live use.
+
+## M3 preparation: B31 corrected-head revalidation — 2026-11-27
+
+Executed on Windows x64 (NT 10.0.26300.0), Node.js v24.22.1 (fnm).
+Date: 2026-11-27.
+
+Published and remotely verified implementation/test head:
+`999a0e19f0a98294b93806e92aab2dc060579d30`; stacked base unchanged:
+`67acd78d0c570d5619dcc56c1638138c650cf32a`. This completes the local reruns that
+were explicitly pending in the preceding publication checkpoint, without rewriting
+that entry. Source/test bytes matched this head after the commands completed.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test` | Full default regression after the independent FIDO2 test correction | 453 total, 447 pass, 1 fail, 5 skip; sole B10-03 `'' !== 'before'` at `test/subprocess.test.mjs:78`, ~66.2 s | 1 |
+| `fnm exec --using=24.22.1 node --test --test-concurrency=1` | Separate full serial regression after the correction | 453 total, 448 pass, 0 fail, 5 skip, ~209.5 s | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Revalidate the demo after the correction | `mock/preferred` 429 then `mock/local` 200 | 0 |
+| `fnm exec --using=24.22.1 node --check test/live-approval-service.test.mjs` | Corrected test syntax | no output | 0 |
+| `git diff --check origin/task/B30-free-relay` | Full stacked diff whitespace | no output | 0 |
+| `git diff --exit-code 999a0e19f0a98294b93806e92aab2dc060579d30 -- src test` | Correlate the tested source/test bytes | no output | 0 |
+
+Result: the corrected focused set passed 71/71 (preceding entry), and the separate
+serial suite/demo passed, but the default full suite still failed #48's B10-03
+assertion. Each native exit was captured immediately; default/serial/demo ran
+sequentially and their wrapper exited 1 because the default suite failed.
+No retry replaced that failure. Skips remain four existing unavailable-`openssl`
+TLS fixtures and one POSIX-only case on Windows.
+
+Exact-head CI [45939963343](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/45939963343)
+passed the Windows/Ubuntu suite and demo steps at `999a0e1`. Observed run/job/step
+API metadata, not raw logs or CI test counts. This single green CI run does not
+repair #48 or supply its repeated-sample campaign.
+
+Independent critical
+[review #7209875814](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7209875814)
+reviewed exactly `999a0e1`, closed the preliminary P2 and found no uncorrected
+in-scope B31 implementation/test finding. It independently passed 71 focused tests,
+the demo, diff checks and the FIDO2-bypass mutation's expected failure. It inspected
+the author full-suite output rather than claiming to run those suites itself.
+The preliminary P2 was a test-evidence defect, fixed before publication by binding
+the measured fixture executable; no runtime verification rule was weakened.
+The reviewer explicitly left B31-06 incomplete under #48 and #46 live-closed.
+
+The same review reported one optional inherited P3: ADR-010's deployment link
+resolved under `docs/adr/` instead of its parent. Corrected only that link to
+`../deployment-prerequisites.md`. Its broader ten-file check had 93 links, one
+broken, exit 1; that reviewer result is preserved, not described as passing.
+The subsequent documentation-only receipt commit requires its own exact-head
+delta review/CI; this `999a0e1` verdict does not approve a future commit.
+After the link fix, the author checked all ten changed Markdown files: 93 relative
+file links, zero broken, exit 0. Base-to-working-tree whitespace and unchanged
+source/test correlation checks exited 0. Removed only the owned FIDO2 mutation
+copy after the reviewer finished inspecting/rerunning it. Re-reviewed the final
+documentation delta; no acceptance, authority or milestone was advanced.
+
+PR body now uses the repository template. The
+[continuation reply](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7209824863)
+links and answers all three prior critical comments, records the correction and
+explicitly preserves #48/#46. None of those prior comments requested another B31
+runtime correction. The coordinated #48 next step remains a separately authorized
+bounded task/PR and reviewed propagation into this stack, not a hidden B31 scope
+expansion or a readiness waiver.
+
+Evidence level: Unit — "Policy decisions and input normalization"; does not
+demonstrate "Host, network, production persistence". Real local crypto/service
+fixtures are not OpenCode integration, deployed signer isolation or Use on this
+project evidence.
+
+Not rerun: pinned OpenCode/MCP/relay integrations (no runtime or transport change);
+deployed TLS/compartment/worker-signer isolation, operator provisioning, catalog,
+live inference and genuine FIDO2 positive (separate gates/authorization; #46 remains
+`not_run`). No provider/catalog request, personal key, hardware, VM/firewall/network-policy
+change, ready transition, merge decision request or merge.
+
+Claim: this supports the corrected B31 local tests, not completion. #51 remains
+draft/incomplete because #48 is unresolved; #46 independently keeps live use closed.
