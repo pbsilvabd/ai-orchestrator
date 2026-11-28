@@ -1,56 +1,42 @@
 # Continuation point — 2026-11-28
 
-Verified remote main is `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672`.
-B12–B19 and B29/#44 are merged. B30/#45 remains OPEN/DRAFT at
-`4d51a393159ce1023718909da022f5b2617d1db5`; stacked B31/#51 remains
-OPEN/DRAFT at `e1a08d4388945362e555ec3786e50c7fe60ac394`. Their exact-head
-CI runs `46109747250` and `46111699960` passed on Windows/Ubuntu. FIX48 #52
-remains OPEN/DRAFT; code-head campaign `46108300145` passed at `9b34a8c`, and
-receipt-head campaign `46113674523` passed at reviewed head `9bb1a41`
-(merge checkout `a9c0caa`). A second independent review at `9bb1a41` found
-remaining stale status text and omission of that latest campaign from the
-versioned receipt. This follow-up appends the run and reconciles current status.
-Each new head requires its own exact-head CI and independent re-review; keep #52
-draft until the current GitHub review/check state clears every gate.
-B31's signed software profile is local-fixture evidence only. M2b sign-off is
-not newly declared; M3/B20 remains blocked with no real worker-produced project
-diff. #46 still lacks proven signer/worker isolation; live use stays closed.
+Remote `main` is `04c6e5f80d4a54a20203922fd8ee259419dd069c`. B30/#45 remains
+OPEN/DRAFT at prior remote head `4d51a393159ce1023718909da022f5b2617d1db5`;
+stacked B31/#51 remains OPEN/DRAFT. The local #45 correction commit is
+`e1e6c967ab04db9e3572d4778c548b6d23ec4a3a`; main's five documentation conflicts
+are resolved in merge commit `6b155213950d2eae070f34bcde0cc2ec164a29d0`.
+Focused tests, full suite, fallback demo and whitespace checks passed on this
+tree. The correction was published normally to PR #45 as
+`05c39828e1c1f03197c1685c4dabb6136a562df1`; CI run `46125175156` was queued at
+that head when checked. A critical re-review was requested. Keep the PR draft;
+CI/re-review are not yet complete.
 
-## Next action: verify the resulting FIX48 head before any ready/merge decision
+## Next action: finish and verify the B30 correction on #45
 
-1. FIX48 is published as draft [PR #52](https://github.com/pbsilvabd/ai-orchestrator/pull/52)
-   on `task/FIX48-concurrency-stability`, based on `f61e5e1`.
-   The default-concurrency Windows baseline reproduced B10-03: `303 pass,
-   1 fail, 1 skip` (`'' !== 'before'`). The final focused correction set passed
-   88 total / 87 pass / 0 fail / 1 platform skip; the full default suite passed
-    310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
-    passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results.
- 2. Runs `46107344778`, `46108300145` and `46113674523` each passed five consecutive
-    default-concurrency originals per OS. The first tested PR head `1a2bd5f`
-    at merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`; the latter tested
-    code/doc head `9b34a8c` at merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`,
-    and the later receipt head `9bb1a41` at merge SHA
-    `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1`. All records reported
-    clean/unchanged checkout and exit 0. FIX48 propagation is verified at #45
-    `4d51a39` and #51 `e1a08d4`, with exact-head CI passing. Re-review at
-    `9bb1a41` requested reconciling remaining status statements; this update
-    records that run and status. Never replace a failed original with a retry.
- 3. For each resulting #52 head, verify the exact-head checks, reply to review
-    feedback and obtain independent re-review. Keep it draft if any blocking
-    finding remains.
- 4. Keep #45/#51 drafts while any #46 gate remains unresolved. Specify #46's
-    actual service/worker/relay/gateway compartments, trusted launch
-    channel, workspace/artifact mapping, measured binary, and lifecycle/ownership.
-    Only then consider any separately authorized deployment campaign.
- 5. Re-review B30's final exact head, reconcile B17/M2b acceptance, then reassess
-    B20/#43; no real provider path or task is authorized here.
+1. Preserve the synchronous fail-closed rule: admission, worker validation and
+   receipt revalidation must not accept a Promise/thenable; observe rejected
+   thenables. Focused tests and the full suite passed locally on Node 24.22.1.
+2. Preserve the resolved `origin/main` merge and both append-only
+   validation/worklog histories. Final-tree commands passed: focused service/
+   pre-spawn tests (29/29), full suite (454 total, 449 pass, 0 fail, 5 skips),
+   fallback demo (429 then 200) and whitespace checks.
+3. Review the full `main..HEAD` diff and B30 acceptance rows; record local results
+   and non-rerun gates. Correction/reconciliation has been published without
+   force and the latest findings answered. Verify exact-head CI and re-review;
+   keep it draft.
+4. #45/#51 remain incomplete: compartment-aware service/worker/relay/gateway
+   composition (#46), profile gates (#47/#51), and deployment/live/FIDO2 evidence
+   are not satisfied. Re-review the resulting #45 head and preserve those limits.
+5. FIX48 #52's campaigns and prior propagation into #45/#51 are historical
+   receipts; every new commit needs current-head checks and review. M2b sign-off
+   is not newly declared; M3/B20 remains blocked with no real worker-produced
+   project diff.
 
-No provider/catalog, key enrollment, hardware, VM/firewall/network-policy change,
-ready transition, or merge is authorized. The selected software SSH profile makes
-no hardware-presence claim. #6/#9 are obsolete, and SQLite/memory/routing remain
-deferred.
+No provider/catalog request, key enrollment, hardware, VM/firewall/network change,
+ready transition or merge is authorized. Live use stays closed. #6/#9 are obsolete;
+SQLite/memory/routing remain deferred.
 
-## Historical checkpoints — superseded by the continuation above
+## Historical checkpoints - superseded by the continuation above
 
 The following dated text preserves prior evidence/context, **not current task
 selection, remote status or authorization**. Follow the next-action section above.
@@ -81,6 +67,215 @@ therefore refused by `createConfiguredTaskService`, and
 [ADR-009](adr/009-free-anonymous-worker.md) is accepted only for fixture
 preparation; live activation remains prohibited. The integration harness
 `integration/opencode-free.mjs` exits 1 on this scenario by design. B20 remains unexecuted.
+
+2026-11-16 update: draft PR #45 (B30) still carries the fixture-only relay/gateway/approval work
+and is not ready or merged. With maintainer authorization, the real TLS path to `opencode.ai`
+(Node default verification, TLS 1.3, Google Trust Services), one live-gateway empty JSON request
+(provider 400 with no generation), an application-level WebSocket refusal (405) and a fresh
+zero-price catalog read were recorded in `docs/validation.md`. The non-loopback worker-facing
+listener decision is now implemented in the trusted composition: `freeListeners` accepts an
+explicit private/loopback `relayHost` (default `127.0.0.1`), refuses wildcard/unspecified, public,
+IPv4-mapped and hostname forms, derives the worker base URL and binds the address into the relay
+policy digest; tests cover the policy and a real bind on `127.0.0.2`. Still `not_run`: positive
+FIDO2 hardware signature (no device present), provider WebSocket bypass from a worker compartment
+(no VMs), deployment on a real private NIC/Ubuntu host, and live inference. Next action: obtain
+the FIDO2 dry run and the deployment environment, then re-review; merge needs explicit
+authorization.
+
+2026-11-15 fifth correction (release-authority transfer; same draft PR #45). The independent
+re-review at `f6fdd1e` confirmed the forged-handoff fix but found that the original capability
+holder could still call `cap.releaseOwner()` after `createTaskService` had consumed it, removing
+the active service's lock and letting a second service acquire the home. Release authority now
+transfers at consumption: the creator-facing `releaseOwner` is valid only while the capability
+is minted and unconsumed (failed-construction cleanup), and only the consuming service's private
+close path releases after scheduler idle, running `beforeRelease` listener stop while ownership
+is held. A private release is memoized, so repeated `close()` and concurrent close share one
+release; an early or concurrent creator release is refused with `invalid_argument` without
+touching the lock. Passive default close stays synchronous; a capability handoff returns the
+release Promise. `test/service-ownership-handoff.test.mjs` now covers the early-release bypass,
+close idempotency, `beforeRelease` ordering, and failed-construction cleanup in addition to the
+forged/copied/reused/released/mismatched/competing-owner and uncertain-release cases. Exact-head
+CI run `43768061960` at `352c212` passed on Windows and Ubuntu; the docs-only receipt commit has
+its own PR run. All
+deployment gates remain `not_run`; PR #45 stays draft and unmerged.
+
+2026-11-15 fourth correction (ownership handoff capability; same draft PR #45). The independent
+re-review at `6ea76d8` confirmed the two earlier P1s in the configured path but found that the
+exported `ownership` option accepted a caller-shaped `{ store, releaseOwner }` object, allowing a
+second service beside an active owner. `createTaskService` now accepts only the opaque, frozen,
+single-use capability that `openTaskHome` mints after the exclusive lock and reconciliation;
+shaped or copied objects, released or reused capabilities and wrong-home handoffs are refused
+with `invalid_argument` and never release or replace an active owner. The configured path passes
+that capability directly with listener stop bound as `beforeRelease`, which runs while ownership
+is still held; a failed cleanup or lock release leaves the capability unusable and the lock
+retained. Passive default close is synchronous again; a capability handoff returns the release
+Promise. `test/service-ownership-handoff.test.mjs` covers forged/copied/reused/released/
+mismatched/competing-owner and uncertain-release cases, and the existing B12/B30 lock and
+listener-lock tests still pass. Exact-head CI run `43764489116` at `0c90518` passed on Windows
+and Ubuntu; the docs-only receipt commit has its own PR run. All deployment gates remain
+`not_run`; PR #45 stays draft and unmerged.
+
+2026-11-15 third correction (ownership and startup authority; same draft PR #45). Corrected the
+two P1 findings from the independent re-review at `c8645d6`. (1) `openTaskHome` now acquires
+exclusive task-home ownership and reconciles the store **before** either supervised listener
+child may bind. Ownership is held through listener startup and stop, released only after a
+confirmed stop; a competing owner or corrupt store refuses with zero new child, port or lock,
+and an unconfirmable stop at close or during failed-startup cleanup keeps the task-home and
+listener locks. (2) Listener startup
+authority is now explicitly separated from task admission: the operator approval artifact is
+unsigned JSON (shape/expiry/zero budget) and the gate contributes policy digests, not an
+SSHSIG. `service.freeListenerAuthority` reports that actual authority; startup is not described
+as signature-verified. The same real gate refuses missing, malformed, non-FIDO2 and forged task
+signatures before persistence with zero task/workspace/worker effect (already-started listeners
+stay running). Focused tests cover competing owner, corrupt store, ownership-held composition,
+close-time and failed-startup uncertain stop and the real-gate refusal matrix. Exact-head CI
+run `43760697682` at `b9e8483` passed on Windows and Ubuntu; independent re-review of this
+head is the next action. The positive FIDO2 signature path and
+every deployment gate remain `not_run`; PR #45 stays draft and unmerged. No FIDO2 hardware,
+network, VM, switch/reboot, provider inference or catalog action was performed.
+
+2026-11-15 B30-04/07 offline correction on `task/B30-free-relay` (draft PR #45, base
+`11fcb42`). Added `src/listener-supervisor.mjs` and `src/listener-child.mjs`: a relay or
+gateway runs in a supervised child with a durable lock created before spawn. Only a confirmed
+exit releases the lock; an unconfirmed stop, kill or ready timeout keeps the lock and
+refuses restart; `reconcileListenerLock` is the explicit operator release (exact token and
+pid, stop verified). An orphaned child stops on IPC disconnect. The gateway names DNS
+(`dns-failure`) and TLS (`tls-failure`) upstream failures as distinct fail-closed latches
+and refuses live-mode `NODE_TLS_REJECT_UNAUTHORIZED=0` (`tls-policy`). Offline fixtures
+(`test/gateway-tls.test.mjs`, `test/listener-supervisor.test.mjs`) use a disposable CA and
+`integration/tls-fixture-resolver.mjs` inside a child process; no DNS, hosts, firewall or
+network change and no external query. Live composition stays closed; the supervisor is wired
+only into the fixture-only `freeListeners` path of `createConfiguredTaskService` (second
+correction below). Evidence is local loopback/process fixture only:
+the deployed cross-namespace TLS chain, expired certificates, a real resolver/origin, the
+WebSocket-bypass experiment, bare-metal/VM deployment, FIDO2 signing, live inference and
+merge remain `not_run`. The public catalog GET for the fixed free model was performed once,
+under a staged bounded authorization, at prior head `8e358a4` (HTTP 200, 104,821 bytes,
+zero-price metadata; receipt in the `M3 preparation: B30 signed-approval pre-spawn
+revalidation + host/readable binding (B30-05) — 2026-11-15` section of
+`docs/validation.md`, line 2862). That snapshot is dated and expires. It was not repeated in
+this correction. A fresh read needs its own narrow authorization; neither the old GET nor this
+correction authorizes live inference. Recorded per ADR-010's 2026-11-15 amendment.
+
+2026-11-15 second correction (fixture-only wiring; same draft PR #45). `src/free-listeners.mjs`
+composes the supervised gateway and then relay through `createConfiguredTaskService(…,
+{ freeListeners })`. It needs an operator approval artifact and an admission gate whose exposed
+relay and gateway digests equal the plan's digests; it refuses before any effect otherwise.
+Startup is not SSHSIG-verified (corrected above: trusted composition only). Both
+listeners bind `127.0.0.1` on fixed ports, the worker base URL comes from the relay port, a
+launch failure stops what started, an uncertain stop keeps its lock, a dead listener blocks
+the reserved dispatch (no spawn, no replay), and `close()` stops the listeners after the
+scheduler is idle, releasing task-home ownership only after a confirmed stop. Task text has
+no channel to ports, addresses, provider or model. Nine focused tests cover these paths
+(`test/free-listeners.test.mjs`); the serial suite is recorded
+in the validation entry. The admission in those tests is a labelled double that carries digests
+only. The signed SSHSIG path remains `not_run`. The second bounded catalog GET was performed at
+`2026-11-15T19:14:36Z` and validated `deepseek-v4.1-flash-free` as zero-price. It is dated and
+not repeated, and it authorizes no live inference (ADR-010, second 2026-11-15 amendment).
+
+## Historical next action (2026-11-16, after the host-side gateway deployment run; superseded by the 2026-11-22 continuation above)
+
+1. Keep PR #45 draft. Do not mark it ready and do not merge: the B30 gates below are not all
+   satisfied, and the user's merge condition ("all gates pass") is therefore not met.
+2. Deployment progress: the Windows two-VM network layer is now evidenced, not planned. Two
+   Internal switches, no Default/External switch, no NAT/ICS/share, no host forwarding, no
+   worker default route or DNS, single worker NIC, and guest-written probe logs showing the
+   worker's and the relay's off-link attempts denied while both keep their one permitted link
+   (`docs/validation.md`, the 2026-11-15/16 two-VM entries). A second media round covered the
+   remaining B30-03 probe row inside both compartments: a plaintext WebSocket upgrade to two
+   off-link origins is `Network is unreachable` at connect, and the reachable peer on the
+   permitted link refuses `18099` and `8080`. A host-side L7 gateway was then deployed on the
+   relay link in fixture mode for one authorized session: the approved request was forwarded
+   once to a controlled loopback origin, an unapproved path, absolute-URI request, `CONNECT`
+   and credential were refused before any upstream fetch, the policy digest was recorded and
+   the temporary inbound firewall rule was removed afterwards. Remaining, all `not_run`:
+   - the gateway's TLS chain to the real origin (resolver, trust store, certificate
+     validation); the fixture-mode deployment did not exercise it;
+   - an application-level WebSocket rejection (the VM probes only show there is no transport);
+   - the independent Ubuntu host checklist (items 1–3 and 8) if that path is chosen instead;
+   - a real FIDO2 `-sk` signature dry run (item 6) and the active provider WebSocket-bypass
+     experiment (item 7);
+   - a deployment decision for a non-loopback, worker-facing listener (requires an ADR
+     amendment before any code change).
+3. A further catalog read needs its own narrow authorization. No live inference is authorized.
+
+Earlier 2026-11-14 state (superseded for next action): B30 fixture-only implementation on `task/B30-free-relay` (base `688da04`, merged
+with B29 main `11fcb42`), corrected after the supervisor reviews at `cff5265` and
+`32c0339`. The relay, egress gateway, SSHSIG approval/admission and an isolated WSL2
+netns/veth containment observation are implemented and tested; live composition remains
+closed and no merge is authorized.
+
+- `src/relay.mjs` — fixed single-upstream relay, redirect refusal (301/302/303/
+  307/308), independent request/byte/time bounds, rejects all-zero IPv4/IPv6 bind
+  (including compressed IPv6 aliases), fail-closed lifecycle.
+- `src/egress-gateway.mjs` — L7 egress gateway, fixed `Bearer public` forwarded
+  upstream, CONNECT/redirect/unapproved-path refusal, independent request cap,
+  rejects all-zero IPv4/IPv6 bind (including compressed IPv6 aliases), sanitized logs,
+  policy digest.
+- `src/live-approval.mjs` — canonical SSHSIG live approval with `ssh-keygen -Y
+  verify`, FIDO2 presence/verification flag enforcement, policy/metadata binding
+  and a durable atomic no-replace single-use approval ledger.
+- `integration/b30-egress-namespaces.sh` — isolated WSL2 worker/relay/gateway
+  netns + veth fixture: three disposable namespaces with unique per-run names, each
+  veth pair created **inside** a disposable namespace (only the peer moved), so no
+  `ip link add` runs in the WSL initial/host namespace; per-namespace nftables default-drop
+  (OUTPUT/FORWARD, allow only worker→relay and relay→gateway, with counters); owned-only
+  collision-safe teardown, `--self-test` mode, real socket probes (including active
+  IPv4/IPv6/DNS/WebSocket-upgrade and a routable-but-not-allowed port negative egress
+  probes, all denied) and verified-empty teardown (host nftables ruleset stays empty).
+- `integration/opencode-free-relay.mjs` — pinned OpenCode 2.2.5 routed through the
+  relay→gateway→fixture-origin loopback chain: normal run succeeds with three
+  `Bearer public` origin requests; each of 301/302/303/307/308 fails the task with one
+  attempt and zero alternate-origin connections / raw socket bytes / requests / body bytes
+  (counted at connection/entry and per data chunk; the B29 307 prompt leak is closed
+  through the relay). `--self-test` proves an aborted partial body increments the
+  alternate-origin counters.
+
+- `integration/b30-gateway-host.mjs` — deployment harness (not a test, not wired into
+  composition): instances `src/egress-gateway.mjs` in `fixture` mode on one fixed address,
+  serves one guest request per instance, and writes a JSONL event log plus one evidence JSON
+  (policy digest, per-round counters, metadata-only fixture-origin records). `--smoke` is a
+  loopback self-probe that needs no host firewall rule.
+
+`not_run` / still closed (ADR-009/010): bare-metal Ubuntu deployment and the deployed TLS chain
+to the real origin (the Windows two-VM network layer and the fixture-mode gateway boundary are
+evidenced in 2026-11-15/16; the nftables/routing observation remains WSL2-only and the gateway
+namespace has no external route); the active worker-compartment provider WebSocket-bypass
+experiment; signed-approval service admission integration; a real FIDO2 hardware-key signing dry
+run; public catalog GET; live inference and B20/#43. The live route stays closed until a platform
+provides verified firewall-filtered isolation in a bare-metal/VM deployment and a separately
+signed live approval.
+
+Remote `main` is `11fcb422de47c2a9b79389de8470802d48ead730` (B29/#44 merged).
+B12–B19 are merged; B29 is merged as fixture-only preparation. B20 remains draft
+PR #43 and unmerged. M2b/M3 remain incomplete; the worker provider is fixture-only.
+
+## Previous next action (2026-11-14, superseded by the 2026-11-15 section above)
+
+1. The supervisor reviews at `cff5265`, `32c0339`, `ad010a7` and `cc3e917` (P1 ledger; P2
+   gateway/bind/WSL scope; residual in-namespace veth + compressed IPv6 aliases; cleanup
+   reporting + fault injection; and EXIT-trap status + inventory-error handling) have
+   been corrected on this branch, and the pinned-host-through-relay fixture now passes
+   (normal succeeds; 301/302/303/307/308 fail the task with zero alternate-origin bytes).
+   The reply with the new head SHA and evidence is posted on PR #45. Re-review the
+   corrected head, then the maintainer decides draft-to-ready. The draft lists the unmet
+   criteria (firewall filtering, hardware signing, catalog, live activation) as `not_run`,
+   not passed.
+2. Remaining B30 gates are platform/hardware, not code: nftables (or an approved
+   alternative), a real FIDO2 `-sk` signing dry run, and a separately authorized
+   catalog read before any live experiment.
+
+## Historical B29 checkpoint (merged as PR #44)
+
+B29 (`task/B29-opencode-free-provider`, base `688da04`) prepares one anonymous free route,
+`opencode/deepseek-v4.1-flash-free`, with zero-price metadata validation, expiring
+payload-bound operator approval, a service-owned guard plugin and the B11 launch
+builder. On the pinned host a 307 from the model endpoint is followed and the prompt
+body reaches the alternate origin; the guard cannot prevent or detect it, so live
+composition is refused by `createConfiguredTaskService` and
+[ADR-009](adr/009-free-anonymous-worker.md) is accepted only for fixture
+preparation. `integration/opencode-free.mjs` exits 1 on this scenario by design.
+B20 remains unexecuted.
 
 ## Historical B19 checkpoint (merged as PR #42)
 

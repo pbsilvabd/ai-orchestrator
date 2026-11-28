@@ -378,3 +378,164 @@ configuration even when given fixture-like environment/config inputs.
 Not covered: the live free route, independently enforced egress, public catalog
 availability, quota, privacy or B20. The fixture and pinned-host observations are
 not production-provider evidence; the 307 failure remains visible above.
+
+## B30 relay, egress gateway and signed live approval (fixture-only)
+
+B30 adds three deployable, service-owned components that are not wired into the live
+composition path (`createConfiguredTaskService` keeps live closed). Each is tested by
+its own temporary-process/loopback fixture:
+
+- `src/relay.mjs` + `test/relay.test.mjs` — one fixed upstream, no arbitrary target,
+  `Bearer public` only, terminal refusal of 301/302/303/307/308 without forwarding,
+  independent request/byte/time bounds, rejection of all-zero IPv4/IPv6 bind addresses
+  (including compressed IPv6 aliases), fail-closed bind/upstream/teardown. The trusted
+  `freeListeners` composition accepts an explicit loopback/private `relayHost` (default
+  `127.0.0.1`), refuses wildcard/unspecified, public, IPv4-mapped and hostname forms, and
+  covers the address in the relay policy digest; `test/free-listeners.test.mjs` also binds
+  the relay on loopback `127.0.0.2` to prove the explicit address is used and the default
+  address stays closed.
+- `src/egress-gateway.mjs` + `test/egress-gateway.test.mjs` — one fixed origin, fixed
+  ingress `Bearer public` forwarded upstream (never inheriting arbitrary client
+  headers), CONNECT and redirect refusal, unapproved-path refusal, an independent
+  request cap, rejection of all-zero IPv4/IPv6 bind addresses (including compressed
+  IPv6 aliases), sanitized body-free logging, policy digest, and an end-to-end
+  relay→gateway→fixture-origin chain test.
+- `src/live-approval.mjs` + `test/live-approval.test.mjs` — canonical SSHSIG live
+  approval, `ssh-keygen -Y verify` against a single-principal `allowed_signers` plus a
+  revocation list, FIDO2 presence/verification flag enforcement parsed from the SSHSIG
+  blob, policy/metadata binding and a durable atomic no-replace single-use approval
+  ledger (write-then-hard-link, collision re-read, two-process competition and restart
+  tests). Tests use disposable non-hardware keys only; a real maintainer signing key is
+  never created.
+
+The OS-network containment gate is an isolated WSL2 Ubuntu fixture run by a maintainer,
+never by CI (no Windows Hyper-V or Ubuntu host is provisioned here):
+
+```sh
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault            # exits 1; verify no b30-fault-* residue
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-delete-fault     # mock ip netns del failure
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-inventory-fault  # mock ip netns list failure
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-trap-status      # exits 1; trap forces nonzero
+wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-capability        # fail-closed worker privilege-boundary verdict (missing/malformed/retained caps rejected)
+```
+
+It creates three temporary network namespaces (`b30-worker`, `b30-relay`, `b30-gw`)
+with a unique per-run suffix. Each veth pair is created **inside** an already-created
+disposable namespace (`ip netns exec <ns> ip link add ...`) and only the peer is moved
+to the other compartment, so `ip link add` never runs in the WSL initial/host namespace
+and no host address, route or link is ever assigned. It assigns private addresses with
+no default route and installs a per-namespace nftables default-drop `inet b30fw` table in
+the worker and relay namespaces (OUTPUT and FORWARD `policy drop`; allow only
+worker→relay:18081 and relay→gateway:18082 via `counter accept`; a final `counter drop`),
+records the full `ip netns`/`ip addr`/`ip route`/nftables inventory and counters, then runs
+real socket attempts proving the worker reaches only the relay, the relay reaches only
+the gateway, and the gateway reaches only the relay, while each is denied a direct
+Internet/TEST-NET destination. Worker-side probes drop to the unprivileged `nobody`
+identity via `setpriv` (`--reuid/--regid 65534`, `--clear-groups`, `--no-new-privs`,
+`--bounding-set=-net_admin,-sys_admin`); the fail-closed verdict requires a successful,
+parseable `/proc/self/status` inventory and asserts UID/GID 65534, `CapInh`/`CapPrm`/`CapEff`
+all-zero (a missing or malformed mask is rejected, never defaulted to zero), `NoNewPrivs` 1,
+and NET_ADMIN/SYS_ADMIN absent from `CapBnd`, which is first validated as a complete
+16-hex-digit mask so a non-hex character anywhere fails closed; it asserts an unprivileged
+`nft add` / `ip route add` mutation is refused ("Operation not permitted") and that the
+post-mutation `nft list tables` / `ip route show` reads themselves succeed before
+unauthorized state is treated as absent (a read failure is uncertainty, not absence). Any
+mutation success, wrong identity/capability, retained capability, or read failure fails the
+run — and `--self-test-capability` proves the check rejects simulated missing/malformed
+inventory, retained permitted/inheritable/bounding capability, whole-mask non-hex
+corruption, mutation success and read failures — while the fixed worker→relay path stays
+reachable. It additionally
+runs active negative egress probes from the worker: direct IPv6
+(`curl -6` to `2001:db8::1`), DNS resolution (`curl` to an RFC 2606 `.invalid` hostname), a
+WebSocket-like `Upgrade` request to TEST-NET, and a routable-but-not-allowed relay port
+(`:18099`, whose listener is first verified bound via `ss -ltn`) — each denied with a
+recorded nonzero exit (`rc=7` for unrouted connections, `rc=6` for the unresolved DNS
+name, `rc=28` timeout for the nft-dropped port, whose SYN is confirmed to increment the
+nft drop counter), with no external address contacted and the nftables counters recording
+accepted/dropped packets.
+Teardown removes only the namespaces this run created (refusing name collisions without
+touching pre-existing state), which also removes the per-namespace nftables rulesets. A
+failed `ip netns del` or an unreadable `ip netns list` is reported with the owned-name
+inventory and treated as uncertain (ownership is not cleared); the `EXIT` trap re-runs
+cleanup on every exit path and calls `exit 1` when cleanup or inventory verification is
+uncertain, so a run never reports success with unresolved owned namespaces and unresolved
+teardown requires manual reconciliation. The `--self-test*` modes exercise collision
+refusal, owned-only cleanup, early-failure trap cleanup, and mock `ip` failed-delete /
+unreadable-inventory / trap-forces-nonzero paths, each confined to disposable namespaces.
+The WSL initial/host nftables ruleset is verified empty before and after; this is a WSL2
+observation (nftables v1.0.9 installed in the distribution), not a bare-metal/VM
+deployment, and the gateway namespace has no external route (fixture terminal point).
+
+### B30 host-side gateway deployment harness (Windows relay link)
+
+`integration/b30-gateway-host.mjs` instances the reviewed gateway for a real deployment
+observation rather than a test: `fixture` mode, one fixed listen address/port, one
+loopback fixture origin, one JSONL event log and one evidence JSON. A gateway instance
+latches on its first refusal; guest retries can send multiple requests to one instance,
+so the harness restarts it for subsequent scenarios, waiting for the guest within an overall deadline
+instead of a fixed per-round budget (a fixed budget silently consumed rounds before the
+operator started the probe, which is recorded in `docs/validation.md`).
+
+```sh
+node integration/b30-gateway-host.mjs --smoke                     # loopback self-probe, no host firewall
+node integration/b30-gateway-host.mjs --rounds 6 --max-seconds 1800 \
+  --log b30-gateway-events.jsonl --evidence b30-gateway-evidence.json
+```
+
+The deployment run also needs one inbound rule for the single gateway port, scoped to the
+relay source address and the adapter; it is a host firewall change, was authorized for one
+session, and is removed afterwards (`docs/deployment-prerequisites.md` records the exact
+commands and the before/after rule counts). The harness contacts no external host: the
+origin is loopback, so it evidences the gateway boundary and the relay compartment's
+reachable surface, not the live TLS chain.
+
+Not covered / `not_run`: the live free route, public catalog GET, live inference, a
+bare-metal Ubuntu deployment, the deployed TLS chain to the real origin, and a real FIDO2
+hardware-key signing dry run. The Windows two-VM Hyper-V deployment is covered for the
+network layer and for the fixture-mode gateway boundary by the 2026-11-15/16 entries in
+`docs/validation.md`; the WSL2 nftables observation remains WSL2-only and does not extend to
+bare metal. A deployment without verifiable firewall-filtered isolation in a bare-metal/VM
+deployment and a separately signed live approval stays closed.
+
+## B30 pinned OpenCode 2.2.5 through the relay (fixture)
+
+Run the pinned OpenCode 2.2.5 free route through the service-owned relay and L7 egress
+gateway against loopback fixtures only; the free endpoint and every external host are
+not contacted:
+
+```sh
+node integration/opencode-free-relay.mjs /absolute/path/opencode.exe
+```
+
+It starts a loopback fixture origin (the model endpoint), a loopback L7 gateway pointing
+at that origin, and a loopback relay pointing at the gateway, then composes the pinned
+host with `fixtureEndpoint` set to the relay. It runs six scenarios: a normal run
+(tool-call writes, one denied and one allowed) and a redirect for each of
+301/302/303/307/308 to a second loopback alternate origin.
+
+- Normal: the task succeeds; exactly the fixed model, `Bearer public`, and POST
+  `/v1/chat/completions` reach the origin through relay→gateway (three provider requests
+  for the two tool-call turns plus the completion).
+- Each redirect: the gateway refuses the 3xx (never following it), the host receives the
+  terminal refusal, the task becomes `failed` with exactly one attempt and one origin
+  request, and the alternate origin receives **zero connections, zero raw socket bytes,
+  zero requests and zero body bytes** (the B29 307 prompt-leak baseline is closed through
+  the relay). The alternate-origin counters are incremented at raw connection, per
+  request entry, and per body `data` chunk (plus an abort/error flag), so an aborted or
+  partial body cannot be missed by the zero-egress assertion.
+
+`--self-test` runs a controlled negative: it opens a raw connection, sends a partial POST
+body and aborts it, then asserts every alternate-origin counter incremented (proving an
+incomplete/aborted body cannot pass the zero-egress assertion).
+
+This is loopback fixture evidence, not live-provider or network-containment evidence; the
+free endpoint, public catalog and paid providers are never contacted. The active
+worker-compartment WebSocket-bypass negative remains `not_run`: seeing no `Upgrade` header
+on normal POSTs does not prove an attempted direct WebSocket bypass.
+
+Observed on 2026-11-14 with OpenCode 2.2.5 (Windows x64), Node 24.22.1: all six
+scenarios passed (exit 0); normal succeeded with three origin requests and `Bearer
+public`; each of 301/302/303/307/308 failed the task with one attempt and zero
+alternate-origin connections/bytes.

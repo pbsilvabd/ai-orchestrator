@@ -123,9 +123,62 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   `blocked/worker-outcome-uncertain`, keeps one attempt and the workspace, halts
   new work and retains ownership for explicit B18 recovery. An identical replay
   remains readable. The label does not prove a subprocess ran or grant replay.
+- A service may additionally enable a synchronous trusted `admission` gate (B30-05,
+  [ADR-010](adr/010-live-egress-and-approval.md)) that runs for **new** tasks only, after
+  idempotent replay resolution and repository inspection but before task persistence,
+  workspace or spawn. The gate verifies and binds a signed live approval (SSHSIG under the
+  fixed namespace with FIDO2 presence/verification, unexpired, zero-paid, single-attempt,
+  bound to the canonical request hash, the resolved base commit, the **effective readable
+  request** — objective, repository branch, attempt and budget/output limits — the **measured
+  trusted host-binary digest** (the factory derives it by SHA-256 of the configured
+  `hostExecutable` path, never a caller-supplied digest), and the relay/gateway policy
+  digests plus fresh zero-price metadata) and reserves its approval ID durably for at most
+  one task through an atomic no-replace ledger. The gate exposes its canonical measured
+  executable, and `createConfiguredTaskService` enforces that it equals the canonical
+  `settings.executable` the configured worker actually starts (a mismatch is refused before
+  any service/task/child exists). The approval and its armored signature are
+  supplied as optional `submit_task` fields `approval` and `signature`; both are excluded
+  from the canonical payload/idempotency hash and are never persisted on the task record,
+  and neither is a task-text authority. Any missing, forged, expired, stale, mismatched or
+  already-consumed approval is refused before persistence with `authorization_denied`;
+  `invalid_argument`/`unavailable` map from malformed or unusable approval material. An
+  identical replay still returns the original record without re-running admission, and one
+  approval ID cannot admit a second task. Without a configured `admission`, the service
+  remains passive and unchanged. The `admission` callback and any trusted
+  `worker.validateSubmission` callback are synchronous contracts: a returned Promise or
+  thenable is rejected as `internal` before persistence. Its rejection is observed so the
+  refused async result cannot escape as an unhandled rejection. The cryptographic positive path still requires a real
+  FIDO2 hardware-key signature, which is `not_run`; the gate is never weakened to accept a
+  non-hardware signature.
+- `approval.limits.maxRequests` is the signed ceiling for the independently configured
+  relay, gateway and worker-guard request caps; it is not a `TaskRequest.limits` field.
+  The trusted composition requires the signed gate to bind the exact effective cap.
+  Relay, gateway and worker guard use the same cap (default 12, never greater than 12);
+  trusted configuration may lower all three together. A signed ceiling below the
+  effective cap is refused before persistence, listener start or worker dispatch.
+  Without supervised listeners the fixture path has no relay/gateway cap, so the signed
+  gate's ceiling is the effective worker-guard cap; a gate that does not expose an
+  integer cap in 1..12 is refused before ownership, persistence or preparation.
+- A successful admission MUST return an object with `admitted: true` and a callable
+  `revalidate` bound to that task; `false`, `true`, `undefined`, `null`, or an object
+  lacking the verifier are refused before persistence. The returned receipt is a **trusted
+  in-memory receipt** (never persisted, never in task text). Its `revalidate` method must
+  also be synchronous: any Promise or thenable, whether it resolves or rejects, is refused
+  and any rejection is observed. The scheduler re-checks it synchronously **twice**: once
+  before the dispatch reservation/workspace, and **again just
+  before `runSubprocess`** (after `createTaskWorkspace` and `worker.prepare`, so a slow or
+  blocking prepare cannot pass the approval deadline or host drift), re-asserting approval
+  expiry, metadata freshness and the measured host-binary digest. A refusal before any
+  dispatch is recorded durably as `cancelled` with `executionStopped: true` (no worker
+  started); a refusal after the dispatch reservation is recorded as `blocked`
+  (`executionStopped: unknown`, dispatch attempt preserved) — never `cancelled`, never
+  replayed — and the queue halts for inspection. The receipt is in-memory, so a service
+  restart does not retain it, and a queued task is never auto-dispatched after restart
+  (consistent with existing scheduler behavior).
 
-The canonical payload used for the idempotency hash excludes `clientSessionId` and
-is serialized with sorted keys and no whitespace; SHA-256 is stored with the record.
+The canonical payload used for the idempotency hash excludes `clientSessionId`,
+`approval` and `signature`, and is serialized with sorted keys and no whitespace;
+SHA-256 is stored with the record.
 
 ### get_task_status
 
@@ -412,7 +465,8 @@ or production provider is enabled by this option.
   worker stop remains uncertain or persistence failed, close returns
   `{ releaseOwnership: false }` and retains the service lock for explicit
   maintainer recovery. Otherwise it releases ownership and returns
-  `{ releaseOwnership: true }`. Passive services retain synchronous close behavior.
+  `{ releaseOwnership: true }`. Passive default services retain synchronous close behavior;
+  a passive service composed from an ownership capability returns the release Promise.
   Neither `whenIdle`, root exit after abort nor a closed handle proves descendants
   stopped or effects reverted. No automatic workspace cleanup occurs.
 
@@ -427,7 +481,20 @@ or production provider is enabled by this option.
   blocks them. Nothing resumes from a persisted dispatch.
 - A service exclusively creates `locks/service-owner.lock` before reconciliation and
   holds ownership until `service.close()`. A second service for that home fails with
-  `unavailable`. A lock left by a crash is not removed automatically; inspect the
+  `unavailable`. Composition from pre-acquired ownership accepts only the opaque, frozen,
+  single-use capability returned by `openTaskHome`; a shaped or copied `{ store, releaseOwner }`
+  object, a released or reused capability and a capability minted for another home are refused
+  with `invalid_argument`, and a forged or mismatched handoff never releases or replaces an
+  active owner. Release authority transfers at consumption: the creator-facing `releaseOwner`
+  is valid only while the capability is minted and unconsumed (for example cleanup after a
+  failed construction); once a service consumes it, only that service's close path releases,
+  after scheduler idle and any `beforeRelease` cleanup, and repeated `close()` calls share one
+  release. An early or concurrent creator release is refused with `invalid_argument` and never
+  removes the active service's lock. An optional `beforeRelease` cleanup (trusted composition)
+  runs while ownership
+  is still held; if it or the lock release fails, the capability becomes unusable and the lock
+  is retained for explicit maintainer recovery. A lock left by a crash is not removed
+  automatically; inspect the
   recorded PID and state before a maintainer removes it and restarts the service.
   Closing permanently disables all four operations on that service instance, even
   after another instance acquires ownership. Direct maintenance is cooperative and
@@ -545,3 +612,131 @@ the probe/startup result. If a raw stream hit its retention cap, that stream is 
 rather than storing a tail that could start midway through a credential. This manual
 diagnostic boundary is not service execution, M2b completion, M3 use or
 production-provider evidence.
+
+## B30 relay, egress gateway and signed live approval (2026-11-14; admission wiring 2026-11-15)
+
+The B30 fixture adds three deployable, service-owned components. The relay and egress
+gateway are wired into `createConfiguredTaskService` only through the fixture-only
+`freeListeners` option (see the listener bullets below); the signed live approval is bound
+to service admission through an optional synchronous `admission` gate (see `submit_task`
+above). Live composition remains closed.
+
+- **Relay** (`src/relay.mjs`) binds an explicit private/loopback address (rejecting
+  the all-zero IPv4/IPv6 unspecified addresses, including compressed IPv6 aliases),
+  accepts only the fixed model request shape with `Bearer public` against one fixed
+  upstream, never follows a redirect (301/302/303/307/308 are a terminal refusal with
+  zero bytes forwarded to the redirect target), and bounds requests, bytes and duration
+  independently of the worker. It refuses to launch on a port conflict, latches on
+  upstream failure, and stops terminally.
+- **Egress gateway** (`src/egress-gateway.mjs`) has one fixed origin, requires the
+  fixed ingress `Bearer public` and forwards only that credential upstream (never
+  inheriting arbitrary client headers), refuses CONNECT, unapproved paths and
+  redirects, enforces its own independent request cap, rejects the all-zero
+  IPv4/IPv6 unspecified bind addresses (including compressed IPv6 aliases), and keeps
+  logs free of bodies and authorization material. Live mode requires an HTTPS non-IP
+  origin, Node's default certificate and hostname verification, and refuses an ambient
+  verification bypass (`NODE_TLS_REJECT_UNAUTHORIZED=0`). Upstream DNS failures latch
+  `dns-failure` and TLS failures latch `tls-failure`, both fail-closed without replay.
+  Offline live-mode fixtures use a disposable CA and a test-only resolver in a child
+  process; they do not exercise a deployed TLS chain.
+- **Listener supervisor** (`src/listener-supervisor.mjs`, B30-04) runs one relay or
+  gateway in a child process with a durable lock file created before spawn. The lock is
+  released only after a confirmed exit; an unconfirmed stop, kill or ready timeout keeps
+  the lock and refuses restart. Only `reconcileListenerLock` (exact token and pid,
+  operator-confirmed stop) releases such a lock. Nothing restarts automatically, and an
+  orphaned child stops on disconnect. It is wired only into the fixture-only
+  `createConfiguredTaskService` path through the `freeListeners` option (below).
+- **Fixture-only composition of the supervised chain** (`src/free-listeners.mjs`, 2026-11-15
+  second correction; ownership/authority correction same day).
+  `createConfiguredTaskService(…, { freeListeners })` first acquires and reconciles exclusive
+  task-home ownership (`openTaskHome`), then starts a gateway
+  (fixture mode, loopback origin) and then a relay (explicit private/loopback `relayHost`,
+  default `127.0.0.1`; one fixed upstream, model
+  `opencode/deepseek-v4.1-flash-free`, path `/v1/chat/completions`) under the supervisor,
+  with fixed non-zero ports and the worker base URL derived from the relay host and port. The
+  relay host must be concrete loopback/RFC 1918/link-local IPv4 or `::1`/`fc00::/7`/`fe80::/10`
+  IPv6; wildcard/unspecified, public, IPv4-mapped and hostname forms are refused before any
+  child starts, and the address is part of the relay policy digest the admission gate binds.
+  Authorization and OpenCode configuration use `FREE_MODEL`, the prefixed identifier
+  `opencode/deepseek-v4.1-flash-free`. The HTTP request body's `model` field uses
+  `FREE_MODEL_ID`, the bare wire identifier `deepseek-v4.1-flash-free`. The relay
+  binds and validates that wire ID. The worker base URL derives only from this validated,
+  trusted `relayHost` and fixed port; this does not authorize task-selected endpoints or
+  broaden the one-model allowlist. The
+  pre-acquired store is handed over only as the opaque, frozen, single-use capability returned
+  by `openTaskHome`; a shaped or copied `{ store, releaseOwner }` object, a released or reused
+  capability and a capability for another home are refused, so caller honesty is not an
+  ownership boundary. Once the service consumes the capability the creator cannot release it:
+  the listener path's private close releases only after the scheduler is idle, running the
+  `beforeRelease` listener stop while ownership is still held. A competing
+  task-home owner or a corrupt store therefore refuses with zero new listener child, port or
+  lock; ownership is held until the listeners have stopped. Startup authority is trusted
+  composition, not a task signature: the operator approval artifact is unsigned JSON (shape,
+  expiry and zero-paid budget only) and the admission gate contributes relay/gateway policy
+  digests, not an SSHSIG. The service reports that authority
+  (`service.freeListenerAuthority`) and never labels startup as signature-verified. The same
+  gate verifies each submitted task's signed approval; a missing, malformed, non-FIDO2 or
+  forged signature is refused before persistence with zero task/workspace/worker effect while
+  already-started listeners keep running. A launch failure stops what already started; an
+  unconfirmable stop during that cleanup keeps the task-home owner and the unconfirmed
+  listener lock and surfaces `uncertain-stop`. Each dispatch checks listener
+  health before the worker prepares; a dead listener blocks the already-reserved dispatch with
+  no spawn or replay. `close()` stops listeners after the scheduler is idle and releases
+  task-home ownership only after a confirmed stop; an unconfirmable stop at close or during
+  failed-startup cleanup keeps both. The option
+  cannot be combined with `fixtureEndpoint`; without it, live composition stays closed as
+  before. Task text cannot choose ports, addresses, provider or model (unknown keys are
+  refused by `submit_task`).
+- **Signed live approval** (`src/live-approval.mjs`) admits a live task only from a
+  strict canonical approval whose exact bytes carry a valid `ssh-keygen -Y verify`
+  SSHSIG under namespace `ai-orchestrator-live@pbsilvabd`, with FIDO2 user-presence and
+  user-verification flags, already valid and unexpired (`issuedAt <= now < expiresAt`)
+  with a positive lifetime of at most 15 minutes, zero-paid, single-attempt,
+  and bound to the canonical request hash, the resolved base commit, the relay and
+  gateway policy digests and fresh (at most five minutes) zero-price metadata. A
+  non-hardware signature is refused. One approval ID durably admits at most one task
+  through an atomic no-replace claim (write-then-hard-link; on collision the ledger
+  re-reads and returns only an exact replay, never overwriting an existing reservation);
+  an identical read replays, a different task is refused. `createSignedApprovalAdmission`
+  exposes this as a synchronous `createTaskService({ admission })` gate that runs after
+  idempotent replay resolution and repository inspection but before persistence,
+  workspace or spawn; `createConfiguredTaskService` passes a supplied `admission` through
+  unchanged.
+
+None of these opens live use. The relay/gateway admit only loopback/private fixtures in tests
+(the explicit-bind test uses loopback `127.0.0.2`; private addresses are policy-tested without
+binding them);
+the pinned OpenCode 2.2.5 host is routed through the relay→gateway→fixture-origin
+loopback chain by `integration/opencode-free-relay.mjs` (normal run succeeded; each of
+301/302/303/307/308 made the task `failed` with one attempt and zero alternate-origin
+requests/bytes). The OS-network placement is observed only in an isolated WSL2 netns/veth
+fixture (`integration/b30-egress-namespaces.sh`) using three disposable namespaces
+(worker, relay, gateway) with unique per-run names, where each veth pair is created
+inside a disposable namespace and only the peer is moved (no `ip link add` in the WSL
+initial/host namespace). The worker and relay namespaces install a per-namespace nftables
+default-drop `inet b30fw` table (OUTPUT and FORWARD `policy drop`, allow only
+worker→relay:18081 and relay→gateway:18082, final `counter drop`); together with no
+default route, this denies the worker's direct IPv4/IPv6/DNS/WebSocket-upgrade and a
+routable-but-not-allowed relay port, with recorded nonzero exits and nftables
+packet/byte counters, while the WSL initial/host nftables ruleset stays empty. Relay
+failure/lifecycle fixtures (`test/relay.test.mjs`) cover port-conflict refusal,
+upstream-failure/timeout latch, partial-body drop without replay, and terminal stop that
+releases the port. The signed-approval service admission integration (ordering, replay
+preservation, before-persistence refusal, error mapping, single-use ledger and the real
+factory's negative refusal paths) is implemented and tested with disposable non-hardware
+keys and clearly-labelled mocks; a real FIDO2 hardware-key signing dry run, the
+cryptographic positive path and live inference have not been performed. (Dated note,
+2026-11-15: one bounded public catalog GET was performed at `8e358a4` under staged
+authorization, HTTP 200, a dated snapshot that is not repeated; it is not a live gate.)
+(Dated note, 2026-11-16: on Windows, the same placement is additionally observed in a two-VM
+Hyper-V deployment on 2026-11-15 — two Internal switches, no Default/External switch, no
+NAT/ICS/share or host forwarding, and guest-written logs showing the worker's and the relay's
+off-link attempts denied while each keeps its permitted link — and the host-side L7 gateway
+boundary is observed on the relay link in fixture mode on 2026-11-16 (approved request forwarded
+once to a controlled loopback origin; unapproved path, absolute-URI request, `CONNECT` and
+credential refused before any upstream fetch). This note adds evidence, not requirements: bare
+metal, the deployed TLS chain, an application-level WebSocket rejection and a signed live approval
+remain `not_run`.)
+These are separate `not_run` gates; the live route stays closed until a platform provides
+verified firewall-filtered isolation in a bare-metal/VM deployment and a separately signed
+live approval.

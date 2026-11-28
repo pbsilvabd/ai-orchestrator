@@ -8,7 +8,7 @@ import { collectTaskArtifacts } from './artifacts.mjs';
 
 // Private service-owned queue. The adapter is trusted application code, never task
 // text. It prepares a synchronous invocation; this module alone starts the child.
-export function createTaskScheduler({ store, clientId, worker, now }) {
+export function createTaskScheduler({ store, clientId, worker, now, revalidate }) {
   if (typeof worker?.prepare !== 'function') throw new TypeError('worker.prepare is required');
   // Match B09's canonical receipt identity, including Windows short-name aliases
   // and configured home/workspace junctions, before persisting the reservation.
@@ -50,6 +50,35 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
     if (stopped) return;
     const task = store.readTask(taskId);
     if (task.clientId !== clientId || task.status !== 'queued' || task.attempts.length) return;
+    // Revalidate signed admission immediately before spawn (B30-05): an expiry, metadata
+    // staleness or host drift after submission must fail closed with a durable terminal
+    // record and zero workspace/spawn, never replay. The check is synchronous and runs
+    // before the dispatch reservation.
+    if (revalidate !== undefined) {
+      const at = now();
+      try {
+        revalidate(taskId, at);
+      } catch (error) {
+        uncertain = true;
+        stopped = true; // Never spawn a task whose signed admission is no longer valid.
+        // A queued task with no dispatch cannot become `blocked` (the store reserves that
+        // for uncertain execution), so record a durable service-side refusal as `cancelled`
+        // with executionStopped: true (no worker process started) and never replay.
+        try {
+          store.updateTask(taskId, draft => {
+            if (draft.status !== 'queued') return;
+            draft.status = 'cancelled';
+            draft.finishedAt = at;
+            draft.cancel.requestedAt = at;
+            draft.cancel.executionStopped = true;
+            draft.cancel.effectsReverted = false;
+            draft.block = null;
+            draft.progress.push({ at, event: 'admission-refused', detail: 'signed-approval-invalid-before-spawn' });
+          });
+        } catch { /* retain the queued record for inspection */ }
+        return;
+      }
+    }
     const started = performance.now();
     const at = now();
     const attemptId = randomUUID();
@@ -77,6 +106,22 @@ export function createTaskScheduler({ store, clientId, worker, now }) {
       const remaining = running.request.limits.budgetMs - Math.ceil(performance.now() - started);
       if (remaining <= 0) throw new Error('budget exhausted during preparation');
       if (stopped) return;
+      // Revalidate signed admission AGAIN just before the child process starts (ADR-010 §5):
+      // a slow/blocking workspace creation or worker.prepare can pass the approval deadline
+      // or the host binary can change during preparation. A failure here must NOT be
+      // reported as `cancelled`; a dispatch reservation is already durable, so block it as
+      // uncertain and never spawn/replay.
+      if (revalidate !== undefined) {
+        const at2 = now();
+        try {
+          revalidate(taskId, at2);
+        } catch (error) {
+          uncertain = true;
+          stopped = true; // No next worker while a task with a dispatch reservation is uncertain.
+          try { block(taskId, 'signed-approval-invalid-before-spawn'); } catch { /* retain dispatch record */ }
+          return;
+        }
+      }
       // Adapter configuration cannot increase accepted output or duration limits.
       const result = await runSubprocess({ ...invocation,
         timeoutMs: Math.min(invocation.timeoutMs ?? remaining, remaining),

@@ -11,6 +11,23 @@ Rules:
 - Every change appends its own entry in the same branch/PR.
 - Update [handoff](handoff.md) when the next action changes.
 
+## 2026-11-22 - M3: B30 PR #45 P2 review corrections (local)
+
+- Branch/base: `task/B30-free-relay`, PR head `a4f3954514e2109a5f0112dcea0534d291a9fcf4`.
+- Steps: corrected the supervised relay's fixed model to the worker wire ID; fixed asynchronous
+  oversized-body rejection in relay and gateway and added supervised local-child regressions for
+  normal forwarding and 413/latch/no-upstream/listener-survival/ownership behavior.
+- Files: `src/free-listeners.mjs`, `src/relay.mjs`, `src/egress-gateway.mjs`,
+  `test/free-listeners.test.mjs`, `docs/tasks/B30.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused B30 set 57/57 pass; serial full suite 415 pass / 0 fail / 5 skips,
+  exit 0; the initial parallel full suite had one known timing-sensitive B10-03 failure
+  (414 pass / 1 fail / 5 skip); demo 429 -> 200; diff check clean. See `docs/validation.md`.
+- Follow-up: perform both implementation self-review passes, rerun any changed checks, then
+  commit/push the same PR branch and verify its exact remote SHA before independent critical
+  re-review. No commit/push yet. Pinned-host-through-supervised-composition and all outstanding
+  B30 deployment/approval gates remain `not_run`; PR #45 remains draft and no merge is
+  authorized.
+
 Template:
 
 ```md
@@ -1859,6 +1876,1014 @@ Template:
   of the three P3 replies, then the maintainer's draft-to-ready decision for
   the fixture-only PR. No merge is authorized.
 
+## 2026-11-14 — M3 preparation: B30 live-boundary card
+
+- Branch: `task/B30-free-relay`
+- Scope: documentation-only planning card on a separate branch from B29; no
+  executable relay, egress control, live inference or PR was delivered.
+- Steps:
+  1. Created a B30 card with a relay/egress trust boundary and six measurable
+     acceptance rows, starting from remote main `688da04`.
+  2. Linked the card in the backlog and marked the next action in the handoff;
+     B29/#44 must be reconciled after its fixture-only decision is published.
+- Files: `docs/tasks/B30.md`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `git diff --check` → no whitespace errors; full suite, demo,
+  pinned-host fixture, MCP client and live API were not run on this card branch.
+- Follow-up: reconcile the B30 branch with B29 after its reviewed fixture
+  completion, then implement B30 only under its own task authorization.
+
+## 2026-11-14 — M3 preparation: specify B30 egress and signing
+
+- Branch: `task/B30-free-relay`
+- Scope: documentation-only security architecture; no VM, network namespace,
+  gateway, key, signature, provider call or service code was created.
+- Steps:
+  1. Inspected platform documentation for Hyper-V switch isolation, Linux
+     network namespaces and OpenSSH SSHSIG sign/verify semantics.
+  2. Added ADR-010 with separate worker/relay network compartments, trusted
+     host L7 egress gateway and exact-byte offline maintainer signature;
+     documented the partial change to ADR-009's live listener clause.
+  3. Made the B30 acceptance matrix observable for both platforms, gateway
+     bypass and signature tampering; updated backlog and handoff status.
+- Files: `docs/adr/010-live-egress-and-approval.md`, `docs/tasks/B30.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `git diff --cached --check` → no whitespace errors after staging;
+  full suite, demo, pinned host, actual isolation and SSHSIG were not rerun.
+- Follow-up: after B29 fixture acceptance and merge, amend ADR-009 to reconcile
+  the host-only listener, then implement/review B30 or split oversized
+  deployment work into sequential cards without relaxing the live gate.
+
+## 2026-11-14 — M3 preparation: B30 relay, gateway, SSHSIG admission and WSL2 containment
+
+- Branch: `task/B30-free-relay`
+- Scope: fixture-only relay/egress-gateway/SSHSIG/admission implementation and one
+  isolated WSL2 netns/veth containment observation; live composition stays closed.
+- Steps:
+  1. Merged B29 main `11fcb42` into the branch with an ordinary merge; resolved the
+     handoff/validation/worklog conflicts preserving both append-only entry sets.
+  2. Implemented `src/relay.mjs`: one fixed upstream, no arbitrary target, `Bearer
+     public` only, terminal refusal of 301/302/303/307/308 without forwarding,
+     independent request/byte/time bounds and a fail-closed lifecycle.
+  3. Implemented `src/egress-gateway.mjs`: one fixed origin, CONNECT/redirect and
+     unapproved-path refusal, sanitized body-free logging and a policy digest.
+  4. Implemented `src/live-approval.mjs`: strict canonical SSHSIG approval,
+     `ssh-keygen -Y verify` against a single-principal `allowed_signers` plus a KRL,
+     FIDO2 presence/verification flag enforcement, policy/metadata binding, a durable
+     single-use approval ledger and an admission-ordering function.
+  5. Added `integration/b30-egress-namespaces.sh` and ran it in WSL2 Ubuntu (root,
+     CAP_NET_ADMIN): worker/relay netns + veth with no default route, full inventory,
+     then real socket probes (worker→relay reachable, worker→gateway and worker/
+     relay→Internet denied, relay→gateway reachable); fail-closed teardown verified empty.
+- Files: `src/relay.mjs`, `src/egress-gateway.mjs`, `src/live-approval.mjs`,
+  `test/relay.test.mjs`, `test/egress-gateway.test.mjs`, `test/live-approval.test.mjs`,
+  `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`,
+  `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused relay/gateway/approval tests 31/31 pass; WSL containment fixture
+  printed "containment verified" (exit 0); serial full suite and fallback demo pass
+  (see validation entry for exact counts). `git diff --check` clean.
+- Follow-up: publish the single draft PR; answer any review findings. Remaining B30
+  gates are platform/hardware (`nftables` or an approved alternative, a real FIDO2
+  `-sk` signing dry run) plus a separately authorized public-catalog read before any
+  live experiment. Live, catalog, nftables and hardware signing remain `not_run`.
+
+## 2026-11-14 — B30 review corrections (P1 ledger, P2 gateway/bind/WSL scope)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `cff5265`).
+- Scope: correct the four blocking supervisor findings at `cff5265` without widening
+  the live boundary; PR stays draft and live closed.
+- Steps:
+  1. P1 — rewrote `openApprovalLedger` to claim atomically with no overwrite: write the
+     complete record to a private temp file, fsync, then hard-link to the target
+     (`linkSync` fails `EEXIST` on collision); on collision re-read and return only an
+     exact replay. Added a two-process competition test and a restart re-read test.
+  2. P2 — gateway now enforces the fixed ingress `Bearer public` and forwards only that
+     credential upstream (never inheriting arbitrary client headers), enforces its own
+     independent request cap, and both relay and gateway reject unspecified `0.0.0.0`/
+     `::` bind addresses. Added a relay→gateway→fixture-origin end-to-end test, cap and
+     wildcard tests.
+  3. P2 — rewrote `integration/b30-egress-namespaces.sh` to use three disposable
+     namespaces (`b30-worker`, `b30-relay`, `b30-gw`) and moved both ends of every veth
+     into a namespace, so the WSL initial/host namespace is never assigned an address,
+     route or link. Reran the new version: "containment verified" (exit 0); verified no
+     `b30-*` netns/veth and no `10.100.x` address/route remain in the host namespace.
+     The earlier observation (host-side veth + `ip addr add` in the initial namespace)
+     was out of scope and is corrected, not repeated.
+  4. Corrected whole-row `pass` overclaims to `partial`/`not_run` in the PR body, ADR,
+     contract, handoff and validation; recorded the concrete not-run subgates.
+- Files: `src/live-approval.mjs`, `src/egress-gateway.mjs`, `src/relay.mjs`,
+  `test/fixtures/approval-claim.mjs`, `test/live-approval.test.mjs`,
+  `test/egress-gateway.test.mjs`, `test/relay.test.mjs`,
+  `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`,
+  `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused relay/gateway/approval tests (now 40) pass; new 3-namespace WSL
+  fixture "containment verified" (exit 0) with verified empty host residue; serial full
+  suite and demo pass (see validation entry). No catalog GET, live inference, package
+  install, host/Windows network change or FIDO2 hardware run.
+- Follow-up: reply to the supervisor finding with the new head SHA and evidence; keep
+  the draft open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host
+  relay, FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 re-review correction (in-namespace veth, collision safety, IPv6 aliases)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `32c0339`).
+- Scope: correct the residual Finding 4 and the IPv6 wildcard follow-up from the
+  re-review at `32c0339`; PR stays draft and live closed.
+- Steps:
+  1. Rewrote `integration/b30-egress-namespaces.sh` to create every veth pair **inside**
+     an already-created disposable namespace (`ip netns exec <ns> ip link add ...`) and
+     move only the peer, so `ip link add` never runs in the WSL initial/host namespace.
+     Namespaces now use a unique per-run suffix; the script tracks the exact namespaces
+     it created and tears down only those, refuses a name collision without touching the
+     pre-existing object, and fails on any partially failed `ip` configuration (explicit
+     `|| fail` on every setup command). Added a `--self-test` mode that exercises
+     collision refusal and owned-only cleanup with disposable namespaces only.
+  2. Reran the safe script under the narrow permission: `--self-test` passed, and the
+     full fixture printed "containment verified" (exit 0) with a "teardown removed all
+     owned objects, no initial-namespace residue" assertion; external residue check
+     confirmed no `b30-*` netns/veth and no `10.100.x` address/route in the host.
+  3. Replaced the IPv6 unspecified-address check with a sound all-zero predicate that
+     expands `::` compression to eight groups, so compressed aliases such as
+     `0:0:0:0:0:0:0::` and `0:0:0:0:0::` are rejected in both `src/relay.mjs` and
+     `src/egress-gateway.mjs`; added compressed-alias and positive cases to both tests.
+- Files: `integration/b30-egress-namespaces.sh`, `src/relay.mjs`,
+  `src/egress-gateway.mjs`, `test/relay.test.mjs`, `test/egress-gateway.test.mjs`,
+  `integration/README.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/task-contract.md`, `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused relay/gateway/approval tests 40/40 pass (incl. compressed IPv6
+  aliases); WSL `--self-test` and full fixture both exit 0 with verified empty host
+  residue; serial full suite and demo pass (see validation entry). No catalog GET, live
+  inference, package install, host/Windows network change or FIDO2 hardware run.
+- Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
+  FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 re-review correction 2 (cleanup-error reporting + fault injection)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `ad010a7`).
+- Scope: correct the residual cleanup finding from the re-review at `ad010a7`; PR stays
+  draft and live closed.
+- Steps:
+  1. Reworked `do_cleanup` so a failed `ip netns del` is reported with the owned-name
+     inventory (`LEFTOVER_NS`) and a nonzero return instead of being silently ignored;
+     `CREATED_NS` is cleared only after every owned namespace is confirmed gone, so
+     unresolved teardown requires manual reconciliation and never claims "nothing
+     remains". The EXIT trap re-runs cleanup on every exit path, so an early `fail` or
+     partial configuration failure still cleans and reports.
+  2. Tracked the self-test's collision object in `CREATED_NS` so a failed assertion
+     cannot leak it.
+  3. Added `--self-test-fault`: a controlled partial-failure injection that creates two
+     owned disposable namespaces and then fails, so the EXIT trap must remove them; the
+     caller verifies no `b30-fault-*` residue remains after the nonzero exit.
+  4. Reran `--self-test` (exit 0), `--self-test-fault` (exit 1, then verified no
+     `b30-fault-*` residue), and the full fixture ("containment verified" exit 0 with
+     "teardown removed all owned objects, no initial-namespace residue"); external
+     residue check confirmed no `b30-*` netns/veth and no `10.100.x` address/route.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: WSL `--self-test` exit 0, `--self-test-fault` exit 1 with no residue, full
+  fixture exit 0 with no residue. No Node/test code changed in this correction, so the
+  prior focused 40/40 and serial 345/0/1 results remain valid for the unchanged modules.
+  No catalog GET, live inference, package install, host/Windows network change or FIDO2
+  hardware run.
+- Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
+  FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 re-review correction 3 (EXIT trap status + inventory-error handling)
+
+- Branch: `task/B30-free-relay` (draft PR #45, correcting head `cc3e917`).
+- Scope: correct the residual failure-propagation finding from the re-review at `cc3e917`;
+  PR stays draft and live closed.
+- Steps:
+  1. Verified the Bash behavior the reviewer cited: `trap "false" EXIT; exit 0` returns
+     exit 0, but `trap "exit N" EXIT; exit 0` returns exit N (a trap that calls `exit`
+     can override the process status without recursion).
+  2. Replaced `trap do_cleanup EXIT` with `trap on_exit EXIT`, where `on_exit` re-runs
+     `do_cleanup` and `verify_cleanup` and calls `exit 1` when either is uncertain, so a
+     cleanup or inventory failure always forces a nonzero process status.
+  3. `namespace_exists` now returns 0 (exists), 1 (confirmed absent) or 2 (inventory
+     unreadable). `do_cleanup` treats 2 as uncertain (records the owned name and returns
+     nonzero, leaving `CREATED_NS` intact), `create_ns` refuses on 2, and `verify_cleanup`
+     returns nonzero on an unreadable inventory instead of treating it as clean.
+  4. Added mocked-`ip` self-test modes: `--self-test-delete-fault` (failed `ip netns
+     del`), `--self-test-inventory-fault` (unreadable `ip netns list`) and
+     `--self-test-trap-status` (a deliberate `exit 0` with a failed delete that the trap
+     overrides to exit 1), each confined to disposable namespaces with a `command ip`
+     pass-through mock.
+  5. Reran all self-test modes and the full fixture under the narrow permission; cleaned
+     the single leftover from the trap-status test and verified no `b30-*` residue.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `--self-test` exit 0; `--self-test-fault` exit 1 with no residue;
+  `--self-test-delete-fault` and `--self-test-inventory-fault` exit 0 (both report the
+  uncertain inventory and preserve ownership); `--self-test-trap-status` exit 1 (trap
+  overrides `exit 0`); full fixture exit 0 with no residue. No Node/test code changed,
+  so prior focused 40/40 and serial 345/0/1 results remain valid.
+- Follow-up: reply to the re-review with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables, bare-metal/VM, pinned-host relay,
+  FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 pinned OpenCode 2.2.5 through the relay (normal + redirect)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: run the pinned OpenCode 2.2.5 host through the service-owned relay and L7
+  gateway against loopback fixtures; close the B29 307 prompt-leak baseline. Fixture-only;
+  live closed; no catalog, provider inference or external host contact.
+- Steps:
+  1. Relaxed the relay's fixed-model identifier to accept a bare model ID (the host sends
+     `body.model = deepseek-v4.1-flash-free`, not `opencode/...`), and made both relay and
+     gateway forward the upstream `content-type` (the fixture origin returns
+     `text/event-stream`, which the host requires).
+  2. Added `integration/opencode-free-relay.mjs`, which starts a loopback fixture origin,
+     a loopback gateway and a loopback relay, then composes the pinned host with
+     `fixtureEndpoint` set to the relay. It runs a normal scenario plus one redirect
+     scenario per 301/302/303/307/308 to a second loopback alternate origin.
+  3. Ran it with the pinned OpenCode 2.2.5 binary (Windows x64): all six scenarios
+     passed (exit 0). Normal succeeded with three `Bearer public` POST
+     `/v1/chat/completions` origin requests and no WebSocket/upgrade or non-POST method;
+     each redirect made the task `failed` with exactly one attempt and one origin request,
+     and the alternate origin received zero requests and zero body bytes.
+- Files: `src/relay.mjs`, `src/egress-gateway.mjs`, `integration/opencode-free-relay.mjs`,
+  `integration/README.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/task-contract.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: relay/gateway focused tests 28/28 pass after the identifier/content-type
+  change; pinned-host relay harness exit 0 with the exact counts above; full serial suite
+  and demo rerun (see validation entry). No catalog GET, live inference, package install,
+  host/Windows network change or FIDO2 hardware run.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, service signing
+  integration, FIDO2 hardware dry run, catalog, live).
+
+## 2026-11-14 — B30 alternate-origin egress counter (aborted/partial body) + WebSocket claim
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the reviewer finding that the alternate-origin zero-byte counter missed
+  aborted/partial requests, and correct the overclaimed B30-03 WebSocket bypass negative.
+- Steps:
+  1. Rewrote the alternate-origin handler in `integration/opencode-free-relay.mjs` to
+     count at raw connection, per request entry, and per body `data` chunk (plus an
+     abort/error flag), so an aborted/partial body or a pre-header connection attempt
+     increments the counters instead of being missed by a `for await` that throws.
+  2. Added `--self-test`: a controlled negative that opens a raw connection, sends a
+     partial POST body and aborts it, then asserts every counter incremented (proving an
+     incomplete/aborted body cannot pass the zero-egress assertion).
+  3. Reran the six pinned scenarios (normal + 301/302/303/307/308) with the pinned
+     OpenCode 2.2.5 binary (Windows x64): exit 0; normal succeeded with three `Bearer
+     public` origin requests; each redirect failed the task with one attempt and one
+     origin request, and zero alternate-origin connections / raw socket bytes / requests /
+     body bytes.
+  4. Corrected the B30-03 claim: the fixture origin seeing no `Upgrade` header on normal
+     POSTs is not the active worker-compartment WebSocket-bypass negative; that gate stays
+     `not_run`.
+- Files: `integration/opencode-free-relay.mjs`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: `--self-test` exit 0 with `{connections:1, socketBytes:132, requests:1,
+  bodyBytes:24, aborted:2}`; six pinned scenarios exit 0 with all alternate-origin
+  counters zero. No Node/test code changed, so prior focused and full-suite results remain
+  valid. No catalog GET, live inference, package install, host/Windows network change or
+  FIDO2 hardware run.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, active
+  WebSocket-bypass negative, service signing integration, FIDO2 hardware dry run,
+  catalog, live).
+
+## 2026-11-14 — B30 digest-stability test fix (failing Ubuntu CI)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: fix the nondeterministic digest-stability test that failed exact-head Ubuntu CI
+  run `43669588038` (Windows passed). No production hashing behavior changed.
+- Steps:
+  1. Reproduced the cause: `test/live-approval.test.mjs` (`approval digest is stable over
+     canonical bytes`) called `approval()` twice, and each call derived `issuedAt`/
+     `expiresAt` from a separate `Date.now()`; a millisecond clock boundary made the
+     canonical bytes differ and the two `approvalDigest` hashes legitimately differ.
+  2. Fixed the test to build one `approval()` once, compare its digest with a spread copy
+     of the same bytes, and assert a deliberate `approvalId` change differs.
+  3. Recorded the failing run as a blocking CI receipt in `docs/validation.md` (not green).
+- Files: `test/live-approval.test.mjs`, `docs/validation.md`, `docs/worklog.md`,
+  `docs/handoff.md`.
+- Validation: focused `test/live-approval.test.mjs` 12/12 pass; full serial suite and demo
+  rerun (see validation entry); `git diff --check` clean.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; verify exact-head
+  Windows/Ubuntu CI at the corrected head. Remaining gates stay `not_run`.
+
+## 2026-11-15 — B30 active egress negatives + relay failure/lifecycle fixtures
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: continue safe local B30 gates: active worker IPv4/IPv6/DNS/WebSocket-upgrade
+  negative probes inside disposable WSL2 namespaces, and relay timeout/partial-body/
+  port-release fixtures; assess signed-approval service integration.
+- Steps:
+  1. Extended `integration/b30-egress-namespaces.sh` with active negative probes from the
+     worker: direct IPv6 (`curl -6` to `2001:db8::1`), DNS resolution (`.invalid` hostname),
+     and a WebSocket-like `Upgrade` request to TEST-NET. All denied with recorded exits
+     (`rc=7` unrouted connections, `rc=6` unresolved DNS); no external address contacted;
+     teardown verified empty.
+  2. Added `test/relay.test.mjs` fixtures: upstream timeout latches with a terminal 502 and
+     no second request; upstream partial-body drop latches without replay; terminal stop
+     releases the port (a second relay binds it, no dangling unowned listener).
+  3. Assessed signed-approval service integration: the SSHSIG verification, binding,
+     admission ordering and atomic no-replace ledger are implemented and tested standalone;
+     wiring them into live `createConfiguredTaskService` admission is not performed because
+     it requires a real FIDO2 hardware dry run and verified firewall-filtered egress (both
+     `not_run`). Documented as `not_run`, no invented signature/hardware.
+- Files: `integration/b30-egress-namespaces.sh`, `test/relay.test.mjs`,
+  `integration/README.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/task-contract.md`, `docs/backlog.md`, `docs/handoff.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: WSL fixture "containment verified" (exit 0, no residue) with the new
+  IPv6/DNS/WebSocket-upgrade negatives; relay tests 16/16; focused 43/43; full suite and
+  demo rerun (see validation entry). No catalog GET, live inference, install, host/Windows
+  network change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (nftables firewall, bare-metal/VM, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry run,
+  catalog, live).
+
+## 2026-11-15 — B30 nftables default-drop inside disposable namespaces
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: maintainer-authorized nftables install in WSL2 Ubuntu, then per-namespace
+  default-drop OUTPUT/FORWARD with allow rules, counters and active negative probes.
+- Steps:
+  1. Read-only preflight: nft/iptables absent, host firewall empty, `apt-get -s install
+     nftables` = 3 new packages with no service/host-firewall side effects.
+  2. Installed `nftables` (1.0.9-1build1) + `libnftables1` + `libnftnl11` via apt
+     (exit 0); verified host `nft list ruleset` empty and the `nftables` systemd unit
+     `disabled` after install.
+  3. Confirmed nft works inside a disposable namespace with a per-namespace ruleset
+     (host ruleset stays empty).
+  4. Extended `integration/b30-egress-namespaces.sh` to install a per-namespace nftables
+     `inet b30fw` table in the worker and relay namespaces (OUTPUT/FORWARD `policy drop`,
+     allow worker→relay:18081 and relay→gateway:18082 via `counter accept`, final
+     `counter drop`), record the nft ruleset/counters, and add a routable-but-not-allowed
+     relay port (`:18099`) negative probe.
+  5. Ran the fixture: "containment verified" (exit 0); worker nft counters `dport 18081
+     accept packets 1`, `drop packets 7`; relay `dport 18082 accept packets 1`, `drop
+     packets 10`; forbidden `:18099` `rc=28` timeout (nft-dropped); host nft ruleset empty
+     and no residue after teardown.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/backlog.md`,
+  `docs/handoff.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20. The nftables package
+  remains installed; namespaces/rules were removed and verified absent.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).
+
+## 2026-11-15 — B30 unprivileged worker capability removal + forbidden-port proof
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the supervisor P1/P2 findings at `a103ccf` (worker probes ran as root with
+  network-admin; forbidden-port test accepted any failure).
+- Steps:
+  1. Preflight: `setpriv`/`runuser`/`su`/`capsh` present; `nobody` = uid/gid 65534.
+  2. Worker-side probes now drop to `nobody` via `setpriv --reuid/--regid 65534
+     --clear-groups --no-new-privs --bounding-set=-net_admin,-sys_admin`; the capability
+     inventory records `CapEff:0 CapPrm:0 NoNewPrivs:1` and NET_ADMIN/SYS_ADMIN dropped
+     from the bounding set.
+  3. Added unprivileged mutation refusal: `nft add table` → "Operation not permitted"
+     (rc=1); `ip route add default` → "RTNETLINK answers: Operation not permitted" (rc=2).
+  4. Hardened the forbidden-port proof: verify the `:18099` listener is bound via `ss -ltn`,
+     require the exact `rc=28` timeout, and confirm the nft drop counter incremented for
+     that probe.
+  5. Ran the fixture: "containment verified" (exit 0) with all checks passing; host nft
+     ruleset empty and no residue after teardown.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).
+
+## 2026-11-15 — B30 fail-closed capability inventory (missing/malformed/retained rejected)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the supervisor P1 re-review finding at `2096d62` (missing CapEff defaulted
+  to zero; CapInh/CapPrm/CapBnd logged but not asserted; post-mutation read failures treated
+  as absence).
+- Steps:
+  1. Replaced the `$((16#${capeff:-0}))` arithmetic (fail-open on missing) with string-only
+     helpers: `cap_mask_zero` (rejects empty/malformed/nonzero masks) and `cap_bit_set`
+     (nibble-extraction bit test for NET_ADMIN bit 12 / SYS_ADMIN bit 21, no 64-bit math).
+  2. Expanded the captured inventory to UID/GID, CapInh/CapPrm/CapEff/CapBnd, NoNewPrivs,
+     and captured the nft/ip mutation return codes plus the post-mutation `nft list tables`
+     / `ip route show` read exit codes; read failures are now uncertainty (fail closed).
+  3. Rewrote `verify_worker_privileges` to gate `containment verified` on UID/GID 65534,
+     all-zero CapInh/CapPrm/CapEff, NET_ADMIN/SYS_ADMIN absent from CapBnd, NoNewPrivs 1,
+     both mutations refused, both reads succeeded, and no unauthorized table/default route.
+  4. Extended `--self-test-capability` to 1 accept + 17 reject cases (missing/malformed
+     CapEff, nonzero CapEff/CapPrm/CapInh, retained NET_ADMIN/SYS_ADMIN CapBnd, missing
+     CapBnd, wrong uid/gid, unset NoNewPrivs, mutation success, unauthorized table/route,
+     read failures).
+  5. Ran both: self-test-capability passed; full fixture "containment verified" with
+     `PASS worker privilege boundary (uid=65534 gid=65534 CapInh/CapPrm/CapEff=0 CapBnd=000001ffffdfefff NoNewPrivs=1 nft_rc=1 route_rc=2)`; host nft ruleset empty, no residue.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).
+
+## 2026-11-15 — B30 CapBnd whole-mask canonical validation
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the supervisor P2 re-review finding at `7a10cd3` (`cap_bit_set` validated
+  only the requested nibble, so a 16-character `CapBnd` with a non-hex character outside
+  bits 12/21 — e.g. `z00001ffffdfefff` — was accepted).
+- Steps:
+  1. Added a whole-mask `case *[!0-9a-fA-F]*` check to `cap_bit_set` right after the length
+     check, so any non-hex character anywhere in the 16-digit mask returns malformed (2)
+     before any nibble extraction; the specific-bit nibble arithmetic is unchanged.
+  2. Extended `--self-test-capability` with two non-hex corruptions outside the checked
+     nibbles (MSB `z00001ffffdfefff`, LSB `000001ffffdfeffz`), preserving the prior 18 checks.
+  3. Ran: `bash -n` clean; self-test-capability passed (1 accept + 19 rejects); full fixture
+     "containment verified" with the real `CapBnd=000001ffffdfefff`; host nft ruleset empty,
+     no residue.
+- Files: `integration/b30-egress-namespaces.sh`, `integration/README.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: full suite and demo rerun (see validation entry). No catalog GET, live
+  inference, host firewall/route change, hardware signing or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (bare-metal/VM deployment, active provider
+  WebSocket-bypass experiment, signed-approval service integration, FIDO2 hardware dry
+  run, catalog, live).
+
+## 2026-11-15 — B30 signed-approval service admission integration (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: bind the standalone SSHSIG verification/atomic single-use ledger to service
+  admission for new task dispatch (the prior ADR-010 `not_run` gap), fail-closed and offline.
+- Steps:
+  1. `createTaskService` gained an optional synchronous `admission` gate that runs after
+     idempotent replay resolution and repository inspection but before task persistence,
+     workspace or spawn; it pre-generates the taskId, passes the resolved baseCommit, and
+     maps `authorization_denied`/`invalid_argument`/`unavailable` to the contract.
+  2. `submit_task` gained optional `approval`/`signature` fields, excluded from the canonical
+     payload/idempotency hash and never persisted; `store.createTask` accepts an optional
+     validated UUIDv4 `taskId`.
+  3. `src/live-approval.mjs` gained `liveRequestHash` and `createSignedApprovalAdmission`
+     (verify + resolved-base-commit/policy/metadata binding + ledger reserve); the binding
+     now also checks `approval.repository.baseRef === baseCommit`.
+  4. `createConfiguredTaskService` passes a supplied `admission` through unchanged.
+  5. Added `test/live-approval-service.test.mjs` (service mechanism with a labelled mock,
+     real factory refusal paths, real-ledger single-use) and extended
+     `test/live-approval.test.mjs` for the base-commit binding.
+- Files: `src/tasks.mjs`, `src/service.mjs`, `src/live-approval.mjs`,
+  `src/configured-service.mjs`, `test/live-approval-service.test.mjs`,
+  `test/live-approval.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused 23/23 and full suite/demo rerun (see validation entry). No catalog
+  GET, live inference, host network change, hardware signing or B20; no hardware signature
+  is simulated or claimed.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal/VM deployment, catalog, live inference).
+
+## 2026-11-15 — B30 signed-approval pre-spawn revalidation + host/readable binding (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the two P1 findings at `0f5bbd1` (review `6897307203`): no re-validation
+  immediately before spawn; and the signed host identity / readable approval scope not bound
+  to the effective task/worker.
+- Steps:
+  1. `verifyApprovalBinding` now binds the signed readable objective / repository.branch /
+     maxAttempts / budget+output limits to the effective validated request, and the signed
+     `hostBinaryDigest` to a measured trusted executable (`measureHostBinaryDigest`), before
+     the ledger reserve.
+  2. `createSignedApprovalAdmission` requires `hostBinaryDigest` + `remeasureHostBinaryDigest`
+     and returns a trusted in-memory receipt with a `revalidate(now)` closure (expiry +
+     metadata freshness + host digest); `admitLiveApproval` surfaces the receipt fields.
+  3. `createTaskScheduler` accepts a `revalidate` hook and calls it synchronously before the
+     dispatch reservation/workspace/spawn; a failure records the queued task as `cancelled`
+     (`executionStopped: true`, `admission-refused` progress, no attempt) and halts the queue.
+  4. `createTaskService` retains receipts in-memory keyed by taskId, maps admission return
+     `false`/`{admitted:false}` to refusal, and passes `revalidate` to the scheduler.
+  5. Added `test/live-approval-pre-spawn.test.mjs` (positive mock spawn + expiry/drift/
+     missing-receipt negatives) and extended the host/readable binding tests.
+  6. Performed the staged one-shot bounded catalog GET (HTTP 200, 104,821 bytes, zero-price
+     `deepseek-v4.1-flash-free`, endpoint/package match) and a non-invasive FIDO2 tooling
+     inventory (OpenSSH 9.5p2 `ssh-keygen` + `ssh-sk-helper` present; hardware presence not
+     inferred); added `docs/deployment-prerequisites.md` as a plan only.
+- Files: `src/live-approval.mjs`, `src/service.mjs`, `src/scheduler.mjs`,
+  `test/live-approval.test.mjs`, `test/live-approval-service.test.mjs`,
+  `test/live-approval-pre-spawn.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/deployment-prerequisites.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: focused 28/28 and full suite/demo rerun (see validation entry). The catalog
+  GET is dated evidence, not live activation; no FIDO2 hardware action, host network change,
+  WebSocket-bypass call, paid call, live inference or B20.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
+  experiment, live inference).
+
+## 2026-11-15 — B30 just-before-spawn revalidation + admission result + host-path binding (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the three P1 findings at `8e358a4` (review `6897600299`): revalidation is
+  before `worker.prepare`, not just before spawn; a returned admission value without a
+  callable verifier silently passes; the factory does not itself measure the configured host
+  executable.
+- Steps:
+  1. `createTaskScheduler` now re-checks the receipt a second time synchronously just before
+     `runSubprocess` (after `createTaskWorkspace` + `worker.prepare`); a refusal there records
+     the dispatched task as `blocked` (executionStopped unknown, dispatch attempt preserved),
+     never `cancelled`, never replayed.
+  2. `createTaskService` requires an admission result of `{ admitted: true, revalidate }`;
+     `false`/`true`/`undefined`/`null`/`{admitted:true}` without a verifier are refused before
+     persistence, and the dispatch hook fails closed on a missing/invalid receipt.
+  3. `createSignedApprovalAdmission` now takes the absolute `hostExecutable` path and measures
+     its SHA-256 itself at admission and revalidation (removed the caller-supplied
+     `hostBinaryDigest`/`remeasureHostBinaryDigest`); an unreadable path is `unavailable`.
+  4. Tests: expiry/drift during `worker.prepare` (marker-file zero-spawn assertion → `blocked`),
+     the admission return-value matrix, and the self-measured host path (unreadable → `unavailable`).
+- Files: `src/live-approval.mjs`, `src/service.mjs`, `src/scheduler.mjs`,
+  `test/live-approval-service.test.mjs`, `test/live-approval-pre-spawn.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused 30/30 and full suite/demo rerun (see validation entry). No catalog GET
+  repeat, no FIDO2 hardware action, no host network change, no WebSocket-bypass call, no live
+  inference or B20; the host identity is bound at the factory interface to the supplied
+  `hostExecutable` path (the caller must pass the configured worker's executable), and the
+  end-to-end positive signature path remains `not_run`.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
+  experiment, live inference).
+
+## 2026-11-15 — B30 tie measured host executable to the configured worker (B30-05)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: correct the remaining P1 #3 at `9b91845` (review `6898063391`): the measured host
+  path is not tied to the executable the configured worker actually starts.
+- Steps:
+  1. `createSignedApprovalAdmission` now exposes the canonical measured executable on the
+     returned gate (`gate.hostExecutable`, resolved via `canonicalExecutablePath` using
+     `realpathSync.native` with a lexical-resolve fallback).
+  2. `createConfiguredTaskService` enforces that a supplied signed-admission gate's canonical
+     `hostExecutable` equals the canonical `settings.executable` the configured worker starts;
+     a mismatch is refused before any service/task/child exists.
+  3. Added negative (`A != B`) and positive (`A == B`) composition fixtures in
+     `test/free-provider.test.mjs` (mock signature only, no hardware).
+- Files: `src/live-approval.mjs`, `src/configured-service.mjs`, `test/free-provider.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/worklog.md`,
+  `docs/validation.md`.
+- Validation: focused 42/42 and full suite/demo rerun (see validation entry). No catalog GET
+  repeat, no FIDO2 hardware action, no host network change, no WebSocket-bypass call, no live
+  inference or B20. The relay/gateway policy-drift and signer-revocation dispatch checks remain
+  partial/`not_run` pending deployment.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (real FIDO2 hardware-key signing dry run / positive
+  signature path, bare-metal Ubuntu / two-VM Hyper-V deployment, active WebSocket-bypass
+  experiment, live inference).
+
+## 2026-11-15 — B30 relay/gateway lifecycle symmetry (B30-04)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: close the B30-04 lifecycle gap — the egress gateway lacked the failure/lifecycle
+  fixtures the relay already had; add temporary child/process/port fixtures (no green-path
+  only).
+- Steps:
+  1. Added to `test/egress-gateway.test.mjs`: port-conflict refusal, terminal `stop()` with
+     restart refusal, `stop()` releasing the port (a second gateway binds it), an upstream
+     timeout latched to `upstream-unavailable` with exactly one origin request (no replay),
+     and an upstream partial-body drop that latches `response-stream` without replay.
+  2. Confirmed relay + gateway fixtures pass together (36/36) and re-recorded levels/limits.
+- Files: `test/egress-gateway.test.mjs`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused 36/36 + full suite/demo rerun (see validation entry). No external
+  network or provider call, no catalog GET, no install, no WSL/host network/firewall change,
+  no hardware signing, no B20/live activation.
+- Follow-up: reply to the supervisor with the new head SHA and evidence; keep the draft
+  open. Remaining gates stay `not_run` (relay/gateway service-level uncertain-child-stop,
+  upstream DNS/TLS-failure latches, live-mode TLS hostname validation and the full
+  cross-namespace TLS chain, bare-metal/VM deployment, active WebSocket-bypass experiment,
+  live inference).
+
+## 2026-11-15 — B30 listener supervision and gateway TLS fixtures (B30-04/07)
+
+- Branch: `task/B30-free-relay` (draft PR #45, base `11fcb42`).
+- Scope: code, tests and docs; offline loopback fixtures only. No live composition, catalog GET, provider call, hardware signing, WSL or host network change, DNS or hosts change, deployed TLS chain, B20 or merge.
+- Steps:
+  1. Added `src/listener-supervisor.mjs`: a service-owned supervisor that runs one relay or gateway in a child process, with a durable lock file created before spawn, the pid recorded before the `start` message, release only after a confirmed exit, an unconfirmed stop, kill or ready timeout that keeps the lock and refuses restart, no automatic restart, and an explicit `reconcileListenerLock` that requires the exact token and pid and `confirmedStopped: true`.
+  2. Added `src/listener-child.mjs`, the child entry: it binds one listener on `start`, reports `ready` or `error` (exit 2), answers `status`, stops on `stop`, and stops when its supervisor disconnects.
+  3. Changed `src/egress-gateway.mjs`: upstream fetch failures are classified into `dns-failure` (`ENOTFOUND`, `EAI_AGAIN`), `tls-failure` (TLS, SSL and certificate codes) or `upstream-unavailable`; live mode refuses `NODE_TLS_REJECT_UNAUTHORIZED=0` at creation (throws) and before each request (`tls-policy` latch); the header comment now describes the offline scope.
+  4. Added `integration/listener-fixture-child.mjs` (test-only child that ignores stop, or never reports ready) and `integration/tls-fixture-resolver.mjs` (test-only `--import` preload: maps two fixture names to loopback, passes IP literals, and fails every other name without an external query).
+  5. Added `test/listener-supervisor.test.mjs` (8 cases: confirmed stop, port conflict, held lock, restart, uncertain stop with reconciliation, silent child, unusable home with no spawn, orphan stop on disconnect) and `test/gateway-tls.test.mjs` (6 cases: trusted TLS forward, untrusted CA, hostname mismatch, DNS failure, ambient bypass refusal, classifier). The TLS certificates are generated with openssl at test time into a temp directory that is removed afterwards; no certificate or key is committed.
+  6. Recorded the decisions and evidence limits in `docs/adr/010-live-egress-and-approval.md` (2026-11-15 amendment), the B30 section of `docs/task-contract.md`, `docs/roadmap.md`, `docs/backlog.md` (B30 row) and `docs/handoff.md` (continuation point and next action).
+  7. Mutation-checked the new tests in a scratch copy (lock released on unconfirmed stop; DNS/TLS collapsed) and confirmed the expected tests fail.
+- Files: `src/egress-gateway.mjs`, `src/listener-supervisor.mjs`, `src/listener-child.mjs`, `integration/listener-fixture-child.mjs`, `integration/tls-fixture-resolver.mjs`, `test/listener-supervisor.test.mjs`, `test/gateway-tls.test.mjs`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused `node --test` on the new and existing relay/gateway files → 50 pass, 0 fail; serial `node --test --test-concurrency=1` → 388 tests, 387 pass, 0 fail, 1 skip, exit 0; default-concurrency `node --test` exits 1 on eight timing-sensitive locations that also fail at base `eb4968d`; `node examples/fallback-demo.mjs` → 429 then 200; `git diff --check` clean. The pinned OpenCode host, privileged WSL fixture, deployed TLS chain, expired-certificate case, catalog, WebSocket bypass, FIDO2 and live inference were not rerun or run (see validation entry).
+- Follow-up: keep PR #45 draft and reply to the 18:18 review findings with this head and evidence; the next B30 step is an independent Ubuntu/Hyper-V deployment with a deployed TLS chain and a real trust store, which remains `not_run` until a maintainer provides the environment.
+
+## 2026-11-15 — B30 catalog-evidence continuity correction (P2 review)
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: documentation only; corrects the catalog GET status in new continuity text after the supervisor P2 review. No source, test, network request or live action; the catalog GET is not repeated.
+- Steps:
+  1. Read the P2 review at `6899620770` and checked `docs/validation.md` line 2862, which records the one bounded catalog GET at `8e358a4` (HTTP 200, 104,821 bytes).
+  2. Amended the 2026-11-15 handoff continuation and next action in `docs/handoff.md` to state the GET as performed once at `8e358a4`, dated and expiring, not repeated, with a fresh read needing separate narrow authorization and no live-inference authorization.
+  3. Amended the B30 backlog row in `docs/backlog.md`, the M3 row and the 2026-11-15 paragraph in `docs/roadmap.md`, and the 2026-11-15 ADR amendment in `docs/adr/010-live-egress-and-approval.md` with the same status, plus a dated note on the 2026-11-14 ADR bullet.
+  4. Added a dated parenthetical to the B30 admission-wiring sentence in `docs/task-contract.md`, which said no catalog read had been performed.
+  5. Corrected the matching lines in the PR body (Deferred, Not rerun, the Validation bullets and the draft summary) to state the same dated status.
+  6. Appended this entry and a validation entry; earlier entries are not rewritten.
+- Files: `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused `node --test` on the listener-supervisor, gateway-tls, egress-gateway and relay files → 50 pass, 0 fail, exit 0 (source unchanged); `git diff --check` clean; static grep of added `catalog` lines consistent with the `8e358a4` receipt. The full suite, demo and any live, FIDO2, WebSocket, VM or deployed-TLS gates were not rerun (see the validation entry).
+- Follow-up: keep PR #45 draft and re-review the new documentation head; a fresh catalog read, if ever needed, requires a separate narrow authorization and does not authorize live inference.
+
+## 2026-11-15 — B30 fixture-only supervised composition and second catalog snapshot
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: code, tests and docs; fixture-only composition with loopback listeners. No live composition, provider, FIDO2, WebSocket, VM, host-network or paid action; one bounded public catalog GET (user-authorized) recorded as dated metadata; no ready or merge.
+- Steps:
+  1. Read the PR feedback (no blocking findings; CI `c6c064e` green) and the composition path: `createConfiguredTaskService`, the scheduler's dispatch and close, the worker validation and the signed-admission gate.
+  2. Added `src/free-listeners.mjs`: a pure plan (fixed non-zero loopback ports, relay upstream to the gateway port, fixed model and path, both policy digests) and `startFreeListeners`, which starts the gateway and then the relay under the supervisor, checks the child-reported digests, and stops whatever started on any failure.
+  3. Changed `src/configured-service.mjs`: the `freeListeners` option requires an approved run and a signed-admission gate that exposes matching digests, both checked before metadata or any listener start; the worker base URL comes from the relay port; a dead listener blocks dispatch in `prepare`; `close()` stops listeners after the scheduler is idle; a failure after listener start stops them. Live composition is unchanged when the option is absent.
+  4. Changed `src/live-approval.mjs`: the signed-admission gate exposes its relay and gateway policy digests as read-only properties.
+  5. Changed the `src/listener-supervisor.mjs` header comment (no longer unwired).
+  6. Added `test/free-listeners.test.mjs` (nine cases) and fixed two of its defects (approval-bound request and listener cleanup on failure).
+  7. Performed one bounded catalog GET through `fetchFreeMetadata` and recorded the validated fields.
+  8. Updated `docs/adr/010-live-egress-and-approval.md` (second 2026-11-15 amendment, and the two earlier sentences that said the supervisor was unwired), `docs/task-contract.md` (composition bullet and the revised wiring sentence), `docs/deployment-prerequisites.md` (Ubuntu host checklist and minimum permissions, plan only), `docs/handoff.md`, `docs/backlog.md` and `docs/roadmap.md`.
+- Files: `src/configured-service.mjs`, `src/free-listeners.mjs`, `src/live-approval.mjs`, `src/listener-supervisor.mjs`, `test/free-listeners.test.mjs`, `docs/adr/010-live-egress-and-approval.md`, `docs/task-contract.md`, `docs/deployment-prerequisites.md`, `docs/handoff.md`, `docs/backlog.md`, `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: nine focused composition tests pass; the 104-test composition, approval, B29 and B30 focused set passes; the serial suite failed once on the known MCP `B15-01f` output-wait flake and passed on rerun (396 pass, 0 fail, 1 skip); the demo returns 429 then 200; `git diff --cached --check` clean. The default-concurrency run, the pinned host, WSL, deployed TLS, FIDO2, WebSocket-bypass, VM and live gates were not rerun (see the validation entry).
+- Follow-up: keep PR #45 draft and do not merge. Before any ready decision, the `not_run` gates in the validation entry and the Ubuntu checklist in `docs/deployment-prerequisites.md` need separate authorization and evidence. A non-loopback worker-facing listener needs an ADR amendment before code changes.
+
+## 2026-11-15 — B30 composition close-path stop on rejection
+
+- Branch: `task/B30-free-relay` (draft PR #45).
+- Scope: code (one error path) and docs; fixture-only composition otherwise unchanged; no live, provider, FIDO2, WebSocket, VM, host-network or paid action.
+- Steps:
+  1. Second self-review of `src/configured-service.mjs`: `service.close` stopped the supervised listeners only when the scheduler close resolved; a rejection would have left them running.
+  2. Changed the close wrapper to stop the listeners on both outcomes and rethrow a rejection.
+  3. Reran the 104-test focused set, the 397-test serial suite (396 pass, 0 fail, 1 skip) and the demo (429 then 200) on the final code; recorded in the validation entry.
+- Files: `src/configured-service.mjs`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: see the final-rerun validation entry; the rejected-close branch is inspected but not tested.
+- Follow-up: unchanged from the previous entry (keep the draft, no merge, no ready). A test seam for the rejected-close branch is optional and can wait for the next composition change.
+
+## 2026-11-15 – M3: B30 listener ownership and startup authority correction
+
+- Branch: `task/B30-free-relay`
+- Scope: code, tests and docs; fixture-only loopback composition, correcting two P1
+  review findings; no live composition, provider, deployment or hardware path changed.
+- Steps:
+  1. Acquired and reconciled exclusive task-home ownership in `openTaskHome` before any
+     supervised listener child may bind, and handed that store and release function to
+     `createTaskService` so it does not acquire or reconcile twice; a competing owner,
+     corrupt store or mismatched home refuses before a child, port or lock.
+  2. Kept ownership through startup and shutdown: listener stop precedes owner release,
+     an unconfirmable stop at close or during failed-startup cleanup keeps the task-home
+     owner lock and every unconfirmed listener lock, and the construction-failure path
+     leaves release to the owner instead of racing a second stop.
+  3. Separated startup authority from task admission: `freeListenerPlan` records
+     `FREE_LISTENER_START_AUTHORITY` (unsigned operator artifact plus a digest-bound gate,
+     not an SSHSIG), `createConfiguredTaskService` exposes it as
+     `service.freeListenerAuthority`, and a gate without an exposed host identity is
+     labelled a test double.
+  4. Added `test/free-listeners-authority.test.mjs`: competing owner and corrupt store
+     spawn no child, port or lock; ownership is held while listeners run; the real
+     signed-gate factory with a disposable non-hardware key refuses missing, malformed,
+     non-FIDO2 and forged task signatures with zero task/workspace/worker effect; a
+     close-time or failed-startup uncertain stop keeps owner and listener locks and refuses
+     restart.
+  5. Extended the test-only `integration/listener-fixture-child.mjs` with an
+     `ignore-stop-valid` mode that reports the real policy digest and binds the configured
+     fixed port, so close-time and failed-startup uncertainty are exercised without
+     production changes.
+  6. Updated the normative contract, ADR-010 amendment, handoff, backlog row and both
+     evidence files.
+- Files: `src/service.mjs`, `src/configured-service.mjs`, `src/free-listeners.mjs`,
+  `integration/listener-fixture-child.mjs`, `test/free-listeners-authority.test.mjs`,
+  `test/free-listeners.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/backlog.md`,
+  `docs/roadmap.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused composition/approval/B29/B30 set → 112 pass, 0 fail, exit 0;
+  `node --test --test-concurrency=1` → 405 tests, 404 pass, 0 fail, 1 skip, exit 0;
+  `node examples/fallback-demo.mjs` → 429 then 200, exit 0; `git diff --check` → no
+  output, exit 0. Two self-review passes covered ownership ordering, close/startup
+  failure paths, old `createTaskService` callers, contract/ADR wording and the refusal
+  evidence; the second pass found and fixed the failed-startup cleanup ownership gap.
+  Exact-head CI run `43760697682` succeeded on both OS jobs; the docs-only receipt commit
+  has its own PR run. The default-concurrency suite was not rerun locally (CI ran
+  `node --test` and passed); the WSL fixture, pinned OpenCode harnesses, deployed TLS,
+  FIDO2 positive signature, WebSocket bypass, VM and live inference were not rerun.
+- Follow-up: keep PR #45 draft and reply to the two P1 findings with the new head;
+  independent re-review of this ownership/authority correction is required before any
+  ready or merge decision. All B30 deployment gates remain `not_run`.
+
+## 2026-11-15 – M3: B30 ownership handoff capability correction
+
+- Branch: `task/B30-free-relay`
+- Scope: code, tests and docs; closes the P1 from the independent re-review at `6ea76d8`
+  without changing live composition, provider, deployment or hardware paths.
+- Steps:
+  1. Replaced the caller-shaped `{ store, releaseOwner }` ownership option with a
+     module-local capability: `createTaskService` accepts only an object present in a
+     private `WeakMap`, minted by `openTaskHome` after the exclusive lock and
+     reconciliation. Forged, spread-copied, reconstructed, released, reused and
+     wrong-home handoffs are refused with `invalid_argument`; a refused handoff releases
+     nothing.
+  2. Made the capability single-use and stateful (`minted`, `consumed`, `releasing`,
+     `released`, `uncertain`). `createTaskService` consumes it synchronously before any
+     effect. Release runs an optional `beforeRelease` cleanup while ownership is still
+     held; if that cleanup or the lock release fails, the capability becomes `uncertain`,
+     the owner lock is retained and all later handoffs are refused (fail closed).
+  3. Kept the configured listener path on the same pre-bind acquisition: it passes the
+     minted capability directly and binds listener stop as `beforeRelease`, so a
+     competing owner still spawns no listener child/port/lock.
+  4. Restored synchronous `close()` for passive default services; a passive service
+     composed from a capability returns the release Promise.
+  5. Added `test/service-ownership-handoff.test.mjs` (7 tests): forged ownership beside
+     an active owner, copied/reconstructed handoffs, reuse before/after close, release
+     before handoff, mismatched home, competing legitimate owner and uncertain
+     `beforeRelease`. Revalidated the existing `test/service-owner.test.mjs` (B12) and the
+     B29/B30 listener-lock set.
+  6. Updated the normative contract, ADR-010 amendment, handoff, roadmap, backlog row and
+     both evidence files; the PR body and the P1 reply carry the fix SHA and evidence.
+- Files: `src/service.mjs`, `src/configured-service.mjs`,
+  `test/service-ownership-handoff.test.mjs`, `docs/task-contract.md`,
+  `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/backlog.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused B29/B30/ownership set -> 121 pass, 0 fail, exit 0; full serial
+  `node --test --test-concurrency=1` -> 412 tests, 411 pass, 0 fail, 1 skip, exit 0
+  (two earlier attempts hit the known B15-03b and B10-03 timing flakes; the passing
+  rerun is claimed, the failures are not erased); `node examples/fallback-demo.mjs` ->
+  429 then 200, exit 0; `git diff --check` -> no output, exit 0. Two self-review passes
+  covered the capability boundary, release/uncertainty and close paths, old callers and
+  the contract wording; the second pass restored the documented passive-close behavior.
+  Exact-head CI run `43764489116` succeeded on both OS jobs; the docs-only receipt commit
+  has its own PR run. Default-concurrency local suite, WSL fixture, pinned OpenCode
+  harnesses, deployed TLS,
+  FIDO2 positive signature, WebSocket bypass, VM and live inference were not rerun.
+- Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
+  independent re-review of the new head is required. All B30 deployment gates remain
+  `not_run`.
+
+## 2026-11-15 – M3: B30 release-authority transfer correction
+
+- Branch: `task/B30-free-relay`
+- Scope: code, tests and docs; closes the P1 from the independent re-review at `f6fdd1e`
+  without changing live composition, provider, deployment or hardware paths.
+- Steps:
+  1. Split the capability's release into a private, memoized `record.release` and a
+     creator-facing `releaseOwner` that refuses with `invalid_argument` unless the
+     capability is still `minted` and unconsumed. The frozen capability never exposes the
+     private release, so a creator cannot release a lock that an active service owns.
+  2. Moved consumption to immediately before the first effect (after every pure argument
+     check). The consuming service's close path uses the private release, which runs
+     `beforeRelease` while ownership is held and removes the lock only after scheduler
+     idle; repeated or concurrent `close()` calls share one release.
+  3. A failed construction (for example an invalid worker) returns the unconsumed
+     capability to its creator so the documented cleanup path, including
+     `beforeRelease`, can release; an uncertain cleanup still retains the lock.
+  4. Preserved passive default synchronous `close()`, capability-composed passive close
+     returning the release Promise, and the pre-bind listener ownership order.
+  5. Extended `test/service-ownership-handoff.test.mjs` with early creator release beside
+     an active service, close idempotency, `beforeRelease`-before-unlock ordering and
+     failed-construction cleanup; revalidated the B12 owner tests. A standalone
+     reproduction of the reviewer trigger outside the repository exited 0 with the second
+     service refused.
+- Files: `src/service.mjs`, `test/service-ownership-handoff.test.mjs`,
+  `docs/task-contract.md`, `docs/adr/010-live-egress-and-approval.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/backlog.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused B29/B30/ownership set -> 125 pass, 0 fail, exit 0; full serial
+  `node --test --test-concurrency=1` -> 416 tests, 415 pass, 0 fail, 1 skip, exit 0
+  (two earlier attempts hit the known `B15-03b` output-wait flake, the first also
+  `B10-03`; the passing rerun is claimed, the failures are not erased);
+  `node examples/fallback-demo.mjs` -> 429 then 200, exit 0; `git diff --check` -> no
+  output, exit 0. Two self-review passes covered the release split, construction
+  rollback, close/uncertainty paths and the contract wording. Exact-head CI run
+  `43768061960` succeeded on both OS jobs; the docs-only receipt commit has its own PR run.
+- Follow-up: keep PR #45 draft; reply to the P1 with the fix SHA and CI receipt;
+  independent re-review of the new head is required. All B30 deployment gates remain
+  `not_run`.
+
+## 2026-11-15 – M3: B30 two-VM Hyper-V deployment (worker compartment and relay egress)
+
+- Branch: `task/B30-free-relay`
+- Scope: deployment evidence and documentation only. No product code changed, no live
+  inference, no paid call, no firewall or host-network change, and no catalog read.
+- Steps:
+  1. Built the ADR-010 Windows topology with two Ubuntu Server 24.04.5 Generation 2 guests:
+     `B30-Worker-Relay` carrying the worker and the relay's worker-side NIC, and
+     `B30-Relay-Gateway` carrying the relay's gateway-side NIC and the host. Neither switch
+     is bound to a physical adapter; WSL's own `WSL (Hyper-V firewall)` switch was identified
+     and excluded from the topology rather than deleted.
+  2. Recorded the host inventory: `10.30.2.1/30` on the gateway vEthernet with forwarding
+     `Disabled`, the host's worker-side vEthernet `Disabled` and unaddressed, no route to
+     `10.30.1.0/30`, no WinNAT instance, and `SharedAccess` running with no share, no
+     `192.168.137.*` address and no share key naming a B30 adapter.
+  3. Applied the guest netplan from a FAT32 VHDX (`B30CFG`) instead of installing a remote
+     shell: relay `10.30.1.1/30` and `10.30.2.2/30`, worker `10.30.1.2/30`, no default route,
+     no DNS server, forwarding disabled on both.
+  4. Ran `probe.sh` from a second FAT32 VHDX (`B30PROBE`) inside each guest; each guest wrote
+     its own log to the volume, and the host read the logs from the attached disk. No console
+     transcription, no package installation, and no guest ever had network reachability to
+     the host or the Internet.
+  5. Interpreted the one deviation honestly instead of adjusting the expectation: the relay's
+     ICMP to the host gateway is dropped while the host reaches the relay. The gateway
+     vEthernet is `Public`/`Rede nao identificada`, the Public profile blocks inbound by
+     default and the built-in echo rules are disabled; Kaspersky is also a firewall product,
+     so the filter is not attributed. Recorded as a prerequisite for the L7 gateway rather
+     than as a topology defect, and no firewall change was made.
+- Files: `docs/validation.md`, `docs/worklog.md`, `docs/deployment-prerequisites.md`.
+- Validation: guest-written logs `B30-Worker-b30-probe-b30-worker.log` (2,996 B, SHA-256
+  `4C4F0C05...`) and `B30-Relay-b30-probe-b30-relay.log` (3,162 B, SHA-256 `53BBA405...`);
+  worker off-link attempts `Network is unreachable` for the host gateway, `1.1.1.1`,
+  `93.184.216.34`, DNS and IPv6 while `10.30.1.1` answers ICMP and resets TCP/22; relay
+  off-link attempts denied for `1.1.1.1:443`, `8.8.8.8:53`, `93.184.216.34:443`, DNS and IPv6
+  while `10.30.1.2` answers ICMP. Host checks as listed above, all exit 0 through the
+  operator's administrator session. `node --test` was not rerun because no code changed.
+- Follow-up: keep PR #45 draft. The remaining gates are the host-side L7 gateway and its TLS
+  chain (which now also needs an authorized inbound rule scoped to the relay address), the
+  WebSocket-upgrade and unapproved-port probes from inside the VM, the positive FIDO2
+  signature, live inference and the signed approval. Merge still requires explicit
+  authorization.
+
+## 2026-11-15 – M3: B30 two-VM WebSocket-upgrade and unapproved-port probes
+
+- Branch: `task/B30-free-relay`
+- Scope: deployment evidence and documentation only. No product code changed, no live
+  inference, no paid call, no firewall or host-network change, and no catalog read.
+- Steps:
+  1. Built a second FAT32 probe volume (`B30WS`, `probe2.sh` SHA-256
+     `CF17EB9BF46F40C4A5F91CC95D41D54DB87C19C9383141AEAFFBC0366238D2AE`) and hot-attached it
+     at SCSI 0/3 on both running guests.
+  2. The operator typed one line per console, relay first and then worker
+     (`sudo mkdir -p /media/b30 && sudo mount -L B30WS /media/b30 && sudo bash /media/b30/probe2.sh`);
+     each guest wrote its own log back onto the same volume. No console transcription, no
+     package installation, no guest-to-host network path.
+  3. Hot-detached the volumes, read each one from the host through WSL
+     `--mount --vhd <path> --partition 1`, and copied `b30-wsprobe-*.log` into
+     `%TEMP%\opencode\b30-collected`; then deleted the two VHDX files, the staging directory
+     and the now-empty `C:\B30-VMs\_media`.
+  4. Recorded two operational deviations instead of hiding them: the new mount stacked over the
+     stale `B30PROBE` mount, so `probe2.sh` reported `B30_WSPROBE_UMOUNT=FAILED` on both guests
+     (an explicit `sudo umount /media/b30` on the worker returned cleanly), and hot-detaching the
+     earlier, already-removed disk produced `device offline error, dev sdc` plus
+     `Buffer I/O error on dev sdc1` on the worker console. Both logs still end with
+     `B30_WSPROBE_LOG_END` after two `sync` calls.
+- Files: `docs/validation.md`, `docs/worklog.md`, `docs/tasks/B30.md`, `docs/handoff.md`,
+  `docs/backlog.md`.
+- Validation: relay log 741 B SHA-256 `D4E51881...` and worker log 939 B SHA-256 `0F509C9E...`;
+  a plaintext WebSocket upgrade to `93.184.216.34:80` and `1.1.1.1:80` is
+  `Network is unreachable` on both guests (exit 11 at connect), while the reachable peer on the
+  permitted link answers `Connection refused` on `18099` and `8080` (`EXIT=1`), and the worker's
+  upgrade attempt to `10.30.1.1:18099` is refused as well. `node --test` was not rerun because
+  no code changed.
+- Follow-up: keep PR #45 draft. Still `not_run`: the host-side L7 gateway and deployed TLS chain
+  (needs an authorized inbound rule scoped to the relay address), an application-level
+  WebSocket rejection, the FIDO2 positive signature, the active WebSocket-bypass experiment,
+  live inference and the signed approval. Merge still requires explicit authorization.
+
+## 2026-11-16 - M3: B30 host-side L7 gateway on the Windows relay link (B30-07)
+
+- Branch: `task/B30-free-relay`
+- Scope: one new deployment harness (`integration/b30-gateway-host.mjs`), one temporary
+  authorized inbound firewall rule (created, used and removed in the same session), and the
+  deployment evidence. No live inference, no paid call, no catalog read, no switch, NAT,
+  ICS or forwarding change, and no guest netplan change.
+- Steps:
+  1. Created the single scoped rule `B30-Relay-Gateway-Inbound` (Inbound/Allow/TCP,
+     `10.30.2.1:18082` from `10.30.2.2`, adapter `vEthernet (B30-Relay-Gateway)`, profile
+     `Public`, program `Any`), read the filters back, and confirmed the port was free.
+  2. Started the deployment harness: the reviewed `src/egress-gateway.mjs` in `fixture` mode
+     on `10.30.2.1:18082`, origin `http://127.0.0.1:18083`, path `/v1/chat/completions`,
+     limits `maxRequests 4` / `maxRequestBytes 1048576` / `maxResponseBytes 1048576` /
+     `timeoutMs 120000`, policy digest `9512dfe8d20d81fa7389538d0fab7c7a9c83fa2217576e5b7c99efe4700dc4e4`.
+     The loopback fixture origin keeps metadata only (method, path, `Bearer public`
+     equality, body byte count, canary presence), never a body.
+  3. The operator typed one line on the relay console
+     (`sudo mount -L B30GW2 /media/b30 && sudo bash /media/b30/probe4.sh`); the guest sent six
+     raw requests and wrote its own log to the attached FAT32 volume.
+  4. Collected the log on the host through WSL `--mount --vhd ... --partition 1`, then deleted
+     the VHDX, the staging directory and the empty `C:\B30-VMs\_media`.
+  5. Removed the firewall rule and verified the previous inbound surface: 712 -> 711 total
+     rules, zero `B30` rules, adapter unchanged. The harness still held `18082` at that point
+     (round 5 was waiting); after the run ended, no listener and no gateway process remained.
+- Files: `integration/b30-gateway-host.mjs`, `integration/README.md`, `docs/validation.md`,
+  `docs/worklog.md`, `docs/deployment-prerequisites.md`, `docs/adr/010-live-egress-and-approval.md`,
+  `docs/tasks/B30.md`, `docs/task-contract.md`, `docs/roadmap.md`, `docs/handoff.md`,
+  `docs/backlog.md`.
+- Validation: guest log `B30-Relay-b30-gwprobe2-b30-relay.log` (1,480 B, SHA-256 `C0A60106...`)
+  with `GW_CONNECT=OK` and `200`, `404`, `404`, `405`, `401`, `401`; the approved response came
+  from the fixture origin with `prompt_bytes 127`; gateway instances recorded refused `path`
+  and `credential`, and `B30-CANARY-PROMPT-0f5a` and `Bearer` appear zero times in the gateway
+  event log. Harness evidence `b30-gateway-evidence.json` (4,032 B, SHA-256 `A9ED9EE2...`)
+  records 4 completed rounds, round 5 skipped at the deadline, `origin.requests=1`, and one
+  metadata-only origin record (`POST /v1/chat/completions`, public-authorization equality true,
+  127 bytes, canary-presence flag true); neither the event log nor evidence JSON contains the
+  canary string or authorization value. The first probe round (`BC32E1F2...`) is recorded as a harness timing failure, not
+  as evidence. Serial `node --test --test-concurrency=1` -> 416 tests, 411 pass / 0 fail / 5
+  platform-gated skips (exit 0); the default-concurrency run exits 1 on the known `B10-03` abort
+  timing flake on this loaded machine (the file passes 8/8 in isolation) and that is recorded, not
+  hidden. `integration/b30-gateway-host.mjs --smoke` on the committed revision ->
+  `smoke_approved status 200`; `git diff --check` clean.
+- Follow-up: keep PR #45 draft. Still `not_run`: the deployed TLS chain to the real origin,
+  an application-level WebSocket rejection, the FIDO2 positive signature, the active
+  WebSocket-bypass experiment, the non-loopback worker-facing listener decision and live
+  inference. Merge still requires explicit authorization.
+## 2026-11-16 - M3: B30 deployment evidence CI receipt
+
+- Branch/head: task/B30-free-relay, d6e356269e5c57d4c606685caa047c51b4636c3b (base 11fcb422de47c2a9b79389de8470802d48ead730).
+- Steps: read exact-head CI run 43800413251 and verified both jobs; recorded that exit 7/1 annotations are intentional pipeline fixtures. No code or deployment environment changed.
+- Files: docs/validation.md, docs/worklog.md.
+- Validation: run 43800413251 SUCCESS; Windows job 133079066746 and Ubuntu job 133079066372. Prior serial suite and fallback demo remain as recorded in the preceding entry. git diff --check rerun before this receipt commit.
+- Follow-up: request independent re-review of the draft PR. Real-origin TLS, application-level WebSocket rejection, positive FIDO2 signature, provider bypass and live inference remain not_run; no ready or merge.
+
+## 2026-11-16 - M3: B30 local revalidation at the publication head
+
+- Branch/head: task/B30-free-relay, 5fe1e46196cd7d9f8ca5fa20f843d5e49cf2e4d8 (base 11fcb422de47c2a9b79389de8470802d48ead730); docs-only record on top of that head.
+- Steps: reran the serial suite, demo, diff check, the privileged WSL2 containment fixture, the pinned OpenCode 2.2.5 relay harness, the host-gateway smoke and the B29 free MCP workflow at the publication head; downloaded and hash-verified the pinned binary from the official release into a temporary directory outside the repository.
+- Files: docs/validation.md, docs/worklog.md.
+- Validation: serial `node --test --test-concurrency=1` -> 416 tests, 411 pass / 0 fail / 5 platform-gated skips (exit 0, 193 s); demo 429 then 200 (exit 0); `git diff --check` clean; WSL `containment verified` (exit 0, all verdicts PASS, no teardown residue); `integration/opencode-free-relay.mjs` exit 0 with six scenarios ok and zero alternate-origin bytes; `integration/b30-gateway-host.mjs --smoke` exit 0; `integration/mcp-free-workflow.mjs` exit 0. Binary SHA-256 `2f3bfd6b...` matched the published digest and reported `opencode v2.2.5`.
+- Follow-up: commit and push this docs-only record, verify the new remote head and its CI. The deployed TLS chain, application-level WebSocket rejection, positive FIDO2 signature, provider bypass, non-loopback listener decision, catalog read and live inference stay not_run; PR #45 stays draft and merge requires explicit authorization.
+
+## 2026-11-16 - M3: B30 authorized live-boundary probes
+
+- Branch/head: task/B30-free-relay, a2c060f9a811d0ef8dc5d067f10ce0a687223009 (base 11fcb422de47c2a9b79389de8470802d48ead730); docs-only record on top of that head.
+- Steps: with maintainer authorization, ran one temporary probe outside the repository for the real TLS chain, the live-mode gateway forwarding one empty JSON request, an application-level WebSocket-handshake refusal, and a fresh bounded catalog read; no prompt, model output or paid route was used and no source/test/composition file changed.
+- Files: docs/validation.md, docs/worklog.md.
+- Validation: `opencode.ai:443` handshake authorized under Node defaults (TLSv1.3, CN `opencode.ai`, Google Trust Services, valid to 2027-02-11, fingerprint `E3:06:DC:19...`); live gateway digest `e8b6ec55...` forwarded one `POST /inference/openai/v1/chat/completions` with `Bearer public` and `{}`, provider 400 `` `model` must be a non-empty string `` with no generation; WebSocket upgrade refused 405/latch `method`; catalog at `2026-11-16T04:34:16.916Z` still lists `deepseek-v4.1-flash-free` at zero price. Ghost `B30-Relay-Gateway` switch remains at `10.30.2.1` but `Get-VM` reports zero VMs.
+- Follow-up: commit and push this record, verify the new head and CI. Expired/wrong-host real certificates, positive FIDO2 hardware signature (no device present), the provider WebSocket-bypass from the worker compartment, the non-loopback listener ADR, an independent Ubuntu host and live inference remain not_run; PR #45 stays draft.
+
+## 2026-11-16 - M3: B30 explicit relay bind address
+
+- Branch/head: task/B30-free-relay, on top of 59dabbc6b62f79037dd87f4273c6f930f27a952f (base 11fcb422de47c2a9b79389de8470802d48ead730).
+- Steps: implemented the maintainer-selected listener option - the trusted composition accepts an explicit loopback/private `relayHost` (default `127.0.0.1`), binds the relay there, derives the worker base URL and binds the address into the relay policy digest; added policy and real-bind tests and updated ADR-010, the task contract, roadmap, handoff, prerequisites, card and integration README.
+- Files: src/free-listeners.mjs, test/free-listeners.test.mjs, docs/adr/010-live-egress-and-approval.md, docs/task-contract.md, docs/roadmap.md, docs/handoff.md, docs/deployment-prerequisites.md, docs/tasks/B30.md, docs/validation.md, docs/worklog.md, integration/README.md.
+- Validation: focused free-listener files 19/19 (exit 0); serial `node --test --test-concurrency=1` -> 418 tests, 413 pass / 0 fail / 5 platform-gated skips (exit 0, 186 s); demo 429 then 200 (exit 0); pinned `integration/opencode-free-relay.mjs` exit 0 with six scenarios; `git diff --check` clean. The real bind test uses loopback `127.0.0.2`; private `10.30.1.1` is policy-tested only.
+- Follow-up: commit and push, verify the head and CI. Binding on a real private NIC, the deployed relay->gateway TLS leg, positive FIDO2 (no device), provider WebSocket bypass, an Ubuntu host and live inference remain not_run; PR #45 stays draft.
+
+## 2026-11-22 - B30 critical review correction follow-up
+
+- Branch/head baseline: `task/B30-free-relay`, `11685d57c6e15a7804a95c05c1a3666c70b56de7`; PR #45.
+- Steps: addressed terminal-latch races, ingress-started body/upstream deadline handling and request socket cleanup; tightened worker preparation URL profile; added two-connection supervised regression and worker preparation URL test; moved fixture origin cleanup registration before composition; documented wire-model ID distinction. Corrections are not yet independently reviewed.
+- Files: `src/relay.mjs`, `src/egress-gateway.mjs`, `src/opencode.mjs`, `src/configured-service.mjs`, `test/free-listeners.test.mjs`, `test/free-provider.test.mjs`, `test/relay.test.mjs`, `test/egress-gateway.test.mjs`, `docs/task-contract.md`, `docs/tasks/B30.md`, `docs/validation.md`, `docs/worklog.md`.
+- Validation: default `node --test` (Node 24.22.1) => 422 total, 416 pass, 1 fail, 5 skip, native exit 1; B10-03 partial-output timing flake. Serial full suite in progress at logging time. Focused tests worker-preparation 13/13 exit 0; relay/gateway/listener prior run 57/58 exit 1 before final label adjustment. Demo exit 0; `git diff --check` exit 0 before final socket-cleanup adjustment; both require final rerun.
+- Limits: pending serial result, final focused/full/demo/diff reruns, complete review-conversation re-read, final diff review, publication, PR draft/head verification and independent review. No deployment, live provider, catalog, paid, FIDO2, VM/WSL/firewall or external network gate was run.
+## 2026-11-22 - B30 validation result correction
+
+- Update to the earlier same-date entry: serial full `node --test --test-concurrency=1`
+  completed 422 total / 417 pass / 0 fail / 5 platform skips, native exit 0 (197.5 s).
+  Default full `node --test` remains 422 / 416 / 1 / 5, exit 1 for B10-03 partial-output
+  timing flake; serial run passes that test.
+- Post-adjustment focused B30 suite 71/71 exit 0; fallback demo exit 0 (429 then 200);
+  final diff check exit 0. No independent review, CI, deployment or live gate is claimed.
+## Final post-correction B30 validation receipt — 2026-11-22
+
+- Serial full suite after all test/code changes: 423 total, 418 pass, 0 fail, 5
+  platform-gated skips, native exit 0 (197.96 s). Default full suite: 423 total,
+  417 pass, 1 fail, 5 skips, native exit 1 due B10-03 partial-output timing flake.
+- Focused B30 suite 73/73 exit 0; listener composition file 16/16 exit 0. Demo 429 -> 200,
+  exit 0; diff check exit 0. Corrections remain unpublished, without current-head CI.
+
+## 2026-11-22 - B30 critical-review correction publication
+
+- Commit `049383e038da24ffbcad480a826ac37675a59af5` was pushed to the existing
+  `task/B30-free-relay` branch (parent `11685d57c6e15a7804a95c05c1a3666c70b56de7`).
+  `git ls-remote` verified the exact SHA. PR #45 remains open, draft, targets `main`,
+  and reports `DIRTY`; current-head CI rollup is empty.
+- Validation receipt and findings replies are recorded separately. Independent
+  re-review remains pending; no ready, merge, deployment or live-gate claim.
+# 2026-11-22 — B30 latest critical-review corrections (in progress)
+
+- Branch `task/B30-free-relay`, starting head `f59d10373a18c43c70208a84b55a1707f168d6c6`.
+  Preserved the two uncommitted request-cleanup edits from the prior partial session.
+- Corrected early terminal cleanup in relay/gateway; bound the signed approval request
+  ceiling to the effective trusted cap; passed the same <=12 cap through relay/gateway
+  plan and worker guard. Added signed binding, one-request composition/request-2,
+  before-ownership mismatch, stalled early-response and fresh abort-interleaving tests.
+  Corrected normative model-ID language and amended ADR-010.
+- Focused B30/worker set: 102 pass / 0 fail, exit 0. Serial complete suite: 428 total,
+  423 pass / 0 fail / 5 skips, exit 0. Demo 429 -> 200, exit 0; diff check exit 0.
+  Detailed commands and limitations are appended in `docs/validation.md`.
+- Earlier development failures (two focused failures, then test fix; one upstream
+  timeout regression caused by clearing timer on request end) remain documented in
+  validation; all current focused and serial reruns passed.
+- No network/provider/catalog/key/certificate/VM/firewall/FIDO2/live operation.
+  Current changes not yet published; no current-head CI or independent re-review.
+- Repeated the 3 focused timing/cap regressions (3/3, exit 0) and serial suite after
+  the final test assertion tightening: 428 total, 423 pass, 0 fail, 5 skips, exit 0
+  (~203 s); demo and diff check rerun successfully.
+- Published code/docs commit `8f888c22e0d7dcfb296be19edf2784f076896999` on the same
+  draft PR branch. Follow-up docs-only receipt records publication and task-card status.
+
+
 ## 2026-11-22 — Planning: reconcile delivery state and unblock supervised use
 
 - Branch: `docs/project-reassessment-2026-11-22`
@@ -1907,6 +2932,129 @@ Template:
   settle #47/#46 before privileged deployment. Existing runtime gates remain
   authoritative; no merge or live activation was performed.
 
+## 2026-11-23 - B30 follow-up critical-review corrections
+
+- Branch `task/B30-free-relay`, starting head `14013bbe82d28a4ffa9651c8a721ec015fa64891`.
+  Addressed the two blocking P2 findings in PR comment #7089619255 without widening
+  scope: the fixture (`fixtureEndpoint`) composition now bounds the worker guard by the
+  signed gate's `maxRequests` (refusing a gate without an integer cap in 1..12 before
+  ownership), and the live gateway strips IPv6 brackets before rejecting IP literals.
+  Added a prepared-guard assertion, a pre-ownership refusal test and IPv4/IPv6 origin
+  negatives; updated the normative contract and ADR-010 amendment.
+- Validation: focused 36/36; focused B30 set 134 pass / 0 fail / 4 environment skips;
+  serial full suite 431 total / 426 pass / 0 fail / 5 skips; default-concurrency suite
+  425 pass / 1 fail (known B10-03 timing flake, reproduced twice); demo 429 -> 200;
+  `git diff --check` clean. Details and limits in `docs/validation.md`.
+- No network/provider/catalog/VM/firewall/key/FIDO2/live operation, no rebase, no ready
+  transition and no merge. Current-head CI is still empty and issues #46/#47/#48 remain
+  blockers; independent critical re-review of this head is pending.
+- Published code commit `4bf5e19f6e13f0ca63ac2c4d78c787ba849cba47`; the docs-only
+  publication receipt follows on the same branch.
+
+## 2026-11-23 - B30 author self-review (not independent)
+
+- Reviewed the complete `main..HEAD` diff at `28f10a2` plus local probes; this is not
+  the independent critical re-review, which remains pending.
+- Confirmed both blocking findings from comment #7089619255 are corrected. Found and
+  fixed one diagnostic defect by probe: an in-flight request latched by another request
+  answered 504 and rewrote `latchReason` to `timeout`; it now answers 503 and retains
+  the original reason. No replay or forwarded bytes were involved.
+- Commit `bf07293f0718ea25b7a93c54f20b66bda7f95c82` with deterministic regressions in
+  both listener test files. Revalidated: listener tests 39/39; serial suite 433 total,
+  428 pass, 0 fail, 5 skips. No network/provider/VM/key/FIDO2/live operation.
+- PR remains draft/conflicting; current-head CI is empty; issues #46/#47/#48 remain
+  blockers.
+
+## 2026-11-24 - B30 merge with main (documentation conflict resolution)
+
+- Branch `task/B30-free-relay`, head `9a83ac9b95a3d00738080b64286544fde28fdb25`;
+  merged `origin/main` `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` to clear the stale
+  base. Only five documentation files conflicted (`backlog`, `handoff`, `roadmap`,
+  `validation`, `worklog`); code and tests merged automatically.
+- Resolution kept the append-only history on both sides: the main-side 2026-11-22
+  planning entry was inserted chronologically in `validation.md` and `worklog.md`;
+  `backlog.md`/`roadmap.md`/`handoff.md` take the reassessment framing (#46-#48,
+  B20/#43 blocked, B29 fixture-only) with B30's current draft head and pending
+  independent re-review noted. The 2026-11-16 next-action heading in `handoff.md`
+  is marked historical under the reassessment continuation.
+- No code, test, contract, ADR or gate changed; no network/provider/VM/key/FIDO2/live
+  operation and no ready transition. Validation commands and results are recorded in
+  `docs/validation.md`.
+
+## 2026-11-24 - B30 independent review corrections
+
+- The independent critical review requested changes at `2f8d7ae` (comment 7121684260);
+  exact-head CI `45323052642` failed on Ubuntu at the fresh-abort regression.
+- B30-05: `validateLiveApproval` now enforces `issuedAt <= now < expiresAt` and a positive
+  lifetime of at most 15 minutes, with future/inverted/equal/boundary tests; contract and
+  ADR-010 amended.
+- B30-04: the fresh-abort regression waits for the listener's real latch through the
+  diagnostics-only `freeListenerStatus()` instead of a fixed sleep. Latch reporting is
+  first-write-wins in both listeners; the concurrent-latch regressions are ordered by
+  origin arrival and the 405, and new regressions cover an upstream failure after a latch.
+- Merge history: restored the dropped dated backlog/handoff continuity under historical
+  headings and labelled the `a4f3954` green CI historical in backlog/roadmap.
+- Validation: focused 55/55 and 48/48; fresh-abort 1/1; serial suite 436 total, 431 pass,
+  0 fail, 5 skips; demo 429 -> 200; diff check clean. No live/provider/VM/key/FIDO2 run;
+  PR #45 stays draft.
+
+## 2026-11-24 - B30 status-query unhandled-rejection correction
+
+- Corrected-head re-review (comment 7121966650) closed the prior findings but found that
+  `freeListenerStatus()` could leave an unhandled rejection when one listener had exited and
+  the other pending query later failed. Fixed by awaiting both status queries sequentially.
+- Added a regression that kills the gateway, starts the combined query while the relay runs,
+  kills the relay, and asserts a returned rejecting promise with no `unhandledRejection`.
+- Validation: listener file 20/20; serial suite 437 total, 432 pass, 0 fail, 5 skips (two
+  earlier attempts failed only the known B15-03b #48 race). Demo and diff check clean.
+
+## 2026-11-24 - B30 status-regression handler ordering
+
+- Third-round re-review (comment 7122271270) closed the runtime finding but found the new
+  regression attached its rejection handler only after the relay kill, so a fast relay reply
+  turned the expected gateway rejection into an unhandled one. Fixed by creating
+  `assert.rejects(pending)` immediately after the query starts; the sequential `status()`
+  implementation is unchanged.
+- Validation: targeted regression 5/5 isolated passes; listener file 20/20; demo and diff
+  check clean. No live/provider/VM/key/FIDO2 operation; PR #45 stays draft.
+
+## 2026-11-24 - B30 independent review closed
+
+- Fourth-round independent review (comment 7122405149) closed all findings at `7660b39`
+  with no new blocking issues; reviewer evidence recorded in `docs/validation.md`.
+- Recorded the closure in `docs/handoff.md`, `docs/roadmap.md` and the B30 card, explicitly
+  as review closure rather than acceptance. Merge/ready/live remain unauthorized and
+  #46/#47/#48 remain open.
+
+## 2026-11-28 - Propagate FIX48 correction to B30
+
+- Branch: `task/FIX48-propagate-B30`, based on B30/#45 head
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`.
+- Applied FIX48 test synchronization, repeated-suite runner and CI changes, and
+  added the FIX48 acceptance card. Preserved B30's existing documentation and
+  appended a propagation receipt; no B30 production/live behavior changed.
+- Review note: an initial content-level merge conflicted because the FIX48 docs
+  snapshot predated B30's review history. The code, tests, CI and task card were
+  retained; B30's five overlapping status/history documents were restored from
+  its head and updated narrowly.
+- Source validation: FIX48's first campaign passed five originals per OS at PR
+  head `1a2bd5f` / merge checkout `bfbeda9`; receipt-head run `46108300145`
+  passed five per OS at PR head `9b34a8c` / common merge checkout `7366b22`.
+  Every sample exited 0 with a clean, unchanged checkout; detailed totals are in
+  `docs/validation.md`.
+- Propagated branch validation via Node 24.22.1: focused five-file command 88
+  total / 87 pass / 0 fail / 1 platform skip, exit 0; full `node --test` 442
+  total / 437 pass / 0 fail / 5 platform skips, exit 0; fallback demo 429 then
+  200, exit 0; staged diff check clean.
+- Current-head CI: run `46109110028` at PR code head `784cdb4` passed on
+  Windows and Ubuntu. All five originals per OS at merge checkout `8edcf05`
+  exited 0, checkout clean/unchanged, 442 tests / 437 pass / 0 fail / 5 skip.
+  Demo steps passed. The bounded watch's annotations request returned HTTP 502;
+  direct `gh run view` and both job logs confirmed workflow/job success.
+- Files: test/CI runner and regressions; FIX48 card; backlog, handoff, roadmap,
+  validation and worklog receipts.
+- Not done: #51 propagation and exact-head CI there; merge, ready/live transition
+  or deployment activity.
 ## 2026-11-27 — M2b: stabilize default-concurrency acceptance
 
 - Branch: `task/FIX48-concurrency-stability`
@@ -2063,3 +3211,59 @@ Template:
 - Follow-up: verify the resulting head's exact-head CI and independent
   re-review; do not infer approval from an earlier SHA. Keep #52 OPEN/DRAFT
   while any blocking finding remains.
+
+## 2026-11-28 — B30 synchronous approval verifier correction
+
+- Branch: `task/FIX48-propagate-B30`; based on B30/#45 at `4d51a39`.
+- Steps: rejected Promise/thenable results from admission, worker validation and
+  receipt revalidation as synchronous `internal` refusals; attached rejection
+  observers; added rejection regressions for admission and all pre-spawn phases.
+  Updated the normative task contract and ADR-010. Merged remote main
+  `04c6e5f80d4a54a20203922fd8ee259419dd069c`, retaining its FIX48 receipts and
+  restoring the B30 append-only records. Reconciled current backlog, handoff and
+  roadmap status without changing live-use gates.
+- Review passes: inspected callback/result paths, reservation lifecycle and
+  rejection handling; rechecked the completed code/docs diff for stale status,
+  lost history, and claims beyond local evidence. External review remains required.
+- Files: `src/service.mjs`, live-approval service/pre-spawn tests,
+  `docs/task-contract.md`, ADR-010, backlog, handoff, roadmap, validation and worklog.
+- Validation on Windows/Node 24.22.1: focused admission/revalidation tests passed;
+  `node --test` 454 total / 449 pass / 0 fail / 5 skips, exit 0; fallback demo
+  returned 429 then 200, exit 0; `git diff --check` clean. Details are in
+  `docs/validation.md`.
+- Not run: pinned-host relay smoke, exact-head CI, independent critical re-review,
+  #51 propagation, deployment/VM/network/TLS, provider/catalog, hardware/FIDO2,
+  live inference. #45 remains draft; no ready transition or merge.
+
+## 2026-11-28 — B30 final-tree validation after main reconciliation
+
+- Branch: `task/FIX48-propagate-B30`; final local merge `6b155213950d2eae070f34bcde0cc2ec164a29d0`.
+- Steps: reran focused admission/pre-spawn regressions, the complete default
+  suite and fallback demo after resolving main's documentation conflicts.
+  Inspected the source/test correction and acceptance rows; confirmed the merge
+  resolution relative to its first parent is documentation-only.
+- Files: backlog, handoff, validation, worklog and roadmap.
+- Validation: focused suite 29/29 pass; `node --test` 454 total / 449 pass /
+  0 fail / 5 skips; fallback demo mock 429 -> 200; `git diff --check` and
+  base-to-head whitespace checks clean. Windows Node.js 24.22.1 via fnm.
+- Limits: exact-head CI and independent re-review have not run for this SHA.
+  No pinned OpenCode, deployment/namespace/network/TLS, provider/catalog,
+  hardware/FIDO2 or live operation. #45 remains draft and no merge is authorized.
+- Follow-up: reply to current #45 findings, publish without force, verify the
+  remote SHA and current-head CI, then request independent re-review. Keep the
+  PR draft until all required implementation and evidence gates are satisfied.
+
+## 2026-11-28 — B30 correction published for exact-head review
+
+- Branch / PR: `task/FIX48-propagate-B30` → PR #45 (`task/B30-free-relay`).
+- Steps: pushed `05c39828e1c1f03197c1685c4dabb6136a562df1` without force;
+  confirmed the remote ref and PR metadata match. Replied to the critical
+  findings with correction summary, final local evidence and remaining gates;
+  requested exact-SHA re-review.
+- Files: backlog, handoff, validation and worklog.
+- Evidence: PR comment
+  https://github.com/pbsilvabd/ai-orchestrator/pull/45#issuecomment-7236498297;
+  Actions run `46125175156` was queued at the verified SHA when checked.
+- Limits / next action: no CI conclusion or re-review is claimed. Keep #45
+  OPEN/DRAFT; do not infer completion of composition, approval-profile,
+  deployment, FIDO2, TLS/bypass or live-use gates.

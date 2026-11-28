@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-27. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-28. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -23,25 +23,22 @@ See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
 
-Current remote baseline: `f61e5e1`; B12–B19 and B29/#44 are merged. B30/#45
-remains OPEN/DRAFT at `4d51a39`; stacked B31/#51 remains OPEN/DRAFT at `e1a08d4`. The
-software-signature profile has local disposable-key evidence only. FIX48 is
-published as draft PR #52 from `f61e5e1`: it reproduced the default-concurrency
-B10-03 failure and has a correction set. Local corrected full suite passed once
-on Windows. CI run `46107344778` passed five samples per OS at common sampled
-merge SHA `bfbeda9` (base `f61e5e1`, PR head `1a2bd5f`). Final-head run
-`46108300145` also passed five samples per OS at merge SHA `7366b22` for PR
-head `9b34a8c`. The identical seven FIX48 paths are present at #45 head
-`4d51a39` (CI `46109747250`) and stacked #51 head `e1a08d4` (CI `46111699960`);
-both remain draft. Receipt-head run `46113674523` passed at #52 head `9bb1a41`,
-and its ten sample outcomes are appended to `docs/validation.md`. Independent
-re-review at `9bb1a41` found residual status wording; this follow-up records the
-campaign and reconciles the current status. Every new head still requires its
-own exact-head CI and independent review before any ready/merge decision.
-#46 signer/worker isolation and deployment composition remain unproven; live use
-stays closed. B20/#43 remains blocked with no real project diff.
+Remote main is `04c6e5f`; B12–B19 and B29/#44 are merged. B30/#45 remains
+OPEN/DRAFT at prior remote head `4d51a39`. Local correction commit `e1e6c96`
+rejects asynchronous approval callbacks. Main's documentation conflicts are
+resolved without dropping append-only history; focused and full local suites
+passed before the documentation-only reconciliation. Demo, final diff review,
+publication, exact-head CI and independent re-review remain pending.
+
+FIX48/#52's campaigns passed five default-concurrency samples per OS at merge
+SHAs `bfbeda9` (PR head `1a2bd5f`), `7366b22` (head `9b34a8c`) and `a9c0caa`
+(receipt head `9bb1a41`). Its propagation into earlier #45/#51 heads has exact
+CI receipts, but every newly updated head requires its own checks/review.
+Stacked B31/#51 remains OPEN/DRAFT. #46 composition, #47 approval-profile and
+deployment/live/FIDO2 gates remain unsatisfied; B20/#43 is blocked with no real
+project diff or M3 acceptance. No merge, ready transition or live-use gate changed.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the
-evidence/disposition record; this update does not change its live-use limits.
+evidence/disposition record.
 
 ### Historical delivery receipts through B19
 
@@ -93,7 +90,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
 | M2b — One-worker delegation MVP | B12–B19 merged; B17 technical fixture evidence available, explicit milestone reconciliation pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 — First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 composition, deployment and approval gates open (#46/#47) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 — First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 fixture implementation on `task/B30-free-relay` (relay, egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth containment observation), while composition, deployment and approval gates remain open (#46/#47); nftables filtering in a real deployment, a real FIDO2 hardware-key signing dry run and live activation remain `not_run` under ADR-009/010; bounded catalog GETs were performed at `8e358a4` and at `2026-11-15T19:14:36Z` (dated snapshots, not repeated) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |
@@ -104,8 +101,47 @@ fixture gate passed, and CI run `43630565937` passed on Windows and Ubuntu at
 draft-to-ready is a maintainer decision. This rerun did not fix the pre-existing
 Windows maintenance test race or default-concurrency timing failures. ADR-009
 selects a future B30 service-owned relay **and verified worker egress
-containment**; neither is
-implemented or authorized for live use.
+containment**. On `task/B30-free-relay`, B30 now has a fixture-only relay, an L7
+egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth
+containment observation (routing-based, no nftables/iptables filtering). The live
+route, public catalog, firewall-filtered deployment, real FIDO2 hardware-key
+signing dry run and live inference remain closed / `not_run`.
+
+2026-11-15 B30-04/07 offline update (PR #45, draft): the relay and egress gateway can
+run as supervised child listeners with a durable ownership lock (an unconfirmed stop keeps
+the lock and refuses restart; reconciliation is explicit). The gateway names DNS and TLS
+upstream failures as distinct fail-closed latches and refuses an ambient TLS-verification
+bypass. Offline live-mode TLS fixtures (disposable CA, test-only resolver in a child) pass.
+This is loopback/fixture evidence only: the deployed cross-namespace TLS chain, expired
+certificates, a real DNS resolver or origin, the WebSocket bypass experiment, bare-metal/VM
+deployment, FIDO2 signing, live inference and merge remain `not_run`. The public catalog GET
+for the fixed free model was performed once at prior head `8e358a4` (HTTP 200, 104,821 bytes,
+dated snapshot). A second bounded GET at `2026-11-15T19:14:36Z` validated the same model as
+zero-price. Neither is repeated, and a fresh read needs a separate narrow authorization.
+
+2026-11-15 second correction (draft, not ready): the supervised relay and gateway are composed
+into the trusted service only through the fixture-only `freeListeners` option, with approved-run
+and digest gates, launch refusal, uncertain-stop retention, crash-to-blocked dispatch and
+close-time stop. Loopback default; from 2026-11-16 the trusted composition also accepts an
+explicit `relayHost`, binds the relay to that exact loopback/private address, derives the worker
+base URL from it and binds the address into the relay policy digest (wildcard/unspecified, public,
+IPv4-mapped and hostname forms are refused). A same-day correction acquires and reconciles task-home
+ownership before any listener bind and holds it through a confirmed stop; the handoff is an
+opaque, single-use capability, so forged, copied, released, reused or wrong-home handoffs are
+refused beside an active owner, and release authority passes to the consuming service at handoff
+so the creator cannot release an active service's lock; startup authority is
+trusted composition (unsigned operator artifact plus a digest-bound gate, not an SSHSIG), while
+each task submission is signature-verified and missing/forged signatures are refused with zero
+task/workspace/worker effect. The Windows two-VM deployment is evidenced for the network layer,
+for the in-VM WebSocket-upgrade/unapproved-port negatives, and for a host-side L7 gateway on the
+relay link in fixture mode (approved request forwarded once to a controlled loopback origin;
+unapproved path, absolute-URI, `CONNECT` and credential refused before any upstream fetch, with a
+recorded policy digest and body-free logs). Authorized probes on 2026-11-16 validated the real
+resolver/trust store/hostname chain to `opencode.ai`, forwarded one empty JSON request through the
+live gateway (provider 400, no generation), refused a WebSocket upgrade at the gateway (405) and
+re-read the catalog once (still zero-price). The FIDO2 positive signature, the active bypass
+experiment, the independent Ubuntu host and deployment on a real private NIC remain open, so B30
+is not ready and not merged.
 
 M2 is now split into M2a/M2b/M2c; its earlier host smoke remains useful evidence.
 M3 may start with one authorized model and fallback disabled. Two models are

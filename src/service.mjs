@@ -33,7 +33,10 @@ const BRANCH = /^[A-Za-z0-9._/-]{1,128}$/;
 const OBJECTIVE_MAX = 4000;
 const ACCEPTANCE_MAX = 20;
 const SUBMIT_REQUIRED = ['idempotencyKey', 'clientId', 'objective', 'acceptanceCriteria', 'repository', 'authorization', 'limits'];
-const SUBMIT_OPTIONAL = ['clientSessionId'];
+// approval/signature are the B30 signed live-approval envelope: optional on the transport,
+// required only when a signed-approval admission gate is configured. They are excluded from
+// the canonical payload/request hash and never persisted on the task record.
+const SUBMIT_OPTIONAL = ['clientSessionId', 'approval', 'signature'];
 const REPOSITORY_FIELDS = ['path', 'baseRef', 'branch'];
 const AUTHORIZATION_FIELDS = ['models', 'tools', 'writablePaths'];
 const LIMITS_FIELDS = ['maxAttempts', 'budgetMs', 'maxOutputBytes'];
@@ -58,6 +61,24 @@ function toServiceError(error) {
   if (error instanceof RepositoryError) return new ServiceError(error.code, error.message);
   // Unexpected failures stay generic: no stack, no payload, no private data.
   return new ServiceError('internal', 'task service failure');
+}
+
+// The service contract deliberately keeps admission synchronous. If a trusted
+// adapter accidentally returns a Promise/thenable, attach a rejection observer
+// before refusing it so a rejected async callback cannot escape as an
+// unhandledRejection after the caller has already handled the synchronous error.
+function isThenableAndObserve(value) {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
+  let then;
+  try {
+    then = value.then;
+  } catch {
+    Promise.resolve(value).catch(() => {});
+    return true;
+  }
+  if (typeof then !== 'function') return false;
+  Promise.resolve(value).catch(() => {});
+  return true;
 }
 
 // Error envelope defined by the contract: { error: { code, message } }.
@@ -85,9 +106,33 @@ export const DEFAULT_CONFIG = {
   limits: { maxAttempts: 2, budgetMs: 600_000, maxOutputBytes: 1_048_576 },
 };
 
+// Module-local registry of task-home ownership capabilities. Only `openTaskHome` inserts an
+// entry after it holds the exclusive lock and has reconciled the store. A plain object, a
+// spread copy, a released capability or one already handed to a service is not a valid
+// handoff; caller honesty is not an ownership boundary.
+const taskHomeHandoffs = new WeakMap();
+
 export function createTaskService(options = {}) {
-  const store = options.store ?? openTaskStore({ home: options.home });
+  const ownership = options.ownership;
+  let handoff;
+  if (ownership !== undefined) {
+    handoff = taskHomeHandoffs.get(ownership);
+    if (handoff === undefined || handoff.state !== 'minted' ||
+        ownership.store !== handoff.store || typeof ownership.releaseOwner !== 'function' ||
+        options.store !== undefined || typeof options.home !== 'string') {
+      fail('invalid_argument', 'ownership must be an unconsumed capability minted by openTaskHome for the requested home');
+    }
+    let ownedHome;
+    try { ownedHome = typeof handoff.store.home === 'string' ? resolve(handoff.store.home) : undefined; }
+    catch { ownedHome = undefined; }
+    if (ownedHome !== resolve(options.home) || handoff.home !== ownedHome)
+      fail('invalid_argument', 'ownership capability does not belong to the requested task home');
+  }
+  const store = handoff?.store ?? options.store ?? openTaskStore({ home: options.home });
   const configured = isPlainObject(options.config) ? options.config : {};
+  const admission = options.admission;
+  if (admission !== undefined && typeof admission !== 'function')
+    fail('invalid_argument', 'admission must be a synchronous function');
   const config = {
     clientId: typeof configured.clientId === 'string' ? configured.clientId : DEFAULT_CONFIG.clientId,
     authorization: { ...DEFAULT_CONFIG.authorization, ...(isPlainObject(configured.authorization) ? configured.authorization : {}) },
@@ -95,26 +140,63 @@ export function createTaskService(options = {}) {
   };
   const startupNow = typeof options.now === 'function' ? options.now() :
     (Number.isInteger(options.now) ? options.now : Date.now());
-  const releaseOwner = acquireServiceOwnership(store.home);
-  // Reconcile exactly once as the service starts. Never accept requests against an
-  // ambiguous index or an unresolved in-flight task.
-  try {
-    const reconciliation = store.reconcile({ now: startupNow, ownershipToken: releaseOwner.token });
-    if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
-  } catch (error) {
-    releaseOwner();
-    throw toServiceError(error);
-  }
   const now = () => {
     if (typeof options.now === 'function') return options.now();
     if (Number.isInteger(options.now)) return options.now;
     return Date.now();
   };
+  // In-memory trusted receipts from a signed-approval admission gate, keyed by taskId.
+  // They are never persisted and never entered into task text; the scheduler re-checks
+  // them immediately before spawn (B30-05 pre-dispatch revalidation).
+  const receipts = new Map();
+  const revalidate = admission === undefined ? undefined : (taskId, at) => {
+    const receipt = receipts.get(taskId);
+    if (receipt === undefined || typeof receipt.revalidate !== 'function')
+      fail('authorization_denied', 'signed approval receipt is missing or invalid before dispatch');
+    try {
+      const result = receipt.revalidate(at);
+      if (isThenableAndObserve(result))
+        fail('internal', 'signed approval revalidation must be synchronous');
+    } catch (error) {
+      if (error?.code === 'authorization_denied' || error?.code === 'invalid_argument' || error?.code === 'unavailable')
+        fail(error.code, error.message);
+      throw toServiceError(error);
+    }
+  };
+  // Consume after every pure argument check, immediately before the first effect. Release
+  // authority then transfers to this service: the creator-facing `releaseOwner` refuses, and
+  // only this service's close path may run `beforeRelease` and remove the owner lock.
+  let releaseOwner;
   let scheduler;
+  if (handoff !== undefined) {
+    handoff.state = 'consumed';
+    // Ownership was acquired and reconciled by `openTaskHome` before any caller effect; this
+    // service must not acquire or reconcile a second time (no double acquisition). Its close
+    // path uses the private release function, never the creator-facing one.
+    releaseOwner = handoff.release;
+  }
   try {
+    if (handoff === undefined) {
+      releaseOwner = acquireServiceOwnership(store.home);
+      // Reconcile exactly once as the service starts. Never accept requests against an
+      // ambiguous index or an unresolved in-flight task.
+      const reconciliation = store.reconcile({ now: startupNow, ownershipToken: releaseOwner.token });
+      if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
+    }
     if (options.worker !== undefined) scheduler = createTaskScheduler({ store,
-      clientId: config.clientId, worker: options.worker, now });
-  } catch (error) { releaseOwner(); throw toServiceError(error); }
+      clientId: config.clientId, worker: options.worker, now, revalidate });
+  } catch (error) {
+    if (handoff === undefined) {
+      // A failed acquisition has no lock to release; a failed reconciliation does.
+      if (typeof releaseOwner === 'function') releaseOwner();
+    } else {
+      // Construction failed before any service existed, so release authority never actually
+      // transferred. Return the capability to its creator, whose cleanup path may stop
+      // external effects through `beforeRelease`; a cleanup failure still keeps the lock.
+      handoff.state = 'minted';
+    }
+    throw toServiceError(error);
+  }
 
   // Ownership: the task owner is the client that submitted it; the caller is the
   // service-configured client. Other clients receive not_owner.
@@ -156,7 +238,7 @@ export function createTaskService(options = {}) {
     // filesystem/persistence effects. Task text cannot supply this callback.
     try {
       const decision = options.worker?.validateSubmission?.(structuredClone(payload));
-      if (decision instanceof Promise) fail('internal', 'worker admission must be synchronous');
+      if (isThenableAndObserve(decision)) fail('internal', 'worker admission must be synchronous');
     } catch (error) {
       if (error?.code === 'authorization_denied') fail('authorization_denied', 'worker admission denied');
       throw toServiceError(error);
@@ -175,6 +257,32 @@ export function createTaskService(options = {}) {
       throw toServiceError(error);
     }
 
+    // 2b. Signed live-approval admission (B30-05), for NEW tasks only, after replay
+    //     resolution and repository inspection but before task persistence, workspace or
+    //     spawn. A synchronous trusted gate (never task text) verifies and binds the SSHSIG
+    //     and reserves the approval ID against the pre-generated taskId; any refusal throws
+    //     before the task record is written. When absent, admission stays passive (default).
+    //     A successful gate MUST return an object with `admitted: true` and a callable
+    //     `revalidate` bound to this task; `false`, `true`, `undefined` or an object lacking
+    //     the verifier are refused before persistence.
+    let taskId;
+    if (admission !== undefined) {
+      taskId = randomUUID();
+      try {
+        const decision = admission(structuredClone(payload), { taskId, baseCommit: repoValidation.baseCommitSha, now: now() });
+        if (isThenableAndObserve(decision)) fail('internal', 'signed approval admission must be synchronous');
+        if (!decision || typeof decision !== 'object' || decision.admitted !== true ||
+            typeof decision.revalidate !== 'function')
+          fail('authorization_denied', 'signed approval admission must return an admitted receipt with a revalidation verifier');
+        receipts.set(taskId, decision);
+      } catch (error) {
+        if (error?.code === 'authorization_denied') fail('authorization_denied', 'signed approval admission denied');
+        if (error?.code === 'invalid_argument') fail('invalid_argument', 'invalid signed approval submission');
+        if (error?.code === 'unavailable') fail('unavailable', 'signed approval admission unavailable');
+        throw toServiceError(error);
+      }
+    }
+
     // 3. Persist new task record with fixed full base SHA as immutable metadata.
     let created;
     try {
@@ -184,6 +292,7 @@ export function createTaskService(options = {}) {
         payload,
         baseCommit: repoValidation.baseCommitSha,
         now: now(),
+        ...(taskId !== undefined ? { taskId } : {}),
       });
     } catch (error) {
       throw toServiceError(error);
@@ -374,13 +483,76 @@ export function createTaskService(options = {}) {
     schedulerStatus: () => scheduler?.snapshot() ?? null,
     close: () => {
       closed = true;
-      if (!scheduler) { releaseOwner(); return; }
-      closing ??= scheduler.close().then(result => {
-        if (result.releaseOwnership) releaseOwner();
+      if (!scheduler) {
+        const released = releaseOwner();
+        // Passive default services keep synchronous close; a capability handoff may have
+        // asynchronous pre-release cleanup, in which case its Promise is returned.
+        return released instanceof Promise ? released : undefined;
+      }
+      // Ownership is released only after scheduler idle and the service's own private release
+      // (which runs `beforeRelease`, for example stopping supervised listeners), so a failed
+      // release keeps the task-home owner.
+      closing ??= scheduler.close().then(async result => {
+        if (result.releaseOwnership) await releaseOwner();
         return result;
       });
       return closing;
     } };
+}
+
+// Acquire task-home ownership and reconcile the store before any caller starts effects that
+// depend on it (for example supervised listener children). The returned capability is the only
+// handoff accepted by `createTaskService({ ownership })`: it is minted after the exclusive lock
+// is held and reconciliation succeeded, can be consumed once, and is invalidated on release.
+// `beforeRelease` (trusted composition, for example stopping listeners) runs while ownership is
+// still held; if it or the lock release fails, the capability becomes unusable and the owner
+// lock is retained for explicit maintainer reconciliation. On any other refusal the lock is
+// released and no task-store write has been accepted.
+export function openTaskHome({ home, now = Date.now, beforeRelease } = {}) {
+  if (typeof home !== 'string' || !isAbsolute(home)) fail('invalid_argument', 'task home must be an absolute path');
+  if (beforeRelease !== undefined && typeof beforeRelease !== 'function')
+    fail('invalid_argument', 'beforeRelease must be a function');
+  const releaseLock = acquireServiceOwnership(home);
+  try {
+    const store = openTaskStore({ home });
+    const reconciliation = store.reconcile({ now: typeof now === 'function' ? now() : now,
+      ownershipToken: releaseLock.token });
+    if (reconciliation.conflicts.length) fail('unavailable', 'task store reconciliation found conflicts');
+    const record = { state: 'minted', store, home: resolve(store.home) };
+    let releasing;
+    // Private release path. Only a minted capability's creator cleanup or the consuming
+    // service's close may reach it; it is never exposed on the capability object.
+    const release = () => (releasing ??= (async () => {
+      if (record.state === 'released') return;
+      record.state = 'releasing';
+      try {
+        if (beforeRelease !== undefined) await beforeRelease();
+        releaseLock();
+      } catch (error) {
+        // The lock is removed only when `releaseLock` itself succeeded. Any uncertainty keeps
+        // the capability unusable and the owner in place for explicit reconciliation.
+        record.state = 'uncertain';
+        throw error;
+      }
+      record.state = 'released';
+    })());
+    record.release = release;
+    // The creator-facing release is valid only while the capability is still minted and
+    // unconsumed, for example to clean up after a failed construction. Once a service has
+    // consumed it, release authority has transferred: only that service's private close path
+    // may run `beforeRelease` and remove the lock.
+    const releaseOwner = () => {
+      if (record.state !== 'minted')
+        fail('invalid_argument', 'task-home ownership is held by a service; only service.close() may release it');
+      return release();
+    };
+    const capability = Object.freeze({ store, releaseOwner });
+    taskHomeHandoffs.set(capability, record);
+    return capability;
+  } catch (error) {
+    releaseLock();
+    throw toServiceError(error);
+  }
 }
 
 function acquireServiceOwnership(home) {

@@ -1,11 +1,23 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-28: remote main `f61e5e1` includes B12–B19 and B29/#44.
-B30/#45 and stacked B31/#51 remain draft; exact-head software-profile evidence
-does not satisfy #46 or the unresolved #48 test-stability campaign.
+Verified 2026-11-28: remote main `04c6e5f` includes B12–B19, B29/#44 and the
+FIX48 receipt updates. B30/#45 and stacked B31/#51 remain draft. The #45
+synchronous-verifier correction is committed locally as `e1e6c96`; main's
+documentation conflicts have been resolved while preserving both append-only
+histories. Final validation, publication, exact-head checks and re-review remain.
+No merge or live-use authorization is implied.
 B20/#43 remains the single blocked M3 draft. See the
 [reassessment](project-reassessment-2026-11-22.md) for the full inventory and
 GitHub disposition; do not treat a merged fixture task as live-provider support.
+
+Historical checkpoints (superseded, not current remote state): on 2026-11-22 main
+`11fcb42` included B12–B19 and B29/#44, and B30/#45 was draft at `a4f3954` with
+successful exact-head Windows/Ubuntu CI `43806088953` — that green run is historical,
+not current-head acceptance. On 2026-11-14 main `c268239` included B18/#41 and its
+post-merge run `43589015912` passed; B17/#40's Windows/Ubuntu PR checks passed and
+post-merge Windows run `43568386630` passed; B19 implementation was published in
+[PR #42](https://github.com/pbsilvabd/ai-orchestrator/pull/42) from
+`task/B19-opt-in-harness-pulse`.
 The earlier [review](review-2026-11-02.md) remains historical evidence, not current
 acceptance. Test counts are observations, never a fixed target future agents should
 preserve instead of testing changed behavior.
@@ -13,9 +25,10 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current critical path: execute FIX48 for the #48 test-stability campaign and
-propagate its reviewed correction into #45/#51; specify compartment-aware
-composition #46 before deployment gates or B20/#43. B12–B19 and B29 are merged;
+Current critical path: verify the B30 synchronous-verifier correction on #45
+through exact-head CI and re-review; #51 propagation is separate. Specify
+compartment-aware composition #46 before deployment gates or B20/#43. B12–B19,
+B29 and FIX48's five-sample campaigns are recorded;
 do not implement them again. M2b milestone reconciliation and M3 acceptance
 remain open.
 
@@ -57,23 +70,23 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Current delivery: **FIX48 draft PR #52** on `task/FIX48-concurrency-stability`,
-based on `f61e5e1`; baseline default-concurrency B10-03 failure reproduced
-locally. Five samples passed on each OS in runs `46107344778` (PR head
-`1a2bd5f`, merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`) and
-`46108300145` (PR head `9b34a8c102af301f511c25c744caab3cb1e1ac36`,
-merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`), with all ten originals
-per run passing and clean/unchanged. FIX48 correction paths are verified at
-current #45 head `4d51a39` and #51 head `e1a08d4`; their exact-head runs
-`46109747250` and `46111699960` passed on both OSes. #52 remains OPEN/DRAFT;
-receipt-head run `46113674523` also passed five samples per OS at #52 head
-`9bb1a41`, and is recorded in `docs/validation.md`. Independent re-review at
-that head requested reconciliation of remaining status wording; the finding is
-linked at [P2 feedback](https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234957518).
-Current head, checks and SHA-bound review disposition are authoritative on GitHub;
-keep #52 draft while any blocking feedback remains.
-B30 PR #45 and stacked B31 PR #51 remain incomplete drafts. Their remote state and checks
-are authoritative on GitHub. A private bind option is implemented; actual
+Current delivery: **B30 correction in progress** on `task/FIX48-propagate-B30`,
+starting from #45 head `4d51a39`. Commit `e1e6c96` rejects Promise/thenable
+admission and revalidation results synchronously and observes their rejections.
+Merge commit `6b15521` reconciles current main while retaining both append-only
+histories. On the resulting tree, focused tests passed 29/29; the full local
+suite passed 454 total / 449 pass / 0 fail / 5 skips; demo returned 429 then
+200; whitespace checks are clean. Published head is
+`05c39828e1c1f03197c1685c4dabb6136a562df1`, with CI run `46125175156` queued
+when checked and independent re-review pending. Keep #45 draft. #51 remains an
+incomplete draft requiring separate propagation/checks. FIX48/#52's five-sample
+campaigns and prior propagation receipts are documented below.
+FIX48/#52 remains OPEN/DRAFT: runs `46107344778`, `46108300145` and
+`46113674523` passed five originals per OS at their recorded PR heads; the latest
+receipt-head campaign was `9bb1a41` / merge checkout `a9c0caa`. Its independent
+review requested status/receipt reconciliation at that SHA; keep it draft until
+the resulting head receives its own checks and review.
+A private bind option is implemented; actual
 cross-compartment service composition is not established.
 B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
 the manual capability-gate pulse and read-only task-history acceptance; B17 is merged.
@@ -123,17 +136,17 @@ A merged card is retained as regression/review guidance, not new work.
 | [B16 — Pinned-client task workflow](tasks/B16.md) | P1 | Merged #39 at `681f0a6`; Windows/Ubuntu CI passed | B12–B15 merged; trusted OpenCode 2.2.5 available |
 | [B17 — Executable thirteen-item acceptance matrix](tasks/B17.md) | P1 | Merged #40 at `190370f`; PR checks passed Windows/Ubuntu | B16/#39 merged |
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
-| [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
-| [B29 — Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
-| [B30 — Relay, gateway and signed approval](https://github.com/pbsilvabd/ai-orchestrator/blob/a4f3954514e2109a5f0112dcea0534d291a9fcf4/docs/tasks/B30.md) | P1 | Draft #45; fixture/partial deployment only, not accepted | #47 selects software SSH profile in stacked #51; #46 composition, #48 stability and deployment gates remain |
-| [FIX48 — Default-concurrency test stability](tasks/FIX48.md) | P1 | Draft PR [#52](https://github.com/pbsilvabd/ai-orchestrator/pull/52); code campaign `46108300145` and receipt-head campaign `46113674523` passed five samples per OS; seven correction paths verified in #45/#51 | Verify current-head checks and independent review before any ready transition; keep draft with unresolved blocking feedback |
-| [B20 — First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
-| B27 — CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
-| B28 — Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |
-| [B21 — SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Parked; obsolete #6 retired, not adopted | Measured need, fresh design identity and explicit gate scope |
-| [B22a — Transactional store engine](tasks/B22a.md) | P3 | Parked | Measured need + B21 pass + new design approval |
-| [B22b — Offline verified JSON import](tasks/B22b.md) | P3 | Parked | B22a |
-| [B22c — Controlled storage rollout](tasks/B22c.md) | P3 | Parked | B22b + switch approval |
+| [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
+| [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
+| [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45; fixture/partial deployment only, not accepted; FIX48 correction propagation in progress | #47 selects software SSH profile in stacked #51; #46 composition, #48 exact-head stability and deployment gates remain |
+| [FIX48 - Default-concurrency test stability](tasks/FIX48.md) | P1 | Draft #52; five samples per OS passed at `1a2bd5f`, `9b34a8c` and propagated #45 code head `784cdb4` | Verify propagation/head on #51; no merge |
+| [B20 - First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
+| B27 - CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
+| B28 - Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |
+| [B21 - SQLite RFC refinement and capability gate](tasks/B21.md) | P3 | Parked; obsolete #6 retired, not adopted | Measured need, fresh design identity and explicit gate scope |
+| [B22a - Transactional store engine](tasks/B22a.md) | P3 | Parked | Measured need + B21 pass + new design approval |
+| [B22b - Offline verified JSON import](tasks/B22b.md) | P3 | Parked | B22a |
+| [B22c - Controlled storage rollout](tasks/B22c.md) | P3 | Parked | B22b + switch approval |
 | [B23 — Safe worker fallback](tasks/B23.md) | P3 | Gated | B17 + two authorized models |
 | [B24 — Memory reuse evaluation](tasks/B24.md) | P3 | Gated | B20 |
 | [B25 — Offline routing advisor evaluation](tasks/B25.md) | P3 | Gated | B20, B23 |

@@ -1,5 +1,31 @@
 # Reproducible validation
 
+## B30 review corrections — 2026-11-22 (local, not published)
+
+Worktree: `task/B30-free-relay`, based on PR #45 head
+`a4f3954514e2109a5f0112dcea0534d291a9fcf4`. Node.js v24.22.1 was invoked with
+`fnm exec --using=24.22.1`; plain `node` is not on this PowerShell session's `PATH`.
+
+- `fnm exec --using=24.22.1 node --test test/free-listeners.test.mjs test/free-listeners-authority.test.mjs test/relay.test.mjs test/egress-gateway.test.mjs`
+  -> 57 pass / 0 fail / 0 skip, exit 0. Includes successful fixed-model forwarding through
+  the trusted supervised composition and relay/gateway oversized-body 413, latch, zero
+  upstream I/O, surviving listener and retained ownership assertions using real local child
+  processes and loopback HTTP fixtures.
+- First full parallel `fnm exec --using=24.22.1 node --test`
+  -> 420 tests, 414 pass / 1 fail / 5 skip, exit 1. The failure was the existing
+  timing-sensitive `B10-03` partial-output assertion (`'' !== 'before'`); no B30 test failed.
+- Serial rerun `fnm exec --using=24.22.1 node --test --test-concurrency=1`
+  -> 420 tests, 415 pass / 0 fail / 5 skip, exit 0. Four TLS-fixture tests skip because
+  `openssl` is not on PATH; one other test is platform-gated.
+- `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` -> preferred mock 429, local
+  mock 200, exit 0. `git diff --check` -> clean.
+
+These are local fixture/process checks, not a pinned OpenCode-host-through-supervised-
+composition run or deployed evidence. No provider/catalog call, external network probe, VM,
+firewall, hardware key or live inference was used. Outstanding deployment/approval gates remain
+unchanged and `not_run`; previously recorded evidence is unchanged. Changes and evidence are
+uncommitted; remote state has not changed.
+
 Executed on 2026-11-02 on Windows, Node.js v24.22.1:
 
 ```sh
@@ -2217,6 +2243,1525 @@ Claim: This entry supports the green exact-head CI receipt at `113e926` (run
 examples/fallback-demo.mjs`. It does not support deterministic green
 default-concurrency runs, redirect containment, live use, B20/M3 or merge.
 
+## M3 preparation: B30 live-boundary card — 2026-11-14
+
+Executed on Windows x64 (Git; Node was not invoked). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git diff --check` | Tracked documentation whitespace before staging card | no output; untracked new card was not included in this check | 0 |
+| `git diff --cached --check` | Staged documentation including new B30 card | no output; new card included | 0 |
+
+Result: both whitespace checks passed; the staged check includes the new B30
+card. Neither code nor runtime behavior was changed. Evidence level: Unit —
+no new runtime claim is made by these checks.
+Not rerun: `node --test`, demo and pinned-host/MCP harnesses (card-only change);
+catalog GET and live inference (not authorized).
+Claim: this entry supports only a documented acceptance plan, not relay safety,
+egress enforcement, B29 completion, live availability or M3.
+
+## M3 preparation: B30 egress and signing design — 2026-11-14
+
+Executed on Windows x64 (documentation research; no Node or OpenCode host run).
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git status --short --branch` | Confirm B30 starting branch | clean `task/B30-free-relay` at `551b3f4` before edits | 0 |
+| `git diff --cached --check` | Check complete staged design and card | no whitespace errors | 0 |
+
+Result: the design is documented, not deployed or exercised. Research sources:
+[Microsoft Hyper-V switch types](https://learn.microsoft.com/en-us/windows-server/virtualization/hyper-v/plan/plan-hyper-v-networking-in-windows-server)
+(Internal permits host/VM communication; Default Switch can carry NAT),
+[Linux network namespaces](https://man7.org/linux/man-pages/man7/network_namespaces.7.html)
+and [ip-netns](https://man7.org/linux/man-pages/man8/ip-netns.8.html)
+(separate devices/routes), and
+[OpenSSH ssh-keygen](https://man.openbsd.org/ssh-keygen.1) (`-Y sign`, `-Y verify`,
+namespace and allowed signers). These are specification references, not
+platform deployment observations.
+
+Evidence level: Unit — the staged diff check is documentation-only; it does
+not demonstrate network isolation, SSH signatures or actual host behavior.
+Not rerun: `node --test`, demo, pinned-host harness and MCP workflow (no code
+change); Hyper-V/netns/gateway bypass tests and signature tests (not
+implemented); catalog GET and real inference (not authorized).
+Claim: this entry supports only a concrete design and acceptance plan, not
+relay safety, verifiable egress enforcement, a real maintainer signature,
+live-model availability or M3.
+
+## M3 preparation: B30 relay, gateway, SSHSIG admission and WSL2 containment — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen`
+(Git for Windows `C:\Program Files\Git\usr\bin\ssh-keygen.exe`), and WSL2 Ubuntu
+(kernel `6.6.87.2-microsoft-standard-WSL2`, root). Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git merge origin/main` | Incorporate merged B29 main into `task/B30-free-relay` | Conflicts in `docs/handoff.md`, `docs/validation.md`, `docs/worklog.md` resolved preserving both append-only entry sets; merge committed at `205a1f8` | 0 |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs`, `src/live-approval.mjs` | Syntax of the three new modules | no output for each | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | B30 focused relay/gateway/approval cases | 31 passed, 0 failed, 0 skipped | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Isolated WSL2 worker/relay netns + veth: inventory plus real socket probes | worker→relay reachable; worker→gateway and worker/relay→Internet denied; relay→gateway reachable; "containment verified"; teardown left no `b30-*` netns/veth | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression on the final code | 335 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the relay forwards exactly the fixed method/path/model with `Bearer public`
+and an independent request counter; every 301/302/303/307/308 from the upstream is
+refused with the alternate origin receiving zero requests/bytes; the gateway refuses
+CONNECT, unapproved paths and redirects with sanitized logs; the SSHSIG plumbing
+round-trips and refuses wrong namespace/signer, edited bytes, revoked keys and any
+non-hardware signature; the approval ledger refuses a second task for one approval ID.
+The WSL2 fixture proves routing-based worker/relay containment with real socket
+attempts and fail-closed teardown.
+
+Evidence level: Unit (relay/gateway/approval use temporary loopback processes and
+disposable keys); the WSL2 run is a deployment observation of real netns/veth
+routing in an isolated distribution, not a bare-metal Ubuntu or Windows Hyper-V
+deployment and not a firewall (nftables) proof.
+
+Not rerun / not_run: nftables/iptables default-drop filtering (binaries absent;
+installing packages is not authorized); bare-metal Ubuntu or two-VM Hyper-V
+deployment; a real FIDO2 `-sk` hardware-key signing dry run (disposable ed25519 keys
+and a synthesized sk-signature blob only); public catalog GET and live inference
+(prohibited); the pinned-host-through-relay end-to-end run (the relay is not wired
+into the closed live composition path). `integration/opencode-free.mjs` and the B29
+MCP fixture were not rerun (their production composition path is unchanged).
+
+Claim: this entry supports the B30 relay/gateway/SSHSIG fixture behavior, the
+routing-based WSL2 containment observation and the no-replay approval ledger, based
+on the commands above. It does not support firewall-filtered isolation, a
+bare-metal/VM deployment, a hardware-key signature, catalog availability, live
+inference, B20/M3 or merge; those remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 review corrections (P1 ledger, P2 gateway/bind/WSL scope) — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen`
+(Git for Windows), WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`, root).
+Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting it.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs`, `src/live-approval.mjs` | Syntax of the three corrected modules | no output for each | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | Corrected focused cases: atomic single-use ledger (two-process competition + restart), gateway fixed bearer/request-cap/wildcard-bind, relay→gateway→fixture-origin chain | 40 passed, 0 failed, 0 skipped | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Corrected 3-namespace fixture (worker/relay/gateway, no host-namespace changes) with real socket probes | worker→relay reachable; worker/relay/gateway→Internet denied; relay→gateway reachable; gateway→worker denied; "containment verified" | 0 |
+| `wsl -d Ubuntu -- bash <residue-check>` | Verify teardown leaves no host-namespace residue | no `b30-*` netns/veth, no `10.100.x` address/route in the host namespace | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression on the corrected code | 345 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the approval ledger now claims atomically with no overwrite (write-then-hard-
+link, `EEXIST` collision re-read) and is proven single-use across two competing
+processes and across a restart; the gateway forwards the fixed `Bearer public` and
+enforces its own request cap; both listeners reject `0.0.0.0`/`::`; the WSL fixture
+now confines the gateway to its own disposable namespace and leaves the WSL
+initial/host namespace untouched (verified empty after teardown).
+
+Evidence level: Unit (temporary loopback processes, disposable keys, a two-process
+claim fixture); the corrected WSL2 run is a routing-only deployment observation in
+three disposable namespaces, not a firewall (nftables) proof and not a bare-metal/VM
+deployment.
+
+Not rerun / not_run: the earlier out-of-scope host-namespace WSL observation was
+corrected, not repeated; nftables/iptables default-drop filtering (absent, install not
+authorized); bare-metal Ubuntu / two-VM Hyper-V; pinned OpenCode 2.2.5 through the
+relay; a real FIDO2 `-sk` hardware-key signing dry run; public catalog GET and live
+inference.
+
+Claim: this entry supports the corrected atomic single-use ledger, gateway credential/
+cap/bind enforcement, the relay→gateway→fixture-origin chain and the no-host-change
+WSL2 containment observation, based on the commands above. The whole-row `pass`
+overclaims in the earlier PR body are corrected to partial/`not_run`; firewall-filtered
+isolation, bare-metal/VM deployment, pinned-host relay, hardware signing, catalog and
+live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 re-review correction (in-namespace veth, collision safety, IPv6 aliases) — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), WSL2 Ubuntu (kernel
+`6.6.87.2-microsoft-standard-WSL2`, root). Date: 2026-11-14. This entry corrects the
+preceding checkpoint without rewriting it.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs` | Syntax of the two wildcard-corrected modules | no output for each | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | Focused cases incl. compressed all-zero IPv6 aliases | 40 passed, 0 failed, 0 skipped | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test` | Collision refusal + owned-only cleanup (disposable namespaces only) | "self-test passed" | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Corrected in-namespace veth fixture (no `ip link add` in initial namespace) with real socket probes | "containment verified"; "teardown removed all owned objects, no initial-namespace residue" | 0 |
+| `wsl -d Ubuntu -- bash <residue-check>` | Verify teardown leaves no host-namespace residue | no `b30-*` netns/veth, no `10.100.x` address/route | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression on the corrected code | 345 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: each veth pair is now created inside a disposable namespace and only the peer
+is moved, so `ip link add` never runs in the WSL initial/host namespace; namespaces use
+a unique per-run suffix with owned-only collision-safe teardown; the all-zero IPv6
+predicate expands `::` compression and rejects compressed aliases (`0:0:0:0:0:0:0::`,
+`0:0:0:0:0::`, …) in both listeners. The earlier out-of-scope host-namespace
+observation was corrected, not repeated.
+
+Evidence level: Unit (temporary loopback processes, disposable keys, a two-process
+claim fixture); the corrected WSL2 run is a routing-only deployment observation with
+veth pairs created inside disposable namespaces, not a firewall (nftables) proof and
+not a bare-metal/VM deployment.
+
+Not rerun / not_run: nftables/iptables default-drop filtering (absent, install not
+authorized); bare-metal Ubuntu / two-VM Hyper-V; pinned OpenCode 2.2.5 through the
+relay; a real FIDO2 `-sk` hardware-key signing dry run; public catalog GET and live
+inference.
+
+Claim: this entry supports the corrected in-namespace veth creation, collision-safe
+owned cleanup and the sound all-zero IPv6 rejection, based on the commands above.
+Firewall-filtered isolation, bare-metal/VM deployment, pinned-host relay, hardware
+signing, catalog and live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 re-review correction 2 (cleanup-error reporting + fault injection) — 2026-11-14
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`,
+root). Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting
+it. No Node/test code changed in this correction, so the prior focused (40/40) and
+serial full-suite (345 pass / 0 fail / 1 skip) results remain valid for the unchanged
+modules and were not rerun.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test` | Collision refusal + owned-only cleanup | "self-test passed" | 0 |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh --self-test-fault` | Controlled partial-failure cleanup via EXIT trap | "SIMULATED: partial configuration failure"; exit nonzero as designed | 1 |
+| `wsl -d Ubuntu -- bash -c 'ip netns list \| grep b30-fault'` | Verify fault-injection teardown removed owned namespaces | no `b30-fault-*` residue | 1 (grep no match) |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Full in-namespace veth fixture | "containment verified"; "teardown removed all owned objects, no initial-namespace residue" | 0 |
+| `wsl -d Ubuntu -- bash <residue-check>` | Verify no host-namespace residue | no `b30-*` netns/veth, no `10.100.x` address/route | 0 |
+| `git diff --cached --check` | Staged change whitespace | no output | 0 |
+
+Result: a failed `ip netns del` is now reported with the owned-name inventory and a
+nonzero return on every exit path (the EXIT trap re-runs cleanup), `CREATED_NS` is only
+cleared after every owned namespace is confirmed gone, the self-test collision object is
+tracked, and `--self-test-fault` proves the EXIT trap removes owned namespaces after a
+simulated partial failure.
+
+Evidence level: WSL2 routing-only deployment observation confined to disposable
+namespaces; not a firewall (nftables) proof and not a bare-metal/VM deployment. The
+fault-injection exit 1 is the intended simulated failure, with the caller-verified empty
+residue as the cleanup evidence.
+
+Not rerun / not_run: focused and full Node suite/demo (no Node/test change in this
+correction); nftables/iptables filtering (absent, install not authorized); bare-metal
+Ubuntu / two-VM Hyper-V; pinned OpenCode 2.2.5 through the relay; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET and live inference.
+
+Claim: this entry supports the cleanup-error reporting, owned-only collision-safe
+teardown and the fault-injection EXIT-trap cleanup, based on the commands above.
+Firewall-filtered isolation, bare-metal/VM deployment, pinned-host relay, hardware
+signing, catalog and live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 re-review correction 3 (EXIT trap status + inventory error) — 2026-11-14
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu (kernel `6.6.87.2-microsoft-standard-WSL2`,
+root). Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting
+it. No Node/test code changed, so the prior focused (40/40) and serial full-suite
+(345 pass / 0 fail / 1 skip) results remain valid and were not rerun.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `bash -c 'trap "false" EXIT; exit 0'` | Reproduce the reviewer's Bash trap-status behavior | exit 0 (trap return value does not change status) | 0 |
+| `bash -c 'trap "exit 1" EXIT; exit 0'` | Confirm a trap calling `exit` overrides status | exit 1 (no recursion) | 1 |
+| `wsl ... b30-egress-namespaces.sh --self-test` | Collision refusal + owned cleanup | "self-test passed" | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-fault` | Early-failure EXIT-trap cleanup | nonzero as designed; no residue | 1 |
+| `wsl ... b30-egress-namespaces.sh --self-test-delete-fault` | Mock `ip netns del` failure | "teardown incomplete" inventory reported, ownership preserved | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-inventory-fault` | Mock `ip netns list` failure | "inventory unreadable" reported, ownership preserved | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-trap-status` | Deliberate `exit 0` with a failed delete | EXIT trap overrides to nonzero ("FATAL ... exiting nonzero") | 1 |
+| `wsl ... b30-egress-namespaces.sh` | Full in-namespace veth fixture | "containment verified"; "teardown removed all owned objects, no initial-namespace residue" | 0 |
+| `wsl ... <cleanup>` + `<residue-check>` | Reconcile the trap-status leftover; verify no residue | no `b30-*` netns/veth, no `10.100.x` address/route | 0 |
+| `git diff --cached --check` | Staged change whitespace | no output | 0 |
+
+Result: the EXIT trap now forces a nonzero process status when cleanup or inventory
+verification is uncertain (`exit 1` inside the trap overrides an already-decided `exit 0`
+without recursion), `namespace_exists` distinguishes "confirmed absent" from "inventory
+unreadable", and a failed delete or unreadable inventory is reported with the owned-name
+inventory while ownership is preserved for manual reconciliation. The mocked-`ip`
+self-test modes exercise each path with a `command ip` pass-through confined to
+disposable namespaces.
+
+Evidence level: WSL2 routing-only deployment observation plus mocked-`ip` function tests,
+confined to disposable namespaces; not a firewall (nftables) proof and not a bare-metal/
+VM deployment.
+
+Not rerun / not_run: focused and full Node suite/demo (no Node/test change); nftables/
+iptables filtering (absent, install not authorized); bare-metal Ubuntu / two-VM Hyper-V;
+pinned OpenCode 2.2.5 through the relay; a real FIDO2 `-sk` hardware-key signing dry run;
+public catalog GET and live inference.
+
+Claim: this entry supports the corrected trap-forces-nonzero status, the inventory-error
+discrimination and the mocked-`ip` failed-delete/inventory/trap-status fault injection,
+based on the commands above. Firewall-filtered isolation, bare-metal/VM deployment,
+pinned-host relay, hardware signing, catalog and live inference remain `not_run` and the
+live route stays closed.
+
+## M3 preparation: B30 pinned OpenCode 2.2.5 through the relay — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Pinned binary outside the
+repository: `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check` on `src/relay.mjs`, `src/egress-gateway.mjs`, `integration/opencode-free-relay.mjs` | Syntax of changed/new modules | no output | 0 each |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs` | Relay/gateway regression after identifier + content-type change | 28 passed, 0 failed, 0 skipped | 0 |
+| `node integration/opencode-free-relay.mjs <pinned binary>` | Pinned OpenCode 2.2.5 through relay→gateway→fixture-origin, normal + 301/302/303/307/308 | six scenarios passed: normal `succeeded` (3 `Bearer public` POST origin requests, no WebSocket/upgrade, no non-POST method); each redirect `failed` with 1 attempt, 1 origin request, 0 alternate-origin requests and 0 alternate-origin body bytes | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 345 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the pinned OpenCode 2.2.5 host's free-route model requests now flow through the
+service-owned relay and L7 gateway to the loopback fixture origin; the host no longer
+follows a model-endpoint redirect because the gateway refuses the 3xx and returns a
+terminal refusal. The B29 307 prompt-leak baseline is therefore closed through the relay:
+each of 301/302/303/307/308 made the task `failed` with a single attempt and zero
+alternate-origin requests/body bytes, with no replay.
+
+Evidence level: OpenCode integration — the pinned host exercised real hooks, permissions
+and failures through the relay against loopback fixtures. The relay→gateway→origin chain
+is additionally local-HTTP evidence. Neither level demonstrates live-provider, network
+containment, firewall or TLS behavior.
+
+Not rerun / not_run: public catalog GET (maintainer-declined) and live inference
+(prohibited); nftables/iptables filtering (absent, install not authorized); bare-metal
+Ubuntu / two-VM Hyper-V deployment; real service signing integration and a real FIDO2
+`-sk` hardware-key signing dry run; full cross-namespace TLS gateway chain.
+
+Claim: this entry supports the pinned-host-through-relay normal and redirect results,
+based on the commands above. Firewall-filtered isolation, bare-metal/VM deployment,
+service signing integration, hardware signing, catalog and live inference remain
+`not_run` and the live route stays closed.
+
+## M3 preparation: B30 alternate-origin egress counter + WebSocket claim — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Pinned binary outside the
+repository: `C:\Users\paulo\Documents\Projects\.audit\bin\opencode-2.2.5\opencode.exe`.
+Date: 2026-11-14. This entry corrects the preceding checkpoint without rewriting it.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check integration/opencode-free-relay.mjs` | Syntax of the corrected harness | no output | 0 |
+| `node integration/opencode-free-relay.mjs --self-test` | Controlled negative: aborted partial body must increment alternate-origin counters | `{connections:1, socketBytes:132, requests:1, bodyBytes:24, aborted:2}` | 0 |
+| `node integration/opencode-free-relay.mjs <pinned binary>` | Pinned OpenCode 2.2.5 through relay→gateway→fixture-origin, normal + 301/302/303/307/308, with immediate egress counting | six scenarios passed: normal `succeeded` (3 `Bearer public` origin requests); each redirect `failed` with 1 attempt, 1 origin request, and zero alternate-origin connections / raw socket bytes / requests / body bytes | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the alternate-origin zero-egress assertion now counts raw connections, raw socket
+bytes, request entries and per-chunk body bytes immediately, so an aborted/partial body or
+a pre-header connection attempt cannot slip past the assertion. The `--self-test` negative
+proves the counter increments on an aborted partial request; the six pinned scenarios then
+pass with every alternate-origin counter at zero. The B30-03 WebSocket-bypass negative is
+corrected to `not_run` (no `Upgrade` header on normal POSTs is not an attempted direct
+WebSocket bypass).
+
+Evidence level: OpenCode integration (pinned host through the relay) plus a local-HTTP
+counter negative; not live-provider, network-containment, firewall or TLS evidence.
+
+Not rerun / not_run: focused and full Node suite/demo (no Node/test source changed in this
+correction; prior results remain valid for the unchanged modules); public catalog GET
+(maintainer-declined) and live inference (prohibited); nftables/iptables filtering;
+bare-metal Ubuntu / two-VM Hyper-V; active worker-compartment WebSocket-bypass negative;
+real service signing integration; a real FIDO2 `-sk` hardware-key signing dry run; full
+cross-namespace TLS gateway chain.
+
+Claim: this entry supports the immediate alternate-origin egress counting, the aborted-
+partial-body negative and the corrected six-scenario pinned-host result, based on the
+commands above. Firewall-filtered isolation, bare-metal/VM deployment, the active
+WebSocket-bypass negative, service signing integration, hardware signing, catalog and
+live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 digest-stability test fix (failing Ubuntu CI) — 2026-11-14
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Date: 2026-11-14. This entry
+records the exact-head CI failure and its correction.
+
+Failing run (blocking, not green): Actions run `43669588038` at head `6d48763` —
+Ubuntu Node 24.22.1 job `132676436112` concluded `failure`: 346 tests / 341 pass / 1
+fail / 4 skip; Windows passed. The failure was `test/live-approval.test.mjs:277-280`
+(`approval digest is stable over canonical bytes`), which called the `approval()` helper
+twice, each call deriving `issuedAt`/`expiresAt` from a separate `Date.now()`; when the
+clock crossed a millisecond the canonical bytes differed and the hashes legitimately
+differed. Production hash behavior was correct; the test was nondeterministic.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/live-approval.test.mjs` | Focused digest-stability + SSHSIG cases after the fix | 12 passed, 0 failed, 0 skipped | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression (two runs) | run 1: 344 pass / 1 fail (pre-existing `B15-03b` output-wait timeout) / 1 skip; run 2: 345 pass / 0 fail / 1 skip | run 2: 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Correction: `test/live-approval.test.mjs` now builds one `approval()` once, asserts its
+digest matches `^[a-f0-9]{64}$`, equals the digest of a spread copy of those same bytes,
+and differs from a deliberate `approvalId` change. No production hashing or canonical
+behavior changed.
+
+Claim: this entry records the failing Ubuntu CI receipt and the deterministic test fix,
+based on the commands above. The exact-head Windows/Ubuntu CI at the corrected head must
+be observed green separately.
+
+## M3 preparation: B30 active egress negatives + relay failure/lifecycle fixtures — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), WSL2 Ubuntu (kernel
+`6.6.87.2-microsoft-standard-WSL2`, root). Date: 2026-11-15.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl -d Ubuntu -- bash integration/b30-egress-namespaces.sh` | Isolated worker/relay/gateway netns + veth with active IPv4/IPv6/DNS/WebSocket-upgrade negative probes | "containment verified": worker→relay reachable; worker/relay/gateway→Internet denied; worker→IPv6 `rc=7`, worker→DNS `.invalid` `rc=6`, worker→WebSocket-upgrade `rc=7`; no host residue | 0 |
+| `node --test test/relay.test.mjs` | Relay failure/lifecycle: port-conflict, upstream failure/timeout latch, partial-body drop (no replay), stop + port release | 16 passed, 0 failed, 0 skipped | 0 |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs test/live-approval.test.mjs` | Focused B30 regression | 43 passed, 0 failed, 0 skipped | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the worker compartment's direct IPv4, IPv6, DNS and WebSocket-upgrade egress to
+private/TEST-NET/no-route addresses is denied by routing (no external address contacted,
+no nftables filtering). The relay's local HTTP/process fixtures cover a timeout latch with
+a terminal 502 and no second request, a partial-body drop that latches without replay, and
+a terminal stop that releases the port (no dangling unowned listener).
+
+Evidence level: the WSL2 run is a routing-only deployment observation confined to
+disposable namespaces (not firewall-filtered, not a bare-metal/VM deployment); the relay
+fixtures are local HTTP/process evidence. The relay is not spawned as a child of the
+service, so service-level uncertain-child-stop integration is not proven.
+
+Not rerun / not_run: signed-approval service admission integration and a real FIDO2 `-sk`
+hardware-key signing dry run (assessed as requiring hardware + verified egress, neither
+available; the SSHSIG verification/no-replay ledger are implemented and tested standalone);
+public catalog GET (maintainer-declined); live inference; nftables filtering; bare-metal
+Ubuntu / two-VM Hyper-V; full cross-namespace TLS gateway chain.
+
+Claim: this entry supports the active worker IPv4/IPv6/DNS/WebSocket-upgrade negative
+probes and the relay timeout/partial-body/port-release fixtures, based on the commands
+above. Firewall-filtered isolation, the active provider WebSocket-bypass experiment,
+signed-approval service integration, hardware signing, catalog and live inference remain
+`not_run` and the live route stays closed.
+
+## M3 preparation: B30 nftables default-drop inside disposable namespaces — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS (kernel
+`6.6.87.2-microsoft-standard-WSL2`, root, CapEff `=ep`), Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Maintainer-authorized package install and ephemeral per-namespace
+nftables rules.
+
+Preflight (read-only) before install: `nft`/`iptables` absent; host firewall snapshot
+empty (`nft list ruleset` and `iptables -S`); `apt-get -s install nftables` planned exactly
+`libnftnl11 1.2.6-2build1`, `libnftables1 1.0.9-1build1`, `nftables 1.0.9-1build1`
+(3 new, 0 upgraded, 0 removed, no service/host-firewall side effects).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `apt-get install -y nftables` | Install nftables (maintainer-authorized) | 3 packages installed: nftables 1.0.9-1build1, libnftables1 1.0.9-1build1, libnftnl11 1.2.6-2build1; `nftables` systemd unit `disabled` | 0 |
+| `nft list ruleset` (host, after install) | Verify no host firewall activated | empty | 0 |
+| disposable `nft` namespace probe | Confirm nft works per-namespace and host stays empty | default-drop output chain added inside a disposable namespace; host ruleset empty | 0 |
+| `wsl ... integration/b30-egress-namespaces.sh` (persistent log) | Full fixture with per-namespace nftables default-drop + active negatives | "containment verified"; worker `nft` counters: `dport 18081 accept packets 1`, `drop packets 7`; relay: `dport 18082 accept packets 1`, `drop packets 10`; forbidden port `:18099` `rc=28` timeout (nft-dropped); no host residue | 0 |
+| `wsl ... <residue-check>` | Verify host nft/netns/veth clean after teardown | host `nft list ruleset` empty; no `b30-*` netns/veth; no `10.100.x` address/route | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the worker and relay namespaces each install a per-namespace nftables
+default-drop `inet b30fw` table (OUTPUT and FORWARD `policy drop`, allow only
+worker→relay:18081 and relay→gateway:18082 via `counter accept`, final `counter drop`).
+Combined with no default route, this denies the worker's direct IPv4/IPv6/DNS/WebSocket-
+upgrade and a routable-but-not-allowed relay port; the nftables counters record the
+accepted/dropped packets, and the WSL initial/host nftables ruleset stays empty before and
+after. The forbidden port `:18099` times out (`rc=28`) — a routable address whose SYN is
+dropped by the OUTPUT policy — proving the nftables layer, not just routing.
+
+Evidence level: WSL2 routing + nftables deployment observation confined to disposable
+namespaces; not a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable),
+and the gateway namespace has no external route (fixture terminal point).
+
+Not rerun / not_run: a bare-metal Ubuntu or two-VM Hyper-V deployment; the active provider
+WebSocket-bypass experiment; signed-approval service admission integration; a real FIDO2
+`-sk` hardware-key signing dry run; public catalog GET (maintainer-declined); live
+inference. The nftables package remains installed in the distribution (rules/namespaces
+were removed and verified absent; no unrelated state was removed).
+
+Claim: this entry supports the per-namespace nftables default-drop enforcement, the
+counters and the active negative probes, based on the commands above. A bare-metal/VM
+deployment, the active provider WebSocket-bypass experiment, signed-approval service
+integration, hardware signing, catalog and live inference remain `not_run` and the live
+route stays closed.
+
+## M3 preparation: B30 unprivileged worker capability removal + forbidden-port proof — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P1/P2 findings at `a103ccf`.
+
+Preflight (read-only): `setpriv` (util-linux) present with `--no-new-privs`,
+`--bounding-set`, `--reuid/--regid`, `--clear-groups`; `runuser`/`su`/`capsh` present;
+`nobody` = uid/gid 65534.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... integration/b30-egress-namespaces.sh` (persistent log) | Full fixture: unprivileged worker probes + mutation refusal + forbidden-port proof | "containment verified"; worker probes ran as `nobody`; see inventory below | 0 |
+| `ip netns exec <worker> setpriv ... grep Cap* /proc/self/status` | Unprivileged worker capability inventory | `CapInh:0 CapPrm:0 CapEff:0 NoNewPrivs:1`, `CapBnd:000001ffffdfefff` (NET_ADMIN/SYS_ADMIN dropped) | 0 |
+| `ip netns exec <worker> setpriv ... nft add table inet b30evil` | Unprivileged nft mutation refusal | "Operation not permitted" | 1 |
+| `ip netns exec <worker> setpriv ... ip route add default via <relay>` | Unprivileged route mutation refusal | "RTNETLINK answers: Operation not permitted" | 2 |
+| `ss -ltn` (relay) + forbidden probe + drop-counter delta | Forbidden-listener bound + exact `rc=28` + counter increment | listener bound on `:18099`; probe `rc=28`; drop counter incremented | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: worker-side probes now run as the unprivileged `nobody` identity with `no_new_privs`
+and no NET_ADMIN/SYS_ADMIN (`CapEff:0`), and an unprivileged `nft`/`ip` mutation is refused,
+so the default-drop observation no longer assumes a network-admin worker. The forbidden-port
+proof now verifies the `:18099` listener is bound, requires the exact timeout `rc=28`, and
+confirms the nft drop counter incremented for that probe.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+The nftables package remains installed; namespaces/rules removed and verified absent.
+
+Claim: this entry supports the unprivileged worker capability removal, the mutation
+refusal and the verified forbidden-port nft drop, based on the commands above. A
+bare-metal/VM deployment, the active provider WebSocket-bypass experiment, signed-approval
+service integration, hardware signing, catalog and live inference remain `not_run` and the
+live route stays closed.
+
+## M3 preparation: B30 fail-closed worker privilege-boundary verdict — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P1 finding at `42396c9` (capability inventory and
+mutation outcomes were logged, not asserted).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... b30-egress-namespaces.sh --self-test-capability` | Controlled check that `verify_worker_privileges` accepts good inputs and rejects simulated mutation success / wrong uid / nonzero CapEff / unset NoNewPrivs / unauthorized table / unauthorized default route | "self-test-capability passed" (8 checks) | 0 |
+| `wsl ... b30-egress-namespaces.sh` (persistent log) | Full fixture with the fail-closed privilege-boundary verdict | "containment verified"; `PASS worker privilege boundary (uid=65534 CapEff=0000000000000000 NoNewPrivs=1 nft_rc=1 route_rc=2)`; forbidden `:18099` `rc=28`; drop counter incremented; no host residue | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Complete staged change whitespace | no output | 0 |
+
+Result: the worker privilege boundary is now an enforced verdict, not a log line. The run
+asserts the unprivileged identity (UID 65534), empty CapEff (numeric hex comparison), set
+NoNewPrivs, both mutation attempts refused (nft rc=1, ip rc=2), and no unauthorized nft
+table or default route installed; any of these failing makes `RESULT: containment FAILED`.
+A controlled `--self-test-capability` mode proves the check would fail on simulated
+mutation success or unexpected capabilities, without WSL netns/nft/ip side effects.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+
+Claim: this entry supports the enforced worker privilege-boundary verdict and its controlled
+self-test, based on the commands above. A bare-metal/VM deployment, the active provider
+WebSocket-bypass experiment, signed-approval service integration, hardware signing, catalog
+and live inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 fail-closed capability inventory (missing/malformed/retained rejected) — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P1 re-review finding at `2096d62` (missing CapEff
+defaulted to zero; CapInh/CapPrm/CapBnd logged but not asserted; post-mutation read failures
+treated as absence).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... b30-egress-namespaces.sh --self-test-capability` | Controlled check that `verify_worker_privileges` accepts the observed good inventory and rejects missing/malformed CapEff, nonzero CapEff/CapPrm/CapInh, retained NET_ADMIN/SYS_ADMIN CapBnd, missing CapBnd, wrong uid/gid, unset NoNewPrivs, mutation success, unauthorized table/route, and nft/route read failure | "self-test-capability passed" (1 accept + 17 rejects) | 0 |
+| `wsl ... b30-egress-namespaces.sh` (persistent log) | Full fixture with the fail-closed capability inventory + mutation + post-read verdict | "containment verified"; `PASS worker privilege boundary (uid=65534 gid=65534 CapInh=0000000000000000 CapPrm=0000000000000000 CapEff=0000000000000000 CapBnd=000001ffffdfefff NoNewPrivs=1 nft_rc=1 route_rc=2)`; forbidden `:18099` `rc=28`; drop counter incremented; no host residue | 0 |
+| `wsl ... wsl-nft-residue.sh` | Host residue verification | `nft list ruleset` empty; no host netns/links/10.100.x addresses | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: the worker capability boundary is now fully fail-closed. The verdict requires a
+successful, parseable `/proc/self/status` inventory and asserts UID/GID 65534,
+`CapInh`/`CapPrm`/`CapEff` all-zero (missing/malformed masks are rejected, never defaulted
+to zero), `NoNewPrivs` 1, and NET_ADMIN/SYS_ADMIN absent from `CapBnd` (checked by
+nibble-extraction bit test, no 64-bit arithmetic); it asserts both mutation attempts are
+refused and that the post-mutation `nft list tables` / `ip route show` reads themselves
+succeed before unauthorized state is treated as absent (a read failure is uncertainty).
+The `--self-test-capability` mode proves each simulated bad input is rejected without any
+WSL netns/nft/ip side effects.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+
+Claim: this entry supports the enforced fail-closed worker capability inventory, mutation
+refusal, post-mutation read and its controlled self-test, based on the commands above. A
+bare-metal/VM deployment, the active provider WebSocket-bypass experiment, signed-approval
+service integration, hardware signing, catalog and live inference remain `not_run` and the
+live route stays closed.
+
+## M3 preparation: B30 CapBnd whole-mask canonical validation — 2026-11-15
+
+Executed on Windows 11 Pro x64, WSL2 Ubuntu 24.04.2 LTS, Node.js v24.22.1 (fnm).
+Date: 2026-11-15. Corrects the supervisor P2 re-review finding at `7a10cd3` (`cap_bit_set`
+validated only the requested nibble, so a 16-character mask with a non-hex character outside
+bits 12/21 — e.g. `z00001ffffdfefff` — was accepted).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `wsl ... bash -n b30-egress-namespaces.sh` | Shell syntax check | clean | 0 |
+| `wsl ... b30-egress-namespaces.sh --self-test-capability` | Controlled check incl. two non-hex corruptions outside the checked nibbles (MSB `z00001ffffdfefff`, LSB `000001ffffdfeffz`) | "self-test-capability passed" (1 accept + 19 rejects) | 0 |
+| `wsl ... b30-egress-namespaces.sh` (persistent log) | Full fixture with the fail-closed capability inventory verdict | "containment verified"; `PASS worker privilege boundary (uid=65534 gid=65534 CapInh=0000000000000000 CapPrm=0000000000000000 CapEff=0000000000000000 CapBnd=000001ffffdfefff NoNewPrivs=1 nft_rc=1 route_rc=2)`; forbidden `:18099` `rc=28`; drop counter incremented; no host residue | 0 |
+| `wsl ... wsl-nft-residue.sh` | Host residue verification | `nft list ruleset` empty; no host netns/links/10.100.x addresses | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 348 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `cap_bit_set` now validates the entire mask as 16 hex digits (case
+`*[!0-9a-fA-F]*`) before extracting any nibble, so a non-hex character anywhere in `CapBnd`
+fails the privilege verdict as uncertain. The `--self-test-capability` mode adds corruption
+outside both target nibbles (MSB and LSB) to the existing 1-accept/17-reject set and passes
+all 19 rejects; the real observed `CapBnd=000001ffffdfefff` still verifies. This closes the
+stated "any malformed inventory is fail-closed" guarantee.
+
+Evidence level: WSL2 routing + nftables observation confined to disposable namespaces; not
+a bare-metal/VM deployment, not a pinned-Linux-OpenCode run (unavailable).
+
+Not rerun / not_run: bare-metal Ubuntu / two-VM Hyper-V; the active provider WebSocket-
+bypass experiment; signed-approval service admission integration; a real FIDO2 `-sk`
+hardware-key signing dry run; public catalog GET (maintainer-declined); live inference.
+
+Claim: this entry supports the whole-mask `CapBnd` validation and its controlled self-test,
+based on the commands above. A bare-metal/VM deployment, the active provider WebSocket-
+bypass experiment, signed-approval service integration, hardware signing, catalog and live
+inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 signed-approval service admission integration (B30-05) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Binds the standalone SSHSIG verification/atomic ledger to
+service admission for new tasks; corrects the prior `not_run` "signed-approval service
+admission integration" gap in ADR-010.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{tasks,service,live-approval,configured-service}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/live-approval.test.mjs test/live-approval-service.test.mjs` | SSHSIG plumbing + new service admission integration (mechanism with a labelled mock, real factory refusal paths, real-ledger single-use) | 23 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 359 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `createTaskService` now accepts an optional synchronous `admission` gate that runs
+for new tasks after idempotent replay resolution and repository inspection but before task
+persistence, workspace or spawn. `createSignedApprovalAdmission` (`src/live-approval.mjs`)
+binds the standalone SSHSIG verification, resolved-base-commit binding and atomic no-replace
+single-use ledger to that gate; `createConfiguredTaskService` passes a supplied `admission`
+through. `submit_task` gains optional `approval`/`signature` fields that are excluded from
+the canonical payload/idempotency hash and never persisted. Tests demonstrate: an identical
+replay returns the original task without re-running admission; a refusal (missing envelope,
+expired, paid, malformed, non-hardware signature) throws `authorization_denied`/`invalid_argument`
+with zero task records persisted; one approval ID cannot admit a second task; and error codes
+map to the contract without leaking admission internals. The cryptographic positive path
+(real FIDO2 presence+verification) is not exercised — no hardware key was used and none is
+simulated.
+
+Evidence level: unit + local fixture (disposable non-hardware test keys, a mock verifier over
+the real ledger, and real `ssh-keygen -Y verify` refusal paths); not a real hardware-key dry
+run, not a live provider run.
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run (the cryptographic
+positive admission path); bare-metal/VM deployment; public catalog GET (maintainer-declined);
+live inference; active provider WebSocket-bypass experiment.
+
+Claim: this entry supports the signed-approval service admission wiring and its controlled
+self-tests. The hardware positive path, bare-metal/VM deployment, catalog and live inference
+remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 signed-approval pre-spawn revalidation + host/readable binding (B30-05) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Corrects the two P1 findings at `0f5bbd1` (review comment
+`6897307203`): (1) no re-validation immediately before spawn, and (2) the signed host
+identity and human-readable approval scope are not bound to the effective task/worker.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{live-approval,service,scheduler}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | SSHSIG plumbing + service admission + pre-spawn revalidation (positive mock, expiry/drift/missing-receipt negatives) + host-digest/readable-field binding | 28 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 364 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+| one-shot bounded catalog GET (`redirect:error`, 10s, 2 MiB, no retry) | Public zero-price metadata for the fixed free model (staged authorization) | HTTP 200, 104,821 bytes; `deepseek-v4.1-flash-free` zero-price, endpoint/package match | 0 |
+| read-only FIDO2 tooling inventory (`ssh-keygen` version + `ssh-sk-helper` presence) | Non-invasive local check | OpenSSH 9.5p2 `ssh-keygen` and `ssh-sk-helper` present | 0 |
+
+Result: (1) `createSignedApprovalAdmission` now returns a trusted in-memory receipt whose
+`revalidate(now)` closure re-checks approval expiry, metadata freshness and the measured host
+binary digest; `createTaskScheduler` calls a service-provided `revalidate(taskId, now)`
+synchronously **before** the dispatch reservation/workspace/spawn, and on failure records the
+queued task as `cancelled` (`executionStopped: true`, `admission-refused` progress, no
+attempt) and halts the queue — no spawn, no replay. (2) `verifyApprovalBinding` now also
+binds the signed readable `objective`/`repository.branch`/`maxAttempts`/`limits` to the
+effective validated request and the signed `hostBinaryDigest` to the measured trusted
+executable (`measureHostBinaryDigest`), before the ledger reserve. Tests cover positive
+mock spawn, expiry/drift/missing-receipt pre-spawn negatives, host-digest and readable-field
+mismatch negatives, with disposable temp executable/config and no external provider calls.
+The cryptographic positive path (real FIDO2 presence+verification) remains `not_run` — no
+hardware key was used and none is simulated.
+
+Evidence level: unit + local fixture (mock verifier over the real ledger, real
+`ssh-keygen -Y verify` refusal paths, a one-shot public catalog read recorded as dated
+evidence). Not a real hardware-key dry run, not a live provider run, not a bare-metal/VM
+deployment.
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run; bare-metal Ubuntu /
+two-VM Hyper-V deployment; the active provider WebSocket-bypass experiment; live inference.
+The catalog GET is a dated evidence snapshot, not perpetual authority and not live activation.
+
+Claim: this entry supports the pre-spawn revalidation and host/readable binding. The hardware
+positive path, bare-metal/VM deployment, WebSocket-bypass experiment and live inference
+remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 pre-spawn just-before-runSubprocess + admission result + host-path binding — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Corrects the three P1 findings at `8e358a4` (review comment
+`6897600299`): (1) revalidation is before `worker.prepare`, not just before process spawn;
+(2) a returned admission value without a callable verifier silently passes; (3) the factory
+does not itself measure the configured host executable.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{live-approval,service,scheduler}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | SSHSIG plumbing + admission result validation + second pre-spawn check (expiry/drift during `worker.prepare` → `blocked`, zero spawn) + host-path measurement | 30 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 366 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: (1) `createTaskScheduler` now re-checks the receipt synchronously a **second time**
+just before `runSubprocess` (after `createTaskWorkspace` + `worker.prepare`); a refusal there
+records the already-dispatched task as `blocked` (`executionStopped: unknown`, dispatch
+attempt preserved) — never `cancelled`, never replayed. (2) `createTaskService` now requires
+an admission result of `{ admitted: true, revalidate }` (a callable verifier bound to the
+task); `false`/`true`/`undefined`/`null`/`{admitted:true}` without a verifier are refused
+before persistence, and the dispatch hook also fails closed on a missing/invalid receipt.
+(3) `createSignedApprovalAdmission` now measures the SHA-256 of the absolute `hostExecutable`
+path itself at admission and again at revalidation (no caller-supplied digest/callback); an
+unreadable path is refused as `unavailable`. Tests cover drift/expiry during `worker.prepare`
+with a marker file asserting zero spawn, and the admission return-value matrix.
+
+Evidence level: unit + local fixture (mock verifier over the real ledger, real
+`ssh-keygen -Y verify` refusal paths, a self-measured disposable host executable). The
+end-to-end host binding positive path (valid signature → measure → reserve) still requires a
+real FIDO2 hardware-key signature and remains `not_run`; the host identity is bound at the
+factory interface to the supplied `hostExecutable` path (the caller must pass the configured
+worker's executable).
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run; bare-metal Ubuntu /
+two-VM Hyper-V deployment; the active provider WebSocket-bypass experiment; live inference.
+The catalog GET remains a dated one-shot snapshot (not repeated here).
+
+Claim: this entry supports the just-before-spawn revalidation, the admission result contract
+and the self-measured host-path binding. The hardware positive path, bare-metal/VM
+deployment, WebSocket-bypass experiment and live inference remain `not_run` and the live
+route stays closed.
+
+## M3 preparation: B30 tie measured host executable to the configured worker — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), OpenSSH `ssh-keygen` (Git for
+Windows). Date: 2026-11-15. Corrects the remaining P1 #3 at `9b91845` (review comment
+`6898063391`): the measured host path is not tied to the executable the configured worker
+actually starts.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/{live-approval,configured-service}.mjs` | Syntax check of changed sources | clean | 0 |
+| `node --test test/free-provider.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | A/B host-executable composition (negative `A != B` refused, positive `A == B` composes) + prior approval tests | 42 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 368 passed, 0 failed, 1 skipped (Windows-gated platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `createSignedApprovalAdmission` exposes the canonical measured executable
+(`gate.hostExecutable`, resolved through symlink/junction/alias identity via
+`canonicalExecutablePath`), and `createConfiguredTaskService` enforces it equals the
+canonical `settings.executable` the configured worker actually starts; a signed admission
+measuring A while the worker starts B is refused before any service/task/child exists.
+Negative (`A != B`) and positive (`A == B`) composition fixtures are in
+`test/free-provider.test.mjs`. The relay/gateway policy-drift and signer-revocation checks at
+dispatch remain partial/`not_run` pending a deployed relay/gateway and are not claimed from
+the mock fixture.
+
+Evidence level: unit + local fixture (mock signature; no hardware). The full positive
+signature path remains `not_run`.
+
+Not rerun / not_run: a real FIDO2 `-sk` hardware-key signing dry run; bare-metal Ubuntu /
+two-VM Hyper-V deployment; the active provider WebSocket-bypass experiment; live inference.
+The catalog GET remains a dated one-shot snapshot (not repeated here).
+
+Claim: this entry supports tying the measured host executable to the configured worker.
+The hardware positive path, deployed relay/gateway policy-drift, bare-metal/VM deployment,
+WebSocket-bypass experiment and live inference remain `not_run` and the live route stays
+closed.
+
+## M3 preparation: B30 relay/gateway lifecycle symmetry (B30-04) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm). Date: 2026-11-15. Closes the B30-04
+lifecycle gap: the egress gateway previously lacked the failure/lifecycle fixtures the relay
+already had (port conflict, terminal stop/restart, port release, upstream timeout, partial
+body drop).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/relay.test.mjs test/egress-gateway.test.mjs` | Relay + gateway lifecycle and refusal fixtures | 36 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial local suite regression | 372 passed, 1 failed (pre-existing flaky `mcp-server` B15-03b 3s submit timeout under load; passes in isolation 30/30), 1 skipped | 1 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Complete change whitespace | no output | 0 |
+
+Result: `test/egress-gateway.test.mjs` now covers, with temporary loopback HTTP origins only:
+port-conflict refusal, terminal `stop()` with restart refusal, `stop()` releasing the port
+(no dangling unowned listener, proven by a second gateway binding it), an upstream timeout
+latched to `upstream-unavailable` with exactly one origin request (no replay), and an
+upstream partial-body drop that latches `response-stream` without replay. These mirror the
+relay's existing B30-04 fixtures, so the gateway is no longer tested only on the green path.
+The full serial suite has one pre-existing flaky failure (`test/mcp-server.test.mjs`
+`B15-03b`, a 3-second `submit_task` response timeout that intermittently exceeds the bound
+under full-suite serial load); it passes 30/30 in isolation and is unrelated to these
+gateway-lifecycle changes.
+
+Evidence level: local loopback HTTP fixture (temporary child/process/port fixtures), not a
+deployed relay/gateway and not a live provider.
+
+Not rerun / not_run: relay/gateway service-level uncertain-child-stop integration (the relay
+and gateway are standalone listeners, not service children, so no uncertain child-stop path
+exists in this architecture); upstream DNS failure and TLS-failure latches (DNS requires an
+external resolver query; the gateway's live-mode TLS hostname validation requires an HTTPS
+real hostname, which is not testable offline without DNS/hosts changes or broadening the
+network surface); the full cross-namespace TLS chain (needs a pinned Linux OpenCode binary
+and a deployed gateway).
+
+Claim: this entry supports the relay/gateway lifecycle symmetry. Uncertain child stop, DNS/
+TLS-failure latches, the cross-namespace TLS chain, bare-metal/VM deployment and live
+inference remain `not_run` and the live route stays closed.
+
+## M3 preparation: B30 listener supervision and offline gateway TLS fixtures (B30-04/07) — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm, `%APPDATA%\fnm\node-versions\v24.22.1`), with Git for Windows `usr/bin/openssl` 3.5.7 on PATH for the TLS fixtures. Date: 2026-11-15. Scope: offline loopback fixtures for the supervised relay/gateway listener child (ownership lock, uncertain stop, ready timeout, port conflict, reconciliation, orphan stop) and the gateway's DNS/TLS fail-closed latches with a disposable CA. Base for comparison: `eb4968d` (clone checked out in `%TEMP%`, removed afterwards).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Focused: supervisor (8), offline TLS (6), gateway and relay lifecycle/refusal (36) | 50 pass / 0 fail / 0 skip | 0 |
+| `node --test test/gateway-tls.test.mjs` | TLS fixtures alone; confirms each run removes its disposable certificate directory | 6 pass / 0 fail / 0 skip; no `b30-tls-*` directory left | 0 |
+| `node --test --test-concurrency=1` | Full serial suite regression on the corrected head | 388 tests: 387 pass, 0 fail, 1 skip (the pre-existing POSIX-only or platform skip) | 0 |
+| `node --test` | Full suite at default concurrency (as CI invokes it) | 8 test locations failed with timing assertions: `mcp-server.test.mjs` 146, 164, 188, 207 (B15-01c/d/e/f), 513 (B15-03b), `scheduler.test.mjs` 60 (B12-01), `subprocess.test.mjs` 64 (B10-03), `task-maintenance.test.mjs` 195 (B18-01); the same eight locations fail at base `eb4968d` (below) | 1 |
+| `node --test` (base `eb4968d`, separate clone) | Pre-existing comparison for the default-concurrency failures | Same eight test locations fail; exit 1 | 1 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Whitespace in the complete change, including new files | no output | 0 |
+
+Result: the new gateway and supervisor behavior passes in focused and serial runs (50 focused; 388 serial with 387 pass, 0 fail, 1 skip). The default-concurrency run fails at the same eight timing-sensitive locations as the untouched base commit, so those failures are a pre-existing parallel-load flake and not evidence against this change; a serial run is the reproducible baseline. Their names are recorded so that no run is reported as all green. The fallback demo returns 429 then 200, and `git diff --check` is clean.
+
+Mutation check (scratch copy outside the repository, not versioned, so not a table row): releasing the lock on an unconfirmed stop made `test/listener-supervisor.test.mjs` fail the uncertain-stop test (lock file missing), and collapsing DNS and TLS failures into `upstream-unavailable` made four tests fail (untrusted certificate, hostname mismatch, DNS failure, and the classification unit test). Both defects are therefore detected by the new tests.
+
+Evidence level: Local HTTP — demonstrates real HTTP and HTTPS headers, statuses and refusals through controlled loopback fixtures, real child processes with IPC, real lock files and a disposable CA verified by Node's default TLS validation (with a test-only resolver that maps three fixture names to loopback in the child only); does not demonstrate real OpenCode tools or sessions, a deployed relay or gateway, a real DNS resolver, a real trust store, a real origin, or the cross-namespace TLS chain. The relay and gateway remain unwired from `createConfiguredTaskService`.
+
+Not rerun: `integration/b30-egress-namespaces.sh` (privileged WSL netns/nftables fixture; this change does not modify it and it was not rerun here); `integration/opencode-free-relay.mjs` (needs the pinned OpenCode 2.2.5 binary outside the repository; the gateway change touches only failure classification and live-mode gating, and the fixture-mode path is covered by `test/egress-gateway.test.mjs`); `node integration/opencode-smoke.mjs` and `node integration/mcp-gate.mjs` (pinned binary; unrelated); the expired or not-yet-valid certificate case (not covered; the generator uses a fixed two-day window); the deployed cross-namespace TLS chain, a real resolver or origin (`not_run`); the active WebSocket-bypass experiment, bare-metal or two-VM deployment, a real FIDO2 hardware signature, the public catalog GET and live inference (all `not_run`, unchanged); the Ubuntu CI job for this head (pending at the time of writing).
+
+Claim: This entry supports offline, loopback-only evidence that a supervised relay or gateway listener keeps its port and lock on an unconfirmed stop, releases them only after a confirmed exit or an explicit reconciliation, and that the gateway fails closed with distinct DNS and TLS latches, based on `node --test test/listener-supervisor.test.mjs test/gateway-tls.test.mjs` and the serial suite. It does not support any deployed TLS chain, network containment, real DNS or origin behavior, live activation, or an OpenCode integration claim, which require the missing deployment, hardware and pinned-host evidence listed above.
+
+## M3 preparation: B30 catalog-evidence continuity correction — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git for Windows `usr/bin` on PATH. Date: 2026-11-15. Documentation-only correction after the supervisor P2 review of `4cdc088` (PR comment `6899620770`). The catalog GET status was carried as `not_run` in new handoff, backlog, roadmap, ADR, task-contract and PR-body text, although one bounded public catalog GET was already performed at `8e358a4` (receipt: the `M3 preparation: B30 signed-approval pre-spawn revalidation + host/readable binding (B30-05) — 2026-11-15` section, row at line 2862: HTTP 200, 104,821 bytes). This correction makes no network request and does not repeat the GET.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --test test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Source is unchanged; confirms the offline supervisor, TLS and gateway fixtures still pass with the documents corrected | 50 pass / 0 fail / 0 skip | 0 |
+| `git diff --check` (staged change) | Whitespace in the documentation-only change | no output | 0 |
+
+Result: the focused offline suite passes unchanged (50 pass, 0 fail), and the whitespace check is clean. A one-off grep of the added lines for `catalog` (not versioned, so not a table row) found that every added catalog line states the `8e358a4` GET as performed once, dated and not repeated, or says a fresh read needs separate narrow authorization. The added catalog text is consistent with the `8e358a4` receipt. The 2026-11-14 bullets that still say "catalog GET not_run" or "catalog read before any live experiment" are historical, and each now carries a dated note or sits under a section marked superseded. Earlier entries in `docs/validation.md` and `docs/worklog.md` are left unchanged, including the `4cdc088` entry's catalog wording, which this entry supersedes for status purposes.
+
+Evidence level: no new evidence level. The focused run re-executes the Local HTTP offline fixtures from `4cdc088` (loopback processes, real child IPC and a disposable CA) without any source change. This entry claims documentation consistency only.
+
+Not rerun: full serial and default-concurrency suites (no source or test file changed since the serial run recorded at `4cdc088`; see that entry); fallback demo (no executable behavior changed); the catalog GET (not repeated by policy, and no network request was made in this correction); live inference, provider calls, FIDO2 hardware signing, WebSocket-bypass experiment, bare-metal/VM deployment and the deployed TLS chain (all `not_run`, unchanged).
+
+Claim: This entry supports that the new handoff, backlog, roadmap, ADR-010 amendment, task-contract and PR text state the catalog GET as performed once at `8e358a4` (dated snapshot, not repeated), based on the static grep above and the `docs/validation.md` receipt. It does not support a fresh catalog read, any live inference authorization, or any deployed or FIDO2 gate, which require their own authorization and evidence.
+
+## M3 preparation: B30 fixture-only supervised composition and second catalog snapshot — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git for Windows `usr/bin` (openssl 3.5.7) on PATH. Date: 2026-11-15. Wires the supervised relay → gateway chain into `createConfiguredTaskService` through the fixture-only `freeListeners` option, and records one bounded public catalog GET that the user authorized for this correction. No live, provider, FIDO2, WebSocket, VM, host-network or paid action was taken.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/free-listeners.mjs`, `src/configured-service.mjs`, `src/live-approval.mjs` | Syntax of changed sources | clean | 0 |
+| one-shot catalog check (unversioned scratch script that imports `fetchFreeMetadata` and calls it once, with no retry) | Bounded public metadata read of `https://opencode.ai/inference/v1/models` | validated at `2026-11-15T19:14:36.242Z`; selected `deepseek-v4.1-flash-free`, `chat`, `owned_by` `opencode`, tools supported, zero price for text input, text output and cache read, base URL and SDK package equal to the fixed values; HTTP 2xx (`response.ok`), status not separately recorded | 0 |
+| `node --test test/free-listeners.test.mjs` | Nine fixture-only composition tests (approval and digest gates, launch refusal, uncertain cleanup with reconciliation, close and restart, crash-to-blocked, task-text isolation) | 9 pass / 0 fail / 0 skip | 0 |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Composition, approval, B29 and B30 focused set | 104 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` (first run) | Full serial suite on the final code | 1 fail: `test/mcp-server.test.mjs` `B15-01f` (`cancel_task` output wait, `timeout waiting for 1 output line(s)`), the pre-existing MCP output-wait flake; not caused by this change | 1 |
+| `node --test --test-concurrency=1` (rerun, same code) | Full serial suite rerun | 397 tests: 396 pass, 0 fail, 1 skip (the pre-existing platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --cached --check` | Whitespace in the complete change | no output | 0 |
+
+Result: the new composition path passes all nine focused tests, and the composition, approval, B29 and B30 focused set passes 104 of 104. The serial suite failed once on the known MCP output-wait flake (`B15-01f`) and passed on rerun, 396 pass, 0 fail, 1 skip. Both runs are recorded; the first is not hidden. Two development defects were corrected during the work: a test submitted a request whose idempotency key differed from the approved request (the approval binds the canonical request hash, so the worker correctly refused it), and a failed test left listener children alive, which kept the runner waiting. The test now closes its service in `finally`. The first catalog attempt failed at module resolution before any function ran, so it made no network request; the successful attempt is the single GET. The second catalog GET is dated, is not repeated, and authorizes no live inference.
+
+Evidence level: Local HTTP — the composition tests use real child processes with IPC, real loopback ports and lock files, and real git fixtures; the signed-admission gate is a labelled test double that carries the policy digests only, so the cryptographic SSHSIG path is not exercised. The public catalog GET is a dated external metadata observation, not an integration or deployment evidence level; it does not establish any deployed behavior.
+
+Not rerun: `node --test` at default concurrency (the known parallel-load timing failures were recorded at `4cdc088` and at base `eb4968d`; no change in this run was attributed to them); `integration/b30-egress-namespaces.sh` (privileged WSL, unchanged); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates against a real origin (`not_run`); the FIDO2 positive signature (`not_run`); the active provider WebSocket-bypass experiment (`not_run`); bare-metal or two-VM deployment (`not_run`); live inference, paid calls and any further catalog read (not authorized).
+
+Claim: This entry supports that the supervised relay and gateway can be composed into the trusted service only through the fixture-only `freeListeners` option, which refuses without an approved run and matching digests, stops on failure, keeps uncertain locks and blocks dispatch on listener loss, based on the nine focused tests and the serial rerun. It also supports that the 2026-11-15 catalog metadata was validated as zero-price for the fixed model at the recorded time. It does not support deployed relay placement, a real TLS chain, FIDO2 signing, isolation on a separate host, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.
+
+## M3 preparation: B30 composition close-path final rerun — 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm), Git for Windows `usr/bin` (openssl 3.5.7) on PATH. Date: 2026-11-15. Records the final code after the second self-review of the composition: `close()` now stops the supervised listeners on a rejected scheduler close as well as on success.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/configured-service.mjs` | Syntax of the changed composition | clean | 0 |
+| `node --test test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Composition, approval, B29 and B30 focused set on the final code | 104 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial suite on the final code | 397 tests: 396 pass, 0 fail, 1 skip | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+
+Result: the final code passes the 104-test focused set, the 397-test serial suite (396 pass, 0 fail, 1 skip) and the demo. The rejected-close branch (`listeners.stop()` after a failed scheduler `close()`) is not exercised by a test: forcing the scheduler's close to reject needs a seam that does not exist, so that branch is reviewed by inspection only and is recorded as a limit. The earlier serial run with the MCP `B15-01f` flake is recorded in the preceding entry and is not repeated here.
+
+Evidence level: Local HTTP, unchanged from the preceding entry. Not rerun: default-concurrency suite, WSL fixture, pinned OpenCode host harnesses, deployed TLS, FIDO2, WebSocket-bypass, VM and live gates (`not_run`).
+
+Claim: This entry supports that the final composition code passes the focused, serial and demo checks, based on the commands above. It does not support the rejected-close branch under test, deployed relay placement, a real TLS chain, FIDO2 signing, WebSocket-bypass exclusion, live activation, ready-for-review or merge.
+
+## M3 preparation: B30 listener ownership and startup authority correction – 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm) with Git for Windows `usr/bin` (openssl 3.5.7 and `ssh-keygen`) on PATH.
+Date: 2026-11-15.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/service.mjs`, `src/configured-service.mjs`, `src/free-listeners.mjs`, `test/free-listeners-authority.test.mjs`, `integration/listener-fixture-child.mjs` | Syntax of every changed source, test and fixture | clean | 0 |
+| `node --test test/free-listeners-authority.test.mjs` | Ownership-before-bind, corrupt store, ownership-held composition, real-gate refusal matrix, close-time uncertainty and failed-startup cleanup uncertainty | 8 pass / 0 fail / 0 skip | 0 |
+| `node --test test/free-listeners-authority.test.mjs test/free-listeners.test.mjs test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs` | Composition, approval, B29 and B30 focused set | 112 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial suite on the final code | 405 tests: 404 pass, 0 fail, 1 skip (the pre-existing platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Whitespace in the complete change | no output | 0 |
+
+Result: the ownership/authority test file passes eight of eight, including a competing task-home owner and a corrupt store that each start zero listener children and create zero listener ports or locks, ownership held while listeners run, a real signed-approval gate that refuses a missing signature and (with a disposable non-hardware key) malformed, non-FIDO2 and forged signatures with zero task, workspace or worker effect, a close-time unconfirmable stop that rejects, keeps the task-home and both listener locks, and refuses a second composition, and a failed startup whose cleanup `stop` cannot be confirmed, which also keeps the task-home owner and the started listener's lock. The focused composition/approval/B29/B30 set passes 112 of 112 and the full serial suite passes 404 of 405 with one pre-existing skip. The demo prints 429 then 200 and `git diff --check` is clean.
+
+Evidence level: Local HTTP – real child processes with IPC, real loopback ports and durable lock files, plus the real `ssh-keygen -Y verify` gate with a disposable non-hardware test key. It covers refusals and no-effect assertions only; it does not demonstrate a positive FIDO2/hardware signature, deployed relay/gateway placement, a real TLS chain, OS isolation or live inference.
+
+Exact-head CI for `b9e8483` (workflow run `43760697682`) succeeded on both `windows-latest` and `ubuntu-latest`; the only non-success step annotations are the intentional `continue-on-error` pipeline-exit fixtures (exit 7). The docs-only receipt commit that records this is verified by its own exact-head PR run.
+
+Not rerun: `node --test` at default concurrency (the known parallel-load timing failures were recorded at `4cdc088` and at base `eb4968d`; the serial run above is the claimed result); `integration/b30-egress-namespaces.sh` (privileged WSL, unchanged); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates against a real origin (`not_run`); the FIDO2 positive signature dry run (`not_run`); the active provider WebSocket-bypass experiment (`not_run`); bare-metal or two-VM deployment (`not_run`); live inference, paid calls and any catalog read (not authorized; the dated snapshots were not repeated).
+
+Claim: This entry supports that supervised listener startup now requires exclusive task-home ownership and reconciliation first, holds that ownership through a confirmed stop (including a failed startup whose cleanup cannot be confirmed), and reports a separate trusted-composition startup authority rather than an SSHSIG, based on `node --test test/free-listeners-authority.test.mjs` and the focused set. It also supports that the real gate refuses missing and forged task signatures with zero task/workspace/worker effect. It does not support a positive hardware/FIDO2 signature, deployed containment, the deployed TLS chain, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.
+
+## M3 preparation: B30 ownership handoff capability correction – 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm) with Git for Windows `usr/bin` (openssl 3.5.7 and `ssh-keygen`) on PATH.
+Date: 2026-11-15.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/service.mjs`, `src/configured-service.mjs`, `test/service-ownership-handoff.test.mjs` | Syntax of every changed source and test | clean | 0 |
+| `node --test test/service-ownership-handoff.test.mjs test/service-owner.test.mjs` | Forged/copied/reused/released/mismatched/competing-owner handoff and the existing B12 owner tests | 9 pass / 0 fail / 0 skip | 0 |
+| `node --test test/free-listeners-authority.test.mjs test/free-listeners.test.mjs test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs test/service-ownership-handoff.test.mjs test/service-owner.test.mjs` | Composition, approval, B29, B30 and ownership focused set | 121 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial suite on the final code | 412 tests: 411 pass, 0 fail, 1 skip (the pre-existing platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Whitespace in the complete change | no output | 0 |
+
+Result: the new ownership-handoff file passes seven of seven with real store and lock fixtures. A forged `{ store, releaseOwner }` object is refused with `invalid_argument` while service A owns the home, its forged release is never called, A keeps the lock and remains the only writer, and a default second service is still refused. A spread copy, a reconstructed store/release pair and a capability with an extra `store` option are refused without consuming or releasing the real capability. A minted capability is single-use before and after close, a released capability cannot be handed off and leaves the home free, a capability for another home is refused without locking or releasing either home, and a second `openTaskHome` beside an active owner is refused without changing the lock bytes. A throwing `beforeRelease` makes `close()` reject, retains the owner lock, keeps the capability unusable and refuses both handoff and a new legitimate owner; only the test's maintainer-style removal of the retained lock allows recovery. The existing B12 owner tests and the B29/B30 focused set pass (121 of 121) and the full serial suite passes 411 of 412 with one pre-existing skip.
+
+Two earlier serial attempts failed once each on known output-wait/timing flakes (`B15-03b` concurrent status polls and `B10-03` abort partial output) and the third run above passed; the passing run is the claimed result, and the initial failures are not erased. The focused set and the new file passed on every run.
+
+Evidence level: Local process and durable-file evidence. It covers the lock/capability boundary, close/release uncertainty and refusal assertions only; it does not demonstrate deployed relay/gateway placement, a real TLS chain, OS isolation, a positive FIDO2 signature or live inference.
+
+Not rerun: `node --test` at default concurrency locally (the known parallel-load timing failures were recorded at `4cdc088` and base `eb4968d`; CI runs it); `integration/b30-egress-namespaces.sh` (privileged WSL, unchanged); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates (`not_run`); the FIDO2 positive signature dry run (`not_run`); the active provider WebSocket-bypass experiment (`not_run`); bare-metal or two-VM deployment (`not_run`); live inference, paid calls and any catalog read (not authorized; the dated snapshots were not repeated).
+
+Claim: This entry supports that pre-acquired task-home ownership can no longer be forged or replayed through `createTaskService`, that the configured listener path still starts only after the exclusive lock and reconciliation, and that ownership is retained when release cleanup is uncertain, based on `test/service-ownership-handoff.test.mjs`, the existing owner tests and the focused set. It does not support any positive FIDO2 signature, deployed containment, the deployed TLS chain, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.
+
+Exact-head CI for `0c90518` (workflow run `43764489116`) succeeded on both `windows-latest` and `ubuntu-latest`; the only non-success step annotations are the intentional `continue-on-error` pipeline-exit fixtures. The docs-only receipt commit that records this is verified by its own exact-head PR run.
+
+## M3 preparation: B30 release-authority transfer correction – 2026-11-15
+
+Executed on Windows 11 Pro x64, Node.js v24.22.1 (fnm) with Git for Windows `usr/bin` on PATH.
+Date: 2026-11-15.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `node --check src/service.mjs`, `src/configured-service.mjs`, `test/service-ownership-handoff.test.mjs` | Syntax of every changed source and test | clean | 0 |
+| `node --test test/service-ownership-handoff.test.mjs test/service-owner.test.mjs` | Early creator release, close idempotency, cleanup ordering, failed construction, forged/copied/reused/released/mismatched/competing-owner and the existing B12 owner tests | 13 pass / 0 fail / 0 skip | 0 |
+| Standalone reproduction (`cap = openTaskHome`; `service = createTaskService({ ownership: cap })`; `await cap.releaseOwner()`; `createTaskService({ home })`) with a disposable home outside the repository | Exact reviewer trigger | `earlyReleaseRefused=invalid_argument`, `firstServiceStillActive=true`, `lockStillHeld=true`, `secondServiceCreated=false` (error `unavailable`), `lockAfterClose=false`, `afterCloseReleaseRefused=invalid_argument`, restart acquired | 0 |
+| `node --test test/free-listeners-authority.test.mjs test/free-listeners.test.mjs test/free-provider.test.mjs test/b29-cli-composition.test.mjs test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/listener-supervisor.test.mjs test/gateway-tls.test.mjs test/egress-gateway.test.mjs test/relay.test.mjs test/service-ownership-handoff.test.mjs test/service-owner.test.mjs` | Composition, approval, B29, B30 and ownership focused set | 125 pass / 0 fail / 0 skip | 0 |
+| `node --test --test-concurrency=1` | Full serial suite on the final code | 416 tests: 415 pass, 0 fail, 1 skip (the pre-existing platform skip) | 0 |
+| `node examples/fallback-demo.mjs` | Fallback demo regression | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Whitespace in the complete change | no output | 0 |
+
+Result: release authority now transfers at consumption. The creator-facing `releaseOwner` is valid only while the capability is minted and unconsumed; after `createTaskService` consumes it, an early or concurrent creator release is refused with `invalid_argument`, the active service keeps its lock and remains the only writer, and a second ordinary service is refused with `unavailable`. The service's private close path releases after scheduler idle and after `beforeRelease` cleanup, which runs while ownership is still held. Repeated `close()` calls share one release operation, a throwing `beforeRelease` still retains the lock and leaves the capability unusable, and a failed construction returns the unconsumed capability to its creator so its documented cleanup (including `beforeRelease`) can release. The existing B12 owner tests and the B29/B30 focused set pass (125 of 125); the full serial suite passes 415 of 416 with one pre-existing skip.
+
+Two earlier serial attempts failed on the known pre-existing timing flakes: the first on `B15-03b` (concurrent status polls) and `B10-03` (abort partial output), the second on `B15-03b` again; the third run above passed. The passing run is the claimed result, and the initial failures are not erased. The focused set and the new file passed on every run.
+
+Evidence level: Local process and durable-file evidence. It covers the release-authority boundary, close/release uncertainty, cleanup ordering and refusal assertions only; it does not demonstrate deployed relay/gateway placement, a real TLS chain, OS isolation, a positive FIDO2 signature or live inference.
+
+Not rerun: `node --test` at default concurrency locally (the known parallel-load timing failures were recorded at `4cdc088` and base `eb4968d`; CI runs it); `integration/b30-egress-namespaces.sh` (privileged WSL, unchanged); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates (`not_run`); the FIDO2 positive signature dry run (`not_run`); the active provider WebSocket-bypass experiment (`not_run`); bare-metal or two-VM deployment (`not_run`); live inference, paid calls and any catalog read (not authorized; the dated snapshots were not repeated).
+
+Claim: This entry supports that the capability creator can no longer release an active service's task-home lock, that only the consuming service's close releases after scheduler idle and `beforeRelease` cleanup, and that failed-construction and uncertain-cleanup behavior is preserved, based on `test/service-ownership-handoff.test.mjs`, the standalone reproduction and the focused set. It does not support any positive FIDO2 signature, deployed containment, the deployed TLS chain, WebSocket-bypass exclusion, live activation, ready-for-review or merge, which require the `not_run` evidence listed above.
+
+Exact-head CI for `352c212` (workflow run `43768061960`) succeeded on both `windows-latest` and `ubuntu-latest`; the only non-success step annotations are the intentional `continue-on-error` pipeline-exit fixtures. The docs-only receipt commit that records this is verified by its own exact-head PR run.
+
+## M3 preparation: B30 two-VM Hyper-V deployment (worker compartment and relay egress) – 2026-11-15
+
+Executed on Windows 11 Pro x64 with Hyper-V and two Ubuntu Server 24.04.5 guests (`B30-Worker`,
+`B30-Relay`, kernel `6.8.0-139-generic`). Date: 2026-11-15; the guest logs are stamped
+`2026-11-16T01:41:29Z` (relay) and `2026-11-16T01:43:13Z` (worker).
+
+Method and limits of this run: the agent session was **not** elevated, so every Hyper-V and
+host-network command was executed by the host operator in an administrator PowerShell, while the
+agent read host state through its own tools. No guest was reachable over the network: guest
+commands travelled on FAT32 VHDX media hot-attached at SCSI 0/2 (`B30CFG`, netplan) and SCSI
+0/3 (`B30PROBE`, probes), and each guest wrote its own log back onto that volume, which the agent
+then read from the host. Nothing below was transcribed by hand from a console, and no guest
+shell, package installation or copy/paste was used.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `Get-VMSwitch`, `Get-NetNat`, `Get-Service SharedAccess` plus an ICS registry read | Host topology and no-NAT/no-ICS invariants | `B30-Worker-Relay` and `B30-Relay-Gateway`, both `Internal`, `NetAdapterInterfaceDescription` empty; the third switch `WSL (Hyper-V firewall)` is Internal, belongs to WSL and carries no B30 adapter; `Get-NetNat` empty; `SharedAccess` running with `ICS_Private`/`ICS_Public`/`ICS_Configuration` absent, zero `192.168.137.*` addresses and zero `SharedAccess` keys naming a B30 adapter | 0 |
+| `Get-VMNetworkAdapter -VMName 'B30-Worker','B30-Relay'` | Adapter-to-switch map | worker `worker-relay` `00:15:5D:64:5F:02` -> `B30-Worker-Relay` (its only adapter); relay `relay-worker` `00:15:5D:64:5F:03` -> `B30-Worker-Relay`; relay `relay-gateway` `00:15:5D:64:5F:04` -> `B30-Relay-Gateway` | 0 |
+| `Get-NetIPAddress`, `Get-NetIPInterface`, `Get-NetRoute` on the host | Host-side invariants after guest setup | `10.30.2.1/30` Manual on `vEthernet (B30-Relay-Gateway)` with `Forwarding=Disabled`; `vEthernet (B30-Worker-Relay)` `Disabled` with no IPv4 address; no route to `10.30.1.0/30` | 0 |
+| `sudo mount -L B30CFG /mnt && sudo bash /mnt/setup.sh` (operator-typed, one line per console) | Apply the recorded netplan | relay `eth0 10.30.1.1/30`, `eth1 10.30.2.2/30`; worker `eth0 10.30.1.2/30`; no default route, no DNS server, `net.ipv4.ip_forward=0`, `net.ipv6.conf.all.forwarding=0` | 0 |
+| `sudo mount -L B30PROBE /media/b30 && sudo bash /media/b30/probe.sh` (relay first, then worker) | Real socket attempts from inside each compartment | two logs of 3,162 B and 2,996 B written by the guests themselves; excerpts below | 0 |
+| Key removal inside `probe.sh` | Remove the temporary deployment key | `B30_SSH_KEY_REMOVED=/root/.ssh/authorized_keys` and `/home/b30/.ssh/authorized_keys` on both guests | 0 |
+
+Worker log (`b30-probe-b30-worker.log`, SHA-256
+`4C4F0C0548AA512B0D84E606640F28B369F77F13A2F6BBAD2BFDA50632DCB099`), verbatim probe lines:
+
+```
+### worker to relay icmp 10.30.1.1 (expect reachable)
+1 packets transmitted, 1 received, 0% packet loss, time 0ms   EXIT=0
+### tcp 10.30.1.1:22
+bash: connect: Connection refused                            EXIT=1
+### worker to host gateway icmp 10.30.2.1 (expect denied)
+ping: connect: Network is unreachable                        EXIT=2
+### tcp 10.30.2.1:443
+Network is unreachable                                       EXIT=1
+### worker to internet icmp 1.1.1.1, tcp 1.1.1.1:443, 93.184.216.34, dns, ipv6
+Network is unreachable (each EXIT=2 or EXIT=1)                denied
+```
+
+Relay log (`b30-probe-b30-relay.log`, SHA-256
+`53BBA405904A95E82CAF6F5E27C8D4B08FFE3AD5EC0DE6CAC6CFE33108A9712C`), verbatim probe lines:
+
+```
+### relay to worker icmp 10.30.1.2 (expect reachable)
+1 packets transmitted, 1 received, 0% packet loss, time 0ms   EXIT=0
+### relay to internet icmp 1.1.1.1
+ping: connect: Network is unreachable                        EXIT=2
+### tcp 1.1.1.1:443 and tcp 8.8.8.8:53
+Network is unreachable                                       EXIT=1
+### relay to alternate origin 93.184.216.34, dns, ipv4 route, ipv6 route
+Network is unreachable (each EXIT=2 or EXIT=1)                denied
+### forwarding                                             ip_forward = 0
+```
+
+The worker reaches the relay on the internal link and has no route to anything else: the host
+gateway, two Internet addresses, DNS resolution and IPv6 are all `Network is unreachable`, which
+is the routing result, not a filtered timeout. The relay reaches the worker and reaches nothing
+off-link. Neither guest has a default route or a DNS server, and both keep forwarding disabled.
+The `Connection refused` on relay port 22 is the useful positive control: the packet reached the
+relay's stack and got a reset, so the internal link works end to end while no service listens on
+it.
+
+**Deviation, recorded rather than explained away:** the relay's ICMP echo to the host gateway
+`10.30.2.1` received no reply (`1 packets transmitted, 0 received, 100% packet loss`) although
+the host pinged the relay successfully. Read-only host checks show `vEthernet
+(B30-Relay-Gateway)` in connection profile `Rede nao identificada` with `NetworkCategory
+Public`, the Public firewall profile enabled with `DefaultInboundAction NotConfigured` (block),
+the built-in `Solicitacao de Eco (ICMPv4-In)` rules present but not enabled, and no enabled
+inbound ICMPv4 allow rule other than destination-unreachable fragmentation. Kaspersky is
+registered as both an antivirus and a firewall product, so a third-party filter cannot be
+excluded from this evidence alone; separating the two would need an administrator WFP capture,
+which was **not** run, and nothing was changed on the firewall. The consequence for the design
+is recorded in [deployment-prerequisites.md](deployment-prerequisites.md): a host-side L7
+gateway on this adapter needs an explicit inbound allow rule scoped to the relay address,
+because the default inbound policy on a Public-profile adapter otherwise drops the relay's
+connections.
+
+Evidence level: **deployed two-VM OS-level containment observation**, with the caveats stated
+above. It is stronger than the WSL2 netns fixture for the worker compartment because that
+compartment is a real VM and the probes ran inside it; it does not become integration evidence
+for the relay/gateway TLS chain.
+
+Supported by this entry: B30-03's Windows two-VM topology, its no-Default-switch/no-NAT/no-ICS/
+no-forwarding conditions, its single worker NIC and route inventory, and real denied socket
+attempts from inside the worker compartment; and B30-07's relay-side direct-egress denial
+(IPv4, IPv6, DNS and two alternate origins, with real exits).
+
+Not supported by this entry: the host-side L7 gateway itself. No gateway policy or digest was
+deployed, no relay-to-gateway TLS connection was made, and there are no gateway ingress logs
+showing zero alternate-origin bytes. The WebSocket-upgrade negative was not repeated inside the
+VM; the pinned-host negative fixture recorded in the 2026-11-15 active-egress-negatives entry
+stands for that path.
+
+Not rerun: `integration/b30-egress-namespaces.sh` (privileged WSL fixture, unchanged);
+`node --test` and the focused sets (this change is documentation only; the last recorded result
+remains 415 of 416 with one pre-existing skip at `352c212`); `integration/opencode-free-relay.mjs`
+and the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository); the deployed TLS
+chain, real resolver, trust store and origin (`not_run`); expired and wrong-host certificates
+(`not_run`); the FIDO2 positive signature dry run (`not_run`); the active provider
+WebSocket-bypass experiment (`not_run`); live inference, paid calls and any catalog read (not
+authorized).
+
+Claim: this entry supports that a real Windows two-VM compartment with the ADR-010 internal-only
+topology denies the worker direct IPv4, IPv6, DNS and alternate-origin egress while the worker
+still reaches the relay, and that the relay has no egress of its own, based on guest-written logs
+collected from the attached media and on administrator-collected host inventory. It does not
+support a deployed gateway policy, a deployed TLS chain, a positive FIDO2 signature,
+WebSocket-bypass exclusion, live activation, ready-for-review or merge.
+
+## M3 preparation: B30 two-VM WebSocket-upgrade and unapproved-port probes – 2026-11-15
+
+Executed on the same two Hyper-V guests as the preceding entry (`B30-Worker`, `B30-Relay`, Ubuntu
+Server 24.04.5, kernel `6.8.0-139-generic`). Date: 2026-11-15; the guest logs are stamped
+`2026-11-16T02:18:46Z` (relay) and `2026-11-16T02:21:03Z` (worker). This entry closes the remaining
+B30-03 probe row (WebSocket upgrade and unapproved port from inside the compartment) and says nothing
+new about B30-07.
+
+Method: a second FAT32 VHDX round, labelled `B30WS`, carried one `probe2.sh`
+(SHA-256 `CF17EB9BF46F40C4A5F91CC95D41D54DB87C19C9383141AEAFFBC0366238D2AE`). It was hot-attached at
+SCSI 0/3 on both running guests, and each guest wrote its own log back onto the same volume. The
+operator typed one line per console
+(`sudo mkdir -p /media/b30 && sudo mount -L B30WS /media/b30 && sudo bash /media/b30/probe2.sh`),
+relay first and then worker; nothing was transcribed by hand. The volumes were hot-detached
+afterwards and read on the host through WSL `--mount --vhd <path> --partition 1`, copying
+`b30-wsprobe-*.log` into `%TEMP%\opencode\b30-collected`; the two VHDX files and the staging
+directory were then deleted and `C:\B30-VMs\_media` removed as empty.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `sudo mount -L B30WS /media/b30 && sudo bash /media/b30/probe2.sh` on the relay | Textual WebSocket upgrade to two off-link origins plus TCP to two unapproved ports on the worker link | relay log 741 B; both upgrades `Network is unreachable`; both unapproved ports `Connection refused` | 0 |
+| The same line on the worker | Textual WebSocket upgrade to two off-link origins plus TCP to two unapproved ports on the relay link | worker log 939 B; both upgrades `Network is unreachable`; both unapproved ports `Connection refused` | 0 |
+| Host detach + `wsl --mount --vhd ... --partition 1` + copy + uninstall | Read the guest-written logs without guest shell or console typing | both logs copied intact and end with `B30_WSPROBE_LOG_END`; media deleted afterwards | 0 |
+
+Relay log (`b30-wsprobe-b30-relay.log`, 741 B, SHA-256
+`D4E5188182C3C6036373F9BA54D22340D11E72639257B03F534C1E911587B8FB`), verbatim probe lines:
+
+```
+### websocket upgrade attempt: alternate origin, plaintext upgrade (93.184.216.34:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/93.184.216.34/80: Network is unreachable          EXIT=11
+### websocket upgrade attempt: internet, plaintext upgrade (1.1.1.1:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/1.1.1.1/80: Network is unreachable                EXIT=11
+### tcp 10.30.1.2:18099                                                  EXIT=1
+bash: connect: Connection refused
+### tcp 10.30.1.2:8080                                                   EXIT=1
+bash: connect: Connection refused
+```
+
+Worker log (`b30-wsprobe-b30-worker.log`, 939 B, SHA-256
+`0F509C9E9E9919298D35F4A2A0C1C64658307394C1A82DE6844E41C1D42C5500`), verbatim probe lines:
+
+```
+### websocket upgrade attempt: alternate origin, plaintext upgrade (93.184.216.34:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/93.184.216.34/80: Network is unreachable          EXIT=11
+### websocket upgrade attempt: internet, plaintext upgrade (1.1.1.1:80)
+bash: connect: Network is unreachable
+bash: line 1: /dev/tcp/1.1.1.1/80: Network is unreachable                EXIT=11
+### websocket upgrade attempt: relay on the permitted link, unapproved port (10.30.1.1:18099)
+bash: connect: Connection refused
+bash: line 1: /dev/tcp/10.30.1.1/18099: Connection refused               EXIT=11
+### tcp 10.30.1.1:18099                                                  EXIT=1
+bash: connect: Connection refused
+### tcp 10.30.1.1:8080                                                   EXIT=1
+bash: connect: Connection refused
+```
+
+Interpretation, kept to what the bytes show: inside the compartment a plaintext WebSocket upgrade
+cannot reach the TCP handshake for an off-link origin, because there is no route to it — the refusal
+is `ENETUNREACH` at connect time, on the worker and on the relay alike. The same request against a
+peer that *is* reachable on the permitted link reaches that peer's stack and is answered with a reset
+(`ECONNREFUSED`), so the permitted link stays usable while the tested unapproved ports carry no
+listener. The two probes therefore show the compartment cannot open a transport to an origin at all,
+and that the only reachable peer answers only on the approved port; they do not exercise an
+application-level WebSocket rejection, which remains the pinned-host negative fixture recorded in the
+2026-11-15 active-egress-negatives entry.
+
+Two operational deviations are recorded rather than smoothed over. First, the previous probe round
+left its volume mounted: `probe2.sh` reported `B30_WSPROBE_UMOUNT=FAILED` on both guests because the
+new mount stacked over the stale `B30PROBE` mount, and an explicit `sudo umount /media/b30` on the
+worker returned to the prompt without output. Second, hot-detaching the already-removed earlier disk
+produced `device offline error, dev sdc` and `Buffer I/O error on dev sdc1, logical block 1, lost
+async page write` on the worker console. Neither affected the evidence: both scripts end with
+`B30_WSPROBE_LOG_END` followed by two `sync` calls, and both collected logs contain that terminator
+and were read back byte-for-byte from the detached volume. The relay's own post-probe `umount` was
+never confirmed on its console before the volume was detached; its log is complete for the same
+reason.
+
+Evidence level: **deployed two-VM OS-level probe evidence**, the same level as the preceding entry.
+It is not integration evidence for the relay/gateway TLS chain.
+
+Supported by this entry: B30-03's in-VM WebSocket-upgrade and unapproved-port negatives on both
+sides of the deployment, on top of the routing, DNS, IPv6, alternate-origin and no-NAT/no-ICS
+conditions recorded above.
+
+Not supported by this entry: an application-level WebSocket rejection, the host-side L7 gateway and
+its policy digest, a deployed TLS chain, gateway ingress logs, the positive FIDO2 signature, the
+active provider WebSocket-bypass experiment and any live use.
+
+Not rerun: `integration/b30-egress-namespaces.sh` (privileged WSL fixture, unchanged); `node --test`
+and the focused sets (documentation-only change; the last recorded result remains 415 of 416 with one
+pre-existing skip at `352c212`); `integration/opencode-free-relay.mjs` and the pinned OpenCode 2.2.5
+harnesses (pinned binary outside the repository); the deployed TLS chain, real resolver, trust store
+and origin (`not_run`); expired and wrong-host certificates (`not_run`); the FIDO2 positive signature
+dry run (`not_run`); live inference, paid calls and any catalog read (not authorized).
+
+Claim: this entry supports that, in the deployed two-VM compartment, a WebSocket upgrade to an
+off-link origin has no transport at all and the reachable peer on the permitted link answers only on
+the approved port, based on guest-written logs read back from the attached media. It does not support
+a deployed gateway policy, a deployed TLS chain, a positive FIDO2 signature, WebSocket-bypass
+exclusion at the application layer, live activation, ready-for-review or merge.
+
+## M3 preparation: B30 host-side L7 gateway on the Windows relay link (B30-07) – 2026-11-16
+
+Executed on Windows 11 Pro x64 with Hyper-V, the same two guests and Node.js v24.22.1 (fnm). The
+guest log is stamped `2026-11-16T03:13:02Z`. This entry records the first deployed host-side L7
+gateway on the `B30-Relay-Gateway` link and the relay VM's socket attempts against it.
+
+Changes made for this run, each authorized or reversible: one inbound firewall rule scoped to the
+relay source address and the gateway port (created, used and removed in this entry), and one
+temporary Node gateway process on the host. Nothing else on the host network, the switches, the
+guests' netplan or `SharedAccess` was changed.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `New-NetFirewallRule -DisplayName 'B30-Relay-Gateway-Inbound' -Direction Inbound -Action Allow -Protocol TCP -LocalAddress 10.30.2.1 -RemoteAddress 10.30.2.2 -LocalPort 18082 -InterfaceAlias 'vEthernet (B30-Relay-Gateway)' -Profile Public` | Open exactly one port for the relay source | rule created; 0 B30 rules before, 712 total rules after; filters read back as `LocalAddress 10.30.2.1`, `RemoteAddress 10.30.2.2`, `Protocol TCP`, `LocalPort 18082`, `Program Any`, `Enabled True`, adapter `Public`/`Up`, port not listening before the run | 0 |
+| `node integration/b30-gateway-host.mjs --rounds 6 --max-seconds 1800 --log ... --evidence ...` | Instance the reviewed gateway in fixture mode on the relay link | bound `10.30.2.1:18082`, fixture origin `127.0.0.1:18083`, policy digest `9512dfe8d20d81fa7389538d0fab7c7a9c83fa2217576e5b7c99efe4700dc4e4` | 0 |
+| `sudo mount -L B30GW2 /media/b30 && sudo bash /media/b30/probe4.sh` (operator-typed, relay console) | Six raw socket attempts from inside the relay compartment | `GW_CONNECT=OK`; `200`, `404`, `404`, `405`, `401`, `401`; log 1,480 B written by the guest | 0 |
+| Host detach + `wsl --mount --vhd ... --partition 1` + copy | Read the guest log without a guest shell | log copied intact, ends with `B30_GWPROBE_LOG_END`; media deleted | 0 |
+| `Remove-NetFirewallRule -DisplayName 'B30-Relay-Gateway-Inbound'` | Restore the previous inbound surface | 712 -> 711 total rules, 0 B30 rules remaining, adapter unchanged; the harness still held `10.30.2.1:18082` at that moment (round 5 was waiting for a request), and after the run ended there was no listener on `18082` and no gateway process | 0 |
+
+Gateway policy (the exact values that produce the digest above): mode `fixture`, listen
+`10.30.2.1:18082`, origin `http://127.0.0.1:18083`, path `/v1/chat/completions`, limits
+`maxRequests 4`, `maxRequestBytes 1048576`, `maxResponseBytes 1048576`, `timeoutMs 120000`. The
+controlled fixture origin is loopback and records metadata only — method, path, whether the
+authorization header was exactly `Bearer public`, body byte count and whether a canary marker was
+present — never a body.
+
+Guest log (`b30-gwprobe2-b30-relay.log`, 1,480 B, SHA-256
+`C0A60106CD285E2B765CA7C025B4FAF065B289F97103DCC47251F7FFDBB15695`), abridged here by removing the
+repeated `Date`/`Connection`/`content-length` header lines and surplus blank lines; the status line,
+the attempt counter, every body and the log terminators are verbatim:
+
+```
+B30_GWPROBE_START host=b30-relay kernel=6.8.0-139-generic utc=2026-11-16T03:13:02Z
+B30_ROLE=relay
+GW_CONNECT=OK
+
+### approved fixed request
+ATTEMPT=1 RC=0 STATUS=200
+HTTP/1.1 200 OK
+content-type: application/json
+Transfer-Encoding: chunked
+107
+{"id":"b30-gateway-fixture","object":"chat.completion","model":"deepseek-v4.1-flash-free","b30":"B30_GATEWAY_FIXTURE_OK","usage":{"prompt_bytes":127},"choices":[{"index":0,"message":{"role":"assistant","content":"B30_GATEWAY_FIXTURE_OK"},"finish_reason":"stop"}]}
+0
+
+### unapproved path
+ATTEMPT=1 RC=0 STATUS=404
+HTTP/1.1 404 Not Found
+not found
+
+### absolute-URI unapproved origin
+ATTEMPT=2 RC=0 STATUS=404
+HTTP/1.1 404 Not Found
+not found
+
+### CONNECT tunnel attempt
+ATTEMPT=1 RC=0 STATUS=405
+HTTP/1.1 405 Method Not Allowed
+
+### missing credential
+ATTEMPT=2 RC=0 STATUS=401
+HTTP/1.1 401 Unauthorized
+unauthorized
+
+### wrong credential
+ATTEMPT=2 RC=0 STATUS=401
+HTTP/1.1 401 Unauthorized
+unauthorized
+
+B30_GWPROBE_LOG_END
+```
+
+Gateway-side counters per instance (from the harness event log): round 1 `requests 3`, refused
+`[path]`, 263 response bytes; round 2 `requests 3`, refused `[path]`, 0 bytes; round 3 `requests 2`,
+refused `[credential]`, 0 bytes; round 4 `requests 1`, refused `[credential]`, 0 bytes; round 5
+received no request before the deadline and ended the run (`round_skipped`,
+`reason: no_request_before_deadline`). `bytesOut` counts only upstream response body bytes forwarded
+to the caller, so round 1's 263 is exactly the fixture body the guest printed as chunk `107` (hex)
+and the three refusing rounds forwarded nothing. The extra requests are the guest's own retries: a
+gateway instance latches on its first refusal and answers `503` afterwards, so three of the six
+scenarios needed a second attempt to reach a fresh instance. That is the designed fail-closed
+behavior, and it is visible in both logs.
+
+The harness evidence file (`b30-gateway-evidence.json`, 4,032 B, SHA-256
+`A9ED9EE26A4D98F22464B8C2E8639AB9AC2FE12FD2DB725FEC40B5919FCCD758`) records `mode: fixture`,
+listen `10.30.2.1:18082`, the same policy digest for all four instances, the four per-round counter
+sets above, and `origin.requests: 1` with a single metadata record: `POST /v1/chat/completions`,
+authorization equality with `Bearer public`, JSON content type, 127 body bytes and the canary present
+as a boolean flag. The file contains no body, no canary marker string and no authorization value; the
+process exited and nothing listened on `18082` afterwards.
+
+What this establishes: from inside the relay VM the approved request reaches the gateway and is
+forwarded to the controlled fixture origin exactly once (the fixture reported `prompt_bytes 127`,
+and no other response body exists); an unapproved path, an absolute-URI proxy-style request, a
+`CONNECT` tunnel, a missing credential and a wrong credential are each refused before any upstream
+fetch; and the gateway's own log carries no body, no canary marker and no authorization value
+(`B30-CANARY-PROMPT-0f5a` and `Bearer` appear zero times in the event log and the evidence JSON).
+
+**Deviation, recorded rather than hidden:** the first probe round (`B30GW`, log
+`b30-gwprobe-b30-relay.log`, 1,377 B, SHA-256 `BC32E1F2...`) is not evidence for the refusals. The
+harness then gave each round a fixed 180 s window while the operator console was driven by hand, so
+rounds 1–5 expired before the guest started and the whole probe landed on the last instance: the log
+shows `200`, then `404`, then four `Connection refused` retries. The harness now waits for the first
+request within the overall deadline and ends the run instead of shifting scenarios; the second round
+above is the corrected run. A related operator-side error is recorded for completeness: an early
+collector run detached the media before the guest had written its log, which the collector treated
+as `PARTIAL` and kept the VHDX; the media was re-verified and re-attached instead of rebuilt.
+
+Evidence level: **deployed host-side gateway boundary with a controlled loopback origin**, plus raw
+sockets from inside the relay VM. It is not integration evidence for the live TLS chain.
+
+Supported by this entry: B30-07's requirement that an unapproved origin, path or `CONNECT` is denied
+before any external request, that the fixed origin succeeds against a controlled gateway fixture,
+that the gateway policy and digest are independently recorded, and that its logs keep no body or
+authorization material — bounded to a loopback fixture origin and a plaintext relay-to-gateway leg.
+
+Not supported by this entry: the deployed TLS chain (no real origin, resolver, trust store or
+certificate validation was exercised), live inference, and the relay *process* forwarding through
+this gateway (the probes are raw sockets from the relay guest shell, not the relay service). The
+non-loopback worker-facing listener decision and the FIDO2 positive signature remain `not_run`.
+
+Harness revision note: the deployment run used the harness revision present when its process
+started. Subsequent local edits do not change behavior for the valid deployment arguments: the
+evidence JSON now uses distinct `originConfig` and `origin` keys (the run's JSON had the latter
+only, with per-round policy including the origin config); positive-integer argument checks reject
+zero/invalid rounds, deadline and ports; the smoke probe now reports the nested `ECONNREFUSED`
+code. The updated harness was exercised with `--smoke`, loopback-only and requiring no host firewall
+rule.
+Not rerun: the pinned OpenCode 2.2.5 harnesses (pinned binary outside the repository);
+`integration/b30-egress-namespaces.sh` (privileged WSL fixture, unchanged); the FIDO2 positive
+signature dry run; the active provider WebSocket-bypass experiment; live inference, paid calls and
+any catalog read (not authorized). The deployment harness itself is not part of `node --test` (it is
+deployment tooling under `integration/`, not a test file), so the suite result below does not
+exercise the deployment path.
+
+Suite at this head (documentation plus one deployment harness; `src/` and `test/` untouched):
+serial `node --test --test-concurrency=1` -> 416 tests, 411 pass, 0 fail, 5 platform-gated skips,
+exit 0 (195 s). The default-concurrency `node --test` run, which is what the Windows CI job uses,
+exits 1 on the known timing-sensitive `B10-03` abort assertion (`aborted.stdout` empty instead of
+`before`) on this loaded machine; the same file passes 8/8 in isolation, and the failure is
+recorded here rather than erased. `git diff --check` is clean.
+
+Claim: this entry supports that a host-side L7 gateway deployed on the ADR-010 relay link refuses an
+unapproved origin, path, `CONNECT` tunnel and credential while forwarding exactly the approved
+request to a controlled fixture origin, with a recorded policy digest and body-free logs, based on
+guest-written probe output and host firewall and gateway counters. It does not support a deployed
+TLS chain, live activation, ready-for-review or merge.
+
+## Exact-head CI receipt for the 2026-11-16 gateway deployment evidence
+
+At head d6e356269e5c57d4c606685caa047c51b4636c3b, CI run 43800413251 completed SUCCESS: Windows and Ubuntu jobs passed (Windows job 133079066746, Ubuntu job 133079066372). The workflow's exit-code 7/1 annotations are its intentional continue-on-error pipeline-exit fixtures, not test failures. This receipt validates the code/docs at that head under CI; it does not satisfy the remaining deployed TLS, application-level WebSocket, FIDO2, bypass, live-inference or independent-review gates. The evidence and smoke results remain as described in the preceding 2026-11-16 entry.
+
+## Local revalidation at the publication head 5fe1e46 (2026-11-16, Windows 11 / Node 24.22.1)
+
+Repeated on the maintainer's Windows 11 host at `5fe1e46196cd7d9f8ca5fa20f843d5e49cf2e4d8`
+(base `11fcb422de47c2a9b79389de8470802d48ead730`) to confirm that the pinned-host and
+namespace evidence still reproduces at the publication head, not only at the earlier heads
+where it was first collected. No source, test or composition file was changed for this rerun;
+the only change is this record.
+
+- Pinned binary: downloaded `opencode-windows-x64.zip` from the official OpenCode v2.2.5
+  release into a temporary directory outside the repository. SHA-256
+  `2f3bfd6b3527c60c2a882557b20ddc9ba6bdff4b5a8fe61c853da8fcfb3076e8`, equal to the digest
+  published in `integration/README.md`; `opencode.exe --version` printed `opencode v2.2.5`.
+- Serial suite: `node --test --test-concurrency=1` -> 416 tests, 411 pass, 0 fail, 0 cancelled,
+  5 platform-gated skips, exit 0 (193 s). This matches the count recorded at the preceding
+  heads; the earlier `B15-03b`/`B10-03` timing failures were not observed in this run and are
+  not treated as erased.
+- Demo and diff: `node examples/fallback-demo.mjs` -> `mock/preferred` 429 then `mock/local`
+  200, exit 0; `git diff --check` -> clean.
+- WSL2 containment fixture (privileged, maintainer-run): `wsl -d Ubuntu -u root -- bash
+  integration/b30-egress-namespaces.sh` -> `RESULT: containment verified`, exit 0, with all
+  verdict lines `PASS`: worker->internet/gateway route and socket denied, worker->relay
+  reachable, relay->internet denied and relay->gateway reachable, gateway->internet and
+  gateway->worker denied, worker IPv6 and DNS denied, worker WebSocket upgrade denied, the
+  forbidden listener on `:18099` timeout with the nft OUTPUT drop counter incremented, and the
+  unprivileged worker boundary `uid=65534 gid=65534 CapInh/CapPrm/CapEff=0000000000000000
+  CapBnd=000001ffffdfefff NoNewPrivs=1` with the unauthorized mutations refused. Teardown
+  reported no owned residue and the initial-namespace ruleset remained empty.
+- Pinned OpenCode 2.2.5 through the relay: `node integration/opencode-free-relay.mjs
+  <opencode.exe>` -> exit 0, all six scenarios `ok` (normal plus 301/302/303/307/308). The
+  normal run succeeded through relay->gateway with `Bearer public`; each redirect failed the
+  task with one attempt and one origin request, the gateway latched `redirect-refused`, and the
+  alternate origin recorded zero connections, zero raw socket bytes, zero requests and zero
+  body bytes.
+- Gateway deployment harness: `node integration/b30-gateway-host.mjs --smoke` ->
+  `smoke_approved status 200`, `smoke_after_stop error:ECONNREFUSED`, exit 0; no host firewall
+  rule was created.
+- B29 prerequisite MCP workflow: `node integration/mcp-free-workflow.mjs <opencode.exe>` ->
+  exit 0, `version 2.2.5`, `transportCalls 10`, statuses `queued`/`running`/`succeeded`,
+  duplicate submission reused the same ID with one attempt and one workspace, zero fixture
+  anomalies, the out-of-scope write denied, `testExitCode 0`, and the endpoint absent from
+  config, task and MCP arguments.
+
+Evidence level: **local fixture and pinned-host observations plus a privileged WSL2
+namespace observation**. They reproduce the earlier results at the publication head; they do
+not become deployment evidence. Not run and unchanged: the deployed TLS chain to the real
+origin with a real resolver/trust store (including expired and wrong-host certificates), an
+application-level WebSocket rejection, the positive FIDO2 hardware-key signature, the active
+provider WebSocket-bypass experiment, the non-loopback worker-facing listener decision, any
+fresh catalog read and live inference. No paid call, credential or external host was contacted;
+the pinned binary is temporary and outside the repository. The draft stays draft and merge
+still requires explicit authorization.
+
+## Authorized live-boundary probes at a2c060f (2026-11-16, Windows 11 / Node 24.22.1)
+
+The maintainer authorized the remaining network-side gates in this session. These probes were
+run once, from one temporary script outside the repository, against the real fixed origin
+`opencode.ai` only. No prompt, model output or paid route was used, and no source, test or
+composition file was changed.
+
+- Real TLS chain: a `node:tls` handshake to `opencode.ai:443` with Node default
+  certificate/hostname verification and SNI `opencode.ai` returned `authorized: true`,
+  `authorizationError: null`, `TLSv1.3`, `TLS_AES_256_GCM_SHA384`, subject CN `opencode.ai`,
+  issuer `Google Trust Services`, SAN `DNS:opencode.ai, DNS:enterprise.opencode.ai`,
+  validity `2026-11-13T00:00:15Z` to `2027-02-11T00:53:06Z`, SHA-256 fingerprint
+  `E3:06:DC:19:28:EE:30:65:85:26:A9:04:24:23:9E:30:A8:A9:F8:07:74:26:5E:0A:35:20:8F:83:99:64:C6:8D`.
+  This is the resolver + system trust store + hostname validation path the live gateway uses.
+- Gateway in live mode: `createEgressGateway({ mode: 'live', listen: '127.0.0.1:18082' })` with the
+  fixed origin/path and policy digest
+  `e8b6ec5518c3c4ad108de4dcdbf841ef9a9a58282a1212b25f7bc28d0871e388` started successfully
+  (an ambient `NODE_TLS_REJECT_UNAUTHORIZED=0` was absent). It forwarded exactly one
+  `POST /inference/openai/v1/chat/completions` with `Bearer public` and an empty JSON body `{}`;
+  the provider answered `400` with
+  `{"error":{"message":"`model` must be a non-empty string","type":"invalid_request_error","param":"model","code":null}}`.
+  The request was rejected before any model generation: no model was named, no prompt was sent
+  and no completion or usage was produced. `bodyBytes` was 117; the gateway latched nothing
+  (`liveEvents` empty) because the upstream answered normally over the validated TLS chain.
+- Application-level WebSocket refusal: the same live gateway, sent a `GET` carrying
+  `Connection: Upgrade`, `Upgrade: websocket` and `Sec-WebSocket-*` headers, answered `405`
+  `method not allowed` and latched `method` before any upstream I/O. This is the gateway's own
+  code path refusing a WebSocket handshake; it does not exercise a provider-side WebSocket.
+- Dated catalog read (fresh, separately authorized): `fetchFreeMetadata()` at
+  `2026-11-16T04:34:16.916Z` returned exactly one `deepseek-v4.1-flash-free` entry with all
+  zero prices (`text.input.price 0`, `text.input.cache.read 0`, `text.output.price 0`). It is a
+  dated snapshot, not authority to run, and was not repeated.
+
+Evidence level: **deployed boundary observation against the real fixed origin plus one
+application-level refusal**. It closes the "real resolver/trust store/hostname" portion of the
+deployed TLS chain with a normal 400 response and no inference. Not run and unchanged: the
+gateway's deployed placement behind the relay link (no relay guest exists; `Get-VM` returned zero
+VMs while the `B30-Relay-Gateway` switch still carries `10.30.2.1`), expired/not-yet-valid/
+wrong-host certificates against the real origin (only disposable-CA fixtures cover these), the
+positive FIDO2 hardware-key signature (no FIDO2 device is present on this host), the active
+provider WebSocket-bypass experiment from the worker compartment, the non-loopback worker-facing
+listener decision (its own ADR amendment is still required), an independent Ubuntu host, and live
+inference. The live composition path remains closed and the PR stays draft.
+
+The earlier "no external host was contacted" sentence in the preceding entry describes that
+run only; the probes above contacted `opencode.ai` under this session's authorization.
+
+## Explicit relay bind address in the trusted composition (2026-11-16)
+
+Implemented the maintainer-selected option for the last code-side deployment decision: the
+trusted composition now accepts an explicit worker-facing relay address instead of hardcoding
+loopback. Defaults and the closed live path are unchanged.
+
+- `src/free-listeners.mjs`: `freeListenerPlan` accepts `relayHost` (default `127.0.0.1`),
+  binds the relay to that exact address, derives `workerBaseURL` from it (IPv6 bracketed) and
+  refuses, before any child starts, anything that is not a concrete loopback/private IPv4
+  (`127/8`, `10/8`, `172.16/12`, `192.168/16`, `169.254/16`) or IPv6 (`::1`, `fc00::/7`,
+  `fe80::/10`). Wildcard/unspecified (`0.0.0.0`, `::` and compressed aliases), public
+  addresses, IPv4-mapped IPv6 and hostnames are refused with `invalid_argument`. The address is
+  part of `relayPolicyDigest`, so an admission gate built for one bind address cannot admit
+  another. The gateway stays fixture-mode loopback.
+- `test/free-listeners.test.mjs`: added a pure policy test (accepted/rejected addresses,
+  digest difference, IPv6 URL form) and a real composition test that binds the relay on
+  `127.0.0.2`, confirms `127.0.0.1` is not additionally exposed, and confirms close releases
+  the port. Private addresses such as `10.30.1.1` are policy-tested only; binding them needs a
+  real NIC.
+- Docs: ADR-010 dated amendment, task contract listener bullet, roadmap/handoff status,
+  deployment prerequisites item 3, B30 card and integration README updated; no live origin,
+  composition flag or gateway mode was opened.
+
+Validation: `node --test test/free-listeners.test.mjs test/free-listeners-authority.test.mjs`
+-> 19 pass / 0 fail / 0 skip (exit 0); serial `node --test --test-concurrency=1` -> 418 tests,
+413 pass / 0 fail / 5 platform-gated skips (exit 0, 186 s); `node examples/fallback-demo.mjs`
+-> 429 then 200 (exit 0); pinned `integration/opencode-free-relay.mjs` -> exit 0 with the same
+six scenarios; `git diff --check` clean.
+
+Not run and unchanged: binding the relay on a real private NIC in the ADR-010 topology, the
+deployed relay→gateway TLS leg (only the direct real-origin trust check above), positive FIDO2,
+the provider WebSocket-bypass experiment, an independent Ubuntu host and live inference. The
+live composition path remains closed; the PR stays draft.
+
+## 2026-11-22 - B30 critical review correction follow-up
+
+- Branch/head at pickup: `task/B30-free-relay`, published baseline `11685d57c6e15a7804a95c05c1a3666c70b56de7`; PR #45 remains draft and conflicting.
+- Corrections: relay/gateway ingress timers now begin at request arrival, cover body collection and upstream fetch, abort stalled requests, refuse body completion after a latch, and close incomplete request sockets after bounded 413/504 responses. Worker preparation now accepts only the dedicated relay-provider profile with a syntactically constrained private/loopback URL; the one prefixed authorization model remains fixed. Added supervised two-connection latch regression, worker URL validation, and early fixture-origin cleanup registration. Clarified wire-model versus authorization model IDs.
+- Focused validation: relay/gateway/supervised listener suite had 57/58 pass, then the one timeout-label expectation was corrected; worker-preparation focused suite 13/13 pass. A full default suite completed 422 tests: 416 pass, 1 fail (unrelated B10 subprocess timing/partial-output flake), 5 platform-gated skips, native exit 1. Serial full suite is running; do not claim its result until its actual native exit is captured. Demo 429 -> 200, native exit 0; `git diff --check`, native exit 0 (before the last socket-close adjustment; rerun required).
+- Not run: pinned OpenCode relay harness, external/deployment gates, provider/catalog requests, live inference, real FIDO2, network probes, VMs/WSL namespace/firewall, CI. Live composition remains closed. Follow-up corrections are incomplete pending final reruns, independent critical re-review and remote/PR verification.
+## 2026-11-22 - B30 follow-up validation receipt
+
+The serial full-suite process launched during implementation completed: 422 tests, 417
+passed, 0 failed, 5 platform-gated skipped; Node native exit 0 (197.5 s). This receipt
+supersedes the earlier “serial suite is running” statement in the same day's appended
+notes, but does not convert the default-concurrency result: default `node --test` ran 422
+tests, 416 passed, 1 failed, 5 skipped, native exit 1 due the B10-03 partial-output
+timing flake. The affected B10 file passes in the serial suite. Post-adjustment focused
+B30 suite: 71/71, exit 0. Final `git diff --check`: exit 0. Fallback demo: 429 -> 200,
+exit 0. Changes remain unpublished; no CI or PR-head result is claimed.
+## Final post-correction B30 validation receipt — 2026-11-22
+
+After adding the stalled-body and refusal-path cleanup regressions, the serial full suite
+completed 423 tests: 418 passed, 0 failed, 5 platform-gated skips; native exit 0
+(197.96 s). Final default full suite: 423 tests, 417 passed, 1 failed, 5 skips, native
+exit 1; the sole failure is B10-03's existing loaded-machine partial-output timing flake.
+Focused B30 suite passed 73/73, exit 0; the final `test/free-listeners.test.mjs` rerun
+passed 16/16, exit 0, including late data/end/error and abort after the body deadline.
+exit 0. Final demo exit 0 and final `git diff --check` exit 0. No CI/head verification
+has been run on these unpublished corrections.
+
+## Critical-review correction publication receipt — 2026-11-22
+
+Published on the same branch and draft PR #45 as commit
+`049383e038da24ffbcad480a826ac37675a59af5` (parent `11685d57c6e15a7804a95c05c1a3666c70b56de7`).
+The exact remote ref matched this SHA; PR #45 still targets `main`, remains draft and
+reports `DIRTY`. No current-head CI result was available. This is not independent
+acceptance or a ready/merge claim.
+# B30 latest critical-review corrections — 2026-11-22 (local validation)
+
+- Correction work began from the verified clean local/remote head
+  `f59d10373a18c43c70208a84b55a1707f168d6c6`; the initial two-file request-cleanup
+  edits were preserved. Work remains on `task/B30-free-relay`.
+- Focused command
+  `fnm exec --using=24.22.1 node --test test/free-provider.test.mjs test/live-approval.test.mjs test/free-listeners.test.mjs test/free-listeners-authority.test.mjs test/relay.test.mjs test/egress-gateway.test.mjs test/opencode.test.mjs`
+  passed 102/102 after corrections (exit 0). It covers bounded incomplete-body refusals,
+  fresh-listener abort interleaving, one-request cap composition/request-2 denial,
+  signed-ceiling binding, guard cap generation and refusal before listener ownership.
+- Serial full suite
+  `fnm exec --using=24.22.1 node --test --test-concurrency=1`: 428 total, 423 pass,
+  0 fail, 5 skips, exit 0, ~199 seconds. Four TLS fixtures skipped because `openssl`
+  is absent from PATH; one Windows platform-gated subprocess case skipped. The suite
+  itself ran existing disposable-key tests; no key/certificate command was manually
+  invoked.
+- `fnm exec --using=24.22.1 node examples/fallback-demo.mjs`: mock 429 then 200,
+  exit 0. `git diff --check`: exit 0 (CRLF normalization warning on ADR-010 only).
+- An earlier focused run during development failed (2 tests: abort ordering and
+  incomplete addition of effective cap parameter); an earlier broader run also
+  timed out existing upstream-timeout cases when a request-end handler cleared the
+  timer too early. These failures led to fixes and are retained here, not represented
+  as passing evidence. Current focused and serial reruns above passed.
+- Not rerun: pinned OpenCode-through-supervised composition, WSL/VM/network placement,
+  deployed TLS, live/provider/catalog, FIDO2 positive signature, platform egress,
+  current-head CI, default-concurrency full suite. PR remains draft/conflicting and
+  issues #46/#47/#48 remain external blockers.
+- Final post-review tightening rerun: focused three-case set (early refusal, fresh abort,
+  one-request profile) passed 3/3, exit 0; serial full suite repeated after that test edit
+  passed 428 total / 423 pass / 0 fail / 5 skips, exit 0 (~203 s). Demo and diff check
+  were rerun after source changes and passed.
+- Published source/tests/contract/ADR and local validation receipt as commit
+  `8f888c22e0d7dcfb296be19edf2784f076896999` on the existing `task/B30-free-relay`
+  PR branch. The task card records this latest publication SHA. The following docs-only
+  publication receipt is separate and does not alter source/tests.
+
 ## Planning: reconcile delivery state and unblock supervised use — 2026-11-22
 
 Executed on Windows x64, NT 10.0.26300.0, Node.js v24.22.1 (fnm installation
@@ -2277,6 +3822,201 @@ local baseline/focused fixtures only. It does not establish B30 acceptance,
 hardware-positive authorization, a deployed service chain, M2b sign-off,
 M3 completion, deterministic test reliability, live activation or merge.
 
+## B30 follow-up critical-review corrections — 2026-11-23 (local validation)
+
+- Correction work began from the verified clean local/remote head
+  `14013bbe82d28a4ffa9651c8a721ec015fa64891` on `task/B30-free-relay`.
+- Source/tests/contract/ADR correction commit
+  `4bf5e19f6e13f0ca63ac2c4d78c787ba849cba47` addresses the two blocking findings in
+  https://github.com/pbsilvabd/ai-orchestrator/pull/45#issuecomment-7089619255 .
+  The listener-free `fixtureEndpoint` composition now passes the signed gate ceiling to
+  the worker guard and refuses a gate without an integer cap in 1..12 before ownership;
+  live gateway origin validation strips IPv6 brackets before IP classification.
+- Focused command
+  `fnm exec --using=24.22.1 node --test test/egress-gateway.test.mjs test/free-provider.test.mjs`:
+  36 total, 36 pass, 0 fail, 0 skips, exit 0. Includes the prepared-guard cap assertion
+  and the IPv4/IPv6 literal-origin negatives.
+- Focused B30 set (the same twelve files as the previous entry): 138 total, 134 pass,
+  0 fail, 4 skips, exit 0, ~15 s. The four skips are TLS fixtures that require
+  `openssl`, which is absent from PATH; no key or certificate tool was invoked.
+- Serial full suite `fnm exec --using=24.22.1 node --test --test-concurrency=1`:
+  431 total, 426 pass, 0 fail, 5 skips, exit 0, ~200 s. Skips: four TLS fixtures
+  without `openssl` plus one Windows platform-gated subprocess case.
+- Default-concurrency full suite `fnm exec --using=24.22.1 node --test`:
+  431 total, 425 pass, 1 fail, 5 skips, exit 1, ~68 s. The only failure was the known
+  B10-03 partial-output timing assertion (`'' !== 'before'` at
+  `test/subprocess.test.mjs:78`), reproduced in two default-concurrency runs today and
+  absent from the serial run. It is recorded as a flake, not passing evidence.
+- `fnm exec --using=24.22.1 node examples/fallback-demo.mjs`: mock 429 then 200,
+  exit 0. `git diff --check`: exit 0.
+- Not run: current-head CI, pinned OpenCode through the supervised composition,
+  deployment/network/VM gates, deployed TLS, live/provider/catalog calls, a FIDO2
+  positive signature, and a signed one-request run through a real signature. PR #45
+  remains draft and conflicting; issues #46/#47/#48 remain external blockers.
+
+## B30 author self-review follow-up — 2026-11-23 (local validation)
+
+- This is an **author self-review**, not the independent critical re-review, which
+  remains pending. It reviewed the complete `main..HEAD` diff at
+  `28f10a29dc7a70abd9f747393c3c9166162bfa7d` plus local probes of both listeners.
+- Confirmed the two blocking findings from comment #7089619255 are corrected, and
+  found one diagnostic defect by probe: when another request latched the listener
+  while a valid request was awaiting its upstream response, the in-flight request
+  answered `504 deadline exceeded` and overwrote `latchReason` with `timeout`, even
+  though no deadline expired and the real latch was e.g. `method`. No upstream
+  replay or forwarded bytes were involved; the refusal itself was correct.
+- Correction commit `bf07293f0718ea25b7a93c54f20b66bda7f95c82`: both listeners now
+  answer `503 <listener> latched` and retain the original latch reason when another
+  request caused the latch; only a genuinely expired deadline answers 504. Added
+  deterministic regressions in `test/relay.test.mjs` and `test/egress-gateway.test.mjs`
+  (in-flight POST, concurrent wrong-method latch, one origin request, retained reason).
+- Revalidation after the fix: `node --test test/relay.test.mjs test/egress-gateway.test.mjs`
+  39 pass / 0 fail, exit 0; serial full suite 433 total, 428 pass, 0 fail, 5 skips,
+  exit 0 (~200 s). Skips unchanged (four TLS fixtures without `openssl`, one
+  platform-gated subprocess case).
+- Probes ran locally with Node 24.22.1 against loopback fixture origins only; no
+  provider, catalog, external network, VM, firewall, key, certificate or FIDO2
+  operation was performed.
+
+## B30 merge with main - 2026-11-24 (local validation)
+
+- Merged `origin/main` `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` into
+  `task/B30-free-relay` at `9a83ac9b95a3d00738080b64286544fde28fdb25` to clear the
+  stale base. Conflicts were limited to `docs/backlog.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/validation.md` and `docs/worklog.md`; code, tests and the
+  contract merged automatically.
+- Resolution: main-side planning/reassessment content retained, B30 draft status
+  updated to the current head, and both sides' dated entries preserved in
+  chronological order (no history rewritten).
+- Post-merge validation: `node --test test/relay.test.mjs test/egress-gateway.test.mjs`
+  39 pass / 0 fail; serial full suite 433 total, 428 pass, 0 fail, 5 skips, exit 0;
+  `node examples/fallback-demo.mjs` 429 -> 200, exit 0; `git diff --check` clean.
+  Skips unchanged (four TLS fixtures without `openssl`, one platform-gated case).
+- Not run: current-head CI (no run registered for the branch), independent critical
+  re-review, pinned OpenCode through the supervised composition, deployment/VM/network
+  gates, real TLS, provider/live calls and FIDO2. PR #45 stays draft; #46/#47/#48
+  remain blockers.
+
+## B30 independent critical review corrections - 2026-11-24 (local validation)
+
+- The independent critical review (GPT-6.2 Sol, PR comment 7121684260) requested changes
+  at `2f8d7aea4f75b53e391d32873bbecd38e4736d39`; exact-head CI run `45323052642` failed on
+  Ubuntu at the fresh-abort regression (Windows passed).
+- **B30-05 approval lifetime:** `validateLiveApproval` now requires
+  `issuedAt <= now < expiresAt` and `0 < expiresAt - issuedAt <= 15 minutes`, so future
+  issuance, inverted and zero-length intervals are refused before signature verification
+  or reservation. Added clock-controlled cases for future, inverted, equal, exact boundary
+  and expiry-at-now. Contract and ADR-010 amended.
+- **B30-04 fresh abort:** the regression no longer sleeps. It observes the listener's
+  terminal latch through the new diagnostics-only `service.freeListenerStatus()` (IPC
+  status query) before completing the pending request, and preserves the zero-origin and
+  ownership assertions.
+- **First-cause latch reporting:** both listeners now keep the first latch reason
+  (`latched` stays first-write-wins; the gateway still audits every refusal in `refused`).
+  The concurrent-latch regressions wait for the origin request and the 405 instead of
+  fixed sleeps, and new regressions prove an upstream failure after a latch cannot
+  overwrite the original reason.
+- **Merge history:** restored the dropped dated continuity text under historical
+  headings in `docs/backlog.md` and `docs/handoff.md`, and labelled the `a4f3954` green CI
+  historical in backlog/roadmap.
+- Pinned host loopback evidence (author run at the reviewed head, recorded for this
+  entry): `integration/opencode-free-relay.mjs` with OpenCode 2.2.5 exited 0; normal
+  scenario succeeded with three origin requests, and 301/302/303/307/308 each failed
+  terminally with one attempt, one origin request and zero alternate-origin anomalies.
+  Fixture/loopback composition only, not deployment or live evidence.
+- Validation after the corrections: `node --test test/live-approval.test.mjs
+  test/relay.test.mjs test/egress-gateway.test.mjs` 55 pass / 0 fail; focused
+  free-provider/supervisor/ownership/live-approval set 48 pass / 0 fail; fresh-abort
+  regression 1 pass; serial full suite 436 total, 431 pass, 0 fail, 5 skips, exit 0;
+  `node examples/fallback-demo.mjs` 429 -> 200, exit 0; `git diff --check` clean.
+- Not run: corrected-head CI (pending), corrected-head independent re-review, deployed
+  TLS/VM/firewall, provider/catalog, FIDO2 and live activation. PR #45 stays draft.
+
+## B30-04 status-query follow-up - 2026-11-24 (local validation)
+
+- The corrected-head re-review (PR comment 7121966650) closed the three prior findings but
+  found one new blocking P2: `freeListenerStatus()` combined both status queries with
+  `Promise.all`, so when one listener had already exited (synchronous throw) the other
+  still-pending query could later reject unhandled and terminate the service.
+- Fixed in `src/free-listeners.mjs`: the diagnostics query now awaits the relay and gateway
+  statuses sequentially, so at most one query is in flight and every rejection returns to
+  the caller.
+- Regression in `test/free-listeners.test.mjs`: the gateway child is killed and observed
+  exited, the combined query is started while the relay still runs, then the relay is
+  killed before answering; the test asserts the call returns a promise that rejects and
+  that no `unhandledRejection` is emitted.
+- Validation: `test/free-listeners.test.mjs` 20 pass / 0 fail; the two targeted
+  regressions 2 pass; serial full suite 437 total, 432 pass, 0 fail, 5 skips, exit 0.
+  Two earlier serial attempts failed only B15-03b (known #48 readiness race; it passed in
+  isolation and in the final run). Demo 429 -> 200, exit 0; `git diff --check` clean.
+- No live/provider/VM/key/FIDO2 operation; PR #45 stays draft and no merge/ready transition.
+
+## B30-04 status-regression handler-ordering correction - 2026-11-24 (local validation)
+
+- The third-round re-review (PR comment 7122271270) confirmed the runtime fix and the three
+  earlier findings but found one new blocking P2 in the new regression itself: it awaited the
+  relay `SIGKILL` before attaching the rejection handler, so when the relay answered the
+  status query first the expected gateway rejection was reported as unhandled. The reviewer
+  reported 5/5 isolated failures and 3/3 passes for a variant that attached the handler
+  immediately. This is a test-race, not a runtime regression: the sequential `status()`
+  implementation is unchanged.
+- Fixed in `test/free-listeners.test.mjs`: `assert.rejects(pending)` is now created
+  immediately after the combined query starts, before the relay kill, and awaited afterwards.
+- Validation: the targeted regression passed 5/5 isolated runs, `test/free-listeners.test.mjs`
+  passed 20 pass / 0 fail, demo 429 -> 200, exit 0, and `git diff --check` is clean.
+- Not run: exact-head CI for the corrected head (pending), a fourth-round independent
+  re-review, deployed TLS/VM/firewall, provider/catalog, FIDO2 and live activation. PR #45
+  stays draft.
+
+## B30 independent review closure - 2026-11-24 (reviewer evidence)
+
+- The fourth-round independent critical review (PR comment 7122405149) closed every prior
+  finding at `7660b39874eecd48c408c1500d30da96c8423d2c` with no new blocking findings:
+  approval lifetime bounds, fresh-abort latch ordering, restored merge history and
+  first-cause latch reporting.
+- Reviewer evidence at that head: the status regression passed 8/8 isolated runs and the
+  listener file 20/20; controlled probes passed with a fast relay reply and with a silent
+  relay; restoring the late handler reproduced the expected unhandled-rejection failure;
+  cleanup checks confirmed both child exits, closed ports and removal of listener and owner
+  locks. 41 relay/gateway tests and 3 pure approval tests passed. Exact-head CI run
+  `45328472433` passed on Windows and Ubuntu, and a 29-module filtered serial suite, the
+  fallback demo and whitespace checks passed.
+- Reviewer exclusions: key- and certificate-generating fixtures, pinned OpenCode,
+  deployment, provider/catalog and hardware checks. The unfiltered serial result remains
+  author evidence.
+- Review closure is not acceptance. Merge, ready and live activation remain unauthorized;
+  #46/#47/#48 remain open and the deployment/provider/FIDO2 gates remain `not_run`.
+
+## FIX48 propagation to B30/#45 - 2026-11-28
+
+- Applied the reviewed correction from FIX48 PR #52 to the B30 branch starting
+  at `67acd78d0c570d5619dcc56c1638138c650cf32a`: default-concurrency B10-03
+  output readiness, MCP partial-line/collection retention, atomic B18 contender
+  result publication, and the Windows/Ubuntu five-sample CI runner. Added the
+  FIX48 task card and retained B30's pre-existing documentation/history.
+- No B30 production, approval, provider, network, deployment or policy behavior
+  was changed by the propagation. #45 and #51 remain draft; no merge.
+- Run `46108300145` passed the receipt head `9b34a8c102af301f511c25c744caab3cb1e1ac36`.
+  Both OS jobs checked common merge commit `7366b2218583d924614105a4d8dc17c5ff4ca858`,
+  parented by base `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head.
+  Windows samples 1-5 each reported 310 tests / 309 pass / 0 fail / 1 skip;
+  Ubuntu samples 1-5 each reported 310 / 306 / 0 / 4. All ten JSON outcomes
+  report native exit 0, `worktreeClean=true` and `worktreeUnchanged=true` at the
+  same OS-specific SHA. Both demo steps returned 429 then 200.
+- This verifies the receipt head; it does not prove the #45 propagation head.
+  The #45 work branch passed the focused command (88 total / 87 pass / 0 fail /
+  1 platform skip) and full default suite (442 total / 437 pass / 0 fail /
+  5 platform skips), native exit 0; the demo returned 429 then 200, exit 0.
+- Actions run `46109110028` passed the #45 code head
+  `784cdb4603896086033a3c7ca5bbacb9fabf9d8c`. Both platforms checked merge
+  commit `8edcf05ee863dabc9c093b1b10204270b985eab7` (base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` + PR head `784cdb4`). Windows
+  job `140868429341` samples 1–5 and Ubuntu job `140868429560` samples 1–5
+  each reported 442 tests / 437 pass / 0 fail / 5 skip, exit 0, clean and
+  unchanged checkout at the same SHA. Both fallback demos returned 429 then
+  200. The complete workflow and both jobs concluded success. The CLI watch's
+  annotations request returned HTTP 502 after observing job completions; direct
+  run/job metadata and both job logs confirmed success. #51 validation remains.
 ## FIX48: default-concurrency test stability — 2026-11-27
 
 Executed on Windows x64, Node.js v24.22.1 (`fnm`).
@@ -2457,3 +4197,66 @@ The raw result records and aggregate summaries were inspected in the job logs.
 Both platform jobs and fallback demos succeeded; both demos returned 429 then
 200. Run metadata confirms success at the PR head above. This documents the
 receipt-head campaign; run `46108300145` remains the final-code-head campaign.
+
+## B30 synchronous-verifier correction and main reconciliation — 2026-11-28
+
+Environment: Windows x64, Node.js v24.22.1 via fnm. Local branch
+`task/FIX48-propagate-B30`; correction commit `e1e6c967ab04db9e3572d4778c548b6d23ec4a3a`;
+remote main merged from `04c6e5f80d4a54a20203922fd8ee259419dd069c`.
+
+| Command | Result | Exit |
+| --- | --- | ---: |
+| `fnm exec --using=24.22.1 -- node --test test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | Focused admission/revalidation regressions passed, including Promise and thenable resolve/reject paths and rejection observation | 0 |
+| `fnm exec --using=24.22.1 -- node --test` | 454 tests, 449 pass, 0 fail, 5 skips | 0 |
+| `fnm exec --using=24.22.1 -- node examples/fallback-demo.mjs` | Fallback demo returned 429 then 200 | 0 |
+| `git diff --check` | Clean; no whitespace errors | 0 |
+
+The source correction refuses asynchronous trusted admission, worker validation and
+receipt revalidation synchronously as `internal`, attaching a rejection observer
+before returning. Pre-reservation refusal remains `cancelled` with no attempt;
+post-reservation refusal remains `blocked` with the attempt preserved and no replay.
+`origin/main` reconciliation kept main's current FIX48 campaign receipts and restored
+the B30 append-only validation/worklog entries.
+
+Evidence level: local unit/process tests and fallback demo only. The merge and
+documentation reconciliation do not establish deployment, cross-compartment
+composition, positive FIDO2 approval or live use.
+
+Not run: pinned OpenCode smoke/relay fixture, current-head GitHub CI, independent
+critical re-review, #51 propagation, VM/netns/firewall work, TLS/provider/catalog
+requests, hardware signing, FIDO2, live inference or merge. #45 remains OPEN/DRAFT;
+#46/#47/#48 and deployment acceptance remain incomplete.
+
+## B30 final-tree revalidation after main merge — 2026-11-28
+
+Revision: `6b155213950d2eae070f34bcde0cc2ec164a29d0` (merge of local correction
+`e1e6c96` and `origin/main` `04c6e5f`). The merge-resolution commit changes only
+the six reconciliation/receipt documents relative to its first parent; the
+source/test correction is unchanged.
+
+| Command | Result | Exit |
+| --- | --- | ---: |
+| `fnm exec --using=24.22.1 node --test test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | 29 tests, 29 pass, 0 fail, 0 skips | 0 |
+| `fnm exec --using=24.22.1 node --test` | 454 tests, 449 pass, 0 fail, 5 skips | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Mock preferred returned 429; fallback returned 200 | 0 |
+| `git diff --check` and base-to-head whitespace checks | Clean | 0 |
+
+The full-suite skips are platform/tool availability skips, including four
+OpenSSL-dependent TLS fixture cases and one Windows-only process case on this
+Windows run; they are not reported as passed. `git diff origin/main...HEAD`
+shows the B30 task implementation and correction; `git diff HEAD^1 HEAD` is
+documentation-only. The relevant correction diff, acceptance rows and PR review
+history were inspected. No code changes followed these tests.
+
+Not run: pinned OpenCode smoke, VM/namespace/firewall/deployment campaign,
+provider/catalog requests, real keys or positive FIDO2, live inference, exact
+head GitHub CI or independent review of this new SHA. The PR's prior exact-head
+checks/reviews do not transfer to this commit. Keep #45 OPEN/DRAFT and live
+closed; no merge is authorized.
+
+Publication follow-up: pushed the correction and reconciliation normally to
+PR #45 as `05c39828e1c1f03197c1685c4dabb6136a562df1`; `git ls-remote` and PR
+metadata agreed on the SHA, and the PR remained OPEN/DRAFT. Actions run
+`46125175156` was queued for that exact head. A SHA-bound critical re-review was
+requested in [comment 7236498297](https://github.com/pbsilvabd/ai-orchestrator/pull/45#issuecomment-7236498297).
+Neither CI completion nor independent re-review is claimed.

@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { FREE_MODEL, FREE_ENDPOINT, FREE_MODEL_ID, METADATA_TTL_MS,
+import { FREE_MODEL, FREE_ENDPOINT, FREE_MODEL_ID, FREE_PACKAGE, METADATA_TTL_MS,
   freeRequestHash, validateFreeMetadata, validateFreeSubmission } from '../src/free-provider.mjs';
 import { buildOpenCodeInvocation, createOpenCodeWorker } from '../src/opencode.mjs';
 import { createTaskService } from '../src/service.mjs';
 import { createConfiguredTaskService } from '../src/configured-service.mjs';
+import { createSignedApprovalAdmission, openApprovalLedger } from '../src/live-approval.mjs';
 import { freeGuardPlugin, freeGuardSource } from '../src/free-guard.mjs';
 import { approvalFor, fixture, metadata } from './fixtures/free-worker.mjs';
 
@@ -145,6 +146,19 @@ test('B29-02: approval expiry after admission retains the dispatch and halts the
   // no worker child was ever spawned. Only this isolated test home is removed.
 });
 
+test('B30: worker preparation accepts only trusted private relay URL forms', t => {
+  const f = fixture(t);
+  for (const baseURL of ['http://127.0.0.2:18081/v1', 'http://[fd00::1]:18081/v1']) {
+    assert.doesNotThrow(() => buildOpenCodeInvocation({ ...f.options,
+      provider: { kind: 'opencode-free-relay', package: FREE_PACKAGE, baseURL } }));
+  }
+  for (const baseURL of ['http://127.0.0.2:18081/v2', 'http://example.com:18081/v1',
+    'http://127.0.0.2.evil.invalid:18081/v1']) {
+    assert.throws(() => buildOpenCodeInvocation({ ...f.options,
+      provider: { kind: 'opencode-free-relay', package: FREE_PACKAGE, baseURL } }), denied);
+  }
+});
+
 test('B29-03: free launch is anonymous, isolated, guarded and inert without its plugin', t => {
   const f = fixture(t);
   const invocation = buildOpenCodeInvocation(f.options);
@@ -157,9 +171,13 @@ test('B29-03: free launch is anonymous, isolated, guarded and inert without its 
   assert.equal(invocation.config.compaction.auto, false);
   assert.equal(invocation.config.warming, false);
   assert.match(invocation.guardSource, /free worker request refused/);
+  assert.ok(invocation.guardSource.includes('"maxRequests":12'));
   assert.ok(invocation.guardSource.includes(FREE_ENDPOINT));
   assert.equal(invocation.env.OPENCODE_API_KEY, undefined);
   assert.equal(invocation.env.OPENCODE_DISABLE_MODELS_FETCH, '1');
+  const oneRequest = buildOpenCodeInvocation({ ...f.options, freeMaxRequests: 1 });
+  assert.ok(oneRequest.guardSource.includes('"maxRequests":1'));
+  assert.throws(() => buildOpenCodeInvocation({ ...f.options, freeMaxRequests: 13 }), /invalid configured free request cap/);
   const worker = createOpenCodeWorker({ ...f.options, runtimeRoot: join(f.root, 'worker-runtime') });
   const prepared = worker.prepare(f);
   assert.equal(readFileSync(prepared.env.OPENCODE_MODELS_PATH, 'utf8'), '{}');
@@ -277,4 +295,88 @@ test('B29-04: live composition is closed; fixture composition stays locked witho
   f.services.push(approved);
   assert.equal(gets, 1);
   assert.equal(approved.submitTask(f.request).idempotentReplay, true);
+});
+
+test('B30-05: a signed admission measuring a different executable than the configured worker is refused', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  const metadataSource = async () => metadata();
+  // A real disposable host executable (A) distinct from the worker executable (B).
+  const hostA = join(f.home, 'host-a');
+  writeFileSync(hostA, 'host-a-binary');
+  const admission = createSignedApprovalAdmission({
+    allowedSigners: `maintainer namespaces="ai-orchestrator-live@pbsilvabd" ssh-ed25519 AAA`, principal: 'maintainer',
+    relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
+    metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
+    ledger: openApprovalLedger({ home: join(f.home, 'ledger') }),
+    hostExecutable: hostA,
+  });
+  // A (hostA) != B (process.execPath): trusted composition must refuse before any service
+  // exists, so no task/child can ever run under a mismatched host identity.
+  await assert.rejects(
+    createConfiguredTaskService({ home: f.home, config: activeConfig, admission },
+      { metadata: metadataSource, fixtureEndpoint }),
+    /invalid free worker service configuration/);
+});
+
+test('B30-05: a signed admission measuring the configured worker executable composes', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  const metadataSource = async () => metadata();
+  const admission = createSignedApprovalAdmission({
+    allowedSigners: `maintainer namespaces="ai-orchestrator-live@pbsilvabd" ssh-ed25519 AAA`, principal: 'maintainer',
+    relayPolicyDigest: 'd'.repeat(64), gatewayPolicyDigest: 'e'.repeat(64),
+    metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
+    ledger: openApprovalLedger({ home: join(f.home, 'ledger') }),
+    hostExecutable: process.execPath, // A == B
+  });
+  // A == B: composition succeeds (the gate is never invoked here; no hardware signature).
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig, admission },
+    { metadata: metadataSource, fixtureEndpoint });
+  f.services.push(service);
+  assert.equal(service.schedulerStatus().activeTaskId, null);
+});
+
+test('B30-05: fixture composition binds the prepared guard to the signed request ceiling', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  const approvalFile = join(f.home, 'approval.json');
+  writeFileSync(approvalFile, JSON.stringify(approvalFor(f.request)));
+  // Labelled test double: admits locally and exposes the signed one-request ceiling. The
+  // real factory's cap property is covered by the composition test above.
+  const gate = () => ({ admitted: true, revalidate() {} });
+  Object.defineProperty(gate, 'maxRequests', { value: 1, enumerable: true });
+  const service = await createConfiguredTaskService({ home: f.home, config: activeConfig,
+    approvalFile, admission: gate }, { metadata: async () => metadata(), fixtureEndpoint });
+  f.services.push(service);
+  const accepted = service.submitTask(f.request);
+  await service.whenIdle();
+  const attempt = service.store.readTask(accepted.taskId).attempts.at(-1);
+  // The worker placeholder exits before any request; preparation still writes the guard.
+  const guardSource = readFileSync(join(f.home, 'runtime', accepted.taskId, attempt.attemptId,
+    'guard', 'index.js'), 'utf8');
+  assert.ok(guardSource.includes('"maxRequests":1'), 'guard enforces the signed ceiling');
+  assert.ok(!guardSource.includes('"maxRequests":12'), 'guard never widens to the default cap');
+});
+
+test('B30-05: a gate without a usable signed cap refuses before ownership or effects', async t => {
+  const f = fixture(t);
+  const activeConfig = { ...f.config, worker: { type: 'opencode-free', executable: process.execPath,
+    writablePaths: ['src/**'] } };
+  const fixtureEndpoint = 'http://127.0.0.1:43210/v1';
+  for (const maxRequests of [undefined, 0, 13, '1']) {
+    const gate = () => ({ admitted: true, revalidate() {} });
+    if (maxRequests !== undefined)
+      Object.defineProperty(gate, 'maxRequests', { value: maxRequests, enumerable: true });
+    await assert.rejects(createConfiguredTaskService({ home: f.home, config: activeConfig, admission: gate },
+      { metadata: async () => metadata(), fixtureEndpoint }), /effective free request cap/);
+  }
+  assert.equal(existsSync(join(f.home, 'locks', 'service-owner.lock')), false);
+  assert.equal(existsSync(join(f.home, 'workspaces')), false);
 });
