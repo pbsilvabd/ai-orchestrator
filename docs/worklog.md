@@ -1906,3 +1906,64 @@ Template:
 - Follow-up: publish this documentation PR, verify its remote head/CI and
   settle #47/#46 before privileged deployment. Existing runtime gates remain
   authoritative; no merge or live activation was performed.
+
+## 2026-11-27 — M2b: stabilize default-concurrency acceptance
+
+- Branch: `task/FIX48-concurrency-stability`
+- Scope: tests, CI and documentation; no production scheduler, lifecycle,
+  provider or deployment behavior changed.
+- Steps:
+  1. Reproduced the clean-main B10-03 failure on Windows x64 with Node.js
+     24.22.1: stdout was empty at the 150 ms abort, while all other baseline
+     tests passed.
+  2. Made the B10 child readiness observable before requesting abort and
+     preserved the partial-output and conservative stop assertions.
+  3. Preserved incomplete and already-collected MCP output across polling, and
+     published competing B18 fixture JSON through same-directory atomic rename.
+  4. Added a repeated-suite runner that runs up to five native default-
+     concurrency suites sequentially, records every result and continues after
+     failures; configured Windows/Ubuntu CI to require five samples.
+  5. Added FIX48 acceptance scope and updated backlog, roadmap and handoff to
+     retain #46/#48/#51 gates.
+- Review pass 1: traced the real child, output-stream, MCP collection and
+  cross-process fixture paths. Confirmed the scheduler's existing predicate
+  readiness tests still assert persisted-dispatch/no-replay behavior; no
+  scheduler production change was justified.
+- Review pass 2: reviewed the complete diff and FIX48-01..06 matrix. Confirmed
+  sample failures are not hidden, CI keeps default concurrency, B18 contender
+  JSON is read only after atomic publication, and no live/deployment policy
+  or production API changed. Cross-platform repeated CI and stack propagation
+  remain incomplete.
+- Files: `.github/workflows/ci.yml`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/tasks/FIX48.md`, `docs/validation.md`,
+  `docs/worklog.md`, `scripts/repeat-default-suite.mjs`,
+  `test/mcp-server.test.mjs`, `test/repeat-default-suite.test.mjs`,
+  `test/subprocess.test.mjs`, `test/task-maintenance.test.mjs`.
+- Validation: baseline `node --test` → 305 total, 303 pass, 1 fail, 1 skip
+  (B10-03), exit 1; focused FIX48 files → 86 total, 85 pass, 0 fail, 1 skip,
+  exit 0 (before final runner/test assertions); final default full suite →
+  310 total, 309 pass, 0 fail, 1 skip, exit 0; serial diagnostic full suite →
+  309 total, 308 pass, 0 fail, 1 skip, exit 0; fallback demo → 429 then 200,
+  exit 0; diff check →
+  clean, exit 0. The five-sample Windows/Ubuntu campaign and propagation checks
+  have not run; details are in `docs/validation.md`.
+- Follow-up: publish one FIX48 PR, verify its exact-head five-sample CI, then
+  propagate the reviewed correction into #45/#51 and verify both new heads and
+  their repeated CI. Keep #45/#51 draft while #46 remains open. Do not merge.
+
+## 2026-11-28 — FIX48 focused revalidation
+
+- Branch: `task/FIX48-concurrency-stability`
+- Steps: reread the current FIX48 task contract and reviewed the complete diff;
+  reran its focused tests at the final local source state. No production behavior
+  or safety policy changed.
+- Files: `docs/handoff.md`, `docs/roadmap.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: focused five-file default-concurrency command → 88 total, 87 pass,
+  0 fail, 1 Windows-platform skip, exit 0; `git diff --check` → clean, exit 0.
+  The full default suite (310/309 pass/1 skip), serial diagnostic suite
+  (309/308 pass/1 skip) and fallback demo (429 then 200) were last run on
+  2026-11-27; no code changed after those checks. Windows/Ubuntu five-sample
+  campaign and propagation into #45/#51 remain unrun.
+- Follow-up: publish FIX48 for exact-head CI campaign; preserve all ten results.
+  Keep dependent PRs draft and do not merge.

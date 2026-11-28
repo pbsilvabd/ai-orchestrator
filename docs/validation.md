@@ -2276,3 +2276,63 @@ Claim: this entry supports the repository/queue reassessment and passing
 local baseline/focused fixtures only. It does not establish B30 acceptance,
 hardware-positive authorization, a deployed service chain, M2b sign-off,
 M3 completion, deterministic test reliability, live activation or merge.
+
+## FIX48: default-concurrency test stability — 2026-11-27
+
+Executed on Windows x64, Node.js v24.22.1 (`fnm`).
+Date: 2026-11-27.
+
+Baseline SHA: `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672`. The initial clean-tree
+baseline command ran before FIX48 edits. Corrected local commands ran in the
+FIX48 worktree from that baseline; multi-platform repeated samples remain a
+required CI gate at the final committed SHA.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test` (baseline, before edits) | Reproduce default-concurrency #48 failure | 305 total, 303 pass, 1 fail, 1 skip; B10-03 failed with `'' !== 'before'` | 1 |
+| `fnm exec --using=24.22.1 node --test test/repeat-default-suite.test.mjs test/subprocess.test.mjs test/scheduler.test.mjs test/mcp-server.test.mjs test/task-maintenance.test.mjs` | Exercise FIX48 runner, B10 child readiness, B12 lifecycle, B15 stream polling and B18 real-process ownership cases | 86 total, 85 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node --test test/repeat-default-suite.test.mjs test/subprocess.test.mjs test/scheduler.test.mjs test/mcp-server.test.mjs test/task-maintenance.test.mjs` (final focused rerun, 2026-11-28) | Revalidate final FIX48 tests, including runner dirty-check and worktree-stability cases | 88 total, 87 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node --test` | Full default-concurrency regression after final runner/test edits | 310 total, 309 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node --test --test-concurrency=1` | Diagnostic serial regression (not a substitute for default concurrency) | 309 total, 308 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Verify unchanged fallback example | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Check whitespace in the current diff | no output | 0 |
+
+Result: the clean baseline reproduced B10-03; the final focused post-edit cases, the
+final default-concurrency full suite (310 tests) and the serial diagnostic
+suite (309 tests) passed with one Windows-platform skip each. The fallback demo returned 429 then 200. The current
+changes add readiness/atomic-publication regressions and a five-sample runner;
+the required five consecutive default-concurrency full-suite samples on each
+of Windows and Ubuntu have not yet run at the final committed SHA.
+
+Evidence level: Unit — demonstrates policy decisions and input normalization;
+does not demonstrate the host, the network or production persistence. The
+multi-process and subprocess cases exercise local real processes; they do not
+demonstrate deployed isolation or any provider/live path.
+
+Not rerun: pinned OpenCode smoke/MCP integration (FIX48 does not alter the
+client integration boundary); provider/catalog/live inference, key enrollment,
+hardware, VM, firewall or network-policy operations (not authorized); five-run
+Windows/Ubuntu campaign (pending publication at the final SHA).
+
+Claim: this entry supports the reproduced baseline failure and one passing local
+corrected default-concurrency suite on Windows, based on the tabled commands. It
+does not support deterministic cross-platform reliability or closure of #48,
+which requires five consecutive passing originals per platform at one final SHA
+and verified propagation into PRs #45/#51.
+
+### FIX48 focused revalidation — 2026-11-28
+
+Environment: Windows x64, Node.js v24.22.1 (`fnm`).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test test/repeat-default-suite.test.mjs test/subprocess.test.mjs test/scheduler.test.mjs test/mcp-server.test.mjs test/task-maintenance.test.mjs` | Recheck final FIX48 runner, subprocess, scheduler, MCP and maintenance cases under default test concurrency | 88 total, 87 pass, 0 fail, 1 platform skip | 0 |
+| `git diff --check` | Check the final documentation/test diff whitespace | no output | 0 |
+
+Result: focused assertions passed, including the B12 scheduler process tests and
+the FIX48 runner's rejection of failed samples, dirty checkout and revision
+changes. The one skip is the existing Windows-platform skip for the POSIX-only
+SIGTERM case. This is local Windows evidence only; it is not a repeated-suite
+campaign or cross-platform CI result. The full suite/demo results above were
+executed on 2026-11-27 before this focused-only rerun; no code changed between
+those runs.

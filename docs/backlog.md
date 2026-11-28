@@ -1,8 +1,8 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-22: remote main `11fcb42` includes B12–B19 and B29/#44.
-B30/#45 is draft at `a4f3954` with successful exact-head Windows/Ubuntu CI
-(`43806088953`), but missing deployed composition and acceptance gates.
+Verified 2026-11-27: remote main `f61e5e1` includes B12–B19 and B29/#44.
+B30/#45 and stacked B31/#51 remain draft; exact-head software-profile evidence
+does not satisfy #46 or the unresolved #48 test-stability campaign.
 B20/#43 remains the single blocked M3 draft. See the
 [reassessment](project-reassessment-2026-11-22.md) for the full inventory and
 GitHub disposition; do not treat a merged fixture task as live-provider support.
@@ -13,10 +13,11 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current critical path: approval-profile decision #47 and compartment-aware
-composition #46 for draft B30/#45, then B20/#43. Test stability is tracked in
-#48. B12–B19 and B29 are merged; do not implement them again. M2b milestone
-reconciliation and M3 acceptance remain open.
+Current critical path: execute FIX48 for the #48 test-stability campaign and
+propagate its reviewed correction into #45/#51; specify compartment-aware
+composition #46 before deployment gates or B20/#43. B12–B19 and B29 are merged;
+do not implement them again. M2b milestone reconciliation and M3 acceptance
+remain open.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -56,7 +57,9 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Current delivery: **B30 PR #45; incomplete draft**. Its remote state and checks
+Current delivery: **FIX48 active** on `task/FIX48-concurrency-stability` from
+`f61e5e1`; baseline default-concurrency B10-03 failure reproduced locally.
+B30 PR #45 and stacked B31 PR #51 remain incomplete drafts. Their remote state and checks
 are authoritative on GitHub. A private bind option is implemented; actual
 cross-compartment service composition is not established.
 B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
@@ -109,7 +112,8 @@ A merged card is retained as regression/review guidance, not new work.
 | [B18 — Explicit human recovery and retention](tasks/B18.md) | P2 | Merged #41 at `c268239`; post-merge CI passed | B14 delivered |
 | [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
 | [B29 — Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
-| [B30 — Relay, gateway and signed approval](https://github.com/pbsilvabd/ai-orchestrator/blob/a4f3954514e2109a5f0112dcea0534d291a9fcf4/docs/tasks/B30.md) | P1 | Draft #45; fixtures and partial deployment, not accepted | #46 composition, #47 approval decision; current FIDO2 gate unchanged |
+| [B30 — Relay, gateway and signed approval](https://github.com/pbsilvabd/ai-orchestrator/blob/a4f3954514e2109a5f0112dcea0534d291a9fcf4/docs/tasks/B30.md) | P1 | Draft #45; fixture/partial deployment only, not accepted | #47 selects software SSH profile in stacked #51; #46 composition, #48 stability and deployment gates remain |
+| [FIX48 — Default-concurrency test stability](tasks/FIX48.md) | P1 | Authorized; active on `task/FIX48-concurrency-stability` from `f61e5e1`; B10-03 failure reproduced | Five consecutive default-concurrency full-suite originals on each of Windows/Ubuntu at one SHA; preserve all results and propagate correction into #45/#51 |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
 | B27 — CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
 | B28 — Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |

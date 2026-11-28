@@ -1,41 +1,38 @@
-# Continuation point — 2026-11-22
+# Continuation point — 2026-11-27
 
-Verified remote main `11fcb422de47c2a9b79389de8470802d48ead730` includes
-B12–B19 and B29/#44 fixture-only preparation. M2a remains complete; M2b technical
-fixture evidence exists but milestone sign-off is not newly declared. M3 remains
-incomplete: B20/#43 is draft with no real worker-produced project diff.
-B30/#45 is draft at `a4f3954514e2109a5f0112dcea0534d291a9fcf4`, exact-head
-Windows/Ubuntu CI successful in run `43806088953`; full deployment and positive
-FIDO2 approval are not established. See the
-[reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
+Verified remote main is `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672`.
+B12–B19 and B29/#44 are merged. B30/#45 remains draft at `67acd78`;
+stacked B31/#51 remains draft at `63100a3`. B31's signed software profile
+is local-fixture evidence only. M2b sign-off is not newly declared; M3/B20
+remains blocked with no real worker-produced project diff. #46 still lacks
+proven signer/worker isolation; live use stays closed.
 
-## Next action: decide approval profile and specify deployable composition
+## Next action: complete FIX48, then revalidate the B30/B31 stack
 
-1. Resolve [#47](https://github.com/pbsilvabd/ai-orchestrator/issues/47) against
-   B30's ADR-010 and `src/live-approval.mjs`: evaluate software SSH signing for
-   supervised local use versus the current hardware profile. Keep the current
-   FIDO2 UP/UV gate until a deliberate ADR/code/test/contract change is delivered.
-2. Specify and implement [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46):
-   actual service/worker/relay/gateway compartments, trusted launch channel,
-   workspace/artifact mapping, measured binary and lifecycle/ownership. Current
-   `freeListenerPlan` uses a local fixture-mode loopback gateway; a private bind
-   alone is not cross-compartment composition. Continue B30 in #45.
-3. Correct the readiness/maintenance races in
-   [#48](https://github.com/pbsilvabd/ai-orchestrator/issues/48), preserving all
-   failure assertions and original run results. Refresh CI foundation #32/#33;
-   #34 remains blocked, not merge-ready.
-4. Only after that plan is executable, obtain narrow infrastructure permission
-   for one deployment path, then run a single controlled end-to-end evidence
-   campaign, including active pinned-worker bypass, real TLS failures and
-   owned-only teardown. Historical VM observations are not current host inventory.
-5. Re-review B30's exact final head and every required row, reconcile B17/M2b
-   acceptance, then obtain a new exact run approval and continue B20/#43.
+1. FIX48 is active on `task/FIX48-concurrency-stability`, based on `f61e5e1`.
+   The default-concurrency Windows baseline reproduced B10-03: `303 pass,
+   1 fail, 1 skip` (`'' !== 'before'`). The final focused correction set passed
+   88 total / 87 pass / 0 fail / 1 platform skip; the full default suite passed
+   310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
+   passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results,
+   not the required repeated-platform campaign.
+2. Finalize FIX48's reviewed code and docs, then publish one PR. Its CI runs five
+   sequential default-concurrency full-suite originals on each of Windows and
+   Ubuntu at one SHA, keeps every result, and fails if any sample fails. Do not
+   treat a retry as replacing a failed original.
+3. Propagate the exact reviewed FIX48 correction into #45 and #51 without force
+   pushes; verify both resulting branch heads and CI. Keep both PRs draft while
+   any required #48 sample or #46 gate remains unresolved.
+4. Specify #46's actual service/worker/relay/gateway compartments, trusted launch
+   channel, workspace/artifact mapping, measured binary, and lifecycle/ownership.
+   Only then consider any separately authorized deployment campaign.
+5. Re-review B30's final exact head, reconcile B17/M2b acceptance, then reassess
+   B20/#43; no real provider path or task is authorized here.
 
-No live provider, catalog refresh, key enrollment, VM/firewall change, automatic
-fallback or merge is authorized by this documentation. #6/#9 are obsolete proposal
-tracks, not prerequisites to resume; SQLite/memory/routing stay deferred.
-B17/M2b fixture acceptance reconciliation can proceed independently now; do not
-turn B30 deployment or FIDO2 into an unrelated fixture milestone prerequisite.
+No provider/catalog, key enrollment, hardware, VM/firewall/network-policy change,
+ready transition, or merge is authorized. The selected software SSH profile makes
+no hardware-presence claim. #6/#9 are obsolete, and SQLite/memory/routing remain
+deferred.
 
 ## Historical checkpoints — superseded by the continuation above
 

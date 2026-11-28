@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-22. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-27. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -23,14 +23,16 @@ See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
 
-Current remote baseline: `11fcb42`; B12–B19 and B29/#44 are merged. B30/#45 is
-draft at `a4f3954`, with green Windows/Ubuntu CI (`43806088953`), fixture/pinned
-host evidence and partial VM/network observations, **not** a completed deployed
-service path. B20/#43 is a blocked draft; no real project diff or M3 acceptance.
-The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
-delivered implementation, missing composition, unrun validation and retired work.
-Next work is approval-profile decision #47, deployable composition #46 and test
-stability #48; the existing FIDO2/network controls remain in force.
+Current remote baseline: `f61e5e1`; B12–B19 and B29/#44 are merged. B30/#45
+remains draft at `67acd78`; stacked B31/#51 remains draft at `63100a3`. The
+software-signature profile has local disposable-key evidence only. FIX48 is
+active from `f61e5e1`: it reproduced the default-concurrency B10-03 failure and
+has a correction set. Local corrected full suite passed once on Windows,
+but the required five-sample Windows/Ubuntu campaign and propagation into #45/#51
+are still pending. #46 signer/worker isolation and deployment composition remain
+unproven; live use stays closed. B20/#43 remains blocked with no real project diff.
+The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the
+evidence/disposition record; this update does not change its live-use limits.
 
 ### Historical delivery receipts through B19
 
