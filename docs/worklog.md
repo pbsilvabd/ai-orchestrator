@@ -2036,3 +2036,30 @@ Template:
 - Follow-up: update the PR body to match these receipts, run content/whitespace
   checks, push normally, then obtain a new exact-head campaign and independent
   re-review. No ready transition or merge yet.
+
+## 2026-11-28 — FIX48 receipt-head run and second review finding
+
+- Branch: `task/FIX48-concurrency-stability`; PR #52.
+- Steps: independently inspected Actions run `46113674523` for PR head
+  `9bb1a41e2220ea1ef70d378054a1bd6f52116e16`. Both jobs tested common merge
+  checkout `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1`, with base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head as parents.
+- Results: all five Windows and all five Ubuntu default-concurrency samples
+  exited 0 at the same SHA, with clean/unchanged checkout. Windows each
+  reported 310 tests / 309 pass / 0 fail / 1 skip; Ubuntu each reported
+  310 / 306 / 0 / 4. Both demos succeeded, returning 429 then 200; both jobs
+  and the Actions run concluded success.
+- Review: independent review found residual stale current-status wording and
+  requested this append-only receipt. At that review's time, the prior entry
+  did not yet record the run and the current-status corrections were unpublished.
+  The follow-up finding and verdict are at
+  https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234957518
+  and
+  https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234960272.
+  This entry records the prior run and the second review disposition at `9bb1a41`;
+  it does not claim approval for a later head.
+- Evidence: `docs/validation.md`; Actions run `46113674523`; Windows and Ubuntu
+  job logs `140882585751` and `140882585921`.
+- Follow-up: verify the resulting head's exact-head CI and independent
+  re-review; do not infer approval from an earlier SHA. Keep #52 OPEN/DRAFT
+  while any blocking finding remains.

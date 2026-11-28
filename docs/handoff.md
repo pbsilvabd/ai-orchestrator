@@ -5,15 +5,18 @@ B12–B19 and B29/#44 are merged. B30/#45 remains OPEN/DRAFT at
 `4d51a393159ce1023718909da022f5b2617d1db5`; stacked B31/#51 remains
 OPEN/DRAFT at `e1a08d4388945362e555ec3786e50c7fe60ac394`. Their exact-head
 CI runs `46109747250` and `46111699960` passed on Windows/Ubuntu. FIX48 #52
-is OPEN/DRAFT at `9b34a8c102af301f511c25c744caab3cb1e1ac36`; final-head run
-`46108300145` passed five samples per OS at common merge SHA `7366b22`.
-An independent reviewer published blocking P2 stale-evidence feedback; update
-the repository receipts and PR description, then obtain exact-head re-review.
+remains OPEN/DRAFT; code-head campaign `46108300145` passed at `9b34a8c`, and
+receipt-head campaign `46113674523` passed at reviewed head `9bb1a41`
+(merge checkout `a9c0caa`). A second independent review at `9bb1a41` found
+remaining stale status text and omission of that latest campaign from the
+versioned receipt. This follow-up appends the run and reconciles current status.
+Each new head requires its own exact-head CI and independent re-review; keep #52
+draft until the current GitHub review/check state clears every gate.
 B31's signed software profile is local-fixture evidence only. M2b sign-off is
 not newly declared; M3/B20 remains blocked with no real worker-produced project
 diff. #46 still lacks proven signer/worker isolation; live use stays closed.
 
-## Next action: correct and re-review FIX48 receipts, then continue B30/B31 gates
+## Next action: verify the resulting FIX48 head before any ready/merge decision
 
 1. FIX48 is published as draft [PR #52](https://github.com/pbsilvabd/ai-orchestrator/pull/52)
    on `task/FIX48-concurrency-stability`, based on `f61e5e1`.
@@ -22,20 +25,24 @@ diff. #46 still lacks proven signer/worker isolation; live use stays closed.
    88 total / 87 pass / 0 fail / 1 platform skip; the full default suite passed
     310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
     passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results.
- 2. Runs `46107344778` and `46108300145` each passed five consecutive
+ 2. Runs `46107344778`, `46108300145` and `46113674523` each passed five consecutive
     default-concurrency originals per OS. The first tested PR head `1a2bd5f`
     at merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`; the latter tested
-    final code/doc head `9b34a8c` at merge SHA
-    `7366b2218583d924614105a4d8dc17c5ff4ca858`. All result records reported
+    code/doc head `9b34a8c` at merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`,
+    and the later receipt head `9bb1a41` at merge SHA
+    `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1`. All records reported
     clean/unchanged checkout and exit 0. FIX48 propagation is verified at #45
-    `4d51a39` and #51 `e1a08d4`, with exact-head CI passing. The P2 documentation
-    finding still requires correction and re-review; never replace a failed
-    original with a retry.
- 3. Keep #45/#51 drafts while any #46 gate remains unresolved. Specify #46's
+    `4d51a39` and #51 `e1a08d4`, with exact-head CI passing. Re-review at
+    `9bb1a41` requested reconciling remaining status statements; this update
+    records that run and status. Never replace a failed original with a retry.
+ 3. For each resulting #52 head, verify the exact-head checks, reply to review
+    feedback and obtain independent re-review. Keep it draft if any blocking
+    finding remains.
+ 4. Keep #45/#51 drafts while any #46 gate remains unresolved. Specify #46's
     actual service/worker/relay/gateway compartments, trusted launch
     channel, workspace/artifact mapping, measured binary, and lifecycle/ownership.
     Only then consider any separately authorized deployment campaign.
- 4. Re-review B30's final exact head, reconcile B17/M2b acceptance, then reassess
+ 5. Re-review B30's final exact head, reconcile B17/M2b acceptance, then reassess
     B20/#43; no real provider path or task is authorized here.
 
 No provider/catalog, key enrollment, hardware, VM/firewall/network-policy change,

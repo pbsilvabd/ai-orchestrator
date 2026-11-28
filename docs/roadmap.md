@@ -24,7 +24,7 @@ See [ADR-006](adr/006-worker-service.md).
 ## Where we are
 
 Current remote baseline: `f61e5e1`; B12–B19 and B29/#44 are merged. B30/#45
-remains draft at `67acd78`; stacked B31/#51 remains draft at `63100a3`. The
+remains OPEN/DRAFT at `4d51a39`; stacked B31/#51 remains OPEN/DRAFT at `e1a08d4`. The
 software-signature profile has local disposable-key evidence only. FIX48 is
 published as draft PR #52 from `f61e5e1`: it reproduced the default-concurrency
 B10-03 failure and has a correction set. Local corrected full suite passed once
@@ -33,8 +33,11 @@ merge SHA `bfbeda9` (base `f61e5e1`, PR head `1a2bd5f`). Final-head run
 `46108300145` also passed five samples per OS at merge SHA `7366b22` for PR
 head `9b34a8c`. The identical seven FIX48 paths are present at #45 head
 `4d51a39` (CI `46109747250`) and stacked #51 head `e1a08d4` (CI `46111699960`);
-both remain draft. An independent review found the previous evidence receipt
-and PR description stale; correction and exact-head re-review are still pending.
+both remain draft. Receipt-head run `46113674523` passed at #52 head `9bb1a41`,
+and its ten sample outcomes are appended to `docs/validation.md`. Independent
+re-review at `9bb1a41` found residual status wording; this follow-up records the
+campaign and reconciles the current status. Every new head still requires its
+own exact-head CI and independent review before any ready/merge decision.
 #46 signer/worker isolation and deployment composition remain unproven; live use
 stays closed. B20/#43 remains blocked with no real project diff.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the

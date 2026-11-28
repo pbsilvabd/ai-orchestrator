@@ -2427,3 +2427,33 @@ OPEN/DRAFT at `e1a08d4388945362e555ec3786e50c7fe60ac394`, based on #45 head
 passed on both platforms. The seven FIX48 paths (workflow, runner, four test
 files and task card) match between #52, #45 and #51. Both PRs remain drafts; no
 merge, ready transition or live/deployment acceptance is implied.
+
+## FIX48 receipt-head campaign — 2026-11-28
+
+Actions run `46113674523`:
+https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46113674523
+
+This run tested PR head `9bb1a41e2220ea1ef70d378054a1bd6f52116e16` in both
+platform jobs at common merge checkout
+`a9c0caaada4ddc7fbff79017d2fe4d563bac85b1`, with parents base
+`f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head. All five original
+samples per platform ran sequentially under default concurrency and reported
+the same checkout SHA, clean/unchanged worktree and native exit 0.
+
+| OS / job | Sample | SHA | Tests / pass / fail / skip | Native exit |
+| --- | ---: | --- | --- | ---: |
+| Windows `windows-latest` / 140882585751 | 1 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 2 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 3 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 4 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 5 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 1 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 2 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 3 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 4 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 5 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+
+The raw result records and aggregate summaries were inspected in the job logs.
+Both platform jobs and fallback demos succeeded; both demos returned 429 then
+200. Run metadata confirms success at the PR head above. This documents the
+receipt-head campaign; run `46108300145` remains the final-code-head campaign.
