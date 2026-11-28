@@ -2276,3 +2276,184 @@ Claim: this entry supports the repository/queue reassessment and passing
 local baseline/focused fixtures only. It does not establish B30 acceptance,
 hardware-positive authorization, a deployed service chain, M2b sign-off,
 M3 completion, deterministic test reliability, live activation or merge.
+
+## FIX48: default-concurrency test stability — 2026-11-27
+
+Executed on Windows x64, Node.js v24.22.1 (`fnm`).
+Date: 2026-11-27.
+
+Baseline SHA: `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672`. The initial clean-tree
+baseline command ran before FIX48 edits. Corrected local commands ran in the
+FIX48 worktree from that baseline; multi-platform repeated samples remain a
+required CI gate at the final committed SHA.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test` (baseline, before edits) | Reproduce default-concurrency #48 failure | 305 total, 303 pass, 1 fail, 1 skip; B10-03 failed with `'' !== 'before'` | 1 |
+| `fnm exec --using=24.22.1 node --test test/repeat-default-suite.test.mjs test/subprocess.test.mjs test/scheduler.test.mjs test/mcp-server.test.mjs test/task-maintenance.test.mjs` | Exercise FIX48 runner, B10 child readiness, B12 lifecycle, B15 stream polling and B18 real-process ownership cases | 86 total, 85 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node --test test/repeat-default-suite.test.mjs test/subprocess.test.mjs test/scheduler.test.mjs test/mcp-server.test.mjs test/task-maintenance.test.mjs` (final focused rerun, 2026-11-28) | Revalidate final FIX48 tests, including runner dirty-check and worktree-stability cases | 88 total, 87 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node --test` | Full default-concurrency regression after final runner/test edits | 310 total, 309 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node --test --test-concurrency=1` | Diagnostic serial regression (not a substitute for default concurrency) | 309 total, 308 pass, 0 fail, 1 platform skip | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Verify unchanged fallback example | `mock/preferred` 429, then `mock/local` 200 | 0 |
+| `git diff --check` | Check whitespace in the current diff | no output | 0 |
+
+Result: the clean baseline reproduced B10-03; the final focused post-edit cases, the
+final default-concurrency full suite (310 tests) and the serial diagnostic
+suite (309 tests) passed with one Windows-platform skip each. The fallback demo returned 429 then 200. The current
+changes add readiness/atomic-publication regressions and a five-sample runner;
+the required five consecutive default-concurrency full-suite samples on each
+of Windows and Ubuntu have not yet run at the final committed SHA.
+
+Evidence level: Unit — demonstrates policy decisions and input normalization;
+does not demonstrate the host, the network or production persistence. The
+multi-process and subprocess cases exercise local real processes; they do not
+demonstrate deployed isolation or any provider/live path.
+
+Not rerun: pinned OpenCode smoke/MCP integration (FIX48 does not alter the
+client integration boundary); provider/catalog/live inference, key enrollment,
+hardware, VM, firewall or network-policy operations (not authorized); five-run
+Windows/Ubuntu campaign (pending publication at the final SHA).
+
+Claim: this entry supports the reproduced baseline failure and one passing local
+corrected default-concurrency suite on Windows, based on the tabled commands. It
+does not support deterministic cross-platform reliability or closure of #48,
+which requires five consecutive passing originals per platform at one final SHA
+and verified propagation into PRs #45/#51.
+
+### FIX48 focused revalidation — 2026-11-28
+
+Environment: Windows x64, Node.js v24.22.1 (`fnm`).
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test test/repeat-default-suite.test.mjs test/subprocess.test.mjs test/scheduler.test.mjs test/mcp-server.test.mjs test/task-maintenance.test.mjs` | Recheck final FIX48 runner, subprocess, scheduler, MCP and maintenance cases under default test concurrency | 88 total, 87 pass, 0 fail, 1 platform skip | 0 |
+| `git diff --check` | Check the final documentation/test diff whitespace | no output | 0 |
+
+Result: focused assertions passed, including the B12 scheduler process tests and
+the FIX48 runner's rejection of failed samples, dirty checkout and revision
+changes. The one skip is the existing Windows-platform skip for the POSIX-only
+SIGTERM case. This is local Windows evidence only; it is not a repeated-suite
+campaign or cross-platform CI result. The full suite/demo results above were
+executed on 2026-11-27 before this focused-only rerun; no code changed between
+those runs.
+
+## FIX48 publication checkpoint — 2026-11-28
+
+Published the task as draft PR #52:
+https://github.com/pbsilvabd/ai-orchestrator/pull/52
+
+| Check | Observed result |
+| --- | --- |
+| Base | `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` |
+| Initial implementation head | `f88ffc54467220bd02c9c16f685bcd3bf52efcb4` |
+| Remote branch | `task/FIX48-concurrency-stability` matched the pushed initial head |
+| Initial CI run | `46107199648` queued on Windows and Ubuntu at the initial implementation head |
+| PR status | OPEN/DRAFT; no merge or ready transition |
+
+The acceptance campaign must run on the final updated PR head. This checkpoint
+does not count any queued or superseded run as passing evidence; the draft PR
+remains incomplete until a single clean SHA has five passing original suites on
+each OS and propagation is verified on #45/#51.
+
+## FIX48 first Windows/Ubuntu repeated campaign — 2026-11-28
+
+Actions run `46107344778`:
+https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46107344778
+
+The pull request run head was
+`1a2bd5fa09b4cf1bff53bbb7cfef3844df329f80`. GitHub Actions checked out merge
+commit `bfbeda97d78137de92e590184cef6e26cdeb4321` on both runners; its parents
+are base `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and the PR head above.
+Each runner independently checked a clean checkout before and after every
+sample and reported the same unchanged SHA for all five originals.
+
+| OS / job | Sample | SHA | Tests / pass / fail / skip | Native exit |
+| --- | ---: | --- | --- | ---: |
+| Windows `windows-latest` / 140862999664 | 1 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 2 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 3 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 4 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 5 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 1 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 2 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 3 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 4 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 5 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+
+Every sample's JSON result and both five-result summaries were retrieved from
+the job logs. Runner step and complete workflow passed on both OSes; demo steps
+returned 429 then 200. The initial run `46107199648` at superseded head `f88ffc5`
+was canceled by Actions concurrency and is not acceptance evidence.
+
+This campaign passes the ten-sample requirement for the `1a2bd5f` PR content.
+No merge or live/deployment acceptance is implied.
+
+## FIX48 final-head campaign and propagation receipt — 2026-11-28
+
+Actions run `46108300145`:
+https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46108300145
+
+The PR head was `9b34a8c102af301f511c25c744caab3cb1e1ac36`. Both Actions
+platform jobs checked out the same PR merge commit
+`7366b2218583d924614105a4d8dc17c5ff4ca858`, whose parents are base
+`f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head. Every original
+sample reported that exact SHA and a clean, unchanged worktree before and after
+execution.
+
+| OS / job | Sample | SHA | Tests / pass / fail / skip | Native exit |
+| --- | ---: | --- | --- | ---: |
+| Windows `windows-latest` / 140865912851 | 1 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 2 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 3 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 4 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 5 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 1 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 2 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 3 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 4 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 5 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+
+The raw per-sample JSON results and both aggregate summaries were inspected in
+the job logs. Both full platform jobs and fallback demos succeeded; each demo
+returned 429 then 200. The earlier canceled run `46107199648` remains excluded.
+Together with run `46107344778`, both campaign heads have ten passing original
+samples; neither substitutes for the other.
+
+FIX48-06 propagation is verified at current remote PR heads: #45 is OPEN/DRAFT
+at `4d51a393159ce1023718909da022f5b2617d1db5`, based on `f61e5e1`, and its
+exact-head CI run `46109747250` passed on Windows and Ubuntu. Stacked #51 is
+OPEN/DRAFT at `e1a08d4388945362e555ec3786e50c7fe60ac394`, based on #45 head
+`4d51a393159ce1023718909da022f5b2617d1db5`; exact-head run `46111699960`
+passed on both platforms. The seven FIX48 paths (workflow, runner, four test
+files and task card) match between #52, #45 and #51. Both PRs remain drafts; no
+merge, ready transition or live/deployment acceptance is implied.
+
+## FIX48 receipt-head campaign — 2026-11-28
+
+Actions run `46113674523`:
+https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46113674523
+
+This run tested PR head `9bb1a41e2220ea1ef70d378054a1bd6f52116e16` in both
+platform jobs at common merge checkout
+`a9c0caaada4ddc7fbff79017d2fe4d563bac85b1`, with parents base
+`f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head. All five original
+samples per platform ran sequentially under default concurrency and reported
+the same checkout SHA, clean/unchanged worktree and native exit 0.
+
+| OS / job | Sample | SHA | Tests / pass / fail / skip | Native exit |
+| --- | ---: | --- | --- | ---: |
+| Windows `windows-latest` / 140882585751 | 1 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 2 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 3 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 4 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140882585751 | 5 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 309 / 0 / 1 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 1 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 2 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 3 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 4 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140882585921 | 5 | `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1` | 310 / 306 / 0 / 4 | 0 |
+
+The raw result records and aggregate summaries were inspected in the job logs.
+Both platform jobs and fallback demos succeeded; both demos returned 429 then
+200. Run metadata confirms success at the PR head above. This documents the
+receipt-head campaign; run `46108300145` remains the final-code-head campaign.

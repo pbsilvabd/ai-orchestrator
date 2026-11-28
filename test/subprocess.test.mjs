@@ -62,17 +62,27 @@ test('B10-02: tails trim across chunks and preserve UTF-8 boundaries', async t =
 });
 
 test('B10-03: deadline and abort settle once with partial output and clean up', async t => {
-  const deadline = await runSubprocess({ ...setup(t), timeoutMs: 500, args: ['-e',
-    "process.stdout.write('partial');setInterval(()=>process.stdout.write('x'),10)"] });
+  const options = setup(t);
+  const deadlineReady = join(options.cwd, 'deadline-output-ready');
+  const deadline = await runSubprocess({ ...options, timeoutMs: 3000, args: ['-e',
+    `const fs=require('node:fs');process.stdout.write('partial',()=>{fs.writeFileSync(${JSON.stringify(deadlineReady)},'ready');setInterval(()=>process.stdout.write('x'),10)})`] });
+  assert.equal(existsSync(deadlineReady), true, 'child must flush its output before the deadline');
   assert.equal(deadline.termination.reason, 'deadline');
   assert.equal(deadline.stdout.startsWith('partial'), true);
   assert.equal(typeof deadline.termination.rootExitObserved, 'boolean');
   assert.equal(deadline.termination.descendantsStopped, false);
 
   const controller = new AbortController();
-  const pending = runSubprocess({ ...setup(t), signal: controller.signal, args: ['-e',
-    "process.stdout.write('before');setInterval(()=>{},1000)"] });
-  setTimeout(() => controller.abort(), 150);
+  const abortReady = join(options.cwd, 'abort-output-ready');
+  const pending = runSubprocess({ ...options, signal: controller.signal, args: ['-e',
+    `const fs=require('node:fs');process.stdout.write('before',()=>{fs.writeFileSync(${JSON.stringify(abortReady)},'ready');setInterval(()=>{},1000)})`] });
+  const readyDeadline = Date.now() + 5000;
+  while (!existsSync(abortReady) && Date.now() < readyDeadline) await delay(10);
+  assert.equal(existsSync(abortReady), true, 'child must flush its output before abort is requested');
+  // The write callback confirms the child flushed to its pipe; allow the parent
+  // stream event to be consumed before exercising the abort path.
+  await delay(25);
+  controller.abort();
   const aborted = await pending;
   assert.equal(aborted.termination.reason, 'aborted');
   assert.equal(aborted.stdout, 'before');
