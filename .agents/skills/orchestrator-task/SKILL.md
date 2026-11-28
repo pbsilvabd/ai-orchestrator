@@ -58,6 +58,15 @@ with task/base/head, evidence, consumed budget, limitations and next authorized
 action. A checkpoint is not task completion. Merge only with task-specific
 authorization.
 
+When the task authorization permits publication, automatically hand the exact
+PR/base/head and checkpoint to the configured coordinator after implementation; do
+not ask for another prompt between phases. The coordinator owns independent review,
+CI waiting, corrections/re-review and merge only when the original authorization
+covers that exact PR; otherwise return READY_TO_MERGE. Continue to another task only
+if the original authorization explicitly permits multiple deliveries and budget
+remains. `WAITING_CI` is a terminal checkpoint only after a single bounded watch
+times out or monitoring is unavailable.
+
 Return the task ID, base/head SHA, PR URL or explicit unpublished checkpoint,
 row-to-evidence results, review corrections, remaining gates and next action.
 Neither a local commit nor passing unit tests proves a merged task or milestone.

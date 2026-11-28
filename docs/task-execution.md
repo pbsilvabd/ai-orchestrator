@@ -80,20 +80,31 @@ verify them at the current head before treating a blocking finding as resolved.
     behavior, matrix-to-test evidence, both review summaries, limitations and
     not-rerun gates. Use the repository PR template. Ordinary completed work is ready
     for review, not a placeholder draft.
-13. Verify the remote branch SHA equals the intended local head and the PR targets
-    the intended base/head. Inspect available CI results; fix failures from this
-    change. If CI is still running, say pending and record the final head rather than
-    reporting a pass. Do not keep polling unchanged CI indefinitely.
-14. Report PR URL, head SHA, actual validation results, remaining limitations and next
-    unblocked task. Mark the backlog task `PR open` (not merged). Merge only with
-    explicit authorization for this task; earlier merge approval is not inherited.
+13. After publication, automatically hand the exact PR context to the authorized
+    coordinator; do not require another user prompt for already-authorized phases.
+    The coordinator launches the independent reviewer and performs other safe checks
+    while one blocking `gh pr checks <PR> --repo <owner/repo> --watch --interval 30
+    --fail-fast` operation monitors the current head. Set its initial tool timeout
+    to 30 minutes (1,800,000 ms), capped by runtime limits. Do not use repeated model
+    calls to poll CI. Run at most one watch per unchanged head; a corrected head
+    requires its own bounded watch and delta review.
+14. When the watch finishes, verify the current remote PR head/base, all required
+    check conclusions, findings/feedback, acceptance evidence and current
+    authorization. If CI failed, correct only blocking in-scope findings within the
+    existing maximum of two correction rounds, then validate and repeat review/CI for
+    the new head. `WAITING_CI` is an end state only if the watch times out or
+    monitoring is unavailable; continue independent safe work after a timeout when
+    possible. Report a completed merge only after GitHub confirms the exact head was
+    integrated. Continue to another task only if original authorization explicitly
+    permits multiple deliveries and budget remains.
 
-Continue authorized work within the frozen scope and bounded session. A verified
-incomplete checkpoint is a valid session outcome, not task completion. Stop on a
-known missing gate, unavailable authority, provider limit, exhausted correction/review
-budget or uncertain outcome requiring reconciliation. Do not ask the user to repeat
-authorization already granted for the same bounded work. Give short progress updates
-during active work. After a final reply no background work is implied.
+Do not end at an intermediate phase or ask the user to repeat authorization already
+granted for this delivery. `WAITING_CI` is valid only after the bounded watch times
+out or monitoring is unavailable. A verified incomplete checkpoint is a valid
+session outcome, not task completion. Stop for a real blocker, unavailable authority,
+provider/runtime limit, exhausted correction/review budget or uncertain outcome
+requiring reconciliation. Give short progress updates during active work. After a
+final reply no background work is implied.
 
 ## Blocked work
 
@@ -102,7 +113,8 @@ host/platform, inaccessible remote, an unresolved maintainer decision, conflicti
 concurrent edits requiring coordination, or another prerequisite the agent cannot
 resolve within authority. A failing test or blocking review finding within scope
 normally requires correction; P3 suggestions are optional. Long work and the prospect
-of another review are not blockers.
+of another review are not blockers. A pending CI check is not a blocker while its
+bounded watch and independent review/checks can proceed.
 
 - Finish safe independent work and reproduce the blocker. Record attempted command,
   result, affected criteria and exactly what input/environment would unblock it.

@@ -20,12 +20,18 @@ Read [docs/task-execution.md](docs/task-execution.md) and the selected
 one branch and one PR. Preserve both self-review objectives: review implementation
 and failure/authority paths, then review the completed diff and acceptance evidence;
 revalidate fixes. A green suite alone is not a completed review.
-Continue authorized work within the frozen scope and bounded session. A verified
-incomplete checkpoint is a valid session outcome, not task completion. Stop on a
-known missing gate, unavailable authority, provider limit, exhausted
-correction/review budget or uncertain outcome requiring reconciliation. Final
-delivery gives PR URL, SHA, evidence and limits; merge requires explicit
-authorization for that task. Never claim missing evidence passed.
+Continue authorized work through implementation, independent review, CI, corrections
+and the merge gate within the frozen scope; do not stop at a phase transition or
+require a new prompt when the existing authorization covers the next phase. While CI
+is running, perform independent review and safe mandatory checks. Use one bounded
+blocking CI watch per unchanged head; `WAITING_CI` is only for a watch timeout or
+unavailable monitoring. After CI completes, reverify head/base, checks, findings and
+authorization before merging. Merge only when authorization covers that exact PR;
+otherwise complete review/CI and return `READY_TO_MERGE`. A verified incomplete
+checkpoint is a valid session outcome, not task completion. Stop for real blockers,
+unavailable authority, provider limit, exhausted correction/review budget or
+uncertain outcome requiring reconciliation. Final delivery gives PR URL, SHA,
+evidence and limits. Never claim missing evidence passed.
 
 Verified 2026-11-22: remote main `11fcb42` includes B12–B19 and B29/#44
 fixture-only preparation. B30/#45 is draft at `a4f3954`; B20/#43 remains a

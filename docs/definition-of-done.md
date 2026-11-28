@@ -22,7 +22,10 @@ with a blocked criterion is a useful checkpoint, not completion. Pending CI is
 reported as pending; required not_run evidence cannot support a completed claim.
 Session termination is not task acceptance. `BLOCKED`, `WAITING_CI`,
 `WAITING_EXTERNAL` and `BUDGET_EXHAUSTED` are valid checkpoint outcomes; all
-existing completion criteria remain required.
+existing completion criteria remain required. Pending CI alone is not an
+intermediate-session stop: the coordinator performs one bounded blocking watch
+while independent review and other safe required checks proceed. `WAITING_CI` is
+terminal only after timeout or unavailable monitoring.
 Direct main commits require explicit task-specific maintainer authorization and
 do not waive tests/review or grant future agents permission.
 
