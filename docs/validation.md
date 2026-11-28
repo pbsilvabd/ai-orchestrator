@@ -4007,4 +4007,13 @@ M3 completion, deterministic test reliability, live activation or merge.
   The #45 work branch passed the focused command (88 total / 87 pass / 0 fail /
   1 platform skip) and full default suite (442 total / 437 pass / 0 fail /
   5 platform skips), native exit 0; the demo returned 429 then 200, exit 0.
-  Exact-head CI on the propagated branch is still required.
+- Actions run `46109110028` passed the #45 code head
+  `784cdb4603896086033a3c7ca5bbacb9fabf9d8c`. Both platforms checked merge
+  commit `8edcf05ee863dabc9c093b1b10204270b985eab7` (base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` + PR head `784cdb4`). Windows
+  job `140868429341` samples 1–5 and Ubuntu job `140868429560` samples 1–5
+  each reported 442 tests / 437 pass / 0 fail / 5 skip, exit 0, clean and
+  unchanged checkout at the same SHA. Both fallback demos returned 429 then
+  200. The complete workflow and both jobs concluded success. The CLI watch's
+  annotations request returned HTTP 502 after observing job completions; direct
+  run/job metadata and both job logs confirmed success. #51 validation remains.

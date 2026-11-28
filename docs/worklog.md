@@ -3045,8 +3045,13 @@ Template:
 - Propagated branch validation via Node 24.22.1: focused five-file command 88
   total / 87 pass / 0 fail / 1 platform skip, exit 0; full `node --test` 442
   total / 437 pass / 0 fail / 5 platform skips, exit 0; fallback demo 429 then
-  200, exit 0; staged diff check clean. Current-head CI remains to run.
+  200, exit 0; staged diff check clean.
+- Current-head CI: run `46109110028` at PR code head `784cdb4` passed on
+  Windows and Ubuntu. All five originals per OS at merge checkout `8edcf05`
+  exited 0, checkout clean/unchanged, 442 tests / 437 pass / 0 fail / 5 skip.
+  Demo steps passed. The bounded watch's annotations request returned HTTP 502;
+  direct `gh run view` and both job logs confirmed workflow/job success.
 - Files: test/CI runner and regressions; FIX48 card; backlog, handoff, roadmap,
   validation and worklog receipts.
-- Not done: #51 propagation and exact-head CI for the propagated PR; merge,
-  ready/live transition or deployment activity.
+- Not done: #51 propagation and exact-head CI there; merge, ready/live transition
+  or deployment activity.

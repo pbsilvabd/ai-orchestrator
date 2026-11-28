@@ -25,9 +25,9 @@ See [ADR-006](adr/006-worker-service.md).
 
 FIX48/#52's exact campaigns passed five default-concurrency samples per OS at
 common merge SHAs `bfbeda9` (PR head `1a2bd5f`) and `7366b22` (receipt head
-`9b34a8c`). The reviewed correction is applied on the #45 work branch; final
-verification and #51 propagation remain. No merge, ready transition or live-use
-gate changed.
+`9b34a8c`). Its propagated code at #45 head `784cdb4` also passed five samples
+per OS in run `46109110028` (common merge SHA `8edcf05`). #51 propagation and
+verification remain. No merge, ready transition or live-use gate changed.
 
 Current remote baseline: `f61e5e1`; B12–B19, B29/#44 and the 2026-11-22
 reassessment are merged. B30/#45 is draft, merged with main, with fixture/pinned

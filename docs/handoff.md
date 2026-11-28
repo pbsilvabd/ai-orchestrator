@@ -7,10 +7,12 @@ samples on each OS at merge SHA `bfbeda97d78137de92e9be9fbbf4d94e0515e8672`
 (PR head `1a2bd5f`); run `46108300145` passed five per OS at merge SHA
 `7366b2218583d924614105a4d8dc17c5ff4ca858` (PR receipt head `9b34a8c`).
 Every sample exited 0 and checked the same clean/unchanged revision. Windows
-samples were 310/309/0/1 (tests/pass/fail/skip); Ubuntu 310/306/0/4. The
-correction is applied on the #45 work branch; focused/full local checks pass.
-Publish and verify #45's current-head CI, then propagate the same commit to
-stacked #51. Keep both drafts; no merge. Full records are in
+samples were 310/309/0/1 (tests/pass/fail/skip); Ubuntu 310/306/0/4. On #45,
+run `46109110028` passed five samples per OS at merge checkout
+`8edcf05ee863dabc9c093b1b10204270b985eab7` (PR code head `784cdb4`): 442
+tests per sample, zero failures, five platform skips. Both demos passed. Focused
+and full local checks passed. Next propagate the same correction into stacked
+#51 and verify its head/checks. Keep both drafts; no merge. Full records are in
 [validation](validation.md) and [worklog](worklog.md).
 
 Verified remote main `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` includes
