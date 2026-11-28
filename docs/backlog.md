@@ -76,8 +76,9 @@ admission and revalidation results synchronously and observes their rejections.
 Merge commit `6b15521` reconciles current main while retaining both append-only
 histories. On the resulting tree, focused tests passed 29/29; the full local
 suite passed 454 total / 449 pass / 0 fail / 5 skips; demo returned 429 then
-200; whitespace checks are clean. Final diff review, publication, exact-head CI
-and independent re-review remain pending. Keep #45 draft. #51 remains an
+200; whitespace checks are clean. Published head is
+`05c39828e1c1f03197c1685c4dabb6136a562df1`, with CI run `46125175156` queued
+when checked and independent re-review pending. Keep #45 draft. #51 remains an
 incomplete draft requiring separate propagation/checks. FIX48/#52's five-sample
 campaigns and prior propagation receipts are documented below.
 FIX48/#52 remains OPEN/DRAFT: runs `46107344778`, `46108300145` and

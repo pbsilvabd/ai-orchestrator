@@ -3252,3 +3252,18 @@ Template:
 - Follow-up: reply to current #45 findings, publish without force, verify the
   remote SHA and current-head CI, then request independent re-review. Keep the
   PR draft until all required implementation and evidence gates are satisfied.
+
+## 2026-11-28 — B30 correction published for exact-head review
+
+- Branch / PR: `task/FIX48-propagate-B30` → PR #45 (`task/B30-free-relay`).
+- Steps: pushed `05c39828e1c1f03197c1685c4dabb6136a562df1` without force;
+  confirmed the remote ref and PR metadata match. Replied to the critical
+  findings with correction summary, final local evidence and remaining gates;
+  requested exact-SHA re-review.
+- Files: backlog, handoff, validation and worklog.
+- Evidence: PR comment
+  https://github.com/pbsilvabd/ai-orchestrator/pull/45#issuecomment-7236498297;
+  Actions run `46125175156` was queued at the verified SHA when checked.
+- Limits / next action: no CI conclusion or re-review is claimed. Keep #45
+  OPEN/DRAFT; do not infer completion of composition, approval-profile,
+  deployment, FIDO2, TLS/bypass or live-use gates.

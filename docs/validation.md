@@ -4253,3 +4253,10 @@ provider/catalog requests, real keys or positive FIDO2, live inference, exact
 head GitHub CI or independent review of this new SHA. The PR's prior exact-head
 checks/reviews do not transfer to this commit. Keep #45 OPEN/DRAFT and live
 closed; no merge is authorized.
+
+Publication follow-up: pushed the correction and reconciliation normally to
+PR #45 as `05c39828e1c1f03197c1685c4dabb6136a562df1`; `git ls-remote` and PR
+metadata agreed on the SHA, and the PR remained OPEN/DRAFT. Actions run
+`46125175156` was queued for that exact head. A SHA-bound critical re-review was
+requested in [comment 7236498297](https://github.com/pbsilvabd/ai-orchestrator/pull/45#issuecomment-7236498297).
+Neither CI completion nor independent re-review is claimed.

@@ -6,8 +6,10 @@ stacked B31/#51 remains OPEN/DRAFT. The local #45 correction commit is
 `e1e6c967ab04db9e3572d4778c548b6d23ec4a3a`; main's five documentation conflicts
 are resolved in merge commit `6b155213950d2eae070f34bcde0cc2ec164a29d0`.
 Focused tests, full suite, fallback demo and whitespace checks passed on this
-final local tree. It has not yet been published; current-head CI and critical
-re-review remain pending.
+tree. The correction was published normally to PR #45 as
+`05c39828e1c1f03197c1685c4dabb6136a562df1`; CI run `46125175156` was queued at
+that head when checked. A critical re-review was requested. Keep the PR draft;
+CI/re-review are not yet complete.
 
 ## Next action: finish and verify the B30 correction on #45
 
@@ -19,8 +21,9 @@ re-review remain pending.
    pre-spawn tests (29/29), full suite (454 total, 449 pass, 0 fail, 5 skips),
    fallback demo (429 then 200) and whitespace checks.
 3. Review the full `main..HEAD` diff and B30 acceptance rows; record local results
-   and non-rerun gates. Reply to the current #45 findings, publish without force,
-   and verify the remote SHA and exact-head CI/re-review. Keep it draft.
+   and non-rerun gates. Correction/reconciliation has been published without
+   force and the latest findings answered. Verify exact-head CI and re-review;
+   keep it draft.
 4. #45/#51 remain incomplete: compartment-aware service/worker/relay/gateway
    composition (#46), profile gates (#47/#51), and deployment/live/FIDO2 evidence
    are not satisfied. Re-review the resulting #45 head and preserve those limits.
