@@ -1,36 +1,42 @@
-# Continuation point — 2026-11-27
+# Continuation point — 2026-11-28
 
 Verified remote main is `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672`.
-B12–B19 and B29/#44 are merged. B30/#45 remains draft at `67acd78`;
-stacked B31/#51 remains draft at `63100a3`. B31's signed software profile
-is local-fixture evidence only. M2b sign-off is not newly declared; M3/B20
-remains blocked with no real worker-produced project diff. #46 still lacks
-proven signer/worker isolation; live use stays closed.
+B12–B19 and B29/#44 are merged. B30/#45 remains OPEN/DRAFT at
+`4d51a393159ce1023718909da022f5b2617d1db5`; stacked B31/#51 remains
+OPEN/DRAFT at `e1a08d4388945362e555ec3786e50c7fe60ac394`. Their exact-head
+CI runs `46109747250` and `46111699960` passed on Windows/Ubuntu. FIX48 #52
+is OPEN/DRAFT at `9b34a8c102af301f511c25c744caab3cb1e1ac36`; final-head run
+`46108300145` passed five samples per OS at common merge SHA `7366b22`.
+An independent reviewer published blocking P2 stale-evidence feedback; update
+the repository receipts and PR description, then obtain exact-head re-review.
+B31's signed software profile is local-fixture evidence only. M2b sign-off is
+not newly declared; M3/B20 remains blocked with no real worker-produced project
+diff. #46 still lacks proven signer/worker isolation; live use stays closed.
 
-## Next action: complete FIX48, then revalidate the B30/B31 stack
+## Next action: correct and re-review FIX48 receipts, then continue B30/B31 gates
 
 1. FIX48 is published as draft [PR #52](https://github.com/pbsilvabd/ai-orchestrator/pull/52)
    on `task/FIX48-concurrency-stability`, based on `f61e5e1`.
    The default-concurrency Windows baseline reproduced B10-03: `303 pass,
    1 fail, 1 skip` (`'' !== 'before'`). The final focused correction set passed
    88 total / 87 pass / 0 fail / 1 platform skip; the full default suite passed
-   310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
-   passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results,
-   not the required repeated-platform campaign.
-2. Run `46107344778` passed five consecutive default-concurrency originals on
-   each OS at sampled merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`,
-   whose parents are `f61e5e1` and PR head `1a2bd5f`. All ten result records
-   reported clean/unchanged checkout and exit 0. The new docs receipt changes
-   the PR head; verify its new exact-head campaign separately. Never replace a
-   failed original with a retry.
-3. Propagate the exact reviewed FIX48 correction into #45 and #51 without force
-   pushes; verify both resulting branch heads and CI. Keep both PRs draft while
-   any required #48 sample or #46 gate remains unresolved.
-4. Specify #46's actual service/worker/relay/gateway compartments, trusted launch
-   channel, workspace/artifact mapping, measured binary, and lifecycle/ownership.
-   Only then consider any separately authorized deployment campaign.
-5. Re-review B30's final exact head, reconcile B17/M2b acceptance, then reassess
-   B20/#43; no real provider path or task is authorized here.
+    310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
+    passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results.
+ 2. Runs `46107344778` and `46108300145` each passed five consecutive
+    default-concurrency originals per OS. The first tested PR head `1a2bd5f`
+    at merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`; the latter tested
+    final code/doc head `9b34a8c` at merge SHA
+    `7366b2218583d924614105a4d8dc17c5ff4ca858`. All result records reported
+    clean/unchanged checkout and exit 0. FIX48 propagation is verified at #45
+    `4d51a39` and #51 `e1a08d4`, with exact-head CI passing. The P2 documentation
+    finding still requires correction and re-review; never replace a failed
+    original with a retry.
+ 3. Keep #45/#51 drafts while any #46 gate remains unresolved. Specify #46's
+    actual service/worker/relay/gateway compartments, trusted launch
+    channel, workspace/artifact mapping, measured binary, and lifecycle/ownership.
+    Only then consider any separately authorized deployment campaign.
+ 4. Re-review B30's final exact head, reconcile B17/M2b acceptance, then reassess
+    B20/#43; no real provider path or task is authorized here.
 
 No provider/catalog, key enrollment, hardware, VM/firewall/network-policy change,
 ready transition, or merge is authorized. The selected software SSH profile makes

@@ -2386,6 +2386,44 @@ returned 429 then 200. The initial run `46107199648` at superseded head `f88ffc5
 was canceled by Actions concurrency and is not acceptance evidence.
 
 This campaign passes the ten-sample requirement for the `1a2bd5f` PR content.
-The following docs-only receipt commit changes the PR head and therefore needs
-its own current-head campaign. FIX48-06 propagation into #45/#51 also remains
-pending. No merge or live/deployment acceptance is implied.
+No merge or live/deployment acceptance is implied.
+
+## FIX48 final-head campaign and propagation receipt — 2026-11-28
+
+Actions run `46108300145`:
+https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46108300145
+
+The PR head was `9b34a8c102af301f511c25c744caab3cb1e1ac36`. Both Actions
+platform jobs checked out the same PR merge commit
+`7366b2218583d924614105a4d8dc17c5ff4ca858`, whose parents are base
+`f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head. Every original
+sample reported that exact SHA and a clean, unchanged worktree before and after
+execution.
+
+| OS / job | Sample | SHA | Tests / pass / fail / skip | Native exit |
+| --- | ---: | --- | --- | ---: |
+| Windows `windows-latest` / 140865912851 | 1 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 2 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 3 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 4 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140865912851 | 5 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 309 / 0 / 1 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 1 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 2 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 3 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 4 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140865912683 | 5 | `7366b2218583d924614105a4d8dc17c5ff4ca858` | 310 / 306 / 0 / 4 | 0 |
+
+The raw per-sample JSON results and both aggregate summaries were inspected in
+the job logs. Both full platform jobs and fallback demos succeeded; each demo
+returned 429 then 200. The earlier canceled run `46107199648` remains excluded.
+Together with run `46107344778`, both campaign heads have ten passing original
+samples; neither substitutes for the other.
+
+FIX48-06 propagation is verified at current remote PR heads: #45 is OPEN/DRAFT
+at `4d51a393159ce1023718909da022f5b2617d1db5`, based on `f61e5e1`, and its
+exact-head CI run `46109747250` passed on Windows and Ubuntu. Stacked #51 is
+OPEN/DRAFT at `e1a08d4388945362e555ec3786e50c7fe60ac394`, based on #45 head
+`4d51a393159ce1023718909da022f5b2617d1db5`; exact-head run `46111699960`
+passed on both platforms. The seven FIX48 paths (workflow, runner, four test
+files and task card) match between #52, #45 and #51. Both PRs remain drafts; no
+merge, ready transition or live/deployment acceptance is implied.

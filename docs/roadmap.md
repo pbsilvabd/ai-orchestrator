@@ -29,10 +29,14 @@ software-signature profile has local disposable-key evidence only. FIX48 is
 published as draft PR #52 from `f61e5e1`: it reproduced the default-concurrency
 B10-03 failure and has a correction set. Local corrected full suite passed once
 on Windows. CI run `46107344778` passed five samples per OS at common sampled
-merge SHA `bfbeda9` (base `f61e5e1`, PR head `1a2bd5f`). A documentation receipt
-commit now requires another exact-head campaign; propagation into #45/#51 is
-also pending. #46 signer/worker isolation and deployment composition remain
-unproven; live use stays closed. B20/#43 remains blocked with no real project diff.
+merge SHA `bfbeda9` (base `f61e5e1`, PR head `1a2bd5f`). Final-head run
+`46108300145` also passed five samples per OS at merge SHA `7366b22` for PR
+head `9b34a8c`. The identical seven FIX48 paths are present at #45 head
+`4d51a39` (CI `46109747250`) and stacked #51 head `e1a08d4` (CI `46111699960`);
+both remain draft. An independent review found the previous evidence receipt
+and PR description stale; correction and exact-head re-review are still pending.
+#46 signer/worker isolation and deployment composition remain unproven; live use
+stays closed. B20/#43 remains blocked with no real project diff.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the
 evidence/disposition record; this update does not change its live-use limits.
 

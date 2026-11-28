@@ -2008,3 +2008,31 @@ Template:
 - Follow-up: a docs-only receipt commit changes the PR head, so run and verify
   the five-by-two campaign on that newest head. Then propagate the correction
   into #45/#51 and verify each remote head/check set. Do not merge.
+
+## 2026-11-28 — FIX48 final-head evidence and propagation receipt
+
+- Branch: `task/FIX48-concurrency-stability`; PR #52.
+- Steps: verified Actions run `46108300145` belongs to PR head
+  `9b34a8c102af301f511c25c744caab3cb1e1ac36`; both OS jobs checked out common
+  merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`, with base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and PR head as its parents.
+- Results: each of five Windows samples exited 0 with 310 tests / 309 pass /
+  0 fail / 1 skip; each of five Ubuntu samples exited 0 with 310 tests /
+  306 pass / 0 fail / 4 skips. All ten result records and both summaries were
+  inspected; each reported the same SHA and clean/unchanged checkout. Both
+  platform jobs and fallback demos succeeded; demos returned 429 then 200.
+- FIX48-06: verified #45 OPEN/DRAFT at `4d51a393159ce1023718909da022f5b2617d1db5`
+  with exact-head run `46109747250` successful on both OSes, and #51 OPEN/DRAFT
+  at `e1a08d4388945362e555ec3786e50c7fe60ac394`, based on #45 head, with
+  exact-head run `46111699960` successful on both OSes. The seven FIX48 paths
+  (workflow, runner, four test files and task card) match across the three PR heads.
+- Review: independent SHA-bound review found the prior repository receipt and
+  PR body stale, despite passing execution evidence. Blocking P2 comment:
+  https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234848608
+  The correction and resulting-head re-review are required; this entry records
+  the evidence without claiming the finding resolved.
+- Evidence: `docs/validation.md`; Actions runs
+  `46108300145`, `46109747250`, and `46111699960`; PR metadata for #45/#51.
+- Follow-up: update the PR body to match these receipts, run content/whitespace
+  checks, push normally, then obtain a new exact-head campaign and independent
+  re-review. No ready transition or merge yet.

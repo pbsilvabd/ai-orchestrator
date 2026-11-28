@@ -59,10 +59,15 @@ It does not collect task artifacts or implement the MCP task endpoint.
 
 Current delivery: **FIX48 draft PR #52** on `task/FIX48-concurrency-stability`,
 based on `f61e5e1`; baseline default-concurrency B10-03 failure reproduced
-locally. Five samples passed on each OS in run `46107344778` at sampled merge
-SHA `bfbeda97d78137de92e590184cef6e26cdeb4321` (parents: base `f61e5e1`,
-PR head `1a2bd5f`). The documentation receipt commit moves the PR head; its
-exact-head campaign must pass before delivery is complete.
+locally. Five samples passed on each OS in runs `46107344778` (PR head
+`1a2bd5f`, merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`) and
+`46108300145` (current PR head `9b34a8c102af301f511c25c744caab3cb1e1ac36`,
+merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`), with all ten originals
+per run passing and clean/unchanged. FIX48 correction paths are verified at
+current #45 head `4d51a39` and #51 head `e1a08d4`; their exact-head runs
+`46109747250` and `46111699960` passed on both OSes. #52 remains OPEN/DRAFT;
+the independently reported stale-evidence P2 must be corrected and re-reviewed
+on the resulting head before it can be considered ready.
 B30 PR #45 and stacked B31 PR #51 remain incomplete drafts. Their remote state and checks
 are authoritative on GitHub. A private bind option is implemented; actual
 cross-compartment service composition is not established.
