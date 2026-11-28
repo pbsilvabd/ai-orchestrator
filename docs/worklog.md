@@ -3160,5 +3160,12 @@ Template:
   453 pass / 0 fail / 5 skips; focused five-file B31 suite → 71/71; demo →
   429 then 200; whitespace check clean. The five skips remain existing
   platform/TLS cases; no new skips or relaxed assertions.
-- Publication and exact-head #51 CI remain pending. #45/#51 remain drafts; no
-  merge, ready transition, provider, network or live activation.
+- Published #51 head `072294b11eb7eb584e199523c98f19fa6f295c66`, base
+  `4d51a393159ce1023718909da022f5b2617d1db5`; remote head matched. Exact-head
+  run `46110919272` passed both Windows and Ubuntu jobs. Each job's five
+  sequential samples at common merge SHA `6dc21dda2643443e821b68b64016387a541d781e`
+  reported 458/453/0/5 and exit 0, with clean/unchanged checkout; both demos
+  passed. The watch showed expected nonzero annotations from the pipeline-exit
+  fixture; run/job metadata and the sample logs confirmed success.
+- #45/#51 remain drafts; no merge, ready transition, provider, network or live
+  activation.

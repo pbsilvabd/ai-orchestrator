@@ -43,7 +43,10 @@ service regressions; it does not repair the cross-task races. The
 was addressed through the separate FIX48/#52 correction and propagation. B30/#45's
 propagated code passed five samples per OS at `784cdb4`; exact-head CI also passed
 at documentation head `4d51a39`. FIX48 is merged into the #51 worktree at `7d0a808`;
-local default/focused tests pass there, but exact-head remote checks/review remain.
+local default/focused tests pass there. Published head `072294b` passed exact-head
+campaign `46110919272`: five samples per OS at common merge SHA `6dc21dd`, all
+exit 0 with 458 tests, 453 pass, 0 fail and five existing skips. The prior B31
+independent review is bound to `999a0e1`, not this later head.
 B31 stays draft/incomplete. #46 deployable composition and signer/worker isolation
 remain open; live use remains closed.
 Continuation test head `999a0e1` has green exact-head Windows/Ubuntu CI and

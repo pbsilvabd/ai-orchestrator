@@ -4295,5 +4295,14 @@ draft/incomplete because #48 is unresolved; #46 independently keeps live use clo
   command passed 71/71 with no skips; fallback demo returned 429 then 200.
   `git diff --check` passed before publication. The five existing skips remain
   platform/TLS gates; no new skip was added.
-- Remote publication and exact-head #51 CI remain pending. Keep #51 draft; do
-  not merge.
+- Published PR #51 head `072294b11eb7eb584e199523c98f19fa6f295c66` targets
+  base `4d51a393159ce1023718909da022f5b2617d1db5`. Exact-head run
+  `46110919272` completed success on both platform jobs. Both checked common
+  merge SHA `6dc21dda2643443e821b68b64016387a541d781e` (base + PR head).
+  Windows job `140874029714` and Ubuntu job `140874029483` each ran five
+  sequential full-suite samples: every sample reported 458 tests, 453 pass,
+  0 fail, 5 skip, exit 0, clean/unchanged checkout at that same SHA. Both
+  fallback demos passed (429 then 200). `gh run watch` displayed nonzero
+  annotations from the intentional pipeline-exit verification fixture; run/job
+  metadata and sample logs confirm the workflow and both jobs concluded success.
+- PR #51 remains OPEN/DRAFT; no merge or readiness/live authorization.
