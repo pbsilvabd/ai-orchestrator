@@ -4290,5 +4290,10 @@ draft/incomplete because #48 is unresolved; #46 independently keeps live use clo
   a merge, retaining B31 history. Added the FIX48 card, runner/CI and three
   synchronization regressions. No B31 source change or live/policy behavior
   was intended by this propagation.
-- #51 resulting-head local suite, demo, diff check, remote publication and
-  exact-head CI are pending at this entry. Keep #51 draft; do not merge.
+- The resulting #51 merge head `7d0a808` passed Node 24.22.1 `node --test`:
+  458 total / 453 pass / 0 fail / 5 skips, exit 0; the five-file B31 focused
+  command passed 71/71 with no skips; fallback demo returned 429 then 200.
+  `git diff --check` passed before publication. The five existing skips remain
+  platform/TLS gates; no new skip was added.
+- Remote publication and exact-head #51 CI remain pending. Keep #51 draft; do
+  not merge.

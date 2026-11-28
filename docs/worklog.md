@@ -3156,6 +3156,9 @@ Template:
 - Resolved documentation merge conflicts by retaining B31's complete historical
   entries and adding the FIX48 receipt/status to the existing docs. Code/tests/
   CI and FIX48 task card were retained from B30.
-- Local resulting-head validation, PR publication and exact-head #51 CI remain
-  pending. #45/#51 remain drafts; no merge, ready transition, provider, network
-  or live activation.
+- Local resulting-head validation passed: default `node --test` → 458 total,
+  453 pass / 0 fail / 5 skips; focused five-file B31 suite → 71/71; demo →
+  429 then 200; whitespace check clean. The five skips remain existing
+  platform/TLS cases; no new skips or relaxed assertions.
+- Publication and exact-head #51 CI remain pending. #45/#51 remain drafts; no
+  merge, ready transition, provider, network or live activation.

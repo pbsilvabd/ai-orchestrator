@@ -5,9 +5,10 @@
 The FIX48 correction is now in B30/#45. Its CI passed at code head `784cdb4`
 (five original default-concurrency samples per OS; run `46109110028`) and at
 documentation head `4d51a39` (run `46109747250`). The latter confirmed the full
-workflow and both platform jobs succeeded. The correction has now been merged
-into the existing #51 worktree; run local validation, publish the updated draft
-head, and verify exact-head checks. Preserve the B31 history and known limits.
+workflow and both platform jobs succeeded. The correction is merged into the
+existing #51 worktree at `7d0a808`. Local validation passed (`node --test`:
+458/453/0/5; focused B31 suite: 71/71; demo 429 then 200). Publish the updated
+draft head and verify its exact-head checks. Preserve the B31 history and limits.
 Keep #45/#51 draft; do not merge or activate live use.
 
 Verified remote main `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` includes
@@ -32,7 +33,7 @@ signer/worker isolation are not
 established. See the
 [reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
 
-## Next action: authorize the bounded #48 correction, then revalidate B31
+## Next action: publish and verify the FIX48-updated B31 head
 
 1. B31 is published as draft [PR #51](https://github.com/pbsilvabd/ai-orchestrator/pull/51),
    stacked on B30 head `67acd78d`. On resumption (2026-11-27), remote head `5a0a34f`
@@ -43,10 +44,11 @@ established. See the
    not later commits. New committed real-key service regressions cover negative side
    effects, envelope-free replay and a distinct re-signed request reusing one approval ID.
    [#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517)
-   requests a separately authorized correction card/PR for the B10/B12/B15/B18 races,
-   repeated default-concurrency Windows/Ubuntu samples, and propagation into this stack.
-   No such correction or gate waiver is claimed by B31. Keep #51 draft/incomplete until
-   this gate is addressed and revalidate/re-review the resulting exact head. Do not merge.
+   requested a separate correction/propagation effort. That bounded work is tracked in
+   FIX48/#52; its correction is now propagated into #45 and this #51 worktree. The
+   resulting #51 local default suite passed 458/453/0/5 and focused suite 71/71.
+   Publish the updated head, then verify exact-head CI and review. Keep #51 draft;
+   do not merge or treat the inherited review as approval of this new head.
    Software profile makes no hardware-presence claim; FIDO2 remains optional. Live use
    remains closed.
    Continuation implementation/test head `999a0e1` passed exact-head Windows/Ubuntu CI

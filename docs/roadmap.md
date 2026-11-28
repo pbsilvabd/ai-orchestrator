@@ -40,13 +40,12 @@ Windows/Ubuntu CI and a SHA-specific independent review with no B31 finding, but
 default-concurrency run failed B10-03 again. The continuation adds permanent real-key
 service regressions; it does not repair the cross-task races. The
 [#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517)
-requests a separately authorized correction and repeated Windows/Ubuntu evidence.
+was addressed through the separate FIX48/#52 correction and propagation. B30/#45's
+propagated code passed five samples per OS at `784cdb4`; exact-head CI also passed
+at documentation head `4d51a39`. FIX48 is merged into the #51 worktree at `7d0a808`;
+local default/focused tests pass there, but exact-head remote checks/review remain.
 B31 stays draft/incomplete. #46 deployable composition and signer/worker isolation
 remain open; live use remains closed.
-FIX48's reviewed correction was propagated to #45 and passed five default-concurrency
-samples per OS at code head `784cdb4` (run `46109110028`); the subsequent documentation
-head `4d51a39` also passed exact-head CI (`46109747250`). Propagation and validation on
-the stacked #51 head remain.
 Continuation test head `999a0e1` has green exact-head Windows/Ubuntu CI and
 [independent review](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7209875814)
 with no uncorrected B31 finding; the reviewer-identified FIDO2 test-evidence weakness
