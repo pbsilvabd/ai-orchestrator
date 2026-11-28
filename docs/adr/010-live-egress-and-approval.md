@@ -292,7 +292,7 @@ symlink/junction/alias identity); a signed admission measuring A while the worke
 refused before any service/task/child exists. Negative (`A != B`) and positive (`A == B`)
 composition fixtures live in `test/free-provider.test.mjs`.
 
-Deployment prerequisites ([deployment-prerequisites.md](deployment-prerequisites.md)) are
+Deployment prerequisites ([deployment-prerequisites.md](../deployment-prerequisites.md)) are
 recorded as a plan only: no independent Ubuntu/Hyper-V environment or enrolled FIDO2
 hardware key has been provisioned. A one-shot read-only catalog GET (2026-11-15, HTTP 200,
 104,821 bytes, `redirect:error`, no retry) confirmed the fixed free model
@@ -539,3 +539,42 @@ reservation.
   delivers a reviewed replacement.
 - Tests cover future, inverted, equal, exact 15-minute boundary and expiry-at-now cases with
   an explicit clock. No live/provider/hardware operation is implied.
+
+## Dated amendment 2026-11-24 - explicit software SSH approval profile
+
+Decision: adopt the recommended **single-user supervised local software-signature
+profile** as an explicit alternative for task-bound approval, while retaining the existing
+FIDO2 profile as a separately selectable stronger option. This changes the signing
+assurance only; it does not weaken payload binding, expiry, zero-paid limits, revocation,
+single-use admission, pre-spawn revalidation, egress policy or any live-activation gate.
+
+- Schema v2 includes the signed `signatureProfile`. Trusted service construction must
+  separately select exactly one supported profile; the signed value must match it. Missing,
+  unknown or mismatched selection refuses. There is no auto-downgrade or task-controlled
+  profile selection. Schema-v1 artifacts are refused rather than silently migrated.
+- `software-ssh-ed25519-v1` accepts only ordinary Ed25519 SSHSIG verified by the real
+  `ssh-keygen -Y verify` against the configured principal, namespace, allowlist and KRL.
+  It proves that the holder/use-authority of the allowlisted software private key signed
+  the exact canonical bytes. It **does not** prove hardware possession, user presence or
+  user verification, and it does not protect against compromise of the signing account or
+  trusted host.
+- `fido2-sk-v1` remains selectable only by trusted configuration and requires an SSH
+  security-key signature whose parsed SSHSIG flags establish both user presence (UP) and
+  user verification (UV). A genuine hardware signing dry run is required before any
+  deployment claims to use this FIDO2 profile; no software-key result is equivalent.
+- In the software profile, the operator provisions and uses the private key outside the
+  service and worker. The service receives only the signed approval, pinned public
+  `allowed_signers` policy and KRL; the private key is never included in source, task
+  records, service state or logs. The service does not create or retain an operator key.
+  If the selected composition cannot keep signing authority outside worker reach, reject
+  software-profile live use. #46 must define and verify that boundary; it is not established
+  by this code change.
+- Positive fixture acceptance uses an ephemeral disposable Ed25519 key in a temporary
+  directory and real OpenSSH sign/verify commands over the canonical approval bytes. This
+  requires no personal or hardware key and is cryptographic plumbing evidence only, not
+  operator-key provisioning or deployment evidence.
+- B31 updates code, tests and the normative contract together. The FIDO2 and software
+  profiles are both implemented with explicit trusted selection, but B30 remains fixture
+  only; deployment, worker/signing-key separation, any fresh catalog authorization and
+  live inference remain separate `not_run`/closed gates. No key enrollment, provider use,
+  network change, merge or live activation is authorized by this amendment.

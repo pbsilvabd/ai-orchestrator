@@ -3026,32 +3026,146 @@ Template:
   as review closure rather than acceptance. Merge/ready/live remain unauthorized and
   #46/#47/#48 remain open.
 
-## 2026-11-28 - Propagate FIX48 correction to B30
+## 2026-11-24 - B31 software SSH approval profile
 
-- Branch: `task/FIX48-propagate-B30`, based on B30/#45 head
-  `67acd78d0c570d5619dcc56c1638138c650cf32a`.
-- Applied FIX48 test synchronization, repeated-suite runner and CI changes, and
-  added the FIX48 acceptance card. Preserved B30's existing documentation and
-  appended a propagation receipt; no B30 production/live behavior changed.
-- Review note: an initial content-level merge conflicted because the FIX48 docs
-  snapshot predated B30's review history. The code, tests, CI and task card were
-  retained; B30's five overlapping status/history documents were restored from
-  its head and updated narrowly.
-- Source validation: FIX48's first campaign passed five originals per OS at PR
-  head `1a2bd5f` / merge checkout `bfbeda9`; receipt-head run `46108300145`
-  passed five per OS at PR head `9b34a8c` / common merge checkout `7366b22`.
-  Every sample exited 0 with a clean, unchanged checkout; detailed totals are in
-  `docs/validation.md`.
-- Propagated branch validation via Node 24.22.1: focused five-file command 88
-  total / 87 pass / 0 fail / 1 platform skip, exit 0; full `node --test` 442
-  total / 437 pass / 0 fail / 5 platform skips, exit 0; fallback demo 429 then
-  200, exit 0; staged diff check clean.
-- Current-head CI: run `46109110028` at PR code head `784cdb4` passed on
-  Windows and Ubuntu. All five originals per OS at merge checkout `8edcf05`
-  exited 0, checkout clean/unchanged, 442 tests / 437 pass / 0 fail / 5 skip.
-  Demo steps passed. The bounded watch's annotations request returned HTTP 502;
-  direct `gh run view` and both job logs confirmed workflow/job success.
-- Files: test/CI runner and regressions; FIX48 card; backlog, handoff, roadmap,
-  validation and worklog receipts.
-- Not done: #51 propagation and exact-head CI there; merge, ready/live transition
-  or deployment activity.
+- Implemented the maintainer-selected #47 direction on `task/B31-software-approval`,
+  stacked on B30 draft head `67acd78`. Added schema-v2 signed profile selection, mandatory
+  trusted profile configuration, software Ed25519 and retained FIDO2 verification paths,
+  and tests for real disposable-key SSHSIG verification, profile mismatch/no downgrade,
+  signer/namespace/byte tampering/KRL, flags and real service admission.
+- Updated `src/live-approval.mjs`, approval/service/listener tests, ADR-010, normative task
+  contract, B30/B31 cards, deployment prerequisites, backlog, roadmap, handoff, validation
+  and worklog.
+  B31 acceptance is a local cryptographic fixture only; it does not prove operator
+  authentication or worker/signing-key isolation. #46 and live/deployment gates remain open.
+- Kept the disposable signing key in a separate temporary directory from the task/service
+  fixture during real-factory tests, so the key is not within the service home or writable
+  task root; the positive service test also asserts the private-key bytes are absent from
+  persisted task state. Focused tests passed again after these corrections.
+- Validation: focused approval/admission set 61/61; serial full suite 443 total, 438 pass,
+  0 fail, 5 skips; default-concurrency `node --test` and the isolated B10-03 case failed
+  on the known partial-output timing race (#48); demo 429 -> 200; `git diff --check` clean.
+  Full command/evidence limits recorded in `docs/validation.md`.
+
+## 2026-11-24 - B31 draft PR and independent review
+
+- Published B31 as draft PR #51, base `task/B30-free-relay` at `67acd78`, head
+  `cc6f97c63b30920c0c162d2fb1eb4d183a7c6a27`; verified remote branch, PR target and SHA.
+- Exact-head Actions run `45338119441` passed on Windows and Ubuntu. The independent
+  critical review comment #7123776545 found no actionable/blocking B31 finding at that
+  head and reported additional real-key and service/ledger experiments. No code correction
+  was requested; the review is bound to `cc6f97c`.
+- Kept PR draft because default-concurrency `node --test` reproducibly fails B10-03 (#48),
+  notwithstanding serial suite and exact-head CI passes. Review explicitly did not clear
+  this failure or authorize ready/merge/live. Current continuation and evidence are in
+  `docs/handoff.md`, `docs/tasks/B31.md` and `docs/validation.md`.
+
+## 2026-11-24 - B31 documentation re-review receipt
+
+- Recorded the exact-head Actions success and independent re-review of B31 documentation
+  head `e09be12` (comment #7123906558). Reviewer reported no new actionable/blocking
+  B31 finding, reran the focused 61-test set successfully and confirmed Windows/Ubuntu
+  run `45339782157` passed. Full suite/demo were not rerun for this docs-only delta.
+- #48's default-concurrency failure remains explicitly unresolved; PR #51 stays draft.
+  #46 signer/worker isolation and live/deployment gates remain `not_run`.
+
+## 2026-11-27 — M3 preparation: B31 real-key service regressions and race coordination
+
+- Branch: `task/B31-software-approval`
+- Scope: tests and docs; no runtime, authority, lifecycle or deployment change.
+- Steps:
+  1. Resumed the existing clean worktree at remote `5a0a34f`, base `67acd78`;
+     read all PR feedback and verified starting-head CI and review receipts.
+  2. Reproduced the unchanged default-suite B10-03 failure, characterized the
+     fixed-abort/readiness assumption with a disposable local-process diagnostic,
+     and published [#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517).
+     Requested a separate bounded correction card/PR and repeated Windows/Ubuntu
+     evidence for the whole issue; did not waive or implement it inside B31.
+  3. Promoted reviewer-run real-key service experiments to permanent tests:
+     nine negative side-effect cases, actual KRL verification, envelope-free
+     replay, a re-signed second task reaching the real single-use ledger, and
+     software-key refusal with a matching FIDO2 signed profile.
+  4. Reviewed the implementation paths and complete stacked diff. Strengthened
+     private-key non-disclosure checks against JSON escaping and reran focused
+     tests. Proved the second-task regression fails when the existing-claim
+     refusal is removed in an owned scratch copy; removed only that copy.
+     Preliminary independent static review then found a dummy executable digest
+     could mask a FIDO2-enforcement regression in the new test. Bound the measured
+     executable and proved a FIDO2-enforcement bypass makes that test fail too.
+  5. Updated continuation/evidence docs, keeping #51 draft/incomplete and #46
+     signer/worker isolation `not_run`. No merge decision or live use requested.
+- Files: `test/live-approval-service.test.mjs`, `docs/tasks/B31.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/validation.md`, `docs/worklog.md`.
+- Validation: focused five-file command → 71 pass, 0 fail, 0 skip, exit 0,
+  before and after the scan correction; default suite → 443/437/1/5 at the
+  starting head and 453/447/1/5 before independent review, both exit 1 for B10-03;
+  demo → 429 then 200, exit 0; mutation → expected assertion failure, exit 1.
+  Pre-review serial suite → 453 total, 448 pass, 0 fail, 5 skip, exit 0;
+  syntax/stacked whitespace checks → exit 0; six-file relative-link check →
+  74 links, zero broken, exit 0. Interrupted/quoting attempts and limits are in
+  `docs/validation.md`; no failure is replaced by a serial or diagnostic pass.
+  Focused/full suites are being rerun after the FIDO2 test correction.
+  Corrected focused set → 71/71, exit 0; full default/serial/demo revalidation,
+  published-head independent verdict and CI remain pending at this checkpoint.
+  Pinned-host, deployment, live and hardware gates were not rerun.
+- Follow-up: authorize the bounded #48 correction and propagate its reviewed
+  fix into the stack, then repeat exact-head gates/independent review of #51.
+  Green CI alone does not clear that blocker.
+
+## 2026-11-27 — M3 preparation: B31 corrected-head revalidation
+
+- Branch: `task/B31-software-approval`
+- Scope: documentation receipts only; no source or test behavior changed.
+- Steps:
+  1. Published and verified `999a0e19f0a98294b93806e92aab2dc060579d30`,
+     stacked on `67acd78d`, with the measured-host FIDO2 test correction.
+  2. Completed the corrected-code default/serial/demo runs, retaining the default
+     B10-03 failure instead of replacing it with serial or CI success.
+  3. Updated the PR body using its template and answered all prior critical
+     comments in reply #7209824863. Exact-head CI #45939963343 passed Windows
+     and Ubuntu; this does not repair the unresolved #48 gate.
+  4. Recorded independent review #7209875814 at `999a0e1`: preliminary P2
+     verified fixed, no uncorrected in-scope B31 finding, completion still
+     blocked by #48. Fixed its optional inherited P3 deployment link in
+     ADR-010 and refreshed the status documents without claiming acceptance.
+- Files: `docs/validation.md`, `docs/worklog.md`, `docs/tasks/B31.md`,
+  `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/adr/010-live-egress-and-approval.md`.
+- Validation: corrected focused set → 71/71, exit 0 (previous entry);
+  `node --test` → 453 total, 447 pass, 1 fail, 5 skip, exit 1;
+  `node --test --test-concurrency=1` → 453/448/0/5, exit 0;
+  demo → 429 then 200, exit 0; syntax/diff/source-correlation → exit 0.
+  Reviewer independently passed 71 focused tests/demo/diff and verified the
+  FIDO2-bypass mutation fails as expected. Its broader link check found the
+  inherited P3; after fixing it, author link check → 10 files / 93 links /
+  zero broken, exit 0. Whitespace/source-correlation checks → exit 0.
+  Re-reviewed the docs-only delta and removed the owned mutation copy.
+  Pinned-host, deployment, provider/catalog/live and hardware gates were not rerun.
+- Follow-up: keep #51 draft; obtain separate bounded #48 correction authority
+  and propagate its reviewed fix, then repeat exact-head gates/review. #46
+  signer/worker isolation remains `not_run` and live stays closed.
+
+## 2026-11-28 - Propagate FIX48 into stacked B31
+
+- Branch: `task/B31-software-approval`; merged B30/#45 head `4d51a39` into
+  the existing #51 branch, preserving the B31 commit history.
+- Confirmed #45 CI `46109747250` succeeded at exact head `4d51a39` on Windows
+  and Ubuntu; its code-head campaign `46109110028` passed five samples per OS
+  at `784cdb4`. Details and evidence limits are in `docs/validation.md`.
+- Resolved documentation merge conflicts by retaining B31's complete historical
+  entries and adding the FIX48 receipt/status to the existing docs. Code/tests/
+  CI and FIX48 task card were retained from B30.
+- Local resulting-head validation passed: default `node --test` → 458 total,
+  453 pass / 0 fail / 5 skips; focused five-file B31 suite → 71/71; demo →
+  429 then 200; whitespace check clean. The five skips remain existing
+  platform/TLS cases; no new skips or relaxed assertions.
+- Published #51 head `072294b11eb7eb584e199523c98f19fa6f295c66`, base
+  `4d51a393159ce1023718909da022f5b2617d1db5`; remote head matched. Exact-head
+  run `46110919272` passed both Windows and Ubuntu jobs. Each job's five
+  sequential samples at common merge SHA `6dc21dda2643443e821b68b64016387a541d781e`
+  reported 458/453/0/5 and exit 0, with clean/unchanged checkout; both demos
+  passed. The watch showed expected nonzero annotations from the pipeline-exit
+  fixture; run/job metadata and the sample logs confirmed success.
+- #45/#51 remain drafts; no merge, ready transition, provider, network or live
+  activation.

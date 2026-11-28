@@ -7,7 +7,7 @@ import { FREE_MODEL, FREE_ENDPOINT, FREE_MODEL_ID, FREE_PACKAGE, METADATA_TTL_MS
 import { buildOpenCodeInvocation, createOpenCodeWorker } from '../src/opencode.mjs';
 import { createTaskService } from '../src/service.mjs';
 import { createConfiguredTaskService } from '../src/configured-service.mjs';
-import { createSignedApprovalAdmission, openApprovalLedger } from '../src/live-approval.mjs';
+import { createSignedApprovalAdmission, openApprovalLedger, FIDO2_SSH_PROFILE } from '../src/live-approval.mjs';
 import { freeGuardPlugin, freeGuardSource } from '../src/free-guard.mjs';
 import { approvalFor, fixture, metadata } from './fixtures/free-worker.mjs';
 
@@ -312,6 +312,7 @@ test('B30-05: a signed admission measuring a different executable than the confi
     metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
     ledger: openApprovalLedger({ home: join(f.home, 'ledger') }),
     hostExecutable: hostA,
+    approvalProfile: FIDO2_SSH_PROFILE,
   });
   // A (hostA) != B (process.execPath): trusted composition must refuse before any service
   // exists, so no task/child can ever run under a mismatched host identity.
@@ -333,6 +334,7 @@ test('B30-05: a signed admission measuring the configured worker executable comp
     metadata: { observedAt: Date.now(), cost: { text: { input: { price: 0 }, output: { price: 0 } } } },
     ledger: openApprovalLedger({ home: join(f.home, 'ledger') }),
     hostExecutable: process.execPath, // A == B
+    approvalProfile: FIDO2_SSH_PROFILE,
   });
   // A == B: composition succeeds (the gate is never invoked here; no hardware signature).
   const service = await createConfiguredTaskService({ home: f.home, config: activeConfig, admission },

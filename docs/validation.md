@@ -3987,33 +3987,322 @@ M3 completion, deterministic test reliability, live activation or merge.
 - Review closure is not acceptance. Merge, ready and live activation remain unauthorized;
   #46/#47/#48 remain open and the deployment/provider/FIDO2 gates remain `not_run`.
 
-## FIX48 propagation to B30/#45 - 2026-11-28
+## B31 software SSH approval profile - 2026-11-24 (local validation)
 
-- Applied the reviewed correction from FIX48 PR #52 to the B30 branch starting
-  at `67acd78d0c570d5619dcc56c1638138c650cf32a`: default-concurrency B10-03
-  output readiness, MCP partial-line/collection retention, atomic B18 contender
-  result publication, and the Windows/Ubuntu five-sample CI runner. Added the
-  FIX48 task card and retained B30's pre-existing documentation/history.
-- No B30 production, approval, provider, network, deployment or policy behavior
-  was changed by the propagation. #45 and #51 remain draft; no merge.
-- Run `46108300145` passed the receipt head `9b34a8c102af301f511c25c744caab3cb1e1ac36`.
-  Both OS jobs checked common merge commit `7366b2218583d924614105a4d8dc17c5ff4ca858`,
-  parented by base `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head.
-  Windows samples 1-5 each reported 310 tests / 309 pass / 0 fail / 1 skip;
-  Ubuntu samples 1-5 each reported 310 / 306 / 0 / 4. All ten JSON outcomes
-  report native exit 0, `worktreeClean=true` and `worktreeUnchanged=true` at the
-  same OS-specific SHA. Both demo steps returned 429 then 200.
-- This verifies the receipt head; it does not prove the #45 propagation head.
-  The #45 work branch passed the focused command (88 total / 87 pass / 0 fail /
-  1 platform skip) and full default suite (442 total / 437 pass / 0 fail /
-  5 platform skips), native exit 0; the demo returned 429 then 200, exit 0.
-- Actions run `46109110028` passed the #45 code head
-  `784cdb4603896086033a3c7ca5bbacb9fabf9d8c`. Both platforms checked merge
-  commit `8edcf05ee863dabc9c093b1b10204270b985eab7` (base
-  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` + PR head `784cdb4`). Windows
-  job `140868429341` samples 1–5 and Ubuntu job `140868429560` samples 1–5
-  each reported 442 tests / 437 pass / 0 fail / 5 skip, exit 0, clean and
-  unchanged checkout at the same SHA. Both fallback demos returned 429 then
-  200. The complete workflow and both jobs concluded success. The CLI watch's
-  annotations request returned HTTP 502 after observing job completions; direct
-  run/job metadata and both job logs confirmed success. #51 validation remains.
+- Decision: the maintainer selected the explicit software-signature profile recommended
+  in #47. Implemented B31 on `task/B31-software-approval`, stacked on B30 draft head
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`; no B31 PR is published yet.
+- Code/contract: approval schema v2 signs `signatureProfile`; trusted admission creation
+  must explicitly select `software-ssh-ed25519-v1` or `fido2-sk-v1`. Missing/unknown
+  profile, schema v1, or signed/trusted mismatch refuses; there is no fallback. Software
+  profile accepts only ordinary Ed25519 SSHSIG and makes no UP/UV claim. FIDO2 selection
+  still requires security-key signatures with both flags.
+- Positive software test uses disposable Ed25519 keys in temporary directories and real
+  OpenSSH `ssh-keygen -Y sign` and `-Y verify`, including real factory/service admission
+  and durable single-use reservation. Negative tests cover wrong profile/algorithm, wrong
+  signer, namespace mismatch, changed signed bytes, KRL revocation, invalid timestamps,
+  and FIDO2 missing-UP/missing-UV refusal. A correctly signed but expired software
+  approval is refused before the single-use reservation callback runs.
+- Focused command:
+  `fnm exec --using=24.22.1 node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners-authority.test.mjs test/free-provider.test.mjs`
+  -> 61 pass / 0 fail / 0 skip, exit 0.
+- Full command: `fnm exec --using=24.22.1 node --test --test-concurrency=1`
+  -> 443 total, 438 pass / 0 fail / 5 skip, exit 0. Skips are the existing TLS/platform
+  gates; no evidence level is inferred from them.
+- Default-concurrency command `fnm exec --using=24.22.1 node --test` exited 1 on
+  `B10-03: deadline and abort settle once with partial output and clean up`:
+  expected captured stdout `before`, observed empty string. The same named case failed
+  when run alone. This is the known subprocess timing/readiness issue tracked in #48;
+  B31 does not modify `src/subprocess.mjs` or `test/subprocess.test.mjs`. The serial suite
+  is the full-suite pass; the default-concurrency failure is not hidden or counted as pass.
+- Demo: `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` -> preferred 429,
+  local 200, exit 0. `git diff --check` -> exit 0.
+- Evidence level: local cryptographic fixture and service admission, not operator-key
+  provisioning, worker/signing-key isolation, deployment, pinned-host or live-provider
+  evidence. The disposable private key is outside the task/service home, is not passed to
+  the verifier/service, and its bytes are asserted absent from the persisted task. No
+  FIDO2 device, maintainer key, provider, catalog, network, VM or firewall operation.
+- Remaining gates: #46 must demonstrate the signer authority stays outside worker reach;
+  actual operator-key provisioning and signed live approval remain `not_run`. B30 stays
+  fixture-only. No ready, merge or live activation.
+
+## B31 PR #51 publication and independent review - 2026-11-24
+
+- Published the B31 stacked branch as
+  [draft PR #51](https://github.com/pbsilvabd/ai-orchestrator/pull/51), targeting
+  `task/B30-free-relay`. Base:
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`; reviewed head:
+  `cc6f97c63b30920c0c162d2fb1eb4d183a7c6a27`. Remote branch and PR base/head were
+  verified at these exact SHAs.
+- Exact-head Actions run `45338119441`: Windows and Ubuntu checks both report success.
+  The reviewer checked run/job metadata; raw CI log retrieval returned zero lines, so
+  raw output and exact CI test counts were not independently inspected.
+- Independent critical review comment
+  [#7123776545](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123776545)
+  reviewed the full diff and acceptance rows at the exact head. Verdict: no new actionable
+  B31 finding and no blocking B31 finding for this cycle. It independently reproduced
+  default `node --test` at 443 total: 437 pass, 1 fail, 5 skip, exit 1; B10-03 expects
+  `before` but captures empty stdout. This remains tracked in #48 and is not repaired or
+  waived by serial success/green CI.
+- Additional reviewer-run temporary local experiments passed: real-key KRL verification,
+  negative service side-effect checks, exact replay with envelope absent, distinct
+  re-signed request reusing one approval ID, and private-key/store non-disclosure scans.
+  These do not replace the recorded committed suite or supply deployment evidence.
+- The reviewer confirmed no PR conversation/review/inline findings existed before its
+  comment; no correction was requested. PR remains draft/incomplete because the known
+  default-concurrency suite failure remains unresolved. This review does not certify
+  deterministic tests or authorize ready, merge, B30 acceptance or live use.
+- Limitations unchanged: #46 signer/worker isolation, deployment and live inference remain
+  `not_run`; FIDO2 positive hardware evidence is required only if that optional profile is
+  selected. No hardware, provider/catalog, network, VM or firewall operation.
+
+## B31 documentation re-review at e09be12 - 2026-11-24
+
+- After the six-file evidence/status update, current PR head was
+  `e09be12bd4789ab0bc9bd862b25d86abad2406b5`, base remained
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`. Independent re-review comment
+  [#7123906558](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7123906558)
+  found no new actionable or blocking B31 finding.
+- The re-review observed Actions run `45339782157` successful on Windows and Ubuntu at
+  `e09be12`. Review of run/job metadata only; no raw logs/test counts claimed.
+- Reviewer independently reran the focused five-file command: 61 passed, 0 failed, 0 skipped,
+  exit 0; full local suite/demo were not rerun for this documentation-only delta.
+  `git diff --check` and Markdown relative-link checks passed.
+- PR remains draft because default-concurrency B10-03 remains unresolved in #48; the review
+  explicitly does not certify suite determinism or authorize ready, merge, B30 acceptance,
+  deployment or live use. #46 remains not_run.
+
+## M3 preparation: B31 real-key service regressions and race coordination — 2026-11-27
+
+Executed on Windows x64 (NT 10.0.26300.0), Node.js v24.22.1 (fnm).
+Date: 2026-11-27.
+
+Starting head: `5a0a34f48cb5422ff2869aa5ec4b010364787485`; stacked base:
+`67acd78d0c570d5619dcc56c1638138c650cf32a`. Remote main:
+`f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672`. The original checkout was an older,
+clean, detached B16 checkpoint; work continued in the existing clean B31 worktree.
+All three conversation comments were read in full; reviews, inline comments and
+resolved/outdated threads were empty (GraphQL pagination exhausted and REST inline
+read successful). Starting-head Actions `45340527222` reported Windows/Ubuntu
+suite/demo success, and independent comment
+[#7124024334](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7124024334)
+reviewed exactly that SHA with no B31 finding. API run/job metadata was inspected,
+not raw CI logs. These are starting-head receipts, not approval of this continuation.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test` (starting head) | Unchanged default-concurrency baseline | 443 total, 437 pass, 1 fail, 5 skip; B10-03 empty stdout vs `before`, ~66.7 s | 1 |
+| `fnm exec --using=24.22.1 node --test --test-name-pattern="B10-03: deadline and abort" test/subprocess.test.mjs` | Named-case diagnostic during the baseline run | 1 pass, 0 fail; not an isolated-load sample and not a repair | 0 |
+| `fnm exec --using=24.22.1 node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners-authority.test.mjs test/free-provider.test.mjs` (first test revision) | Exercise the added real-key service cases | 71 pass, 0 fail, 0 skip; before strengthening the private-key scan | 0 |
+| `fnm exec --using=24.22.1 node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners-authority.test.mjs test/free-provider.test.mjs` (pre-review test revision) | Revalidate after the scan correction | 71 pass, 0 fail, 0 skip | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Local fallback demonstration | `mock/preferred` 429 then `mock/local` 200 | 0 |
+| `fnm exec --using=24.22.1 node --test --test-name-pattern="B31-02/05" test/live-approval-service.test.mjs` (temporary mutated copy, not repository runtime) | Prove the new second-task regression detects removed single-use refusal | 0 pass, 1 expected assertion failure (`Missing expected exception`); native exit captured before asserting it must be 1 | 1 (expected) |
+| `fnm exec --using=24.22.1 node --test` (pre-review test revision) | Full default-concurrency regression | 453 total, 447 pass, 1 fail, 5 skip; same B10-03 assertion at `test/subprocess.test.mjs:78`, ~67.5 s | 1 |
+| `fnm exec --using=24.22.1 node --test --test-concurrency=1` (pre-review test revision) | Separate full serial diagnostic/regression | 453 total, 448 pass, 0 fail, 5 skip, ~212.5 s | 0 |
+| `fnm exec --using=24.22.1 node --check test/live-approval-service.test.mjs` | Test module syntax | no output | 0 |
+| `git diff --check origin/task/B30-free-relay` | Entire stacked change whitespace | no output | 0 |
+| `fnm exec --using=24.22.1 node --test --test-name-pattern="B31-04: trusted FIDO2" test/live-approval-service.test.mjs` (temporary mutated copy after review correction) | Prove the corrected FIDO2 test detects bypassed algorithm/UP/UV enforcement | 0 pass, 1 expected assertion failure (`Missing expected exception`); native exit captured before asserting it must be 1 | 1 (expected) |
+| `fnm exec --using=24.22.1 node --test test/live-approval.test.mjs test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs test/free-listeners-authority.test.mjs test/free-provider.test.mjs` (after review correction) | Validate the measured-host FIDO2 regression and full focused set | 71 pass, 0 fail, 0 skip | 0 |
+
+Result: all focused B31 tests passed, including the nine new service refusal
+subtests; the default full suite failed before and after these test-only changes.
+The separate serial full suite passed; it does not replace either failed default
+run, repair the race or waive the gate. No failing result is replaced by a
+diagnostic retry or green CI.
+The five full-suite skips are four existing offline TLS cases (`openssl` absent
+from PATH) and one POSIX-only SIGTERM case on Windows. No new test is skipped.
+PowerShell captured `$LASTEXITCODE` immediately after each native validation command
+and explicitly propagated unexpected nonzero exits.
+
+Additional diagnostic/tooling outcomes (not acceptance samples):
+
+- The first baseline invocation was accidentally given a one-second background tool
+  deadline and was interrupted with exit 143; it is not a completed suite result or
+  teardown proof. The full baseline above was a separate recorded run. An inline
+  diagnostic initially failed PowerShell/native quoting with a SyntaxError (exit 1)
+  before any fixture child ran; it was replaced by a temporary `.mjs` script.
+  The first Markdown-link checker invocation could not locate Python (exit 9009);
+  the replacement Node checker examined six files / 74 relative file links with
+  zero broken links (exit 0). Neither attempt is a test-suite sample.
+- A disposable script using the unchanged `runSubprocess` delayed fixture output by
+  350 ms. Aborting at 150 ms returned empty output; aborting a separate child after
+  an output-write callback published a readiness marker returned `before`. Both
+  reported `aborted`, observed root exit and `descendantsStopped: false`; script
+  exit 0. This is a controlled readiness contrast, not proof of the cause of every
+  historical run or exclusion of other production pipe races. The diagnostic script
+  is outside the repository, not a committed gate.
+- Mutation experiment: copied `src/` and the service test into an owned temporary
+  directory, changed only the copy's existing-claim branch to admit any task, and
+  ran the new B31-02/05 regression. It failed at the required second-task refusal.
+  Removed only that owned copy; repository runtime stayed unchanged.
+
+Acceptance and self-review:
+
+- B31-01/03: the new real-factory matrix signs missing/unknown profile, schema v1,
+  trusted mismatch, wrong signer/namespace, altered bytes, expired approval and
+  revoked-key cases. Every refusal asserts zero reservation attempts, task files,
+  idempotency entries, claims, task branches and extra Git worktrees. Existing
+  missing/unknown trusted-construction tests remain.
+- B31-02/05: real OpenSSH Ed25519 sign/verify with an actual non-revoking KRL admits
+  once. Replays with and without the envelope do not revisit the ledger. A distinct,
+  freshly signed and correctly bound request with the same approval ID reaches the
+  real ledger and refuses; original task/claim bytes remain identical. No approval
+  or signature is in the stored request. Private keys stay in separate temporary
+  directories; the service-home scan checks both exact bytes and armor headers so
+  JSON escaping cannot hide a persisted private key. This is a passive service,
+  not a worker dispatch or proof of OS isolation.
+- B31-04: real software signatures over both software-profile and FIDO2-profile
+  data refuse under trusted FIDO2 configuration; original missing-UP/UV and forged
+  flags tests remain. Genuine FIDO2 positive is still `not_run`.
+- B31-06: positive software cryptography passes without hardware/live; the full
+  default-suite completion gate remains **incomplete** under #48.
+- Self-review pass 1 traced the new cases through real factory, service error mapping
+  and ledger, checked pre-reservation ordering, old schema refusal, signed-byte/profile
+  binding, passive/no-spawn limits and temporary-key handling. Strengthened the old
+  raw-key substring assertion to detect JSON-escaped key material too; focused tests
+  were rerun afterward. No runtime correction was needed.
+- Self-review pass 2 inspected the complete base-to-working-tree B31 diff (runtime,
+  tests, contract, ADR, cards and evidence/status docs), checked each matrix row and
+  retained the inherited #48 failure and #46 boundary as explicit exclusions, not
+  waivers. No additional in-scope blocking defect was found.
+- Preliminary independent critical review (static working-delta inspection, before
+  publication) then found one P2 in the new matching-FIDO2-profile test: its dummy
+  host digest could reject later and mask a regression in signature enforcement.
+  Corrected the test to bind the actual measured fixture executable; all other
+  approval bindings are valid. In a second owned scratch copy, bypassing only the
+  FIDO2 algorithm/flag enforcement now makes that specific test fail. Runtime is
+  unchanged. The focused/full suites are being rerun after this correction; prior
+  rows are explicitly labelled pre-review evidence, not final-code receipts.
+  The corrected focused set has now passed 71/71; full default/serial/demo results
+  remain pending at this publication checkpoint. The final exact-head critical
+  verdict and CI are also pending, never inferred from starting-head receipts.
+
+Evidence level: Unit — "Policy decisions and input normalization"; does not
+demonstrate "Host, network, production persistence" (Definition of Done).
+The added coverage uses real local Git/filesystem/OpenSSH service fixtures, not
+OpenCode integration or Use on this project evidence.
+
+Not rerun: pinned-host smoke, MCP capability/workflow and relay integration
+(no runtime/transport change in this continuation); deployed compartment/TLS,
+worker/signing-authority separation, operator-key provisioning, fresh catalog and
+live inference (separate authorization/environment required; #46 remains open).
+No provider/catalog call, personal key, hardware operation, VM/firewall/network-policy
+change, live activation, ready transition or merge was performed.
+
+Claim: the committed regressions preserve and exercise B31's local cryptographic
+admission/refusal contract. They do not repair #48 or establish completion/readiness.
+[#48 coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517)
+requests one separately authorized bounded correction card/PR, characterization of
+all B10/B12/B15/B18 cases, predeclared repeated default-concurrency samples on Windows
+and Ubuntu, and a propagation plan into B30/B31. That work is not silently folded
+into this signature-profile PR. Keep #51 draft; no merge decision request while
+this gate is unresolved. #46 still blocks any live use.
+
+## M3 preparation: B31 corrected-head revalidation — 2026-11-27
+
+Executed on Windows x64 (NT 10.0.26300.0), Node.js v24.22.1 (fnm).
+Date: 2026-11-27.
+
+Published and remotely verified implementation/test head:
+`999a0e19f0a98294b93806e92aab2dc060579d30`; stacked base unchanged:
+`67acd78d0c570d5619dcc56c1638138c650cf32a`. This completes the local reruns that
+were explicitly pending in the preceding publication checkpoint, without rewriting
+that entry. Source/test bytes matched this head after the commands completed.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `fnm exec --using=24.22.1 node --test` | Full default regression after the independent FIDO2 test correction | 453 total, 447 pass, 1 fail, 5 skip; sole B10-03 `'' !== 'before'` at `test/subprocess.test.mjs:78`, ~66.2 s | 1 |
+| `fnm exec --using=24.22.1 node --test --test-concurrency=1` | Separate full serial regression after the correction | 453 total, 448 pass, 0 fail, 5 skip, ~209.5 s | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Revalidate the demo after the correction | `mock/preferred` 429 then `mock/local` 200 | 0 |
+| `fnm exec --using=24.22.1 node --check test/live-approval-service.test.mjs` | Corrected test syntax | no output | 0 |
+| `git diff --check origin/task/B30-free-relay` | Full stacked diff whitespace | no output | 0 |
+| `git diff --exit-code 999a0e19f0a98294b93806e92aab2dc060579d30 -- src test` | Correlate the tested source/test bytes | no output | 0 |
+
+Result: the corrected focused set passed 71/71 (preceding entry), and the separate
+serial suite/demo passed, but the default full suite still failed #48's B10-03
+assertion. Each native exit was captured immediately; default/serial/demo ran
+sequentially and their wrapper exited 1 because the default suite failed.
+No retry replaced that failure. Skips remain four existing unavailable-`openssl`
+TLS fixtures and one POSIX-only case on Windows.
+
+Exact-head CI [45939963343](https://github.com/pbsilvabd/ai-orchestrator/actions/runs/45939963343)
+passed the Windows/Ubuntu suite and demo steps at `999a0e1`. Observed run/job/step
+API metadata, not raw logs or CI test counts. This single green CI run does not
+repair #48 or supply its repeated-sample campaign.
+
+Independent critical
+[review #7209875814](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7209875814)
+reviewed exactly `999a0e1`, closed the preliminary P2 and found no uncorrected
+in-scope B31 implementation/test finding. It independently passed 71 focused tests,
+the demo, diff checks and the FIDO2-bypass mutation's expected failure. It inspected
+the author full-suite output rather than claiming to run those suites itself.
+The preliminary P2 was a test-evidence defect, fixed before publication by binding
+the measured fixture executable; no runtime verification rule was weakened.
+The reviewer explicitly left B31-06 incomplete under #48 and #46 live-closed.
+
+The same review reported one optional inherited P3: ADR-010's deployment link
+resolved under `docs/adr/` instead of its parent. Corrected only that link to
+`../deployment-prerequisites.md`. Its broader ten-file check had 93 links, one
+broken, exit 1; that reviewer result is preserved, not described as passing.
+The subsequent documentation-only receipt commit requires its own exact-head
+delta review/CI; this `999a0e1` verdict does not approve a future commit.
+After the link fix, the author checked all ten changed Markdown files: 93 relative
+file links, zero broken, exit 0. Base-to-working-tree whitespace and unchanged
+source/test correlation checks exited 0. Removed only the owned FIDO2 mutation
+copy after the reviewer finished inspecting/rerunning it. Re-reviewed the final
+documentation delta; no acceptance, authority or milestone was advanced.
+
+PR body now uses the repository template. The
+[continuation reply](https://github.com/pbsilvabd/ai-orchestrator/pull/51#issuecomment-7209824863)
+links and answers all three prior critical comments, records the correction and
+explicitly preserves #48/#46. None of those prior comments requested another B31
+runtime correction. The coordinated #48 next step remains a separately authorized
+bounded task/PR and reviewed propagation into this stack, not a hidden B31 scope
+expansion or a readiness waiver.
+
+Evidence level: Unit — "Policy decisions and input normalization"; does not
+demonstrate "Host, network, production persistence". Real local crypto/service
+fixtures are not OpenCode integration, deployed signer isolation or Use on this
+project evidence.
+
+Not rerun: pinned OpenCode/MCP/relay integrations (no runtime or transport change);
+deployed TLS/compartment/worker-signer isolation, operator provisioning, catalog,
+live inference and genuine FIDO2 positive (separate gates/authorization; #46 remains
+`not_run`). No provider/catalog request, personal key, hardware, VM/firewall/network-policy
+change, ready transition, merge decision request or merge.
+
+Claim: this supports the corrected B31 local tests, not completion. #51 remains
+draft/incomplete because #48 is unresolved; #46 independently keeps live use closed.
+
+## FIX48 propagation to stacked B31/#51 - 2026-11-28
+
+- B30/#45 code head `784cdb4603896086033a3c7ca5bbacb9fabf9d8c` passed run
+  `46109110028` on Windows and Ubuntu: five original default-concurrency
+  samples per OS at common merge checkout
+  `8edcf05ee863dabc9c093b1b10204270b985eab7`, each 442 tests / 437 pass /
+  0 fail / 5 skip, exit 0, clean and unchanged checkout. Both fallback demos
+  returned 429 then 200.
+- B30/#45 documentation head `4d51a393159ce1023718909da022f5b2617d1db5`
+  passed workflow `46109747250`; Windows and Ubuntu jobs and five-sample/demo
+  steps succeeded. Exact sample counts for this second receipt are not newly
+  claimed; the preceding code-head campaign contains the inspected ten samples.
+- Propagated the reviewed FIX48 branch into the existing #51 worktree through
+  a merge, retaining B31 history. Added the FIX48 card, runner/CI and three
+  synchronization regressions. No B31 source change or live/policy behavior
+  was intended by this propagation.
+- The resulting #51 merge head `7d0a808` passed Node 24.22.1 `node --test`:
+  458 total / 453 pass / 0 fail / 5 skips, exit 0; the five-file B31 focused
+  command passed 71/71 with no skips; fallback demo returned 429 then 200.
+  `git diff --check` passed before publication. The five existing skips remain
+  platform/TLS gates; no new skip was added.
+- Published PR #51 head `072294b11eb7eb584e199523c98f19fa6f295c66` targets
+  base `4d51a393159ce1023718909da022f5b2617d1db5`. Exact-head run
+  `46110919272` completed success on both platform jobs. Both checked common
+  merge SHA `6dc21dda2643443e821b68b64016387a541d781e` (base + PR head).
+  Windows job `140874029714` and Ubuntu job `140874029483` each ran five
+  sequential full-suite samples: every sample reported 458 tests, 453 pass,
+  0 fail, 5 skip, exit 0, clean/unchanged checkout at that same SHA. Both
+  fallback demos passed (429 then 200). `gh run watch` displayed nonzero
+  annotations from the intentional pipeline-exit verification fixture; run/job
+  metadata and sample logs confirm the workflow and both jobs concluded success.
+- PR #51 remains OPEN/DRAFT; no merge or readiness/live authorization.
