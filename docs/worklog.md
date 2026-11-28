@@ -3234,3 +3234,21 @@ Template:
 - Not run: pinned-host relay smoke, exact-head CI, independent critical re-review,
   #51 propagation, deployment/VM/network/TLS, provider/catalog, hardware/FIDO2,
   live inference. #45 remains draft; no ready transition or merge.
+
+## 2026-11-28 — B30 final-tree validation after main reconciliation
+
+- Branch: `task/FIX48-propagate-B30`; final local merge `6b155213950d2eae070f34bcde0cc2ec164a29d0`.
+- Steps: reran focused admission/pre-spawn regressions, the complete default
+  suite and fallback demo after resolving main's documentation conflicts.
+  Inspected the source/test correction and acceptance rows; confirmed the merge
+  resolution relative to its first parent is documentation-only.
+- Files: backlog, handoff, validation, worklog and roadmap.
+- Validation: focused suite 29/29 pass; `node --test` 454 total / 449 pass /
+  0 fail / 5 skips; fallback demo mock 429 -> 200; `git diff --check` and
+  base-to-head whitespace checks clean. Windows Node.js 24.22.1 via fnm.
+- Limits: exact-head CI and independent re-review have not run for this SHA.
+  No pinned OpenCode, deployment/namespace/network/TLS, provider/catalog,
+  hardware/FIDO2 or live operation. #45 remains draft and no merge is authorized.
+- Follow-up: reply to current #45 findings, publish without force, verify the
+  remote SHA and current-head CI, then request independent re-review. Keep the
+  PR draft until all required implementation and evidence gates are satisfied.

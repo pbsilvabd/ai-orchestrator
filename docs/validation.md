@@ -4226,3 +4226,30 @@ Not run: pinned OpenCode smoke/relay fixture, current-head GitHub CI, independen
 critical re-review, #51 propagation, VM/netns/firewall work, TLS/provider/catalog
 requests, hardware signing, FIDO2, live inference or merge. #45 remains OPEN/DRAFT;
 #46/#47/#48 and deployment acceptance remain incomplete.
+
+## B30 final-tree revalidation after main merge — 2026-11-28
+
+Revision: `6b155213950d2eae070f34bcde0cc2ec164a29d0` (merge of local correction
+`e1e6c96` and `origin/main` `04c6e5f`). The merge-resolution commit changes only
+the six reconciliation/receipt documents relative to its first parent; the
+source/test correction is unchanged.
+
+| Command | Result | Exit |
+| --- | --- | ---: |
+| `fnm exec --using=24.22.1 node --test test/live-approval-service.test.mjs test/live-approval-pre-spawn.test.mjs` | 29 tests, 29 pass, 0 fail, 0 skips | 0 |
+| `fnm exec --using=24.22.1 node --test` | 454 tests, 449 pass, 0 fail, 5 skips | 0 |
+| `fnm exec --using=24.22.1 node examples/fallback-demo.mjs` | Mock preferred returned 429; fallback returned 200 | 0 |
+| `git diff --check` and base-to-head whitespace checks | Clean | 0 |
+
+The full-suite skips are platform/tool availability skips, including four
+OpenSSL-dependent TLS fixture cases and one Windows-only process case on this
+Windows run; they are not reported as passed. `git diff origin/main...HEAD`
+shows the B30 task implementation and correction; `git diff HEAD^1 HEAD` is
+documentation-only. The relevant correction diff, acceptance rows and PR review
+history were inspected. No code changes followed these tests.
+
+Not run: pinned OpenCode smoke, VM/namespace/firewall/deployment campaign,
+provider/catalog requests, real keys or positive FIDO2, live inference, exact
+head GitHub CI or independent review of this new SHA. The PR's prior exact-head
+checks/reviews do not transfer to this commit. Keep #45 OPEN/DRAFT and live
+closed; no merge is authorized.

@@ -4,18 +4,22 @@ Remote `main` is `04c6e5f80d4a54a20203922fd8ee259419dd069c`. B30/#45 remains
 OPEN/DRAFT at prior remote head `4d51a393159ce1023718909da022f5b2617d1db5`;
 stacked B31/#51 remains OPEN/DRAFT. The local #45 correction commit is
 `e1e6c967ab04db9e3572d4778c548b6d23ec4a3a`; main's five documentation conflicts
-are resolved, but the merge commit and final validation are pending.
+are resolved in merge commit `6b155213950d2eae070f34bcde0cc2ec164a29d0`.
+Focused tests, full suite, fallback demo and whitespace checks passed on this
+final local tree. It has not yet been published; current-head CI and critical
+re-review remain pending.
 
 ## Next action: finish and verify the B30 correction on #45
 
 1. Preserve the synchronous fail-closed rule: admission, worker validation and
    receipt revalidation must not accept a Promise/thenable; observe rejected
    thenables. Focused tests and the full suite passed locally on Node 24.22.1.
-2. Commit the resolved `origin/main` merge, retain both append-only
-   validation/worklog histories, and run focused tests, full suite, fallback
-   demo and whitespace checks on the resulting tree.
+2. Preserve the resolved `origin/main` merge and both append-only
+   validation/worklog histories. Final-tree commands passed: focused service/
+   pre-spawn tests (29/29), full suite (454 total, 449 pass, 0 fail, 5 skips),
+   fallback demo (429 then 200) and whitespace checks.
 3. Review the full `main..HEAD` diff and B30 acceptance rows; record local results
-   and non-rerun gates. Update PR #45 and its review replies, push without force,
+   and non-rerun gates. Reply to the current #45 findings, publish without force,
    and verify the remote SHA and exact-head CI/re-review. Keep it draft.
 4. #45/#51 remain incomplete: compartment-aware service/worker/relay/gateway
    composition (#46), profile gates (#47/#51), and deployment/live/FIDO2 evidence

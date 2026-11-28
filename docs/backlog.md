@@ -73,7 +73,10 @@ It does not collect task artifacts or implement the MCP task endpoint.
 Current delivery: **B30 correction in progress** on `task/FIX48-propagate-B30`,
 starting from #45 head `4d51a39`. Commit `e1e6c96` rejects Promise/thenable
 admission and revalidation results synchronously and observes their rejections.
-The full local suite passed; demo, final diff review, publication, exact-head CI
+Merge commit `6b15521` reconciles current main while retaining both append-only
+histories. On the resulting tree, focused tests passed 29/29; the full local
+suite passed 454 total / 449 pass / 0 fail / 5 skips; demo returned 429 then
+200; whitespace checks are clean. Final diff review, publication, exact-head CI
 and independent re-review remain pending. Keep #45 draft. #51 remains an
 incomplete draft requiring separate propagation/checks. FIX48/#52's five-sample
 campaigns and prior propagation receipts are documented below.
