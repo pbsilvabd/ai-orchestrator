@@ -13,6 +13,9 @@ rules only:
   `<!-- NEW: ... -->`. Do not back-fill old sections to match.
 - `Result:` is the field label the existing sections use (one writes `Results:`); keep
   `Result:`.
+- Consolidate this entry with the corresponding worklog evidence before the final-head
+  review. Final review and CI receipts belong in the SHA-specific GitHub record, not in
+  a later receipt-only commit.
 - One row per validation command whose result this entry claims. Exploratory greps and
   one-off scripts are not rows.
 - The evidence labels are borrowed, not redefined here: `Unit`, `Local HTTP`,

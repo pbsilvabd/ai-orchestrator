@@ -7,6 +7,12 @@ normative document disagree, the normative document wins. Normative sources:
 
 ## Every change
 
+Use the [Minimum by task type](#minimum-by-task-type) table as a proportional
+reading guide. Read only applicable documents/sections and expand based on impact;
+reuse verified evidence only when it is demonstrably unchanged. Do not omit
+mandatory checks or infer integration evidence from mocks. Normative documents
+remain authoritative over this summary.
+
 - Work on a branch, open a PR, never force push and preserve the existing license
   ([CONTRIBUTING](../CONTRIBUTING.md), [handoff](handoff.md)).
 - Direct commits to main require maintainer authorization, which does not waive tests or
@@ -63,6 +69,9 @@ normative document disagree, the normative document wins. Normative sources:
   together ([AGENTS](../AGENTS.md), [task contract](task-contract.md)).
 
 ## Minimum by task type
+
+This is a minimum reading guide, not permission to omit applicable normative
+requirements or acceptance checks.
 
 | Task | Minimum |
 | --- | --- |

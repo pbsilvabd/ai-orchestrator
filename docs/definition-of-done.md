@@ -20,15 +20,19 @@ Follow [task-execution.md](task-execution.md). Backlog delivery ends at one veri
 PR ready for review; merging is a separate explicitly authorized action. A draft PR
 with a blocked criterion is a useful checkpoint, not completion. Pending CI is
 reported as pending; required not_run evidence cannot support a completed claim.
+Session termination is not task acceptance. `BLOCKED`, `WAITING_CI`,
+`WAITING_EXTERNAL` and `BUDGET_EXHAUSTED` are valid checkpoint outcomes; all
+existing completion criteria remain required.
 Direct main commits require explicit task-specific maintainer authorization and
 do not waive tests/review or grant future agents permission.
 
 ## PR review feedback
 
 Reviewers publish actionable findings on the PR under [the feedback protocol](pr-review.md).
-Developers read all PR feedback and reply with correction commits/evidence or a
-reasoned explanation. Blocking findings require verified re-review at the current
-head before approval; a final chat reply alone does not deliver PR findings.
+Developers read all PR feedback initially and reconcile later feedback incrementally
+against a verified baseline. Reply with correction commits/evidence or a reasoned
+explanation. Blocking findings require verified re-review at the current head before
+approval; a final chat reply alone does not deliver PR findings.
 
 ## Evidence levels
 

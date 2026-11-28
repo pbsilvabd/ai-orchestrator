@@ -2,27 +2,30 @@
 
 ## Start here (any model or agent)
 
-Read, in order: this file, [docs/core-rules.md](docs/core-rules.md), then
-[docs/handoff.md](docs/handoff.md), [docs/roadmap.md](docs/roadmap.md),
-[docs/definition-of-done.md](docs/definition-of-done.md), [CONTRIBUTING.md](CONTRIBUTING.md),
-[docs/task-contract.md](docs/task-contract.md) and the ADRs referenced by the current
-milestone. `docs/core-rules.md` is non-normative; the normative sources it links win on
-conflict — read them before work that touches the contract, lifecycle, transport or policy.
-Check `git log` and the remote before editing; another agent may have moved the
-repository since the handoff was written.
+Start with this file, [core-rules.md](docs/core-rules.md) and the task card (if
+applicable). Read the current handoff/roadmap only for task selection, changed
+dependencies or milestone decisions. Read [task-execution.md](docs/task-execution.md)
+for implementation/correction and [pr-review.md](docs/pr-review.md) for review.
+Read the [Definition of Done](docs/definition-of-done.md) and applicable normative
+contracts/ADRs before assessing their gates. For a resumed correction or delta review,
+use the verified checkpoint, unresolved findings, affected code/tests and normative
+sections; expand context when scope, base, authority or evidence changes. Normative
+sources win; missing or failed reads are not evidence. Check remote and local state
+before edits. Do not load unrelated historical documents by default.
 
-## Backlog delivery: continue through the PR
+## Backlog delivery
 
 Read [docs/task-execution.md](docs/task-execution.md) and the selected
 [task card](docs/backlog.md) before backlog work. One executable task ID produces
-one branch and one PR. Implement the scope, test every acceptance row, review during
-implementation, fix findings, review the completed diff again and revalidate fixes.
-Update documentation, commit, push, open/update the PR and verify its remote head.
-Continue through those already-authorized steps without stopping after a plan,
-branch or initial implementation. A green suite alone is not a completed review.
-Final delivery gives PR URL, SHA, evidence and limits; merge requires explicit
-authorization for that task. Genuine external blockers follow the protocol's
-draft/incomplete-work procedure; never claim missing evidence passed.
+one branch and one PR. Preserve both self-review objectives: review implementation
+and failure/authority paths, then review the completed diff and acceptance evidence;
+revalidate fixes. A green suite alone is not a completed review.
+Continue authorized work within the frozen scope and bounded session. A verified
+incomplete checkpoint is a valid session outcome, not task completion. Stop on a
+known missing gate, unavailable authority, provider limit, exhausted
+correction/review budget or uncertain outcome requiring reconciliation. Final
+delivery gives PR URL, SHA, evidence and limits; merge requires explicit
+authorization for that task. Never claim missing evidence passed.
 
 Verified 2026-11-22: remote main `11fcb42` includes B12–B19 and B29/#44
 fixture-only preparation. B30/#45 is draft at `a4f3954`; B20/#43 remains a
@@ -51,10 +54,11 @@ the OpenCode worker or change service permissions.
 
 Developers and reviewers must follow [docs/pr-review.md](docs/pr-review.md).
 Reviewers publish actionable findings on the PR with the reviewed SHA and evidence.
-Developers read conversation comments, review submissions and inline threads before
-resuming a PR and before final delivery, then reply to each finding with a fix
-commit and verification or an evidence-based explanation. Re-review the new head;
-a chat-only verdict or a push does not close blocking findings.
+Read full feedback initially; on resume, read new, changed or reopened feedback and
+use a verified checkpoint for the unchanged remainder. If completeness cannot be
+proved, read the relevant feedback in full. Developers reply to each actionable
+finding with a fix commit and verification or an evidence-based explanation. A push
+does not close a finding.
 
 ## Toolchain
 
@@ -77,11 +81,13 @@ a chat-only verdict or a push does not close blocking findings.
 ## Documentation duties (every change)
 
 - Update [docs/roadmap.md](docs/roadmap.md) status and
-  [docs/handoff.md](docs/handoff.md) next action when a milestone moves.
-- Append an entry to [docs/worklog.md](docs/worklog.md): date, milestone, branch,
-  steps, files and validation. Never rewrite past entries.
-- Record commands and results in [docs/validation.md](docs/validation.md); state what
-  was not rerun.
+  [docs/handoff.md](docs/handoff.md) next action only when a milestone, status or
+  next action actually changes.
+- Consolidate the change's worklog and validation evidence before the final-head
+  review. Record date, milestone, branch, steps, files, commands, results and what
+  was not rerun. Never rewrite historical entries; preserve append-only records.
+- Record the final review and CI receipt on GitHub at the relevant SHA; do not add
+  a commit solely to record a review/CI receipt.
 - Add or amend an ADR when a decision, dependency or trust boundary changes.
 - Keep [docs/task-contract.md](docs/task-contract.md) normative: code, tests and
   contract change together.

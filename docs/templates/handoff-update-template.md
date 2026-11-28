@@ -3,10 +3,9 @@
 When, where and who: see the [mapping table](README.md#which-file-to-copy). File-specific
 rules only:
 
-- Use it only when the next actionable step changes or a milestone moves, which is the rule
-  in [AGENTS.md](../../AGENTS.md) under "Documentation duties". A change that leaves the next
-  action intact does not touch [handoff.md](../handoff.md); it appends a worklog entry and a
-  validation entry only.
+- Use it only when a milestone, status or next actionable step actually changes, which
+  is the rule in [AGENTS.md](../../AGENTS.md) under "Documentation duties". A change
+  that leaves these intact does not touch [handoff.md](../handoff.md).
 - Update affected sections in place: the file describes the current continuation
   point. Preserve accurate context and invariants; remove obsolete statements.
 - The file does not name an owner. The authority over scope and permissions is stated in

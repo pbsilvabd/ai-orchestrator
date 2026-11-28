@@ -9,6 +9,9 @@ rules only:
 - One entry per change, written in the same branch and PR as the change.
 - Record work when it is performed, including work still under review. A branch or
   PR is not proof of merge. Add later outcomes as new entries; do not rewrite history.
+- Consolidate this entry and its validation evidence before final-head review. Record
+  final review and CI receipts on GitHub at the relevant SHA; do not make a
+  receipt-only commit.
 - No new field is introduced by this template. Every field below appears in entries already
   in the file; the heading forms and the Steps variants described below also appear there
   already.

@@ -8,11 +8,12 @@ description: Execute an assigned AI Orchestrator backlog card with implementatio
 Use this repository's existing delivery workflow for one executable task. Resolve
 the repository root from this file, not an assumed working directory.
 
-Read [AGENTS](../../../AGENTS.md), then the
+Read [AGENTS](../../../AGENTS.md), the applicable sections of the
 [execution protocol](../../../docs/task-execution.md), the selected card from the
-[backlog index](../../../docs/backlog.md) and its referenced decisions. These
-maintained documents govern scope and acceptance; do not copy or weaken their
-rules in the skill.
+[backlog index](../../../docs/backlog.md) and relevant normative sections/decisions.
+Use a verified checkpoint on resume and expand context when scope, base, authority
+or evidence changes. These maintained documents govern scope and acceptance; do not
+copy or weaken their rules in the skill.
 
 ## Establish the assignment
 
@@ -22,16 +23,20 @@ rules in the skill.
   if the user's request authorizes selecting the next task.
 - Inspect local edits, fetched main, recent PRs and actual prerequisite evidence.
   Use an existing task branch/PR when applicable; preserve unrelated edits.
-- For an existing PR, read conversation comments, submitted reviews and all inline
-  threads under the [feedback protocol](../../../docs/pr-review.md). Failed reads
-  leave feedback unknown. Resolve each required card row to observable evidence.
+- Read full feedback initially. On resume, consume new/changed/reopened feedback
+  incrementally against a verified checkpoint; if completeness cannot be shown,
+  reread relevant feedback in full. Failed reads leave feedback unknown. Resolve each
+  required card row to observable evidence.
 
 ## Execute and verify
 
-Follow the execution protocol's implementation, focused failure experiments, first
-review/corrections, complete-diff review and final validation. Capture the native
-process exit before formatting output. Keep simulated, local-process, pinned-host
-and real-project evidence distinct; a required missing experiment stays incomplete.
+Follow the execution protocol's implementation, focused failure experiments, both
+self-review objectives and applicable validation. Capture the native process exit
+before formatting output. Keep simulated, local-process, pinned-host and
+real-project evidence distinct; a required missing experiment stays incomplete.
+Correct only blocking findings within authorized scope; P3 is optional. Consolidate
+worklog/validation evidence before final-head review. The executor does not dispatch
+independent reviewers; the coordinator handles review intake after publication.
 
 For task execution changes, read the normative
 [task contract](../../../docs/task-contract.md) and relevant ADRs before editing.
@@ -44,13 +49,14 @@ and address existing PR feedback before declaring delivery complete.
 
 ## Finish within authority
 
-Apply the current session's authorization to this task. When publication is already
-authorized, continue through commit/push, the single PR and remote-head verification
-without asking again. When publication is explicitly withheld, finish reviewable
-local work and prepare the exact PR description before requesting that permission.
-Merge only with task-specific authorization; retain approval already given for
-the same task. Unknown remote-write outcomes require inspecting remote state before
-retrying, so a timeout cannot silently create duplicate PRs or publications.
+Apply the current session's authorization to this task. Commit/push/PR publication
+only when each is authorized; never infer authorization from the skill. Reconcile
+unknown outcomes by inspecting remote state before any retry. Stop within the frozen
+scope at a known missing gate, unavailable authority/provider, exhausted persisted
+correction/review budget or uncertain outcome. Leave a verified incomplete checkpoint
+with task/base/head, evidence, consumed budget, limitations and next authorized
+action. A checkpoint is not task completion. Merge only with task-specific
+authorization.
 
 Return the task ID, base/head SHA, PR URL or explicit unpublished checkpoint,
 row-to-evidence results, review corrections, remaining gates and next action.

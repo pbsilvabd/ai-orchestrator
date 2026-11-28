@@ -5,17 +5,19 @@ This is the required delivery protocol for backlog work. Read it with the select
 One executable task ID produces one PR. A parent/umbrella ID is not executable.
 The completed delivery is a published PR ready for review; merged is a separate state.
 
-For existing PRs, read full conversations, submitted reviews and inline threads
-before implementation/correction and before final delivery. Follow
-[the PR feedback protocol](pr-review.md): publish actionable findings on GitHub,
-reply to corrections with commit/evidence and re-review the current head before
-treating a blocking finding as resolved.
+For an existing PR, read full conversations, submitted reviews and inline threads
+on the initial pass. For a resumed correction, reconcile new, changed and reopened
+feedback against a verified checkpoint; reread relevant feedback in full if
+completeness cannot be demonstrated. Follow [the PR feedback protocol](pr-review.md):
+publish actionable findings on GitHub, reply to findings with commit/evidence and
+verify them at the current head before treating a blocking finding as resolved.
 
 ## Start and establish the baseline
 
-1. Read AGENTS and its ordered sources, the selected card and relevant ADRs. Inspect
-   status, current remote main, existing branches/PRs and task dependencies. Preserve
-   user/other-agent edits. Record task ID, base SHA, scope and expected files.
+1. Read AGENTS, applicable sources/sections, the selected card and relevant ADRs.
+   Use the current handoff/roadmap for task selection or changed dependencies.
+   Inspect status, current remote main, existing branches/PRs and dependencies.
+   Preserve user/other-agent edits. Record task ID, base SHA, scope and expected files.
 2. Choose a ready task whose prerequisites are actually merged/verified. Do not assume
    an open PR or an old test count satisfies a prerequisite. Update the existing task
    PR if one exists. Otherwise create `task/<ID>-<slug>` from current main.
@@ -36,10 +38,11 @@ treating a blocking finding as resolved.
    relevant to the task. Assert forbidden side effects and committed bytes as well as
    return values. Tests must fail on the defect being prevented; do not weaken tests
    to obtain a pass or change expected behavior without a documented contract decision.
-7. **Review pass 1 — implementation review:** inspect design and changed call sites,
-   lifecycle/authority, input provenance, secret handling, failure cleanup, old-record
-   compatibility and exact matrix coverage. Record findings, their fixes and any
-   justified exclusions. Fix blocking findings and rerun affected scenarios.
+7. **Self-review objective 1 — implementation:** inspect design and changed call
+   sites, lifecycle/authority, input provenance, secret handling, failure cleanup,
+   old-record compatibility and exact matrix coverage. Record findings, fixes and
+   justified exclusions. Correct blocking defects in scope and rerun affected
+   scenarios. P3 suggestions are optional and do not require correction.
 
 ## Finish and review the completed change again
 
@@ -48,29 +51,35 @@ treating a blocking finding as resolved.
    codes before formatting output. In PowerShell save `$LASTEXITCODE` immediately
    after the native command; explicitly fail the calling script on nonzero. Never
    use `|| true`, ignore assertions or infer a test exit from a downstream formatter.
-9. Append worklog and validation entries using the templates. Update contract/ADR
-   for behavior/authority changes, and handoff/roadmap for continuation/milestone
-   changes. Record versions, exact commands, results, evidence level and not-rerun
-   reasons. Never turn a required not_run into passed or quietly drop a matrix row.
-10. **Review pass 2 — completed diff review:** inspect the entire proposed PR diff
+9. Consolidate worklog and validation evidence before final-head review, using the
+   templates. Update contract/ADR for behavior/authority changes, and handoff/roadmap
+   only for continuation/milestone changes. Record versions, exact commands, results,
+   evidence level and not-rerun reasons. Never turn required not_run into passed or
+   quietly drop a matrix row. Record final CI/review receipts on GitHub at their SHA,
+   not in a receipt-only commit.
+10. **Self-review objective 2 — completed diff:** inspect the entire proposed diff
     against its base, including new files, tests, docs and deletions. Recheck every
-    acceptance row against actual evidence, old consumers and the final behavior.
+    acceptance row against actual evidence, old consumers and final behavior.
     Check close/reopen, stale handles, startup failures and cross-process behavior
     whenever ownership or lifecycle is involved. Look for unrelated changes,
     misleading completion claims, secrets, swallowed exits and unsafe cleanup.
-11. Correct findings, update evidence, rerun affected checks and the full suite/demo
-    after code changes, then repeat final review of the changed parts. Checks on a
-    previous code revision do not validate new code. Documentation-only corrections
-    require corresponding content/link checks; avoid repeating unrelated host gates.
-    Self-review is mandatory even when a more capable model will review later. These
-    are two deliberate passes by the implementing agent; no second model is required.
+    These two self-review objectives may be recorded in one consolidated review
+    when it clearly documents both objectives. No independent reviewer is dispatched
+    by the executor; after publication the coordinator handles review intake/dispatch.
+11. Correct blocking findings within scope, update evidence and revalidate affected
+    checks. After code changes, rerun the full suite/demo as required; do not treat
+    checks on a prior code revision as validating new code. Documentation-only
+    corrections require corresponding content/link checks; avoid repeating
+    unrelated host gates. Do not start an additional review round solely to rereview
+    documentation updates.
 
 ## Publish and verify
 
-12. Commit the complete scoped diff and push without force. Open the single task PR
-    with task ID, base/head, concrete before/after behavior, matrix-to-test evidence,
-    both review summaries, limitations and not-rerun gates. Use the repository PR
-    template. Ordinary completed work is ready for review, not a placeholder draft.
+12. Commit the complete scoped diff. Push without force and open/update the single
+    task PR only when authorized. Include task ID, base/head, concrete before/after
+    behavior, matrix-to-test evidence, both review summaries, limitations and
+    not-rerun gates. Use the repository PR template. Ordinary completed work is ready
+    for review, not a placeholder draft.
 13. Verify the remote branch SHA equals the intended local head and the PR targets
     the intended base/head. Inspect available CI results; fix failures from this
     change. If CI is still running, say pending and record the final head rather than
@@ -79,24 +88,28 @@ treating a blocking finding as resolved.
     unblocked task. Mark the backlog task `PR open` (not merged). Merge only with
     explicit authorization for this task; earlier merge approval is not inherited.
 
-Do not end a normal task after only planning, creating a branch, implementing or
-passing the first test run. Continue until publication and verification are complete.
-Do not ask for a new "continue" for these already-authorized steps. Give short progress
-updates during active work. After a final reply no background work is implied.
+Continue authorized work within the frozen scope and bounded session. A verified
+incomplete checkpoint is a valid session outcome, not task completion. Stop on a
+known missing gate, unavailable authority, provider limit, exhausted correction/review
+budget or uncertain outcome requiring reconciliation. Do not ask the user to repeat
+authorization already granted for the same bounded work. Give short progress updates
+during active work. After a final reply no background work is implied.
 
 ## Blocked work
 
 An external blocker is unavailable credentials/authorized provider, missing required
 host/platform, inaccessible remote, an unresolved maintainer decision, conflicting
 concurrent edits requiring coordination, or another prerequisite the agent cannot
-resolve within authority. A failing test or review finding normally requires a fix,
-not a pause. Long work and the prospect of another review are not blockers.
+resolve within authority. A failing test or blocking review finding within scope
+normally requires correction; P3 suggestions are optional. Long work and the prospect
+of another review are not blockers.
 
 - Finish safe independent work and reproduce the blocker. Record attempted command,
   result, affected criteria and exactly what input/environment would unblock it.
-- If code can be shared safely, commit/push it and open/update the **same task PR as
-  draft**, clearly listing incomplete criteria. If publication itself is blocked,
-  retain local commits and report branch/SHA and the remote error.
+- Persist the verified checkpoint with the task, base/head, evidence, limits,
+  consumed correction/review budget and next authorized action. Commit, push or open
+  a draft only when authorized and safe within the frozen scope; if publication is
+  blocked, retain local commits and report branch/SHA and the remote error.
 - Never publish knowingly incomplete work as ready, invent evidence, or claim task
   completion merely because a PR exists. State `blocked/incomplete` and the draft URL
   or local checkpoint. Do not split an unfinished task into a second competing PR.
@@ -106,11 +119,13 @@ not a pause. Long work and the prospect of another review are not blockers.
 
 Replace TASK_ID with one ready ID from the index; the selected card supplies scope.
 
-> Execute TASK_ID from docs/backlog.md and docs/tasks/TASK_ID.md. Follow AGENTS.md
-> and docs/task-execution.md. One task = one PR. Implement the complete scope, test
-> every acceptance row, review during implementation, fix findings, then review
-> the completed diff again and revalidate corrections. Update the required docs,
-> commit, push, open the PR and verify its remote head. Continue through the PR
-> without stopping after intermediate steps. Report URL, SHA, results and limits.
-> Do not merge. If an external blocker prevents completion, follow the blocked-work
-> procedure and explicitly report the incomplete criteria.
+> Execute TASK_ID from docs/backlog.md and docs/tasks/TASK_ID.md within the
+> authorized frozen scope. Follow AGENTS.md and docs/task-execution.md. One task =
+> one branch and one PR. Test every acceptance row and document both self-review
+> objectives; correct only blocking findings within scope and revalidate fixes.
+> Consolidate evidence before final-head review. Do not dispatch an independent
+> reviewer; coordinator handles review intake after publication. Commit/push/open
+> only when authorized, verify remote head, and do not merge. Stop at a known
+> missing gate, authority/provider limit, exhausted budget or uncertain outcome.
+> Report complete or incomplete status, SHA, evidence, limits and next action;
+> leave a verified checkpoint for incomplete work.
