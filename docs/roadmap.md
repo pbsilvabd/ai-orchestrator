@@ -28,8 +28,10 @@ remains draft at `67acd78`; stacked B31/#51 remains draft at `63100a3`. The
 software-signature profile has local disposable-key evidence only. FIX48 is
 published as draft PR #52 from `f61e5e1`: it reproduced the default-concurrency
 B10-03 failure and has a correction set. Local corrected full suite passed once
-on Windows, but the required five-sample Windows/Ubuntu campaign and propagation
-into #45/#51 are still pending. #46 signer/worker isolation and deployment composition remain
+on Windows. CI run `46107344778` passed five samples per OS at common sampled
+merge SHA `bfbeda9` (base `f61e5e1`, PR head `1a2bd5f`). A documentation receipt
+commit now requires another exact-head campaign; propagation into #45/#51 is
+also pending. #46 signer/worker isolation and deployment composition remain
 unproven; live use stays closed. B20/#43 remains blocked with no real project diff.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the
 evidence/disposition record; this update does not change its live-use limits.

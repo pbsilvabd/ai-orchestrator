@@ -1,6 +1,6 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-27: remote main `f61e5e1` includes B12–B19 and B29/#44.
+Verified 2026-11-28: remote main `f61e5e1` includes B12–B19 and B29/#44.
 B30/#45 and stacked B31/#51 remain draft; exact-head software-profile evidence
 does not satisfy #46 or the unresolved #48 test-stability campaign.
 B20/#43 remains the single blocked M3 draft. See the
@@ -59,7 +59,10 @@ It does not collect task artifacts or implement the MCP task endpoint.
 
 Current delivery: **FIX48 draft PR #52** on `task/FIX48-concurrency-stability`,
 based on `f61e5e1`; baseline default-concurrency B10-03 failure reproduced
-locally. The exact-head Windows/Ubuntu five-sample CI campaign is pending.
+locally. Five samples passed on each OS in run `46107344778` at sampled merge
+SHA `bfbeda97d78137de92e590184cef6e26cdeb4321` (parents: base `f61e5e1`,
+PR head `1a2bd5f`). The documentation receipt commit moves the PR head; its
+exact-head campaign must pass before delivery is complete.
 B30 PR #45 and stacked B31 PR #51 remain incomplete drafts. Their remote state and checks
 are authoritative on GitHub. A private bind option is implemented; actual
 cross-compartment service composition is not established.
@@ -114,7 +117,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B19 — Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
 | [B29 — Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
 | [B30 — Relay, gateway and signed approval](https://github.com/pbsilvabd/ai-orchestrator/blob/a4f3954514e2109a5f0112dcea0534d291a9fcf4/docs/tasks/B30.md) | P1 | Draft #45; fixture/partial deployment only, not accepted | #47 selects software SSH profile in stacked #51; #46 composition, #48 stability and deployment gates remain |
-| [FIX48 — Default-concurrency test stability](tasks/FIX48.md) | P1 | Draft PR [#52](https://github.com/pbsilvabd/ai-orchestrator/pull/52); exact-head campaign pending | Five consecutive default-concurrency full-suite originals on each of Windows/Ubuntu at one SHA; preserve all results and propagate correction into #45/#51 |
+| [FIX48 — Default-concurrency test stability](tasks/FIX48.md) | P1 | Draft PR [#52](https://github.com/pbsilvabd/ai-orchestrator/pull/52); first five-per-OS campaign passed at `1a2bd5f`; receipt-head campaign pending | Five consecutive default-concurrency full-suite originals on each of Windows/Ubuntu at one SHA; preserve all results and propagate correction into #45/#51 |
 | [B20 — First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
 | B27 — CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |
 | B28 — Expanded CI gates ([#34](https://github.com/pbsilvabd/ai-orchestrator/pull/34)) | P3 | Blocked; conflicts; macOS cancelled and smoke skipped at inspected head | B27 merged first; narrow to declared platform/coverage goals |

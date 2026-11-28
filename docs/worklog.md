@@ -1985,3 +1985,26 @@ Template:
   No check result from an earlier head counts as final acceptance.
 - Follow-up: verify the newest PR head and all ten independent suite outcomes,
   then propagate the reviewed correction into #45/#51. Do not merge.
+
+## 2026-11-28 — FIX48 first cross-platform campaign
+
+- Branch: `task/FIX48-concurrency-stability`; PR #52.
+- Steps: inspected Actions run `46107344778`, including both job logs and every
+  actual runner result. Confirmed the run head was `1a2bd5fa09b4cf1bff53bbb7cfef3844df329f80`;
+  both runners tested the same clean merge SHA
+  `bfbeda97d78137de92e590184cef6e26cdeb4321`, whose parents are base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head.
+- Results: Windows samples 1–5 each exited 0, reported 310 tests / 309 pass /
+  0 fail / 1 skip, clean and unchanged checkout. Ubuntu samples 1–5 each exited
+  0, reported 310 tests / 306 pass / 0 fail / 4 skips, clean and unchanged
+  checkout. Both OS CI jobs and the fallback demo steps succeeded. The run at
+  the earlier `f88ffc5` head was canceled after the docs commit and is not
+  counted.
+- Review: inspected each per-sample result and aggregate summary in the Actions
+  job logs, not merely the green check metadata. Each platform's five originals
+  use the same sampled SHA; no retries substituted for originals.
+- Evidence: `docs/validation.md`; Actions run
+  `https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46107344778`.
+- Follow-up: a docs-only receipt commit changes the PR head, so run and verify
+  the five-by-two campaign on that newest head. Then propagate the correction
+  into #45/#51 and verify each remote head/check set. Do not merge.

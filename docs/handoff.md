@@ -17,10 +17,12 @@ proven signer/worker isolation; live use stays closed.
    310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
    passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results,
    not the required repeated-platform campaign.
-2. Verify the exact-head CI campaign on #52: five sequential default-concurrency
-   full-suite originals on each of Windows and Ubuntu at one SHA. Keep every
-   result; do not treat a retry as replacing a failed original. If this docs
-   receipt changes the source head, use only the newest head's run for acceptance.
+2. Run `46107344778` passed five consecutive default-concurrency originals on
+   each OS at sampled merge SHA `bfbeda97d78137de92e590184cef6e26cdeb4321`,
+   whose parents are `f61e5e1` and PR head `1a2bd5f`. All ten result records
+   reported clean/unchanged checkout and exit 0. The new docs receipt changes
+   the PR head; verify its new exact-head campaign separately. Never replace a
+   failed original with a retry.
 3. Propagate the exact reviewed FIX48 correction into #45 and #51 without force
    pushes; verify both resulting branch heads and CI. Keep both PRs draft while
    any required #48 sample or #46 gate remains unresolved.

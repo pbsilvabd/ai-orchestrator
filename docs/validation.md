@@ -2354,3 +2354,38 @@ The acceptance campaign must run on the final updated PR head. This checkpoint
 does not count any queued or superseded run as passing evidence; the draft PR
 remains incomplete until a single clean SHA has five passing original suites on
 each OS and propagation is verified on #45/#51.
+
+## FIX48 first Windows/Ubuntu repeated campaign — 2026-11-28
+
+Actions run `46107344778`:
+https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46107344778
+
+The pull request run head was
+`1a2bd5fa09b4cf1bff53bbb7cfef3844df329f80`. GitHub Actions checked out merge
+commit `bfbeda97d78137de92e590184cef6e26cdeb4321` on both runners; its parents
+are base `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and the PR head above.
+Each runner independently checked a clean checkout before and after every
+sample and reported the same unchanged SHA for all five originals.
+
+| OS / job | Sample | SHA | Tests / pass / fail / skip | Native exit |
+| --- | ---: | --- | --- | ---: |
+| Windows `windows-latest` / 140862999664 | 1 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 2 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 3 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 4 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Windows `windows-latest` / 140862999664 | 5 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 309 / 0 / 1 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 1 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 2 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 3 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 4 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+| Ubuntu `ubuntu-latest` / 140862999911 | 5 | `bfbeda97d78137de92e590184cef6e26cdeb4321` | 310 / 306 / 0 / 4 | 0 |
+
+Every sample's JSON result and both five-result summaries were retrieved from
+the job logs. Runner step and complete workflow passed on both OSes; demo steps
+returned 429 then 200. The initial run `46107199648` at superseded head `f88ffc5`
+was canceled by Actions concurrency and is not acceptance evidence.
+
+This campaign passes the ten-sample requirement for the `1a2bd5f` PR content.
+The following docs-only receipt commit changes the PR head and therefore needs
+its own current-head campaign. FIX48-06 propagation into #45/#51 also remains
+pending. No merge or live/deployment acceptance is implied.
