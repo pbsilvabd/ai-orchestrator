@@ -1,64 +1,33 @@
-# Continuation point - 2026-11-28
+# Continuation point — 2026-11-28
 
-## Active FIX48 checkpoint
+Remote `main` is `04c6e5f80d4a54a20203922fd8ee259419dd069c`. B30/#45 remains
+OPEN/DRAFT at prior remote head `4d51a393159ce1023718909da022f5b2617d1db5`;
+stacked B31/#51 remains OPEN/DRAFT. The local #45 correction commit is
+`e1e6c967ab04db9e3572d4778c548b6d23ec4a3a`; main's five documentation conflicts
+are resolved, but the merge commit and final validation are pending.
 
-FIX48 is draft PR #52. Run `46107344778` passed five consecutive full-suite
-samples on each OS at merge SHA `bfbeda97d78137de92e9be9fbbf4d94e0515e8672`
-(PR head `1a2bd5f`); run `46108300145` passed five per OS at merge SHA
-`7366b2218583d924614105a4d8dc17c5ff4ca858` (PR receipt head `9b34a8c`).
-Every sample exited 0 and checked the same clean/unchanged revision. Windows
-samples were 310/309/0/1 (tests/pass/fail/skip); Ubuntu 310/306/0/4. On #45,
-run `46109110028` passed five samples per OS at merge checkout
-`8edcf05ee863dabc9c093b1b10204270b985eab7` (PR code head `784cdb4`): 442
-tests per sample, zero failures, five platform skips. Both demos passed. Focused
-and full local checks passed. Next propagate the same correction into stacked
-#51 and verify its head/checks. Keep both drafts; no merge. Full records are in
-[validation](validation.md) and [worklog](worklog.md).
+## Next action: finish and verify the B30 correction on #45
 
-Verified remote main `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` includes
-B12-B19, B29/#44 fixture-only preparation and the 2026-11-22 reassessment
-(#46-#48). M2a remains complete; M2b technical
-fixture evidence exists but milestone sign-off is not newly declared. M3 remains
-incomplete: B20/#43 is draft with no real worker-produced project diff.
-B30/#45 is draft; pre-merge head `9a83ac9b95a3d00738080b64286544fde28fdb25` was
-merged with `main` `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` as
-`2f8d7aea4f75b53e391d32873bbecd38e4736d39` to clear the stale-base conflict. The
-independent critical review requested changes at that merge head (abort-test
-determinism, approval lifetime bounds, merge-history restoration); four rounds of
-correction and re-review closed every finding with no new blocking issues, and the
-reviewed head `7660b39874eecd48c408c1500d30da96c8423d2c` passed exact-head CI on
-Windows and Ubuntu. The fixture-only implementation is still not accepted: merge,
-ready and live remain unauthorized while #46/#47/#48 stay open. Full deployment and positive FIDO2 approval are not
-established. See the
-[reassessment](project-reassessment-2026-11-22.md) for the evidence/disposition table.
+1. Preserve the synchronous fail-closed rule: admission, worker validation and
+   receipt revalidation must not accept a Promise/thenable; observe rejected
+   thenables. Focused tests and the full suite passed locally on Node 24.22.1.
+2. Commit the resolved `origin/main` merge, retain both append-only
+   validation/worklog histories, and run focused tests, full suite, fallback
+   demo and whitespace checks on the resulting tree.
+3. Review the full `main..HEAD` diff and B30 acceptance rows; record local results
+   and non-rerun gates. Update PR #45 and its review replies, push without force,
+   and verify the remote SHA and exact-head CI/re-review. Keep it draft.
+4. #45/#51 remain incomplete: compartment-aware service/worker/relay/gateway
+   composition (#46), profile gates (#47/#51), and deployment/live/FIDO2 evidence
+   are not satisfied. Re-review the resulting #45 head and preserve those limits.
+5. FIX48 #52's campaigns and prior propagation into #45/#51 are historical
+   receipts; every new commit needs current-head checks and review. M2b sign-off
+   is not newly declared; M3/B20 remains blocked with no real worker-produced
+   project diff.
 
-## Next action: decide approval profile and specify deployable composition
-
-1. Resolve [#47](https://github.com/pbsilvabd/ai-orchestrator/issues/47) against
-   B30's ADR-010 and `src/live-approval.mjs`: evaluate software SSH signing for
-   supervised local use versus the current hardware profile. Keep the current
-   FIDO2 UP/UV gate until a deliberate ADR/code/test/contract change is delivered.
-2. Specify and implement [#46](https://github.com/pbsilvabd/ai-orchestrator/issues/46):
-   actual service/worker/relay/gateway compartments, trusted launch channel,
-   workspace/artifact mapping, measured binary and lifecycle/ownership. Current
-   `freeListenerPlan` uses a local fixture-mode loopback gateway; a private bind
-   alone is not cross-compartment composition. Continue B30 in #45.
-3. Correct the readiness/maintenance races in
-   [#48](https://github.com/pbsilvabd/ai-orchestrator/issues/48), preserving all
-   failure assertions and original run results. Refresh CI foundation #32/#33;
-   #34 remains blocked, not merge-ready.
-4. Only after that plan is executable, obtain narrow infrastructure permission
-   for one deployment path, then run a single controlled end-to-end evidence
-   campaign, including active pinned-worker bypass, real TLS failures and
-   owned-only teardown. Historical VM observations are not current host inventory.
-5. Re-review B30's exact final head and every required row, reconcile B17/M2b
-   acceptance, then obtain a new exact run approval and continue B20/#43.
-
-No live provider, catalog refresh, key enrollment, VM/firewall change, automatic
-fallback or merge is authorized by this documentation. #6/#9 are obsolete proposal
-tracks, not prerequisites to resume; SQLite/memory/routing stay deferred.
-B17/M2b fixture acceptance reconciliation can proceed independently now; do not
-turn B30 deployment or FIDO2 into an unrelated fixture milestone prerequisite.
+No provider/catalog request, key enrollment, hardware, VM/firewall/network change,
+ready transition or merge is authorized. Live use stays closed. #6/#9 are obsolete;
+SQLite/memory/routing remain deferred.
 
 ## Historical checkpoints - superseded by the continuation above
 

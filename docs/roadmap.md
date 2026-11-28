@@ -23,24 +23,22 @@ See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
 
-FIX48/#52's exact campaigns passed five default-concurrency samples per OS at
-common merge SHAs `bfbeda9` (PR head `1a2bd5f`) and `7366b22` (receipt head
-`9b34a8c`). Its propagated code at #45 head `784cdb4` also passed five samples
-per OS in run `46109110028` (common merge SHA `8edcf05`). #51 propagation and
-verification remain. No merge, ready transition or live-use gate changed.
+Remote main is `04c6e5f`; B12–B19 and B29/#44 are merged. B30/#45 remains
+OPEN/DRAFT at prior remote head `4d51a39`. Local correction commit `e1e6c96`
+rejects asynchronous approval callbacks. Main's documentation conflicts are
+resolved without dropping append-only history; focused and full local suites
+passed before the documentation-only reconciliation. Demo, final diff review,
+publication, exact-head CI and independent re-review remain pending.
 
-Current remote baseline: `f61e5e1`; B12–B19, B29/#44 and the 2026-11-22
-reassessment are merged. B30/#45 is draft, merged with main, with fixture/pinned
-host evidence and partial VM/network observations, **not** a completed deployed
-service path; the earlier `a4f3954` green Windows/Ubuntu CI (`43806088953`) is
-historical and not current-head acceptance. Its independent review requested
-changes and four correction rounds closed every finding at `7660b39` with green
-exact-head CI, which is review closure only, not acceptance. B20/#43 is a blocked
-draft; no real project diff or M3 acceptance.
-The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) distinguishes
-delivered implementation, missing composition, unrun validation and retired work.
-Next work is approval-profile decision #47, deployable composition #46 and test
-stability #48; the existing FIDO2/network controls remain in force.
+FIX48/#52's campaigns passed five default-concurrency samples per OS at merge
+SHAs `bfbeda9` (PR head `1a2bd5f`), `7366b22` (head `9b34a8c`) and `a9c0caa`
+(receipt head `9bb1a41`). Its propagation into earlier #45/#51 heads has exact
+CI receipts, but every newly updated head requires its own checks/review.
+Stacked B31/#51 remains OPEN/DRAFT. #46 composition, #47 approval-profile and
+deployment/live/FIDO2 gates remain unsatisfied; B20/#43 is blocked with no real
+project diff or M3 acceptance. No merge, ready transition or live-use gate changed.
+The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the
+evidence/disposition record.
 
 ### Historical delivery receipts through B19
 
@@ -92,7 +90,7 @@ authenticate clients. The new objective does not imply these features already ex
 | M2a — Contract and reuse decision | Complete (2026-11-02) | Normative [task contract](task-contract.md), [ADR-007](adr/007-task-contract.md), pinned reuse table and a bounded M2b plan |
 | M2b — One-worker delegation MVP | B12–B19 merged; B17 technical fixture evidence available, explicit milestone reconciliation pending | A real compatible client submits a task, receives an ID, polls status and retrieves a result from one worker; duplicate submission, cancellation and uncertain restart tested |
 | M2c — Safe model fallback in a worker | Pending; depends on M2b | Controlled 429, two failing models, restart, failure after effects and safe return to preferred model validated in the executor |
-| M3 - First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 fixture implementation on `task/B30-free-relay` (relay, egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth containment observation), while composition, deployment and approval gates remain open (#46/#47); nftables filtering in a real deployment, a real FIDO2 hardware-key signing dry run and live activation remain `not_run` under ADR-009/010; bounded catalog GETs were performed at `8e358a4` and at `2026-11-15T19:14:36Z` (dated snapshots, not repeated) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
+| M3 — First self-development task | Blocked draft B20/#43; B29 merged fixture-only; B30/#45 fixture implementation on `task/B30-free-relay` (relay, egress gateway, SSHSIG approval/admission and an isolated WSL2 netns/veth containment observation), while composition, deployment and approval gates remain open (#46/#47); nftables filtering in a real deployment, a real FIDO2 hardware-key signing dry run and live activation remain `not_run` under ADR-009/010; bounded catalog GETs were performed at `8e358a4` and at `2026-11-15T19:14:36Z` (dated snapshots, not repeated) | Primary LLM delegates a real repository task; one authorized worker returns a scoped diff, test evidence and report; human review before merge |
 | M4 — Memory and continuity | Planned; depends on M3 | Evaluate ai-memory reuse; retrieve decisions and pending work across sessions without using semantic memory as execution authority |
 | M5 — Routing and multiple workers | Planned; depends on M3 and M2c | Capability/cost routing, bounded concurrency, task-level budgets, isolated workspaces and review workers validated against a baseline |
 | M6 — Broader clients and release | Future; depends on M4/M5 | Tested client/platform matrix, authenticated remote access where supported, reproducible installation and release evidence |

@@ -3055,3 +3055,182 @@ Template:
   validation and worklog receipts.
 - Not done: #51 propagation and exact-head CI there; merge, ready/live transition
   or deployment activity.
+## 2026-11-27 — M2b: stabilize default-concurrency acceptance
+
+- Branch: `task/FIX48-concurrency-stability`
+- Scope: tests, CI and documentation; no production scheduler, lifecycle,
+  provider or deployment behavior changed.
+- Steps:
+  1. Reproduced the clean-main B10-03 failure on Windows x64 with Node.js
+     24.22.1: stdout was empty at the 150 ms abort, while all other baseline
+     tests passed.
+  2. Made the B10 child readiness observable before requesting abort and
+     preserved the partial-output and conservative stop assertions.
+  3. Preserved incomplete and already-collected MCP output across polling, and
+     published competing B18 fixture JSON through same-directory atomic rename.
+  4. Added a repeated-suite runner that runs up to five native default-
+     concurrency suites sequentially, records every result and continues after
+     failures; configured Windows/Ubuntu CI to require five samples.
+  5. Added FIX48 acceptance scope and updated backlog, roadmap and handoff to
+     retain #46/#48/#51 gates.
+- Review pass 1: traced the real child, output-stream, MCP collection and
+  cross-process fixture paths. Confirmed the scheduler's existing predicate
+  readiness tests still assert persisted-dispatch/no-replay behavior; no
+  scheduler production change was justified.
+- Review pass 2: reviewed the complete diff and FIX48-01..06 matrix. Confirmed
+  sample failures are not hidden, CI keeps default concurrency, B18 contender
+  JSON is read only after atomic publication, and no live/deployment policy
+  or production API changed. Cross-platform repeated CI and stack propagation
+  remain incomplete.
+- Files: `.github/workflows/ci.yml`, `docs/backlog.md`, `docs/handoff.md`,
+  `docs/roadmap.md`, `docs/tasks/FIX48.md`, `docs/validation.md`,
+  `docs/worklog.md`, `scripts/repeat-default-suite.mjs`,
+  `test/mcp-server.test.mjs`, `test/repeat-default-suite.test.mjs`,
+  `test/subprocess.test.mjs`, `test/task-maintenance.test.mjs`.
+- Validation: baseline `node --test` → 305 total, 303 pass, 1 fail, 1 skip
+  (B10-03), exit 1; focused FIX48 files → 86 total, 85 pass, 0 fail, 1 skip,
+  exit 0 (before final runner/test assertions); final default full suite →
+  310 total, 309 pass, 0 fail, 1 skip, exit 0; serial diagnostic full suite →
+  309 total, 308 pass, 0 fail, 1 skip, exit 0; fallback demo → 429 then 200,
+  exit 0; diff check →
+  clean, exit 0. The five-sample Windows/Ubuntu campaign and propagation checks
+  have not run; details are in `docs/validation.md`.
+- Follow-up: publish one FIX48 PR, verify its exact-head five-sample CI, then
+  propagate the reviewed correction into #45/#51 and verify both new heads and
+  their repeated CI. Keep #45/#51 draft while #46 remains open. Do not merge.
+
+## 2026-11-28 — FIX48 focused revalidation
+
+- Branch: `task/FIX48-concurrency-stability`
+- Steps: reread the current FIX48 task contract and reviewed the complete diff;
+  reran its focused tests at the final local source state. No production behavior
+  or safety policy changed.
+- Files: `docs/handoff.md`, `docs/roadmap.md`, `docs/validation.md`,
+  `docs/worklog.md`.
+- Validation: focused five-file default-concurrency command → 88 total, 87 pass,
+  0 fail, 1 Windows-platform skip, exit 0; `git diff --check` → clean, exit 0.
+  The full default suite (310/309 pass/1 skip), serial diagnostic suite
+  (309/308 pass/1 skip) and fallback demo (429 then 200) were last run on
+  2026-11-27; no code changed after those checks. Windows/Ubuntu five-sample
+  campaign and propagation into #45/#51 remain unrun.
+- Follow-up: publish FIX48 for exact-head CI campaign; preserve all ten results.
+  Keep dependent PRs draft and do not merge.
+
+## 2026-11-28 — FIX48 draft PR publication
+
+- Branch: `task/FIX48-concurrency-stability`
+- Steps: committed the reviewed FIX48 diff and published draft PR #52 against
+  `main`; verified the remote branch head equals the pushed commit. Updated the
+  backlog and continuation status to point at the PR. PR remains draft because
+  the Windows/Ubuntu repeated campaign and propagation acceptance are incomplete.
+- Files: `docs/backlog.md`, `docs/handoff.md`, `docs/roadmap.md`,
+  `docs/worklog.md`.
+- Validation/publication: first implementation commit
+  `f88ffc54467220bd02c9c16f685bcd3bf52efcb4`; PR
+  `https://github.com/pbsilvabd/ai-orchestrator/pull/52`. The initial exact-head
+  workflow was queued at that SHA; this status-documentation commit will become
+  the current head and must receive its own complete five-sample CI campaign.
+  No check result from an earlier head counts as final acceptance.
+- Follow-up: verify the newest PR head and all ten independent suite outcomes,
+  then propagate the reviewed correction into #45/#51. Do not merge.
+
+## 2026-11-28 — FIX48 first cross-platform campaign
+
+- Branch: `task/FIX48-concurrency-stability`; PR #52.
+- Steps: inspected Actions run `46107344778`, including both job logs and every
+  actual runner result. Confirmed the run head was `1a2bd5fa09b4cf1bff53bbb7cfef3844df329f80`;
+  both runners tested the same clean merge SHA
+  `bfbeda97d78137de92e590184cef6e26cdeb4321`, whose parents are base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head.
+- Results: Windows samples 1–5 each exited 0, reported 310 tests / 309 pass /
+  0 fail / 1 skip, clean and unchanged checkout. Ubuntu samples 1–5 each exited
+  0, reported 310 tests / 306 pass / 0 fail / 4 skips, clean and unchanged
+  checkout. Both OS CI jobs and the fallback demo steps succeeded. The run at
+  the earlier `f88ffc5` head was canceled after the docs commit and is not
+  counted.
+- Review: inspected each per-sample result and aggregate summary in the Actions
+  job logs, not merely the green check metadata. Each platform's five originals
+  use the same sampled SHA; no retries substituted for originals.
+- Evidence: `docs/validation.md`; Actions run
+  `https://github.com/pbsilvabd/ai-orchestrator/actions/runs/46107344778`.
+- Follow-up: a docs-only receipt commit changes the PR head, so run and verify
+  the five-by-two campaign on that newest head. Then propagate the correction
+  into #45/#51 and verify each remote head/check set. Do not merge.
+
+## 2026-11-28 — FIX48 final-head evidence and propagation receipt
+
+- Branch: `task/FIX48-concurrency-stability`; PR #52.
+- Steps: verified Actions run `46108300145` belongs to PR head
+  `9b34a8c102af301f511c25c744caab3cb1e1ac36`; both OS jobs checked out common
+  merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`, with base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and PR head as its parents.
+- Results: each of five Windows samples exited 0 with 310 tests / 309 pass /
+  0 fail / 1 skip; each of five Ubuntu samples exited 0 with 310 tests /
+  306 pass / 0 fail / 4 skips. All ten result records and both summaries were
+  inspected; each reported the same SHA and clean/unchanged checkout. Both
+  platform jobs and fallback demos succeeded; demos returned 429 then 200.
+- FIX48-06: verified #45 OPEN/DRAFT at `4d51a393159ce1023718909da022f5b2617d1db5`
+  with exact-head run `46109747250` successful on both OSes, and #51 OPEN/DRAFT
+  at `e1a08d4388945362e555ec3786e50c7fe60ac394`, based on #45 head, with
+  exact-head run `46111699960` successful on both OSes. The seven FIX48 paths
+  (workflow, runner, four test files and task card) match across the three PR heads.
+- Review: independent SHA-bound review found the prior repository receipt and
+  PR body stale, despite passing execution evidence. Blocking P2 comment:
+  https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234848608
+  The correction and resulting-head re-review are required; this entry records
+  the evidence without claiming the finding resolved.
+- Evidence: `docs/validation.md`; Actions runs
+  `46108300145`, `46109747250`, and `46111699960`; PR metadata for #45/#51.
+- Follow-up: update the PR body to match these receipts, run content/whitespace
+  checks, push normally, then obtain a new exact-head campaign and independent
+  re-review. No ready transition or merge yet.
+
+## 2026-11-28 — FIX48 receipt-head run and second review finding
+
+- Branch: `task/FIX48-concurrency-stability`; PR #52.
+- Steps: independently inspected Actions run `46113674523` for PR head
+  `9bb1a41e2220ea1ef70d378054a1bd6f52116e16`. Both jobs tested common merge
+  checkout `a9c0caaada4ddc7fbff79017d2fe4d563bac85b1`, with base
+  `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head as parents.
+- Results: all five Windows and all five Ubuntu default-concurrency samples
+  exited 0 at the same SHA, with clean/unchanged checkout. Windows each
+  reported 310 tests / 309 pass / 0 fail / 1 skip; Ubuntu each reported
+  310 / 306 / 0 / 4. Both demos succeeded, returning 429 then 200; both jobs
+  and the Actions run concluded success.
+- Review: independent review found residual stale current-status wording and
+  requested this append-only receipt. At that review's time, the prior entry
+  did not yet record the run and the current-status corrections were unpublished.
+  The follow-up finding and verdict are at
+  https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234957518
+  and
+  https://github.com/pbsilvabd/ai-orchestrator/pull/52#issuecomment-7234960272.
+  This entry records the prior run and the second review disposition at `9bb1a41`;
+  it does not claim approval for a later head.
+- Evidence: `docs/validation.md`; Actions run `46113674523`; Windows and Ubuntu
+  job logs `140882585751` and `140882585921`.
+- Follow-up: verify the resulting head's exact-head CI and independent
+  re-review; do not infer approval from an earlier SHA. Keep #52 OPEN/DRAFT
+  while any blocking finding remains.
+
+## 2026-11-28 — B30 synchronous approval verifier correction
+
+- Branch: `task/FIX48-propagate-B30`; based on B30/#45 at `4d51a39`.
+- Steps: rejected Promise/thenable results from admission, worker validation and
+  receipt revalidation as synchronous `internal` refusals; attached rejection
+  observers; added rejection regressions for admission and all pre-spawn phases.
+  Updated the normative task contract and ADR-010. Merged remote main
+  `04c6e5f80d4a54a20203922fd8ee259419dd069c`, retaining its FIX48 receipts and
+  restoring the B30 append-only records. Reconciled current backlog, handoff and
+  roadmap status without changing live-use gates.
+- Review passes: inspected callback/result paths, reservation lifecycle and
+  rejection handling; rechecked the completed code/docs diff for stale status,
+  lost history, and claims beyond local evidence. External review remains required.
+- Files: `src/service.mjs`, live-approval service/pre-spawn tests,
+  `docs/task-contract.md`, ADR-010, backlog, handoff, roadmap, validation and worklog.
+- Validation on Windows/Node 24.22.1: focused admission/revalidation tests passed;
+  `node --test` 454 total / 449 pass / 0 fail / 5 skips, exit 0; fallback demo
+  returned 429 then 200, exit 0; `git diff --check` clean. Details are in
+  `docs/validation.md`.
+- Not run: pinned-host relay smoke, exact-head CI, independent critical re-review,
+  #51 propagation, deployment/VM/network/TLS, provider/catalog, hardware/FIDO2,
+  live inference. #45 remains draft; no ready transition or merge.

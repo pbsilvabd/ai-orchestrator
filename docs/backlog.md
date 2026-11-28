@@ -1,12 +1,11 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-28: remote main `f61e5e1` includes B12–B19 and B29/#44.
-B30/#45 remains draft at `67acd78`; stacked B31/#51 remains draft at
-`63100a3`. FIX48/#52's five-per-OS campaign passed on both its original tested
-head `1a2bd5f` and documentation receipt head `9b34a8c`; run `46108300145`
-tested common merge SHA `7366b2218583d924614105a4d8dc17c5ff4ca858`. The
-reviewed correction is now applied on the #45 work branch; exact-head checks
-and propagation to #51 remain. No merge or live-use authorization is implied.
+Verified 2026-11-28: remote main `04c6e5f` includes B12–B19, B29/#44 and the
+FIX48 receipt updates. B30/#45 and stacked B31/#51 remain draft. The #45
+synchronous-verifier correction is committed locally as `e1e6c96`; main's
+documentation conflicts have been resolved while preserving both append-only
+histories. Final validation, publication, exact-head checks and re-review remain.
+No merge or live-use authorization is implied.
 B20/#43 remains the single blocked M3 draft. See the
 [reassessment](project-reassessment-2026-11-22.md) for the full inventory and
 GitHub disposition; do not treat a merged fixture task as live-provider support.
@@ -26,9 +25,10 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current critical path: verify the propagated FIX48 correction on #45/#51 and
-specify compartment-aware composition #46 before deployment gates or B20/#43.
-B12–B19 and B29 are merged;
+Current critical path: verify the B30 synchronous-verifier correction on #45
+through exact-head CI and re-review; #51 propagation is separate. Specify
+compartment-aware composition #46 before deployment gates or B20/#43. B12–B19,
+B29 and FIX48's five-sample campaigns are recorded;
 do not implement them again. M2b milestone reconciliation and M3 acceptance
 remain open.
 
@@ -70,12 +70,19 @@ FIX17-18/#22 and FIX23/#24. B12/#25 adds durable single-worker dispatch, canonic
 workspace receipts, duplicate/restart protection and conservative shutdown.
 It does not collect task artifacts or implement the MCP task endpoint.
 
-Current delivery: **B30 PR #45 and stacked B31 PR #51; incomplete drafts**.
-Their remote states and checks are authoritative on GitHub. FIX48/#52's reviewed
-correction passed five samples per OS on both tested PR heads. It is applied to
-the #45 branch; run `46109110028` passed at code head `784cdb4` on both platforms.
-Propagation into #51 and exact-head validation there remain. A private bind option
-is implemented; actual
+Current delivery: **B30 correction in progress** on `task/FIX48-propagate-B30`,
+starting from #45 head `4d51a39`. Commit `e1e6c96` rejects Promise/thenable
+admission and revalidation results synchronously and observes their rejections.
+The full local suite passed; demo, final diff review, publication, exact-head CI
+and independent re-review remain pending. Keep #45 draft. #51 remains an
+incomplete draft requiring separate propagation/checks. FIX48/#52's five-sample
+campaigns and prior propagation receipts are documented below.
+FIX48/#52 remains OPEN/DRAFT: runs `46107344778`, `46108300145` and
+`46113674523` passed five originals per OS at their recorded PR heads; the latest
+receipt-head campaign was `9bb1a41` / merge checkout `a9c0caa`. Its independent
+review requested status/receipt reconciliation at that SHA; keep it draft until
+the resulting head receives its own checks and review.
+A private bind option is implemented; actual
 cross-compartment service composition is not established.
 B08 remains supporting work whose B01/#8 and B03 prerequisites are merged. B19 adds
 the manual capability-gate pulse and read-only task-history acceptance; B17 is merged.
