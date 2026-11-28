@@ -539,3 +539,50 @@ reservation.
   delivers a reviewed replacement.
 - Tests cover future, inverted, equal, exact 15-minute boundary and expiry-at-now cases with
   an explicit clock. No live/provider/hardware operation is implied.
+
+## Dated amendment 2026-11-28 - synchronous admission and compartment composition
+
+Decision: trusted submission admission and receipt revalidation remain synchronous
+authorization gates. A Promise or thenable is never treated as an allow decision, even if it
+eventually resolves successfully. The service attaches a rejection observer before returning
+the synchronous refusal so an unsupported async verifier cannot create an unhandled
+rejection. Pre-reservation refusal remains durably `cancelled` with no attempt; refusal after
+reservation remains `blocked` with the attempt preserved and no replay. This is fail-closed
+compatibility with the existing lifecycle, not an asynchronous scheduling change.
+
+The compartment-aware composition decision for B30 is:
+
+- Use one dedicated Ubuntu host (which may be a disposable VM). The service/controller and
+  separately configured L7 gateway remain trusted host components. Run the pinned OpenCode
+  process tree in a worker network namespace and the relay in a separate namespace, joined by
+  a worker-to-relay veth; use a distinct relay-to-gateway link. Bind each listener only to
+  its concrete private interface and enforce source/address/port restrictions.
+- Give worker and relay separate unprivileged identities with no network- or system-
+  administration capabilities, no privilege escalation and no default IPv4/IPv6 route,
+  external DNS, forwarding, generic proxy or NAT escape. Default-drop rules allow only the
+  fixed worker→relay and relay→gateway flows and necessary replies. Only the gateway may
+  resolve and connect to the fixed HTTPS origin with certificate and hostname validation.
+- A narrow trusted local launcher controlled by the service must create/read back the fixed
+  namespaces and roles; it accepts only service-generated task/attempt/workspace identities,
+  not task-provided shell or mappings. Failure to verify compartment identity, capabilities,
+  policy or ownership refuses launch; there is no unconfined fallback.
+- The service materializes the receipt-bound B09 workspace on the host and maps only that
+  task's writable workspace and required read-only runtime/Git data into the worker. Parent
+  repository administration, other workspaces, service state, signer material and gateway
+  policy stay inaccessible. Artifact collection and tests execute under the same worker
+  containment. Evidence is bound to task, attempt, base and branch.
+- Measure and bind the actual pinned OpenCode executable run inside the compartment, not a
+  wrapper. Keep signing authority outside worker and relay reach under a separate protected
+  operator identity/offline channel. The service receives verification policy and signed
+  envelopes only. The host administrator and gateway remain trusted.
+- Persist dispatch and compartment identity before launch effects. Track complete process
+  trees and owned resources; release locks only after confirmed stop. Uncertain cleanup or
+  child outcome retains ownership/evidence, halts dispatch and requires explicit
+  reconciliation. No restart, replay, approval reuse or inference from root-process exit.
+
+This resolves the placement/control/mapping/lifecycle design question for B30 without
+claiming an implementation or deployment. It does not change the accepted FIDO2 profile,
+the required positive-signature gate, the network/provider/live authorization boundary or
+the B30 acceptance matrix. Implementation, independent review and any privileged deployment
+campaign remain separate required gates; absent separately scoped authorization, fixtures
+stay local and live composition stays closed.

@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, writeFileSync, rmSync, existsSync } from 'node:
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createTaskService } from '../src/service.mjs';
+import { setImmediate as immediate } from 'node:timers/promises';
 
 // Pre-spawn revalidation of the signed approval receipt (B30-05 P1). The cryptographic
 // positive path needs a real FIDO2 hardware key and stays `not_run`; these tests exercise
@@ -131,4 +132,53 @@ test('pre-spawn: host drift during worker.prepare blocks after dispatch with zer
   assert.equal(task.status, 'blocked', 'host drift during prepare must block, not cancel');
   assert.equal(task.attempts.length, 1);
   assert.ok(!existsSync(marker), 'the child must not spawn');
+});
+
+test('pre-spawn: async revalidation is refused before reservation or after reservation without leaking rejection', async t => {
+  for (const phase of ['before-reservation', 'after-reservation']) {
+    for (const outcome of ['resolve', 'reject', 'thenable-resolve', 'thenable-reject']) {
+      await t.test(`${phase}/${outcome}`, async subtest => {
+        const f = setup(subtest);
+        const marker = join(f.root, 'spawned');
+        let calls = 0;
+        let prepared = 0;
+        const unhandled = [];
+        const onUnhandled = reason => unhandled.push(reason);
+        process.on('unhandledRejection', onUnhandled);
+        subtest.after(() => process.off('unhandledRejection', onUnhandled));
+        const asyncCall = phase === 'before-reservation' ? 1 : 2;
+        const admission = () => ({ admitted: true, revalidate() {
+          calls += 1;
+          if (calls !== asyncCall) return;
+          const rejects = outcome.endsWith('reject');
+          const promise = rejects
+            ? Promise.reject(new Error('fixture async revalidation failed'))
+            : Promise.resolve();
+          return outcome.startsWith('thenable')
+            ? { then(resolve, reject) { promise.then(resolve, reject); } }
+            : promise;
+        } });
+        const service = createTaskService({ home: f.home, config: f.config,
+          worker: workerFor(() => { prepared += 1; }), admission, now: () => 1_000 });
+        f.services.push(service);
+        const { taskId } = service.submitTask(f.request(`${phase}-${outcome}`));
+        await service.whenIdle();
+        await immediate();
+        const task = service.store.readTask(taskId);
+        assert.deepEqual(unhandled, [], 'async verifier outcomes must be observed');
+        assert.ok(!existsSync(marker), 'an async verifier must never authorize child spawn');
+        if (phase === 'before-reservation') {
+          assert.equal(prepared, 0);
+          assert.equal(task.status, 'cancelled');
+          assert.equal(task.attempts.length, 0);
+          assert.equal(task.cancel.executionStopped, true);
+        } else {
+          assert.equal(prepared, 1, 'the reserved path reaches the synchronous prepare stage');
+          assert.equal(task.status, 'blocked');
+          assert.equal(task.attempts.length, 1, 'the dispatch reservation must be preserved');
+          assert.equal(task.cancel.executionStopped, 'unknown');
+        }
+      });
+    }
+  }
 });

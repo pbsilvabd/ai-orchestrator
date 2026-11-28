@@ -63,6 +63,24 @@ function toServiceError(error) {
   return new ServiceError('internal', 'task service failure');
 }
 
+// The service contract deliberately keeps admission synchronous. If a trusted
+// adapter accidentally returns a Promise/thenable, attach a rejection observer
+// before refusing it so a rejected async callback cannot escape as an
+// unhandledRejection after the caller has already handled the synchronous error.
+function isThenableAndObserve(value) {
+  if (value === null || (typeof value !== 'object' && typeof value !== 'function')) return false;
+  let then;
+  try {
+    then = value.then;
+  } catch {
+    Promise.resolve(value).catch(() => {});
+    return true;
+  }
+  if (typeof then !== 'function') return false;
+  Promise.resolve(value).catch(() => {});
+  return true;
+}
+
 // Error envelope defined by the contract: { error: { code, message } }.
 export function errorEnvelope(error) {
   return { error: { code: error.code, message: error.message } };
@@ -136,7 +154,9 @@ export function createTaskService(options = {}) {
     if (receipt === undefined || typeof receipt.revalidate !== 'function')
       fail('authorization_denied', 'signed approval receipt is missing or invalid before dispatch');
     try {
-      receipt.revalidate(at);
+      const result = receipt.revalidate(at);
+      if (isThenableAndObserve(result))
+        fail('internal', 'signed approval revalidation must be synchronous');
     } catch (error) {
       if (error?.code === 'authorization_denied' || error?.code === 'invalid_argument' || error?.code === 'unavailable')
         fail(error.code, error.message);
@@ -218,7 +238,7 @@ export function createTaskService(options = {}) {
     // filesystem/persistence effects. Task text cannot supply this callback.
     try {
       const decision = options.worker?.validateSubmission?.(structuredClone(payload));
-      if (decision instanceof Promise) fail('internal', 'worker admission must be synchronous');
+      if (isThenableAndObserve(decision)) fail('internal', 'worker admission must be synchronous');
     } catch (error) {
       if (error?.code === 'authorization_denied') fail('authorization_denied', 'worker admission denied');
       throw toServiceError(error);
@@ -250,7 +270,7 @@ export function createTaskService(options = {}) {
       taskId = randomUUID();
       try {
         const decision = admission(structuredClone(payload), { taskId, baseCommit: repoValidation.baseCommitSha, now: now() });
-        if (decision instanceof Promise) fail('internal', 'signed approval admission must be synchronous');
+        if (isThenableAndObserve(decision)) fail('internal', 'signed approval admission must be synchronous');
         if (!decision || typeof decision !== 'object' || decision.admitted !== true ||
             typeof decision.revalidate !== 'function')
           fail('authorization_denied', 'signed approval admission must return an admitted receipt with a revalidation verifier');

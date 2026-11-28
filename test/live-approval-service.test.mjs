@@ -165,12 +165,62 @@ test('admission error codes map to contract codes without leaking admission inte
   }
 });
 
-test('an async admission is rejected as an internal service error', t => {
+test('a resolving async admission is rejected as an internal service error', t => {
   const { dir, service } = makeService(t, {
     extra: { admission: async () => {} },
   });
   assert.throws(() => service.submitTask(validRequest(dir)), expected('internal'));
   assert.equal(taskFiles(dir).length, 0);
+});
+
+test('a rejected async admission is observed while preserving refusal and clean close', async t => {
+  const unhandled = [];
+  const onUnhandled = reason => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  t.after(() => process.off('unhandledRejection', onUnhandled));
+  const { dir, service } = makeService(t, {
+    extra: { admission: async () => { throw new Error('fixture async verifier failed'); } },
+  });
+  assert.throws(() => service.submitTask(validRequest(dir)), expected('internal'));
+  assert.equal(taskFiles(dir).length, 0, 'unsupported async admission must not persist');
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(unhandled, [], 'rejected admission must not leak an unhandled rejection');
+  assert.equal(service.close(), undefined, 'the service must close normally after refusal');
+});
+
+test('a rejected thenable admission is observed and refused before persistence', async t => {
+  const unhandled = [];
+  const onUnhandled = reason => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  t.after(() => process.off('unhandledRejection', onUnhandled));
+  const { dir, service } = makeService(t, {
+    extra: { admission: () => ({
+      then(_resolve, reject) { reject(new Error('fixture thenable verifier failed')); },
+    }) },
+  });
+  assert.throws(() => service.submitTask(validRequest(dir)), expected('internal'));
+  assert.equal(taskFiles(dir).length, 0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(unhandled, []);
+  assert.equal(service.close(), undefined);
+});
+
+test('a rejected async worker validateSubmission is observed and refused before persistence', async t => {
+  const unhandled = [];
+  const onUnhandled = reason => unhandled.push(reason);
+  process.on('unhandledRejection', onUnhandled);
+  t.after(() => process.off('unhandledRejection', onUnhandled));
+  const { dir, service } = makeService(t, {
+    extra: { worker: {
+      validateSubmission: async () => { throw new Error('fixture worker verifier failed'); },
+      prepare() { throw new Error('worker must not be prepared after validation refusal'); },
+    } },
+  });
+  assert.throws(() => service.submitTask(validRequest(dir)), expected('internal'));
+  assert.equal(taskFiles(dir).length, 0);
+  await new Promise(resolve => setImmediate(resolve));
+  assert.deepEqual(unhandled, []);
+  await assert.doesNotReject(service.close());
 });
 
 test('admission results lacking admitted:true and a callable revalidate are refused before persistence', t => {

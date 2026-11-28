@@ -144,7 +144,10 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
   `invalid_argument`/`unavailable` map from malformed or unusable approval material. An
   identical replay still returns the original record without re-running admission, and one
   approval ID cannot admit a second task. Without a configured `admission`, the service
-  remains passive and unchanged. The cryptographic positive path still requires a real
+  remains passive and unchanged. The `admission` callback and any trusted
+  `worker.validateSubmission` callback are synchronous contracts: a returned Promise or
+  thenable is rejected as `internal` before persistence. Its rejection is observed so the
+  refused async result cannot escape as an unhandled rejection. The cryptographic positive path still requires a real
   FIDO2 hardware-key signature, which is `not_run`; the gate is never weakened to accept a
   non-hardware signature.
 - `approval.limits.maxRequests` is the signed ceiling for the independently configured
@@ -159,8 +162,10 @@ Result: `{ schemaVersion, taskId, status: "queued", acceptedAt, idempotentReplay
 - A successful admission MUST return an object with `admitted: true` and a callable
   `revalidate` bound to that task; `false`, `true`, `undefined`, `null`, or an object
   lacking the verifier are refused before persistence. The returned receipt is a **trusted
-  in-memory receipt** (never persisted, never in task text). The scheduler re-checks it
-  synchronously **twice**: once before the dispatch reservation/workspace, and **again just
+  in-memory receipt** (never persisted, never in task text). Its `revalidate` method must
+  also be synchronous: any Promise or thenable, whether it resolves or rejects, is refused
+  and any rejection is observed. The scheduler re-checks it synchronously **twice**: once
+  before the dispatch reservation/workspace, and **again just
   before `runSubprocess`** (after `createTaskWorkspace` and `worker.prepare`, so a slow or
   blocking prepare cannot pass the approval deadline or host drift), re-asserting approval
   expiry, metadata freshness and the measured host-binary digest. A refusal before any
