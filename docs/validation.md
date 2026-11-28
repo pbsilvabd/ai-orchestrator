@@ -2457,3 +2457,28 @@ The raw result records and aggregate summaries were inspected in the job logs.
 Both platform jobs and fallback demos succeeded; both demos returned 429 then
 200. Run metadata confirms success at the PR head above. This documents the
 receipt-head campaign; run `46108300145` remains the final-code-head campaign.
+
+## H03 follow-up: autonomous delivery coordination — 2026-11-28
+
+Executed on Windows; architecture was not captured. Node.js was not available on
+PATH (`node --version` returned “node is not recognized”).
+Date: 2026-11-28.
+
+| Command | Purpose | Result | Exit code |
+| --- | --- | --- | --- |
+| `git diff --check` | Check changed instruction/documentation whitespace | no output | 0 |
+
+Result: `git diff --check` produced no whitespace errors. The attempted Node
+version query failed because Node was not recognized; no Node-based test or demo
+is claimed.
+
+Evidence level: Not applicable — this documentation-only whitespace check does
+not demonstrate any functional or OpenCode runtime evidence class.
+
+Not rerun: `node --test` (Node unavailable on PATH; no functional code changed);
+`node examples/fallback-demo.mjs` (same); `integration/opencode-smoke.mjs`
+(requires the pinned external binary); OpenCode debug config/agents (CLI not
+available on PATH; no runtime reload was tested).
+
+Claim: This entry supports that the tracked diff passed `git diff --check`.
+It does not support product test behavior or OpenCode runtime/config resolution.

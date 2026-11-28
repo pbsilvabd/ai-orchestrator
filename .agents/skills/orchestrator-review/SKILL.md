@@ -12,10 +12,15 @@ Resolve the repository root from this file. Read
 
 ## Establish the reviewed revision
 
-Read the current base/head, complete diff, CI, conversation comments, submitted
-reviews and inline threads, including resolved/outdated findings. A failed read
-is missing evidence, not an empty discussion. Compare current main and dependency
-deliveries with the card rather than trusting a historical handoff.
+On the first review, read the current base/head, complete diff, CI, conversation
+comments, submitted reviews and inline threads, including resolved/outdated findings.
+For a delta review, verify the previous verdict and base/head, changed paths and
+affected callers/contracts/tests, unresolved findings and impacted criteria. State
+prior/current SHAs and review scope; carry forward only proven unchanged evidence.
+If base, dependency, policy, security boundary or impact is unknown, invalidate
+affected evidence and require a full review within the existing budget. A failed
+read is missing evidence, not an empty discussion. Compare current main and
+dependency deliveries with the card rather than trusting a historical handoff.
 
 Trace changed producers, consumers and each required acceptance row. For execution
 changes, use the [task contract](../../../docs/task-contract.md) to inspect the
@@ -49,7 +54,7 @@ implementing-agent review from an independent pass. Bind the verdict to the revi
 commit, link published findings when authorized, report tests and limitations, and
 state unresolved blockers without claiming approval from CI alone.
 
-Finish at the requested review outcome. If correction or merge was also explicitly
-authorized for this task, follow that scope and the protocol's final head/CI/feedback
-checks without requesting the same authorization again. Inspect remote state before
-retrying an uncertain publication or merge outcome.
+Reviewers publish findings and verdicts only; corrections belong to the executor
+and authorized merge to the coordinator. Finish at the requested review outcome,
+recheck remote final head, required CI, acceptance and unresolved feedback, and report
+limits. Inspect remote state before retrying an uncertain publication outcome.

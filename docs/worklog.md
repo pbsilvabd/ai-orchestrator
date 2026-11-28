@@ -2063,3 +2063,35 @@ Template:
 - Follow-up: verify the resulting head's exact-head CI and independent
   re-review; do not infer approval from an earlier SHA. Keep #52 OPEN/DRAFT
   while any blocking finding remains.
+
+## 2026-11-28 — H03 follow-up: autonomous delivery coordination
+
+- Branch: `maintenance/harness-alignment`; PR #53.
+- Scope: documentation and existing global harness instructions; no executable
+  product behavior, tests, contracts, or security policy changed.
+- Steps:
+  1. Backed up the six existing global instruction files to
+     `C:\Users\paulo\AppData\Local\Temp\opencode\harness-autonomous-delivery-backup-2026-11-28`
+     and verified each SHA-256 against its source before editing.
+  2. Updated `C:\Users\paulo\.config\opencode\agents\harness\build.md`,
+     `agents\harness\loop-merge.md`, `commands\loop-merge.md`,
+     `commands\review-merge.md`, `commands\critical-review-merge.md` and
+     `skills\task-review\SKILL.md` for automatic coordinator handoff, one bounded
+     CI watch, parallel independent review, exact-head rechecks, protected
+     auto-merge conditions and serial continuation only under multi-delivery
+     authorization.
+  3. Updated repository delivery/review/DoD instructions to match, retaining the
+     two-correction-round budget and all product gates.
+  4. Adapted the validation record to identify documentation-only checks as not
+     applicable to the repository's functional evidence-level table; no runtime
+     claim is made.
+- Files: `.agents/skills/orchestrator-task/SKILL.md`, `AGENTS.md`,
+  `docs/definition-of-done.md`, `docs/pr-review.md`, `docs/task-execution.md`,
+  `docs/worklog.md`, `docs/validation.md`.
+- Validation: `git diff --check` → no output, exit 0 on the completed tracked
+  diff. `node --version` was attempted but `node` was not recognized; no Node
+  tests or demo were run.
+  OpenCode runtime debug was not rerun. Global files are outside the Git worktree;
+  their paths are listed in Steps rather than the repository-relative Files field.
+- Follow-up: complete authorized review/CI/merge gates for PR #53 at its exact
+  head; do not touch unrelated PRs or start H05.

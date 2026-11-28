@@ -2,10 +2,13 @@
 
 Contributions to this repository recur as five artifacts, and each one is due when its
 own trigger applies — not on every change: a [worklog](../worklog.md) entry and a
-[validation](../validation.md) entry on every change; an [ADR](../adr/) only when a
+[validation](../validation.md) entry for each change; an [ADR](../adr/) only when a
 decision, dependency or trust boundary changes; a [handoff](../handoff.md) update only
-when the next actionable step or a milestone moves; a task card when adding executable
-backlog work. The original four artifacts have been written in a
+when a milestone, status or next actionable step actually changes; a task card when
+adding executable backlog work. Consolidate worklog and validation evidence before
+the final-head review. Record final review/CI receipts in the SHA-specific GitHub
+record, not in a commit made only to repeat those receipts. Preserve append-only
+history. The original four artifacts have been written in a
 different shape by different authors, which made the next reader guess. These templates
 provide a default shape per artifact so a contributor can copy the matching file
 and replace its placeholders. Adapt the format when the change requires it, explain
