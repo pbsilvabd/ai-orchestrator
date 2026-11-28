@@ -3145,3 +3145,17 @@ Template:
 - Follow-up: keep #51 draft; obtain separate bounded #48 correction authority
   and propagate its reviewed fix, then repeat exact-head gates/review. #46
   signer/worker isolation remains `not_run` and live stays closed.
+
+## 2026-11-28 - Propagate FIX48 into stacked B31
+
+- Branch: `task/B31-software-approval`; merged B30/#45 head `4d51a39` into
+  the existing #51 branch, preserving the B31 commit history.
+- Confirmed #45 CI `46109747250` succeeded at exact head `4d51a39` on Windows
+  and Ubuntu; its code-head campaign `46109110028` passed five samples per OS
+  at `784cdb4`. Details and evidence limits are in `docs/validation.md`.
+- Resolved documentation merge conflicts by retaining B31's complete historical
+  entries and adding the FIX48 receipt/status to the existing docs. Code/tests/
+  CI and FIX48 task card were retained from B30.
+- Local resulting-head validation, PR publication and exact-head #51 CI remain
+  pending. #45/#51 remain drafts; no merge, ready transition, provider, network
+  or live activation.

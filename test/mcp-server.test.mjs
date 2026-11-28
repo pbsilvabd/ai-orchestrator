@@ -35,6 +35,7 @@ function initGitRepo(dir) {
 // collect() drains all JSON-RPC messages written to stdout so far.
 function makeTransport() {
   const chunks = [];
+  let partialLine = '';
   const output = new Writable({
     write(chunk, _enc, cb) { chunks.push(chunk.toString('utf8')); cb(); },
   });
@@ -52,9 +53,11 @@ function makeTransport() {
     else inputBuffers.push(Buffer.from(line));
   };
   const collect = () => {
-    const all = chunks.join('');
+    const all = partialLine + chunks.join('');
     chunks.length = 0;
-    return all.trim().split('\n').filter(Boolean).map(l => JSON.parse(l));
+    const lines = all.split('\n');
+    partialLine = lines.pop();
+    return lines.filter(line => line.trim()).map(line => JSON.parse(line));
   };
   const closeInput = () => {
     if (inputPush) inputPush(null);
@@ -66,13 +69,36 @@ function makeTransport() {
 // Wait for at least one line to appear in the output.
 async function waitForOutput(collect, minLines = 1, timeoutMs = 3000) {
   const deadline = Date.now() + timeoutMs;
+  const received = [];
   while (Date.now() < deadline) {
-    const lines = collect();
-    if (lines.length >= minLines) return lines;
+    received.push(...collect());
+    if (received.length >= minLines) return received;
     await new Promise(r => setTimeout(r, 10));
   }
   throw new Error(`timeout waiting for ${minLines} output line(s)`);
 }
+
+test('B15-02: partial output lines survive collection between polls', async () => {
+  const transport = makeTransport();
+  let notifyFirst;
+  const firstCollected = new Promise(resolve => { notifyFirst = resolve; });
+  const collect = () => {
+    const lines = transport.collect();
+    if (lines.some(line => line.id === 6)) notifyFirst();
+    return lines;
+  };
+  const pending = waitForOutput(collect, 2, 1000);
+  transport.output.write('{"jsonrpc":"2.0","id":6,"result":{}}\n{"jsonrpc":"2.0","id":7,');
+  await Promise.race([
+    firstCollected,
+    pending.then(() => { throw new Error('wait returned before both responses were collected'); }),
+  ]);
+  transport.output.write('"result":{"ok":true}}\n');
+  assert.deepEqual(await pending, [
+    { jsonrpc: '2.0', id: 6, result: {} },
+    { jsonrpc: '2.0', id: 7, result: { ok: true } },
+  ]);
+});
 
 function makeFixture(t, options = {}) {
   const dir = mkdtempSync(join(tmpdir(), 'mcp-b15-'));

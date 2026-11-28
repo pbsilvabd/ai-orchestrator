@@ -4273,3 +4273,22 @@ change, ready transition, merge decision request or merge.
 
 Claim: this supports the corrected B31 local tests, not completion. #51 remains
 draft/incomplete because #48 is unresolved; #46 independently keeps live use closed.
+
+## FIX48 propagation to stacked B31/#51 - 2026-11-28
+
+- B30/#45 code head `784cdb4603896086033a3c7ca5bbacb9fabf9d8c` passed run
+  `46109110028` on Windows and Ubuntu: five original default-concurrency
+  samples per OS at common merge checkout
+  `8edcf05ee863dabc9c093b1b10204270b985eab7`, each 442 tests / 437 pass /
+  0 fail / 5 skip, exit 0, clean and unchanged checkout. Both fallback demos
+  returned 429 then 200.
+- B30/#45 documentation head `4d51a393159ce1023718909da022f5b2617d1db5`
+  passed workflow `46109747250`; Windows and Ubuntu jobs and five-sample/demo
+  steps succeeded. Exact sample counts for this second receipt are not newly
+  claimed; the preceding code-head campaign contains the inspected ten samples.
+- Propagated the reviewed FIX48 branch into the existing #51 worktree through
+  a merge, retaining B31 history. Added the FIX48 card, runner/CI and three
+  synchronization regressions. No B31 source change or live/policy behavior
+  was intended by this propagation.
+- #51 resulting-head local suite, demo, diff check, remote publication and
+  exact-head CI are pending at this entry. Keep #51 draft; do not merge.

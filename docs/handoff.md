@@ -1,4 +1,14 @@
-# Continuation point - 2026-11-27
+# Continuation point - 2026-11-28
+
+## FIX48 propagation checkpoint
+
+The FIX48 correction is now in B30/#45. Its CI passed at code head `784cdb4`
+(five original default-concurrency samples per OS; run `46109110028`) and at
+documentation head `4d51a39` (run `46109747250`). The latter confirmed the full
+workflow and both platform jobs succeeded. The correction has now been merged
+into the existing #51 worktree; run local validation, publish the updated draft
+head, and verify exact-head checks. Preserve the B31 history and known limits.
+Keep #45/#51 draft; do not merge or activate live use.
 
 Verified remote main `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` includes
 B12-B19, B29/#44 fixture-only preparation and the 2026-11-22 reassessment

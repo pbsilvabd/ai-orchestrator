@@ -1,6 +1,6 @@
 # Agent backlog — execution contracts
 
-Verified 2026-11-27: remote main `f61e5e1` includes B12–B19, B29/#44 and the
+Verified 2026-11-28: remote main `f61e5e1` includes B12–B19, B29/#44 and the
 2026-11-22 reassessment. B30/#45 is draft and merged with main; the fixture-only
 implementation is not accepted. B20/#43 remains the single blocked M3 draft. See the
 [reassessment](project-reassessment-2026-11-22.md) for the full inventory and
@@ -21,11 +21,10 @@ No M2b/M3 completion is implied.
 
 ## Delivery rule
 
-Current critical path: implement the maintainer-selected software SSH approval profile
-in B31/#47 on top of draft B30/#45; in parallel specify compartment-aware composition
-#46 and resolve test stability #48. B20/#43 remains blocked afterward. B12–B19 and B29
-are merged; do not implement them again. M2b milestone reconciliation and M3 acceptance
-remain open.
+Current critical path: propagate the reviewed FIX48 correction through stacked B31/#51
+and validate its resulting head; specify compartment-aware composition #46 before
+deployment gates. B20/#43 remains blocked afterward. B12–B19 and B29 are merged; do
+not implement them again. M2b milestone reconciliation and M3 acceptance remain open.
 
 B11/#23, FIX23/#24 and B12/#25 were reviewed locally, and the maintainer accepted
 the implementing agent's review for the B12 merge. No separate independent review
@@ -119,6 +118,7 @@ A merged card is retained as regression/review guidance, not new work.
 | [B19 - Opt-in harness pulse](tasks/B19.md) | P2 | Merged #42 at `688da04` | No remaining B19 implementation |
 | [B29 - Prepare one anonymous free OpenCode worker](tasks/B29.md) | P2 | Merged #44 at `11fcb42`, fixture-only | B30 owns live redirect/egress gate |
 | [B30 - Relay, gateway and signed approval](tasks/B30.md) | P1 | Draft #45; fixture-only; all independent review findings closed at `7660b39`; docs-only head `67acd78` confirmed; still not accepted | Stacked B31 profile work, #46 composition, #48 test races and deployment gates |
+| [FIX48 - Default-concurrency test stability](tasks/FIX48.md) | P1 | Draft #52; propagated #45 code head `784cdb4` passed five samples per OS; docs head `4d51a39` exact-head CI passed | Propagate and validate on #51; no merge |
 | [B31 - Explicit software SSH approval profile](tasks/B31.md) | P1 | Draft PR #51; continuation test head `999a0e1` has green Windows/Ubuntu CI and independent review with no uncorrected in-scope finding. Real-key service regressions and FIDO2 test correction verified. Default suite still fails B10-03; [#48 correction coordination](https://github.com/pbsilvabd/ai-orchestrator/issues/48#issuecomment-7209671517) is not a fix/waiver | Separate bounded #48 correction/propagation and resulting-head validation/review; #46 must establish signer/worker isolation before any live use |
 | [B20 - First supervised use on this project](tasks/B20.md) | P2 | Blocked draft #43; no real worker diff | M2b reconciliation and supported authorized real path; no duplicate PR |
 | B27 - CI foundation ([#33](https://github.com/pbsilvabd/ai-orchestrator/pull/33)) | P2 | Unmerged; conflicts with main; old green checks are not current-base acceptance | Refresh RFC #32 and implementation on current main |

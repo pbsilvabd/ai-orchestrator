@@ -144,16 +144,22 @@ test('competing real stale-maintenance recoveries serialize through the recovery
     import fs from 'node:fs';
     import {openTaskMaintenance} from ${JSON.stringify(module)};
     const wait=p=>{const end=Date.now()+8000;while(!fs.existsSync(p)&&Date.now()<end){};return fs.existsSync(p);};
+    const publish=(p,value)=>{const temporary=p+'.'+process.pid+'.tmp';fs.writeFileSync(temporary,JSON.stringify(value));fs.renameSync(temporary,p);};
     if(!wait(${JSON.stringify(start)}))process.exit(90);
     const kill=process.kill.bind(process);
     process.kill=(pid,signal)=>{if(pid===${staleLock.pid}&&signal===0){fs.writeFileSync(${JSON.stringify(enteredPath(id))},'1');if(!wait(${JSON.stringify(allow)}))process.exit(91);}return kill(pid,signal);};
+    let m;
     try {
-      const m=openTaskMaintenance({home:process.argv[1],now:${100 + id.charCodeAt(0)},recoverStaleOwner:{lockKind:'maintenance',
+      m=openTaskMaintenance({home:process.argv[1],now:${100 + id.charCodeAt(0)},recoverStaleOwner:{lockKind:'maintenance',
         actor:'operator',reason:'serialized recovery test',evidence:'complete fixture inventory',processTreeChecked:true,
         inventoryComplete:true,inventorySource:'controlled test inventory',liveWorkerPids:[]}});
-      fs.writeFileSync(${JSON.stringify(resultPath(id))},JSON.stringify({ok:true,pid:process.pid}));
-      if(!wait(${JSON.stringify(release)}))process.exit(92);m.close();
-    } catch(e) { fs.writeFileSync(${JSON.stringify(resultPath(id))},JSON.stringify({ok:false,code:e.code})); }
+    } catch(e) {
+      publish(${JSON.stringify(resultPath(id))},{ok:false,code:e.code});
+      process.exit(0);
+    }
+    publish(${JSON.stringify(resultPath(id))},{ok:true,pid:process.pid});
+    if(!wait(${JSON.stringify(release)}))process.exit(92);
+    m.close();
   `, home], { stdio: 'ignore', windowsHide: true }));
   const exits = children.map(child => new Promise((resolve, reject) => {
     child.once('error', reject); child.once('exit', (code, signal) => code === 0 ? resolve() : reject(new Error(`contender exit ${code}/${signal}`)));
