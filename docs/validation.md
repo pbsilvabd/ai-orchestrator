@@ -2336,3 +2336,21 @@ SIGTERM case. This is local Windows evidence only; it is not a repeated-suite
 campaign or cross-platform CI result. The full suite/demo results above were
 executed on 2026-11-27 before this focused-only rerun; no code changed between
 those runs.
+
+## FIX48 publication checkpoint — 2026-11-28
+
+Published the task as draft PR #52:
+https://github.com/pbsilvabd/ai-orchestrator/pull/52
+
+| Check | Observed result |
+| --- | --- |
+| Base | `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` |
+| Initial implementation head | `f88ffc54467220bd02c9c16f685bcd3bf52efcb4` |
+| Remote branch | `task/FIX48-concurrency-stability` matched the pushed initial head |
+| Initial CI run | `46107199648` queued on Windows and Ubuntu at the initial implementation head |
+| PR status | OPEN/DRAFT; no merge or ready transition |
+
+The acceptance campaign must run on the final updated PR head. This checkpoint
+does not count any queued or superseded run as passing evidence; the draft PR
+remains incomplete until a single clean SHA has five passing original suites on
+each OS and propagation is verified on #45/#51.

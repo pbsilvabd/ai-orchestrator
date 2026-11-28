@@ -26,10 +26,10 @@ See [ADR-006](adr/006-worker-service.md).
 Current remote baseline: `f61e5e1`; B12–B19 and B29/#44 are merged. B30/#45
 remains draft at `67acd78`; stacked B31/#51 remains draft at `63100a3`. The
 software-signature profile has local disposable-key evidence only. FIX48 is
-active from `f61e5e1`: it reproduced the default-concurrency B10-03 failure and
-has a correction set. Local corrected full suite passed once on Windows,
-but the required five-sample Windows/Ubuntu campaign and propagation into #45/#51
-are still pending. #46 signer/worker isolation and deployment composition remain
+published as draft PR #52 from `f61e5e1`: it reproduced the default-concurrency
+B10-03 failure and has a correction set. Local corrected full suite passed once
+on Windows, but the required five-sample Windows/Ubuntu campaign and propagation
+into #45/#51 are still pending. #46 signer/worker isolation and deployment composition remain
 unproven; live use stays closed. B20/#43 remains blocked with no real project diff.
 The [2026-11-22 reassessment](project-reassessment-2026-11-22.md) remains the
 evidence/disposition record; this update does not change its live-use limits.

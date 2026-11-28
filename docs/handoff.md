@@ -9,17 +9,18 @@ proven signer/worker isolation; live use stays closed.
 
 ## Next action: complete FIX48, then revalidate the B30/B31 stack
 
-1. FIX48 is active on `task/FIX48-concurrency-stability`, based on `f61e5e1`.
+1. FIX48 is published as draft [PR #52](https://github.com/pbsilvabd/ai-orchestrator/pull/52)
+   on `task/FIX48-concurrency-stability`, based on `f61e5e1`.
    The default-concurrency Windows baseline reproduced B10-03: `303 pass,
    1 fail, 1 skip` (`'' !== 'before'`). The final focused correction set passed
    88 total / 87 pass / 0 fail / 1 platform skip; the full default suite passed
    310 total / 309 pass / 0 fail / 1 platform skip, and serial diagnostic suite
    passed 309 total / 308 pass / 0 fail / 1 platform skip. These are local results,
    not the required repeated-platform campaign.
-2. Finalize FIX48's reviewed code and docs, then publish one PR. Its CI runs five
-   sequential default-concurrency full-suite originals on each of Windows and
-   Ubuntu at one SHA, keeps every result, and fails if any sample fails. Do not
-   treat a retry as replacing a failed original.
+2. Verify the exact-head CI campaign on #52: five sequential default-concurrency
+   full-suite originals on each of Windows and Ubuntu at one SHA. Keep every
+   result; do not treat a retry as replacing a failed original. If this docs
+   receipt changes the source head, use only the newest head's run for acceptance.
 3. Propagate the exact reviewed FIX48 correction into #45 and #51 without force
    pushes; verify both resulting branch heads and CI. Keep both PRs draft while
    any required #48 sample or #46 gate remains unresolved.
