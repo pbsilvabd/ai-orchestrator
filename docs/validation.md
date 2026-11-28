@@ -3986,3 +3986,25 @@ M3 completion, deterministic test reliability, live activation or merge.
   author evidence.
 - Review closure is not acceptance. Merge, ready and live activation remain unauthorized;
   #46/#47/#48 remain open and the deployment/provider/FIDO2 gates remain `not_run`.
+
+## FIX48 propagation to B30/#45 - 2026-11-28
+
+- Applied the reviewed correction from FIX48 PR #52 to the B30 branch starting
+  at `67acd78d0c570d5619dcc56c1638138c650cf32a`: default-concurrency B10-03
+  output readiness, MCP partial-line/collection retention, atomic B18 contender
+  result publication, and the Windows/Ubuntu five-sample CI runner. Added the
+  FIX48 task card and retained B30's pre-existing documentation/history.
+- No B30 production, approval, provider, network, deployment or policy behavior
+  was changed by the propagation. #45 and #51 remain draft; no merge.
+- Run `46108300145` passed the receipt head `9b34a8c102af301f511c25c744caab3cb1e1ac36`.
+  Both OS jobs checked common merge commit `7366b2218583d924614105a4d8dc17c5ff4ca858`,
+  parented by base `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` and that PR head.
+  Windows samples 1-5 each reported 310 tests / 309 pass / 0 fail / 1 skip;
+  Ubuntu samples 1-5 each reported 310 / 306 / 0 / 4. All ten JSON outcomes
+  report native exit 0, `worktreeClean=true` and `worktreeUnchanged=true` at the
+  same OS-specific SHA. Both demo steps returned 429 then 200.
+- This verifies the receipt head; it does not prove the #45 propagation head.
+  The #45 work branch passed the focused command (88 total / 87 pass / 0 fail /
+  1 platform skip) and full default suite (442 total / 437 pass / 0 fail /
+  5 platform skips), native exit 0; the demo returned 429 then 200, exit 0.
+  Exact-head CI on the propagated branch is still required.

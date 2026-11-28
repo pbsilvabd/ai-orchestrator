@@ -3025,3 +3025,28 @@ Template:
 - Recorded the closure in `docs/handoff.md`, `docs/roadmap.md` and the B30 card, explicitly
   as review closure rather than acceptance. Merge/ready/live remain unauthorized and
   #46/#47/#48 remain open.
+
+## 2026-11-28 - Propagate FIX48 correction to B30
+
+- Branch: `task/FIX48-propagate-B30`, based on B30/#45 head
+  `67acd78d0c570d5619dcc56c1638138c650cf32a`.
+- Applied FIX48 test synchronization, repeated-suite runner and CI changes, and
+  added the FIX48 acceptance card. Preserved B30's existing documentation and
+  appended a propagation receipt; no B30 production/live behavior changed.
+- Review note: an initial content-level merge conflicted because the FIX48 docs
+  snapshot predated B30's review history. The code, tests, CI and task card were
+  retained; B30's five overlapping status/history documents were restored from
+  its head and updated narrowly.
+- Source validation: FIX48's first campaign passed five originals per OS at PR
+  head `1a2bd5f` / merge checkout `bfbeda9`; receipt-head run `46108300145`
+  passed five per OS at PR head `9b34a8c` / common merge checkout `7366b22`.
+  Every sample exited 0 with a clean, unchanged checkout; detailed totals are in
+  `docs/validation.md`.
+- Propagated branch validation via Node 24.22.1: focused five-file command 88
+  total / 87 pass / 0 fail / 1 platform skip, exit 0; full `node --test` 442
+  total / 437 pass / 0 fail / 5 platform skips, exit 0; fallback demo 429 then
+  200, exit 0; staged diff check clean. Current-head CI remains to run.
+- Files: test/CI runner and regressions; FIX48 card; backlog, handoff, roadmap,
+  validation and worklog receipts.
+- Not done: #51 propagation and exact-head CI for the propagated PR; merge,
+  ready/live transition or deployment activity.

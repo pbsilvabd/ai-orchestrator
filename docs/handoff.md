@@ -1,4 +1,17 @@
-# Continuation point - 2026-11-22
+# Continuation point - 2026-11-28
+
+## Active FIX48 checkpoint
+
+FIX48 is draft PR #52. Run `46107344778` passed five consecutive full-suite
+samples on each OS at merge SHA `bfbeda97d78137de92e9be9fbbf4d94e0515e8672`
+(PR head `1a2bd5f`); run `46108300145` passed five per OS at merge SHA
+`7366b2218583d924614105a4d8dc17c5ff4ca858` (PR receipt head `9b34a8c`).
+Every sample exited 0 and checked the same clean/unchanged revision. Windows
+samples were 310/309/0/1 (tests/pass/fail/skip); Ubuntu 310/306/0/4. The
+correction is applied on the #45 work branch; focused/full local checks pass.
+Publish and verify #45's current-head CI, then propagate the same commit to
+stacked #51. Keep both drafts; no merge. Full records are in
+[validation](validation.md) and [worklog](worklog.md).
 
 Verified remote main `f61e5e14f8c9ca0b3e9be9fbbf4d94e0515e8672` includes
 B12-B19, B29/#44 fixture-only preparation and the 2026-11-22 reassessment

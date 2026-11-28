@@ -1,6 +1,6 @@
 # Roadmap — delegated workers, tested through our own development
 
-Updated 2026-11-22. Milestones follow dependencies and evidence, not promised dates.
+Updated 2026-11-28. Milestones follow dependencies and evidence, not promised dates.
 The maintainer owns scope and permissions; the primary LLM supervises delegated work.
 
 ## Product objective
@@ -22,6 +22,12 @@ PR checks passed on Windows and Ubuntu. M2b remains incomplete.
 See [ADR-006](adr/006-worker-service.md).
 
 ## Where we are
+
+FIX48/#52's exact campaigns passed five default-concurrency samples per OS at
+common merge SHAs `bfbeda9` (PR head `1a2bd5f`) and `7366b22` (receipt head
+`9b34a8c`). The reviewed correction is applied on the #45 work branch; final
+verification and #51 propagation remain. No merge, ready transition or live-use
+gate changed.
 
 Current remote baseline: `f61e5e1`; B12–B19, B29/#44 and the 2026-11-22
 reassessment are merged. B30/#45 is draft, merged with main, with fixture/pinned
